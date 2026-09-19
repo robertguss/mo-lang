@@ -890,3 +890,15 @@
   after positive cleanup, compiler gate released after full-02. No HTTP/provider
   or Mo source scope. Ownership/recovery interruptions precede remote routing.
 - Wiki lint265 pages/25 inherited notices (15 review,10 size); no new issues.
+
+## [2026-09-19] update | Recovery accepted, 4:27 AM ET
+- Integrated worker6266d293 unchanged; verified all5311 evidence entries and exact
+  executor tree. Local59/schema21, recovery16, old regressions and lost-response
+  extra pass; full243/243,5/5 and11128 unchanged tracked files verified.
+- Positive84 execution/57 workspace/76 cgroup cleanup; parent tasks empty,
+  shared5 unchanged, all local groups absent. Preserve both14/1 operator cases
+  and unknown historical transport/TLS causes. No new compiler changes.
+- Next Python six-tool HTTP bridge owns cleanup beyond request lifetime; separate
+  Mo application profile and scripted repair follow. Updated state/board/handoff.
+- Wiki lint267 pages/25 inherited notices (15 review,10 size), no new issues;
+  diff check clean. Closed idle recovery workerp21 after retained receipt.

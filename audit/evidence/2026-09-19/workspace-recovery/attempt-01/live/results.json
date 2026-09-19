@@ -1,0 +1,66 @@
+[
+  {
+    "group": "create-before",
+    "ok": true
+  },
+  {
+    "group": "create-response",
+    "ok": true
+  },
+  {
+    "group": "reserve-response",
+    "ok": true
+  },
+  {
+    "group": "registration-before-reaper",
+    "ok": true
+  },
+  {
+    "group": "active-owner-death",
+    "ok": true
+  },
+  {
+    "group": "finalize-gap",
+    "ok": true
+  },
+  {
+    "group": "complete-gap",
+    "ok": true
+  },
+  {
+    "group": "dispose-gap",
+    "ok": true
+  },
+  {
+    "group": "repeated-cleanup",
+    "ok": true
+  },
+  {
+    "group": "foreign-identity",
+    "ok": true
+  },
+  {
+    "group": "malformed-linked",
+    "ok": true
+  },
+  {
+    "group": "lock-contention",
+    "ok": true
+  },
+  {
+    "group": "unknown-transport",
+    "ok": true
+  },
+  {
+    "group": "late-bootstrap",
+    "ok": true
+  },
+  {
+    "group": "application-active",
+    "ok": true
+  },
+  {
+    "group": "application-snapshot",
+    "ok": true
+  }
+]

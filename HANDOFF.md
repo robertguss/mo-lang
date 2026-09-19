@@ -22,150 +22,74 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 4:09 AM ET
+### Active work, 19 Sep 2026, 4:27 AM ET
 
-Current application code is `aa7ec7623f634d5c05f6d602b894428c211b4869`;
-recovery brief base is `90858791f441d125f0187a6751beffec6ef2312b`. Published
-checkpoint 1edc1259442f0e9c16c46fbf62725a68c729c5a5 and wiki run35429060879
-both passed. Verify current git/CI on resume; the application checkpoint is
-independently accepted. Local ff2422bd retains initial recovery reviews.
+Nine bounded harness foundations now have independent lead acceptance:
+terminal-401, offline provider, BusyBox executor, workspace, coding fixture,
+private auth, native-history provider bridge, isolated application builds and
+cleanup-only workspace recovery. Current recovery integration is de71578d,
+worker exact tip6266d293; inspect git for the subsequent acceptance/docs commit.
+Last published checkpoint1edc1259 and wiki run35429060879 passed; the recovery
+acceptance checkpoint is being prepared for publication.
 
-Eight bounded components have independent lead acceptance:
+Recovery lead local59/schema21/selection negatives pass. Real recovery16,
+workspace22/executor17/lifecycle1/application23 and an actual post-effect lost
+cleanup response extra pass. Full integrated build/test pass243/243,5/5,outer0.
+All11128 tracked toolchain/examples files unchanged;84 execution resources,
+57 workspaces and76 actual candidate cgroups absent; both active parent task
+sets empty and shared5 Docker IDs/states unchanged. Every recorded local group
+is absent and lead runp1D is shell-idle. Exact5311 worker evidence entries and
+executor tree verified. See audit/evidence/2026-09-19/workspace-recovery/README.md.
 
-- Terminal-401 policy: final full suite 243/243 and 5/5; 18 interpreter/native
-  cases plus six extra controls. Generic recipe unchanged.
-- Offline provider: fresh setup, 28 actual pinned-parser cases and two extras.
-  Source/artifact differences are disclosed; unknown usage remains explicit.
-- BusyBox executor: 15 unit/17 live, collector-loss and exit-137 extras, positive
-  cleanup and unchanged shared Mac Docker IDs/states.
-- Workspace: worker 50f8a9d/d9444f0, integrated bcdf7c1/f4fe3ea. Lead 27 unit,
-  22 workspace live, 17 executor, lifecycle and two extra controls pass. Exact
-  1586 changed files match; source bytes/shared Docker states unchanged. Machine
-  released, no owned services/containers/mounts/cgroups. Worker pane closed.
-- Coding fixture: worker 84d442e/3964f1f, integrated 9bae779/e6f04ce. Lead 49
-  verification commands, seven cancellation controls, 22 HTTP cases per runtime
-  plus two boundary groups, 12 exact legacy goldens and six extras pass. Full
-  integrated suite at e6f04ce passed 243/243, 5/5 at 2:05 AM ET; 3307 tracked
-  toolchain/examples files unchanged. Retained cancellation/native race and cold
-  runner false-pass reds. Worker/run panes closed; worktree preserved.
-- Private auth: worker c1d4fe16/2a6360c1, integrated e845fef1/29f0dd24. Lead
-  fresh offline preparation, auth 28/28 (43 synthetic requests), foundation
-  28/28 and two extra body-cleanup controls pass; 186 original provider files
-  unchanged. Late-response body cleanup red retained. No live login/inference.
-  Worker/run panes closed. Full integrated suite repeated successfully at the
-  bridge checkpoint ending191da144.
+Worker source00a06657 follows08525c61; diagnostics c2ea7cf7/df816be3, evidence
+ee48568c and report correction6266d293 are integrated unchanged. All actual
+Astra author/committer. Worker worktree harness-workspace-recovery-v1 remains
+preserved. Owned runpanes22/26 and workerp21 are closed after final read-only idle receipt
+and proof that all47 recorded task groups have no members.
+No further worker machine/compiler work is permitted.
 
-Provider bridge is now independently accepted: worker c17d65a/9e2feb8e,
-integrated9e777e5c/191da144. Lead fresh-copy 27 protocol groups, real Mo in both
-runtimes, mixed-selection correction,28 foundation and two extra HTTP controls
-pass. Each Mo run:2 provider calls,1 inert command,3 Book steps; actual on-disk
-prefix checks/native signatures. Full integrated suite 243/243,5/5; 3489 tracked
-toolchain/examples files unchanged. All 278 provider files unchanged, cleanup
-empty. Missing Content-Length and mixed-selection preparation reds retained.
-Worker/run panes closed; worktree preserved. Once-per-process provisioning is
-trusted operator responsibility, not a library singleton. No live acceptance.
+Retain all failures. First malformed snapshot response has no raw successful
+transport bytes and remains unexplained. Later missing active slice hierarchy
+was a separate demonstrated readiness error: cleanup absence is insufficient
+execution readiness. Existing unchanged slices were activated before green
+regressions. Two operator cases remain14 API-confirmed/1 API-unresolved each;
+physical cleanup cannot restore reboot-lost proof. Worker first full242/243 TLS
+ordering failure and earlier application TLS TCP-count failure remain unexplained;
+subsequent full passes are not claimed fixes. No compiler/example changes.
 
-Trusted Linux compiler execution passed seven commands including native driver
-build and 18 HTTP auth cases, source identity and positive service cleanup.
-Cross-built executable `/opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl`, SHA
-`4d14520aaf25403396e14501efbab2f5cd3d7f29bba4ad7c124155c06c806c72`.
-Zig 0.16 is `/opt/mo-harness/zig-aarch64-linux-0.16.0`. Native bootstrap OOM and
-900-second timeout remain failed attempts. Trusted smoke's reported 512KiB peak
-is not credible sizing evidence. Machine is now exclusively assigned to the
-workspace-recovery worker; do no competing machine commands until its release.
+Next: versioned Python six-tool workspace HTTP bridge, then Mo application
+profile, then scripted Logstat repair and protected checks. Fresh Astra/low
+workers in separate Herdr panes/worktrees own implementation. Lead is drafting
+the HTTP brief; no HTTP implementation worker yet. See retained source reviews
+in audit/evidence/2026-09-19/workspace-wire-readiness/.
 
-Application worker tip 0b93d5df at base 5e568227 is integrated through aa7ec762;
-its panes are closed, worktree preserved. First two worker commits retain
-inherited Robert committer; last two and all lead integrations are Astra.
-Lead exact 2316-file match, local27/policy8/package3, actual 19544 image files,
-application23, workspace22/executor17/lifecycle1 and extra cold spaced-path
-Unicode snapshot build pass. 5799 tracked source/evidence files unchanged,
-68 executions/34 workspaces cleaned, five shared Mac container IDs/states stable.
-The fresh package matches manifest d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb
-and image sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4.
-Machine manifest: /opt/mo-harness/application-build-v1/lead-package-attempt-01/package/manifest.json.
-Limits stay candidate 1GiB/CPU1/128PIDs/120s, parent1536MiB, outer2GiB/CPU2.
+The HTTP owner must outlive a request and use cleanup-only recovery after owner
+loss. All6 tools remote; no local filesystem fallback. Strict UTF-8/base64 DTOs,
+explicit Content-Length, request851968/response524288 caps, persisted run/call
+mapping before effects, no automatic replay. Existing controller response cap
+remains authoritative. Application mode can preserve serialized Budget/Order
+with wall900000/tool2000 and separate fixed candidate120000/command-wait300000
+caps. Diminishing15s reporting reserve stays inside900s; terminal Book AND
+Run.Stopped precede final reread. These are readiness decisions, not implementation
+or repair acceptance. No unconditional synchronous bound across inherited locks.
 
-Full lead suite full-01 retained 242/243: unchanged effects/tls-echo.mo printed
-served1 interpreter versus served0 native, both exit0. Ten focused no-client
-runs (five each runtime) pass. Full-02 passes 243/243, 5/5 at 3:16 AM ET, exit0,
-5799 tracked files unchanged and groups absent. The extra TCP client is unknown;
-do not claim the first failure fixed. TLS source review is retained and its pane
-closed; no compiler/example changes were made.
-Raw results are audit/evidence/2026-09-19/application/.
+Machine mo-executor-r01 is exclusively LEAD-OWNED and currently has no task
+workloads. Both existing slices are active: mo-executor.slice512MiB/CPU1/PIDs128,
+mo-application.slice1536MiB/CPU1/PIDs192; outer2GiB/CPU2/swap0. Do not change
+images, config, limits or /opt inputs. A fresh worker requires exact release.
+Application image sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4;
+manifest d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb at
+/opt/mo-harness/application-build-v1/package-02/package/manifest.json. Trusted
+Linux Mo /opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl and Zig distribution
+/opt/mo-harness/zig-aarch64-linux-0.16.0 remain unchanged. Application candidate
+limits1GiB/CPU1/PIDs128/120s, /build512MiB exec, source/tmp noexec.
 
-Active implementation: `mo-workspace-recovery-v1`, w4:p21/run w4:p22,
-branch harness/workspace-recovery-v1, exact base90858791. Its committed brief
-requires persisted ownership and cleanup-only recovery before HTTP, including
-lost reserve responses, late bootstrap barriers and preserved unknown outcomes.
-Machine exclusively released after lead application runtime cleanup. No image,
-slice or installed-input changes; full Mo/Zig CPU gate was released at 3:16 AM ET.
-Immutable product checkpoints08525c61 and00a06657 plus diagnostic c2ea7cf7/
-df816be3 and final evidence/report ee48568c/6266d293 are integrated locally
-throughde71578d for testing, not accepted or published. Corrected local59/
-recovery16 passed per worker receipt;
-lead lifecycle and fresh proof/schema source reviews close the identified gaps.
-Broad checks failed: corrected workspace regression19/22 first had malformed
-snapshot JSON (raw successful transport bytes missing), then occupied registration
-and inherited collector machine-stop fallback/reboots. Initial cause unknown.
-Worker owns exact-resource cleanup and raw transport probes; no competing lead
-machine commands. Full build passed, full test failed242/243 on unchanged TLS
-fatal-alert/reset ordering at corpus.zig1243. Preserve both failures; no fixes
-claimed. Fresh regression and compiler runs must be sequential after cleanup.
-Worker run panes are w4:p22 and w4:p26; fresh review p25 was closed after report.
-Lead independent local59 and21 multi-execution schema controls pass at741be6ab;
-unknown/empty/duplicate selections each exit2 before output creation. All5815
-tracked toolchain/examples files unchanged, child groups absent, outerexit0.
-Evidence is workspace-recovery/local-01. Final worker tip is6266d293; its clean
-receipt explicitly released the machine. Lead machine/full acceptance remains
-pending; no worker machine/compiler work is permitted now.
-Observed rerun then failed before execution: missing slice control group after
-reboot. Inactive slice absence was sufficient cleanup evidence but insufficient
-execution readiness. Lead authorized reactivating the two existing unchanged
-slices after exact cleanup, with active cgroup/effective-limit/input checks
-before dispatch. No provisioning code or limit changes. Initial malformed
-response remains unexplained. See corrected lead review for both failures.
-After activation, worker sequential workspace22/executor17/lifecycle1/app23 all
-passed. Final inventory proves178 workspace roots,234 execution resources,
-190 actual candidate cgroups and44 historical local groups absent, both active
-parents empty, shared5 unchanged. Two reboot-lost proofs remain API-unresolved
-despite exact authorized operator cleanup. Worker full-test-02 passed243/243,
-5/5 in406.5s,exit0,group absent; old failure remains unexplained. Final inventory
-refreshed after full suite and all47 worker groups are absent. Owned run panes
-p22/p26 closed, workerp21 available for corrections.
-
-Lead exclusively owns mo-executor-r01. Independent live acceptance is running
-in w4:p1D through audit/evidence/2026-09-19/workspace-recovery/launch.py recovery
-attempt-01 6266d293b17f11d7d8f761e427fa393f3f9e9bf9 (1800s guard). Verified all5311
-worker evidence entries/sizes/hashes and exact file set; readiness,recovery16
-and workspace22 passed so far. Observer-backed executor/lifecycle/application,
-post-effect lost-reply extra and final inventory follow sequentially. Do not
-start compiler/machine work concurrently. Lead full suite follows live cleanup.
-Launcher outer-timeout child-group cleanup has a retained passing fault control.
-
-Fresh read-only Astra low budget review finished and p27 closed. Report is
-workspace-wire-readiness/application-budget-review-01.md: fixed application mode
-can keep serialized Budget/Order unchanged (wall900000/tool2000), with separate
-candidate120000 and command-wait300000 caps in versioned profile metadata.
-Run needs explicit mode/config/dispatch, new application module/adapter and CLI;
-Tools/Registry can remain unchanged by starting Run without local Writer.
-Preserve diminishing15s reporting reserve within outer900s, terminal Book AND
-Run.Stopped before final reread, no local fallback. This is readiness only;
-HTTP/profile implementation still waits for recovery acceptance.
-
-Wire/encoding and cleanup reviews are retained under workspace-wire-readiness;
-their review panes are closed. Next: finish application acceptance and cleanup
-recovery, then version Python six-tool HTTP bridge and Mo application profile,
-then scripted Logstat repair/protected checks. Existing provider bridge remains
-2s/30s; longer provider profile needs an explicit version. No unconditional
-synchronous wall bound exists across inherited blocking locks/local I/O.
-
-Rediscover Herdr IDs; lead w4:p1, recovery w4:p21/run w4:p22;
-lead runs w4:p1D/p1M are idle after positive application/full-suite cleanup.
-Preserve all worktrees. Lead owns docs/audit evidence and integration; workers
-write toolchain/examples. No oracle, nested workers, worker push or shared Mac
-candidate execution. Continue autonomously. Step 39 remains unaccepted, Darwin
-full-sync unmet, Program7 suspended; no live-provider or scripted-repair acceptance.
+Lead w4:p1; lead runpanesp1D/p1M idle; rediscover IDs before use. All earlier
+implementation/review panes closed and worktrees preserved. Lead owns wiki,
+HANDOFF, integration and audit evidence; workers alone write toolchain/examples.
+No oracle, nested workers, worker push, shared Mac candidate execution or live
+provider acceptance. Step39 unaccepted, Darwin full-sync unmet, Program7
+suspended. Continue autonomously while Robert sleeps; do not stop at a checkpoint.
 
 ## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
 

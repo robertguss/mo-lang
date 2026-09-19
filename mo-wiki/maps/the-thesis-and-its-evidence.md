@@ -1,7 +1,7 @@
 ---
 title: "The thesis and its evidence"
 created: 2026-09-16
-updated: 2026-09-18
+updated: 2026-09-19
 type: map
 tags: [thesis, research]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -12,16 +12,13 @@ status: living
 
 A map of content: the claim, the layers it stands on, and the page where each claim met a measurement. Start with [[state-of-the-project]] for the whole picture; this map is the trail behind it.
 
-**Current direction, 18 Sep 2026:** [[01-premise]] now leads with agent-native
-development and the complete feedback loop, not BEAM superiority. Robert's
-program-7 suspension and prospective supersession of its runtime-claim
-retirement framing are appended in [[decision-log]]. The four reports are
-reviewed in [[agent-native-research-synthesis]], with a proposed first workflow
-trial, not an execution brief. [[agent-native-independent-review-prompt]] asks
-outside models to challenge the entire approach. [[roadmap]] retains the pause
-until Robert's explicit approval and the lead's readiness agreement. Links below
-preserve the older layers and evidence; they do not establish the new goals or
-authorize the old experiment to proceed.
+**Current direction, 19 Sep 2026:** [[01-premise]] leads with agent-native
+feedback loops. Robert authorized continuous overnight work under Astra lead
+with fresh Astra/low workers. Nine bounded foundations now pass independent
+acceptance; [[mo-workspace-recovery-v1]] precedes [[mo-workspace-http-v1]] and
+real application repair. [[overnight-harness-2026-09-19]] records this stage.
+No language-value or live-provider claim follows from infrastructure controls.
+Program7 remains suspended and Step39 unaccepted; [[roadmap]] is current order.
 
 ## The claim, and how it was restated
 

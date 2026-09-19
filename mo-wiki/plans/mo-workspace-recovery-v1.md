@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-workspace-foundation.md, plans/mo-application-build-v1.md]
-status: in-progress
+status: complete
 ---
 
 # Mo workspace recovery v1: cleanup after owner loss
@@ -141,6 +141,19 @@ close only idle owned run panes. Preserve worktree and historical evidence.
 Lead independently reviews and integrates, repeats applicable checks plus an
 extra control, then records acceptance. An HTTP bridge brief follows only after
 this recovery contract is demonstrated. No automatic acceptance from a receipt.
+
+## Independent acceptance, 19 Sep 2026, 4:27 AM ET
+
+Worker6266d293 is integrated through de71578d. Lead source/schema reviews,
+local59 plus21 extra schema controls, recovery16, workspace22/executor17/
+lifecycle1/application23 and real post-effect response-loss control pass.
+Full build/test pass243/243,5/5;11128 tracked files unchanged. Positive inventory
+covers84 executions/57 workspaces/76 cgroups, both parents empty/shared5 stable.
+All5311 worker evidence entries verified. Retained malformed snapshot and TLS
+failures remain unexplained; two reboot-lost API outcomes remain unresolved
+although separate physical cleanup was authorized and proved. No broad recovery
+or durability claim. Lead evidence: audit/evidence/2026-09-19/workspace-recovery/.
+Next is [[mo-workspace-http-v1]], then a distinct Mo application profile.
 
 ## Related
 

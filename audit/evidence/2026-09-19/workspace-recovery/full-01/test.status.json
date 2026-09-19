@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "900",
+    "--",
+    "zig",
+    "build",
+    "test",
+    "--summary",
+    "all"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang/toolchain",
+  "started": "2026-09-19T04:13:49.838249-04:00",
+  "finished": "2026-09-19T04:20:36.197543-04:00",
+  "exit": 0,
+  "expected_exit": 0,
+  "forced": false,
+  "group": 68472,
+  "cleanup_before": [],
+  "group_remaining": false
+}

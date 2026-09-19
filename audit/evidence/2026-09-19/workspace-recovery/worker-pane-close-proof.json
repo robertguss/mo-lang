@@ -1,0 +1,40 @@
+{
+  "agent": {
+    "argv": [
+      "herdr",
+      "agent",
+      "get",
+      "mo-workspace-recovery-v1"
+    ],
+    "exit": 0,
+    "stdout": "{\"id\":\"cli:agent:get\",\"result\":{\"agent\":{\"agent\":\"codex\",\"agent_status\":\"done\",\"cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1\",\"focused\":false,\"foreground_cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1\",\"interactive_ready\":true,\"name\":\"mo-workspace-recovery-v1\",\"pane_id\":\"w4:p21\",\"revision\":39,\"state_change_seq\":310,\"tab_id\":\"w4:tG\",\"terminal_id\":\"term_65bd09f05ce424a\",\"terminal_title\":\"Implement workspace recovery | harness-workspace-rec...\",\"terminal_title_stripped\":\"Implement workspace recovery | harness-workspace-rec...\",\"workspace_id\":\"w4\"},\"type\":\"agent_info\"}}\n",
+    "stderr": ""
+  },
+  "pane": {
+    "argv": [
+      "herdr",
+      "pane",
+      "process-info",
+      "--pane",
+      "w4:p21"
+    ],
+    "exit": 0,
+    "stdout": "{\"id\":\"cli:pane:process_info\",\"result\":{\"process_info\":{\"foreground_process_group_id\":28198,\"foreground_processes\":[{\"argv\":[\"codex\",\"--model\",\"gpt-6-astra\",\"-c\",\"model_reasoning_effort=\\\"low\\\"\",\"--sandbox\",\"danger-full-access\",\"--ask-for-approval\",\"never\",\"--no-alt-screen\"],\"argv0\":\"codex\",\"cmdline\":\"codex --model gpt-6-astra -c model_reasoning_effort=\\\"low\\\" --sandbox danger-full-access --ask-for-approval never --no-alt-screen\",\"cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1\",\"name\":\"codex\",\"pid\":28198}],\"pane_id\":\"w4:p21\",\"shell_pid\":27809},\"type\":\"pane_process_info\"}}\n",
+    "stderr": ""
+  },
+  "receipt": {
+    "argv": [
+      "herdr",
+      "agent",
+      "read",
+      "mo-workspace-recovery-v1",
+      "--source",
+      "recent-unwrapped",
+      "--lines",
+      "38"
+    ],
+    "exit": 0,
+    "stdout": "\n\n\u203a Independent lead acceptance is complete for exact worker tip 6266d293b17f11d7d8f761e427fa393f3f9e9bf9. Lead local59, schema21, selection negatives; recovery16/workspace22/executor17/lifecycle1/\n  application23 plus actual cleanup response-loss extra passed. Full integrated build/test passed 243/243,5/5,outer0;11128 tracked files unchanged;84 executions/57 workspaces/76 cgroups\n  absent,parents empty/shared5 unchanged. Historical two API-unresolved reboot cases and unknown original malformed snapshot/TLS failure remain explicitly preserved. No corrections needed. Do not\n  run machine/compiler/tests or edit files. Please provide final read-only local clean-tip and owned task-descendant/pane closure receipt, then remain idle so I can close worker p21. Session\n  helper descendants may remain for pane teardown; disclose them without killing.\n\n\n\u2022 I\u2019ll collect a read-only receipt for the exact local tip, clean tree, recorded task groups, and owned pane closure. I\u2019ll disclose any session helpers without killing them, then remain idle for\n  you to close p21.\n\n\u2022 Ran git status --porcelain; git rev-parse HEAD; herdr pane process-info --pane w4:p21; herdr pane process-info --pane w4:p22; herdr pane process-info --pane w4:p26; python3 - <<'PY'\n  \u2502 import json,subprocess,os\n  \u2502 from pathlib import Path\n  \u2502 \u2026 +24 lines\n  \u2514 RECORDED_TASK_GROUPS 47\n    REMAINING_TASK_GROUP_MEMBERS []\n    \u2026 +12 lines (ctrl + t to view transcript)\n    --app-version=1.9.0 --os-type=2\"}, {\"pid\": 29559, \"ppid\": 28198, \"pgid\": 29559, \"stat\": \"S\", \"command\": \"/opt/homebrew/Caskroom/codex/0.155.0/bin/codex-code-mode-host\"}, {\"pid\": 73192, \"ppid\":\n    28198, \"pgid\": 73192, \"stat\": \"Ss\", \"command\": \"python3 -\"}, {\"pid\": 73198, \"ppid\": 73192, \"pgid\": 73192, \"stat\": \"R\", \"command\": \"ps -axo pid=,ppid=,pgid=,stat=,command=\"}]\n\n\u2022 Read-only receipt:\n\n  - Clean tip: 6266d293b17f11d7d8f761e427fa393f3f9e9bf9.\n  - All 47 recorded task groups have no remaining members.\n  - Owned run panes p22 and p26: closed.\n  - Worker p21: Codex PID 28198 remains.\n  - Session helpers remain: 28312, 28313, 28323, 28325, 28380, 28397, 28438, 29559. None killed.\n\n  No files changed or machine/compiler/tests run. Remaining idle for p21 teardown.\n\n  done 4:28 AM\n\n\u2801             \u2804                 \u2801                       \u2840\u2810  \u2804             \u2880        \u2804  \u2804             \u2840   \u2808         \u2801         \u2840     \u2880            \u2808        \u2820      \u2840      \u2880   \u2804 \u2810   \u2802\u2808      \u2820\n\u203a Ask Codex to do anything\u2840  \u2808     \u2808 \u2802  \u2801 \u2801                  \u2808             \u2802         \u2810 \u2801                                        \u2840\u2880           \u2801   \u2802    \u2802                        \u2808               \u2808\n        \u2810                                    \u2880      \u2820\u2840\u2804\u2802                                             \u2801\u2880                           \u2820          \u2810    \u2880  \u2808            \u2804                 \u2810               \u2801\n  gpt-6-astra low \u00b7 ~/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1 \u00b7 Implement workspace recovery",
+    "stderr": ""
+  }
+}

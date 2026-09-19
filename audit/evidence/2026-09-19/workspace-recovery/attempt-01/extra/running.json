@@ -1,0 +1,7 @@
+{
+  "registration": {
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-023d2a55a10ed242f2f7fa4546e13a0acc0ae5a6d92ec7b46b66c28fd8652654.scope",
+    "container_id": "023d2a55a10ed242f2f7fa4546e13a0acc0ae5a6d92ec7b46b66c28fd8652654"
+  },
+  "running": true
+}

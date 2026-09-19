@@ -24,7 +24,7 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 3:16 AM ET, isolated application builds accepted; cleanup recovery underway.
+**Last updated:** 19 Sep 2026, 4:27 AM ET, cleanup recovery accepted; workspace HTTP contract next.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
@@ -60,12 +60,18 @@ The first full suite retained a TLS echo TCP-count mismatch, 242/243; ten
 focused runs and the fresh full rerun pass, 243/243 and 5/5. The originating
 client is unknown; no fix is claimed. This bounded application slice is accepted.
 
-[[mo-workspace-recovery-v1]] starts the necessary cleanup-only API before HTTP
-exposure: a lost reservation response currently leaves no supported reopen path.
-The fresh worker owns the released dedicated machine; no provider/HTTP/Mo edits
-are part of that slice. Remote six-tool routing and scripted Logstat repair
-follow. Language value and matched Pi comparison remain unmeasured. Published
-checkpoint 5e39f568 and wiki deployment 35427175140 passed.
+[[mo-workspace-recovery-v1]] is independently accepted: local59/schema21,
+recovery16, existing workspace/executor/application regressions and an actual
+lost cleanup response control pass. Full suite243/243 and5/5; all11128 tracked
+files unchanged. Cleanup proves84 executions/57 workspaces/76 cgroups absent,
+parents empty and shared5 unchanged. Earlier malformed snapshot and TLS failures
+remain unexplained. Two reboot-lost outcomes remain API-unresolved despite
+separate authorized physical cleanup; this is not whole-machine recovery.
+
+[[mo-workspace-http-v1]] is next: six remote tools with an owner independent of
+HTTP request lifetime. A Mo application profile and scripted Logstat repair
+follow separately. Language value and matched Pi comparison remain unmeasured.
+The last published application checkpoint1edc1259 and wiki35429060879 passed.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations

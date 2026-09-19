@@ -146,7 +146,8 @@ type: index
 - [[mo-workspace-foundation]] — bounded persistent Linux workspace, real feedback
   commands and protected snapshot identity
 - [[mo-application-build-v1]] — pinned Linux application image and separately bounded build policy
-- [[mo-workspace-recovery-v1]] — cleanup ownership after lost responses or owner death, before HTTP exposure
+- [[mo-workspace-recovery-v1]] — accepted cleanup ownership after lost responses or owner death
+- [[mo-workspace-http-v1]] — bounded six-tool HTTP routing with independent cleanup ownership
 - [[mo-provider-bridge-v1]] — native Pi history, strict recorded continuation
   and bounded offline Mo HTTP compatibility before live inference
 - [[mo-provider-auth-v1]] — private harness credential store and pinned device
@@ -225,6 +226,7 @@ type: index
 - [[roadmap|Roadmap: now, next, later]] — the board: what is in flight, what comes next in order, what waits on Robert, what just landed; then the phases and every step's history
 
 ## Sessions
+- [[overnight-harness-2026-09-19]] — recovery acceptance and remote application routing
 - [[session-06|Session 6 — 13 Sep 2026 (evening, ingestion)]] — six deep-research runs and three adjacent runs ingested into raw/; new prompts-mo-parallel-tracks page; no decisions changed
 - [[session-05|Session 5 — 12–15 Sep 2026]] — review closed, corpus and toolchain begun, bake-off, build-first process, gap decisions
 - [[session-01|Session 1 — 12 Sep 2026 (night)]] — the first design conversation: the directions, the premise, the first syntax

@@ -1,0 +1,29 @@
+[
+  {
+    "argv": [
+      "python3",
+      "toolchain/bench/step36/guard.py",
+      "60",
+      "--",
+      "python3",
+      "mo-wiki/tools/lint.py"
+    ],
+    "exit": 0,
+    "group": 73520,
+    "group_remaining": false
+  },
+  {
+    "argv": [
+      "python3",
+      "toolchain/bench/step36/guard.py",
+      "60",
+      "--",
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit": 0,
+    "group": 73523,
+    "group_remaining": false
+  }
+]

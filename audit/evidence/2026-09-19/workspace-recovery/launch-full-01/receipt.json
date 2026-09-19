@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "1200",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-recovery/accept.py",
+    "full",
+    "full-01",
+    "6266d293b17f11d7d8f761e427fa393f3f9e9bf9"
+  ],
+  "exit": 0,
+  "forced": false,
+  "started": 1789805628.876061,
+  "finished": 1789806036.79191,
+  "groups": [
+    68430,
+    68438,
+    68472
+  ],
+  "interrupted_groups_killed": [],
+  "remaining": []
+}
