@@ -1,5 +1,5 @@
 module Agent.Record
-expose Status, Budget, Order, Record, Health, tool_names, budget, default_budget, order, record, goal?, folder?, tools?, host?, hosts?, steps?, tokens?, wall_ms?, retries?, tool_ms?, token?, status_name, status_named, final?, shown, health_of, id_of, number_of
+expose fixture_tools, fixture_budget, Status, Budget, Order, Record, Health, tool_names, budget, default_budget, order, record, goal?, folder?, tools?, host?, hosts?, steps?, tokens?, wall_ms?, retries?, tool_ms?, token?, status_name, status_named, final?, shown, health_of, id_of, number_of
 
 intent "What agent is about: a run's order (the goal, the folder, the tools and hosts it grants, and the budget) and the rules each keeps, the run's record and its five states, and the JSON a record is shown as."
 
@@ -58,6 +58,15 @@ end
 # Every tool the harness can run; a run grants some of them.
 fn tool_names() : List(String)
   ["list_files", "read_file", "search", "write_file", "http_get", "now"]
+end
+
+# Opt-in trusted fixture catalog; legacy tool_names and order validation stay unchanged.
+fn fixture_tools() : List(String)
+  ["list_files", "read_file", "search", "write_file", "exact_edit", "command"]
+end
+
+fn fixture_budget() : Budget
+  budget(16, 4_096, 30_000, 0, 2_000)
 end
 
 fn steps?(n: UInt64) : Bool

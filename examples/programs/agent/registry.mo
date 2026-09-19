@@ -61,7 +61,7 @@ end
 # the process over the folder writable (step 25), so a run not granted it holds no Fs that writes.
 fn started_run(book: Handle(Book), fs: Fs, http: Http, clock: Clock, setup: Setup) : Handle(Run)
   folder = fs.scoped(setup.order.folder)
-  if setup.order.tools.contains?("write_file")
+  if setup.order.tools.contains?("write_file") or setup.order.tools.contains?("exact_edit")
     return Run.start(book, folder.read_only, Some(Writer.start(folder)), http, clock, setup)
   end
   Run.start(book, folder.read_only, None, http, clock, setup)

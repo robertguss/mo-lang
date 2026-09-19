@@ -1,0 +1,4 @@
+examples/programs/agent/command_adapter.mo:56:8: MO0102 a case arm holds one expression after its `:`; `return` is a statement, and a statement goes on its own lines below the arm
+      _: return bad
+         ^
+  why: An expression starts with a literal, a name, a type name, (, [, !, -, try, if, case, fn, old, result, or any.

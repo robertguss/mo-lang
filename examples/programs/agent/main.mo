@@ -16,6 +16,7 @@ use Agent.Api{Command, Want}
 use Agent.Book{Book}
 use Agent.Check{Place, checked}
 use Agent.Client{Trip, Sleeper, request_of, shown}
+use Agent.CodingFixture{Fixture, Config}
 use Agent.Mock{Cursor, MockServer}
 use Agent.Model{Model}
 use Agent.Operator{Operator}
@@ -182,6 +183,7 @@ end
 
 fn ran(http: Http, fs: Fs, clock: Clock, err: Out, runtime: Option(Runtime),
   args: List(String)) : Result(Said, Problem)
+  return coding_fixture(http, fs, clock, args.drop(1)) if args.first == Some("coding-fixture")
   given = try task(args)
   case given
     Serving(spot): serve(http, fs, clock, err, runtime, spot)
@@ -193,6 +195,30 @@ fn ran(http: Http, fs: Fs, clock: Clock, err: Out, runtime: Option(Runtime),
         Ok(text): Ok(Said(text: text, code: 0))
         Error(why): Error(Unopened(dir: place.dir, why: why))
       end
+  end
+end
+
+# The operator supplies ports, workspace identity and a disposable root containing work/.
+fn coding_fixture(http: Http, fs: Fs, clock: Clock, args: List(String)) : Result(Said, Problem)
+  given = try words(args, ["--model", "--command", "--workspace"])
+  return Error(Usage(detail: "coding-fixture takes a disposable root and goal")) if given.plain.size < 2
+  model = try model_of(given.flags.get("--model") or "")
+  command = try model_of(given.flags.get("--command") or "")
+  if model.host != "127.0.0.1" or command.host != "127.0.0.1"
+    return Error(Usage(detail: "fixture endpoints must use 127.0.0.1"))
+  end
+  workspace = given.flags.get("--workspace") or ""
+  return Error(Usage(detail: "--workspace needs an opaque identity")) if workspace == "" or workspace.byte_size > 256
+  goal = String.join(given.plain.drop(1), " ")
+  return Error(Usage(detail: "goal is 1 byte to 4 KiB")) if !goal?(goal)
+  config = Config(dir: try dir_of(given.plain.first or ""), model_port: model.port,
+    command_port: command.port, workspace: workspace, goal: goal)
+  worker = Fixture.start(fs, http, clock)
+  case worker.ask(Start(config: config), within: 45_000.ms)
+    Ok(output): Ok(Said(text: output.text, code: output.code))
+    Error(_):
+      Ok(Said(text: "{\"schema\":\"mo-coding-fixture-v1\",\"run_id\":\"\",\"event\":\"reporting_error\",\"step_number\":0,\"payload\":{\"error\":\"fixture_deadline\"}}\n",
+        code: 3))
   end
 end
 

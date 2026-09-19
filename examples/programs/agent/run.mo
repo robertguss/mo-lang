@@ -2,11 +2,12 @@ module Agent.Run
 expose Run, Runs, began?
 
 use Agent.Book{Book}
-use Agent.Model{Model, complete}
+use Agent.CommandAdapter{Endpoint, dispatched, terminal?, refused?, failure}
+use Agent.Model{Model, complete, body}
 use Agent.Record{Order, Status, default_budget}
-use Agent.Shelf{Verdict, Ending}
+use Agent.Shelf{Verdict, Ending, ending}
 use Agent.Steps{Setup, Phase, Progress, fresh, begun, asked, using, stopped, advanced, asks?, uses?, budget_end, not_begun, request_of, call_ms, ran_of, call_for, model_step, tool_step, model_outcome}
-use Agent.Tools{Writer, used}
+use Agent.Tools{Writer, Used, Call, used}
 use Agent.Transcript{Step}
 
 intent "A run as a process: its budget's deadline taken from the ask that begins it, then a loop of messages it sends itself (a model call, its step written, the tool the model named, that step written), every call on what remains of the deadline tightened by tool_ms; each step is in the book before the next call, the book's answer says whether the run goes on, and the run ends by asking the book to write its end."
@@ -14,10 +15,24 @@ intent "A run as a process: its budget's deadline taken from the ask that begins
 # A run's reads go through its folder read-only; a run granted write_file also holds a writer, the
 # process that holds the folder writable, and a run not granted it holds none (step 25). A crash ends the run where it is; the
 # book fails it as lost once its wall budget and grace have passed.
+struct Turn
+  setup: Setup
+  run: Progress
+  fixture: Option(Endpoint)
+end
+
+struct Identity
+  run: String
+  call: String
+end
+
 process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http: Http, clock: Clock,
   setup: Setup)
   state
     run: Progress = fresh(setup.id)
+    fixture: Option(Endpoint)
+    report_by: Option(Deadline)
+    grace_ms: Int64 = 15_000
   end
 
   invariant "a run's deadline is taken once"
@@ -28,6 +43,7 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
     old(state.run.phase) != Stopped or state.run.phase == Stopped
   end
 
+  message ConfigureFixture(endpoint: Endpoint) : Bool
   message Begin(me: Handle(Run)) : Bool
   message Think(me: Handle(Run))
   message Thought(me: Handle(Run))
@@ -35,49 +51,180 @@ process Run(book: Handle(Book), reads: Fs, writer: Option(Handle(Writer)), http:
   message Acted(me: Handle(Run))
   message Close(me: Handle(Run))
   message Look : Phase
+  message ReportDeadline : Deadline
 
   fn update(state, message)
     case message
+      ConfigureFixture(endpoint):
+        if state.run.phase == Ready and state.fixture is None
+          state.fixture = Some(endpoint)
+          state.report_by = Some(reply_by)
+          true
+        else
+          false
+        end
       Begin(me):
         state.run = begun(state.run, reply_by)
         me.send(Think(me: me))
         true
       Think(me):
-        case state.run.by
-          Some(by):
-            if asks?(state.run, setup, by)
-              reply = complete(http, setup.model, request_of(setup, state.run),
-                setup.order.budget.retries, by.at_most(call_ms(setup)))
-              state.run = asked(state.run, reply, clock.now)
-              me.send(Thought(me: me))
-            else
-              state.run = held(me, state.run, setup, by)
-            end
-          None:
-            state.run = closing(me, state.run, not_begun())
-        end
+        state.run = thinking(me, http, clock, setup, state.run, state.fixture is Some(_))
       Thought(me):
-        state.run = recorded(me, book, setup, state.run, model_step(state.run, clock.now))
+        remaining = remaining_ms(state.report_by)
+        began = clock.now
+        state.run = recorded_profile(me, book, setup, state.run, model_step(state.run, began),
+          capped(state.report_by, state.grace_ms))
+        state.grace_ms = grace_left(state.grace_ms, remaining, remaining_ms(state.report_by))
       Act(me):
-        case state.run.by
-          Some(by):
-            if uses?(state.run, setup, by)
-              call = call_for(setup, state.run, ran_of(state.run, setup, by))
-              tool = used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
-              state.run = using(state.run, tool, clock.now)
-              me.send(Acted(me: me))
-            else
-              state.run = held(me, state.run, setup, by)
-            end
-          None:
-            state.run = closing(me, state.run, not_begun())
-        end
+        state.run = acting(me, reads, writer, http, clock,
+          Turn(setup: setup, run: state.run, fixture: state.fixture))
       Acted(me):
-        state.run = recorded(me, book, setup, state.run, tool_step(state.run, clock.now))
+        remaining = remaining_ms(state.report_by)
+        began = clock.now
+        state.run = recorded_profile(me, book, setup, state.run, tool_step(state.run, began),
+          capped(state.report_by, state.grace_ms))
+        state.grace_ms = grace_left(state.grace_ms, remaining, remaining_ms(state.report_by))
       Close(me):
-        state.run = closed(me, book, setup, state.run)
+        remaining = remaining_ms(state.report_by)
+        state.run = case state.report_by
+          Some(by):
+            case book.ask(End(id: setup.id, ending: state.run.ending or not_begun()),
+              within: by.at_most(state.grace_ms.ms))
+              Ok(_) | Error(_): stopped(state.run)
+            end
+          None: closed(me, book, setup, state.run)
+        end
+        state.grace_ms = grace_left(state.grace_ms, remaining, remaining_ms(state.report_by))
       Look: state.run.phase
+      ReportDeadline: reply_by.at_most(state.grace_ms.ms)
     end
+  end
+end
+
+fn capped(by: Option(Deadline), ms: Int64) : Option(Deadline)
+  case by
+    Some(deadline): Some(deadline.at_most(ms.ms))
+    None: None
+  end
+end
+
+fn remaining_ms(by: Option(Deadline)) : Int64
+  case by
+    Some(deadline): deadline.remaining.ms
+    None: 0
+  end
+end
+
+fn grace_left(ms: Int64, before: Int64, after: Int64) : Int64
+  spent = if before > after: before - after else: 0
+  if spent >= ms: 0 else: ms - spent
+end
+
+fn thinking(me: Handle(Run), http: Http, clock: Clock, setup: Setup, run: Progress,
+  fixture: Bool) : Progress
+  by = case run.by
+    Some(by): by
+    None:
+      return closing(me, run, not_begun())
+  end
+  if fixture and run.n >= setup.order.budget.steps
+    return closing(me, run, ending(OverBudget, None, Some("steps")))
+  end
+  if fixture and body(request_of(setup, run)).byte_size > 65_536
+    return closing(me, run, ending(OverBudget, None, Some("context_bytes")))
+  end
+  return held(me, run, setup, by) if !asks?(run, setup, by)
+  began = clock.now
+  reply = complete(http, setup.model, request_of(setup, run), setup.order.budget.retries,
+    by.at_most(call_ms(setup)))
+  next = asked(run, reply, if fixture: began else: clock.now)
+  me.send(Thought(me: me))
+  next
+end
+
+fn acting(me: Handle(Run), reads: Fs, writer: Option(Handle(Writer)), http: Http, clock: Clock,
+  turn: Turn) : Progress
+  setup = turn.setup
+  run = turn.run
+  fixture = turn.fixture
+  by = case run.by
+    Some(by): by
+    None:
+      return closing(me, run, not_begun())
+  end
+  if fixture is Some(_) and (run.n >= setup.order.budget.steps or run.tokens >= setup.order.budget.tokens)
+    why = if run.n >= setup.order.budget.steps: "steps" else: "tokens"
+    return closing(me, run, ending(OverBudget, None, Some(why)))
+  end
+  return held(me, run, setup, by) if !uses?(run, setup, by)
+  call = call_for(setup, run, ran_of(run, setup, by))
+  began = clock.now
+  tool = case fixture
+    Some(endpoint):
+      if call.tool == "command" or call.tool == "exact_edit"
+        fixture_used(writer, http, call, endpoint, Identity(run: setup.id, call: "#{run.n + 1}"),
+          by.at_most(call_ms(setup)))
+      else
+        used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
+      end
+    None: used(reads, writer, http, clock, call, by.at_most(call_ms(setup)))
+  end
+  next = using(run, tool, if fixture is Some(_): began else: clock.now)
+  me.send(Acted(me: me))
+  next
+end
+
+# Fixture recording is sent once. A failed acknowledgement stops dispatch and requests
+# a recorded failure, without replaying the uncertain step or its effect.
+fn recorded_profile(me: Handle(Run), book: Handle(Book), setup: Setup, run: Progress, step: Step,
+  report_by: Option(Deadline)) : Progress
+  case report_by
+    None: recorded(me, book, setup, run, step)
+    Some(by):
+      return run if run.phase != Recording
+      case book.ask(Write(id: setup.id, step: step), within: by)
+        Ok(Go):
+          next = advanced(run, step)
+          if step.kind == "tool" and (step.name == "command" or step.name == "exact_edit") and terminal?(step.output)
+            return closing(me, next, ending(Failed, None, Some("uncertain_or_terminal_tool")))
+          end
+          went_on(me, next, setup, step)
+        Ok(Stop(_)): stopped(run)
+        Ok(Unrecorded) | Error(_): closing(me, run, ending(Failed, None, Some("recording_failure")))
+      end
+  end
+end
+
+fn fixture_used(writer: Option(Handle(Writer)), http: Http, call: Call, endpoint: Endpoint,
+  id: Identity, by: Deadline) : Used
+  if !call.granted.contains?(call.tool)
+    return Used(output: failure("refusal", "grant", "not_started"), refused: true, allowed: false)
+  end
+  if call.tool == "command" and !call.args.has?("command")
+    return Used(output: failure("refusal", "arguments", "not_started"), refused: true,
+      allowed: false)
+  end
+  output = if call.tool == "command"
+    dispatched(http, endpoint, id.run, id.call, call.args.get("command") or "", by)
+  else
+    edit_handed(writer, call, by)
+  end
+  Used(output: output, refused: refused?(output), allowed: true)
+end
+
+fn edit_handed(writer: Option(Handle(Writer)), call: Call, by: Deadline) : String
+  if !call.args.has?("path") or !call.args.has?("old_text") or !call.args.has?("new_text")
+    return failure("refusal", "arguments", "not_started")
+  end
+  case writer
+    Some(w):
+      case w.ask(ExactEdit(path: call.args.get("path") or "",
+        old_text: call.args.get("old_text") or "", new_text: call.args.get("new_text") or ""),
+        within: by)
+        Ok(output): output
+        Error(_): failure("timeout", "write_timeout", "unknown")
+      end
+    None: failure("refusal", "grant", "not_started")
   end
 end
 

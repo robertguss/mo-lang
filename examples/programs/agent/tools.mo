@@ -1,6 +1,7 @@
 module Agent.Tools
 expose Call, Used, Came, Found, Writer, Writers, used, inside?, allowed?, url_host, url_port, url_path
 
+use Agent.ExactEdit{edited}
 use Agent.Model{Fake}
 
 intent "Each tool over only what its row gives it: list_files, read_file, and search take the run's folder read-only, write_file goes through a writer, a process over the folder writable that is started only for a run granted it, http_get takes Http and the run's hosts, and now takes the Clock; a call naming a tool the run was not granted, a path outside its folder, or a host off its list is refused before any capability is touched, and the model sees the refusal."
@@ -47,12 +48,16 @@ process Writer(files: Fs)
   end
 
   message Write(path: String, text: String) : Came
+  message ExactEdit(path: String, old_text: String, new_text: String) : String
 
   fn update(state, message)
     case message
       Write(path: path, text: text):
         state.writes += 1
         written(files, path, text, reply_by)
+      ExactEdit(path: path, old_text: old_text, new_text: new_text):
+        state.writes += 1
+        edited(files, path, old_text, new_text, reply_by)
     end
   end
 end
