@@ -119,6 +119,51 @@ The final review labelled DeepSeek was byte-identical to the supplied Kimi body,
 verified by comparison and SHA-256. Four distinct review bodies, not five; the
 reason for duplicate attribution is unknown.
 
+## Paused, 19 Sep 2026, 3:41 PM ET: read this first
+
+Robert paused the project until his usage limits return. Everything accepted is
+on `main`; two workers were stopped at a checkpoint with their work committed as
+WIP on their own branches (nothing of theirs is on `main`).
+
+**What the afternoon added (the Fable lead, Opus 5 workers).**
+
+- **The Mo agent ran end to end on the machine for the first time**, in
+  `mo run` and as a binary: six tools through the real service and real
+  containers, the scripted Logstat repair RED then GREEN, a protected verdict
+  that refuses a forged success and a rewritten test, every workspace proved
+  gone. A scripted model: plumbing, not model ability.
+- **`Exec`** (step 41): Mo runs child processes, narrowed in `main` to fixed
+  commands. Accepted on macOS; its Linux fork path is owed a run.
+- **The auditor's repository audit (PR 15)** conceded whole and fixed the same
+  day (step 43): a sized literal past its type reached both runtimes, and a
+  54-digit literal silently became another number. Every number read from
+  source now goes through one exact reader.
+- **The agent's report cap** lifted to a bound the profile derives, and a late
+  command's reply is no longer lost (defect D1), seen holding on the machine.
+- **TypeSafe's Jev** tried as a check of worker reports against raw logs: 73
+  requests, a third of a cent. Code caught nearly everything it caught; the
+  model added little on this evidence. Acceptance does not depend on it. The
+  lasting change is in the briefs: every quoted run is filed as a log.
+- **Research PR 16 (Bend2)** merged: obligations bound by hash and
+  status-bearing receipts go into the Mo server's design.
+- Full suite: 268 of 268 on Darwin. Linux: 263 of 263 on the tree before step
+  41; Robert then deferred Linux runs (a "Linux owed" list is in `HANDOFF.md`).
+
+**Stopped mid-flight, as WIP commits:** the Mo six-tool server, part A
+([[mo-workspace-server-4a]]), and runtime memory safety
+([[interpreter-step-42]]). Briefed and not started: the CI gate ([[ci-gate]]).
+Not written: part B of the server (the machine, `command` through `Exec`,
+cutover).
+
+**Waiting on Robert, on the decision log:** whether to patch the Python
+service so a verdict survives a client disconnect (D2) or wait for the Mo
+server; `-128` as one literal; `in_folder` versus `in`.
+
+**Unmet, said plainly:** no live provider and no model-driven task yet;
+Python has not shrunk by measurement; step 39 (TLS) unaccepted and its corpus
+test still fails about 1 run in 5; Darwin `F_FULLFSYNC` unmet; Program 7
+suspended; two power-off checks on the machine owed; no CI gate.
+
 ## Agent-native direction agreed; bounded implementation now authorized
 
 Mo is a functional, statically typed, compiled, BEAM-inspired option, not a

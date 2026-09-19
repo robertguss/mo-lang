@@ -999,3 +999,6 @@
 
 ## [2026-09-19] accept | step 41, Exec (on macOS; Linux owed)
 - 3:33 PM ET: merged to main through lead/verify-step41 (cdb36196). Darwin full suite 268 of 268, focused 6 of 6 after the follow-up, lead probes identical in both runtimes. One Linux run before Robert deferred Linux: 5 of 6, the failure a test predicate, fixed. Four rows in decisions/decision-log.md; CHANGELOG; the design page corrected (in_folder, Fixed(text:)). Robert set Linux aside for now: accept on macOS, keep a Linux owed list.
+
+## [2026-09-19] pause | Robert paused the project until his usage limits return
+- 3:48 PM ET: both workers stopped at a checkpoint with WIP commits and WIP.md notes (server part A d679f568, step 42 0a4dffcd); tabs closed; no stray process on the Mac. HANDOFF.md has a new START HERE; state-of-the-project.md a Paused section; the roadmap board says paused. Accepted this session: PR 15 and step 43, end to end v1, the claim check calibration, the report cap and D1, step 41 (macOS), PR 16. Lint 26 notices of the inherited kinds, none new.

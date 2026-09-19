@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [runtime, verification, tooling, processes]
 sources: [plans/toolchain-raw-memory-report.md, plans/interpreter-step-41.md]
-status: in-progress
+status: paused
 ---
 
 # Step 42: runtime memory safety

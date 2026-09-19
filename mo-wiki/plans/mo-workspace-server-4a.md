@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, security, processes]
 sources: [plans/mo-harness-in-mo.md, plans/mo-harness-end-to-end-v1.md, research/comparisons/bend2.md]
-status: in-progress
+status: paused
 ---
 
 # The Mo workspace server, part A

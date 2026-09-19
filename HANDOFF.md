@@ -1,6 +1,97 @@
 # Mo Lang — Fable lead and Opus Herdr workers (read START HERE)
 
-## START HERE: handoff to a fresh Fable lead session, 19 Sep 2026, 1:15 PM ET
+## START HERE: paused by Robert, 19 Sep 2026, 3:48 PM ET
+
+Robert paused the project until his usage limits return. **No worker is
+running, no tab is open but the lead's, nothing runs on the Mac or the
+machine.** (A Linux full suite for step 41 may still be finishing alone on the
+VM in `~/Projects/mo-lang-lead-verify`; it is informational, Linux is
+deferred.) Load the `mo-lead` skill, read this section, then
+`mo-wiki/SCHEMA.md`, then run the auditor check
+(`git fetch origin && python3 audit/automation/fable_poll.py check`; 0 new
+records at 1:18 PM ET; PRs 15 and 16 are merged). The whole picture is the
+"Paused" section at the top of `mo-wiki/state-of-the-project.md`.
+
+### Standing instructions learned today (in force)
+
+- **At most three Opus workers at once**, each in its own Herdr tab, bypass
+  permissions. Finished means: agent idle, worktree clean, the final report
+  committed (a worker may commit its report file early, and Herdr shows `done`
+  whenever a turn ends while a background run continues).
+- **Linux is deferred**: accept on macOS alone; keep the "Linux owed" list
+  below. **Robert pushes `main`**, and asks the lead to commit and push when he
+  wants it done (he did twice today); `main` holds accepted work and lead records
+  only; verify on `lead/verify-<unit>` in **its own worktree** (it keeps the
+  lead checkout free and `zig-out` unshared).
+- Full suite: detached (`nohup`, `caffeinate`), `guard.py 2400`, poll for
+  `.lead-done`; about 12 minutes idle, 19 to 23 under load. Write runner
+  scripts as **bash files**: zsh does not split `$VAR` into words and aborts an
+  `&&` chain on an unmatched glob (both cost the lead a run today).
+- Every brief ends by naming a report file, and asks the worker to tee each
+  quoted run into a filed log with an exit file.
+- The TypeSafe key is age-encrypted in the git-ignored `fnox.toml`:
+  `fnox -c <repo>/fnox.toml exec -- <command>`. Never print it.
+
+### Stopped mid-flight (WIP commits on their own branches; nothing on `main`)
+
+| unit | branch, worktree | WIP commit | notes | brief |
+|---|---|---|---|---|
+| Mo six-tool server, part A | `harness/workspace-server-4a`, `.../harness-workspace-server-4a` | `d679f568` (processes and the test double built, 7 of 13 in-scope groups green) | `examples/programs/workspace-server/WIP.md` | `mo-wiki/plans/mo-workspace-server-4a.md` |
+| Step 42, runtime memory safety | `toolchain/step-42-memory`, `.../toolchain-step-42-memory` | `0a4dffcd` (part E green: the guard kills the group; other parts not begun or partial) | `toolchain/WIP.md` | `mo-wiki/plans/interpreter-step-42.md` |
+
+To resume either: a **fresh** Opus worker in the same worktree, told to read
+the brief, then `WIP.md`, then `git log` of the branch, and to continue; the
+launch prompt used today is in this session's log entry and the lead skill's
+step 2.
+
+### Next, in order
+
+1. Resume the two units above; accept each (build, focused tests, full suite,
+   one probe the brief did not name).
+2. The CI gate (`mo-wiki/plans/ci-gate.md`, briefed, after step 42: both edit
+   `corpus.zig`). It also brings Linux back on every pull request.
+3. The Linux batch (below), then part B of the server (not written: `command`
+   through `Exec`, container policy and cleanup proofs on the machine, the
+   cutover, D2 closed by an independent operator path).
+4. Plan steps 5 to 7 of `mo-wiki/plans/mo-harness-in-mo.md`, the provider
+   blockers P1 to P5 with Robert's OpenAI login, the first model-driven task,
+   the Pi comparison. A `mo guide` command (research PR 16) is a candidate
+   toolchain step.
+
+### Linux owed (one batch on the VM, or the CI gate)
+
+Step 41: `-Dtest-filter="step 41"` and the full suite at `main` (first run, at
+`0b0f494b`: build 0, focused 5 of 6, the failure a test predicate fixed in
+`ba7fa7ac`; the fork child runs only on Linux). Every toolchain step accepted
+after it. VM access and the clone rule are in the lead skill, step 4.
+
+### Waiting on Robert (rows on the decision log, 19 Sep)
+
+D2: patch the Python service so a verdict survives a client disconnect, or
+wait for the Mo server (the lead's default). `-128` as one literal.
+`in_folder` versus `in`. His OpenAI login, when the provider slice is reached.
+
+### Accepted today on `main` (full suite 268 of 268 on Darwin)
+
+Morning: the rebuilt application workspace; harness steps 1, 8 and 2; the
+raw-memory runtime fix; step 40. Afternoon: PR 15 (the auditor's repository
+audit, all conceded) and step 43 that fixes it; end to end v1 (the Mo agent on
+the machine, the scripted Logstat repair); the claim check's calibration; the
+report cap and defect D1; step 41 (`Exec`, macOS); research PRs 14 and 16.
+Evidence under `audit/evidence/2026-09-19/`; `CHANGELOG.md` has an entry each.
+
+### Owed and unmet, said plainly
+
+No live provider and no model-driven task yet. Python has not shrunk by
+measurement. Two fault-injected power-off checks on the machine. Nothing
+refuses new runs after an unconfirmed cleanup. After a client disconnect no
+verdict can be taken (D2). `real_bridge.py` stale since harness steps 1 and 2.
+The TLS corpus test "a fatal alert where a hello belongs…" fails about 1 in 5
+alone. Step 39 unaccepted; Darwin `F_FULLFSYNC` unmet; Program 7 suspended. No
+CI gate.
+
+## Earlier on 19 Sep: the 1:15 PM ET handoff and the afternoon's running notes (history)
+
 
 Robert is starting a fresh lead session because the previous one's context was
 full. You are the lead (Fable, Claude Code). Load the `mo-lead` skill, read this
