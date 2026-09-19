@@ -1,0 +1,15 @@
+{
+  "at_et": "2026-09-19T00:50:14.779873-04:00",
+  "source": "https://ziglang.org/download/index.json",
+  "entry": {
+    "tarball": "https://ziglang.org/download/0.16.0/zig-aarch64-linux-0.16.0.tar.xz",
+    "shasum": "ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17",
+    "size": "51211944"
+  },
+  "archive": "/private/tmp/mo-linux-toolchain-bcqwt2vz/zig-aarch64-linux-0.16.0.tar.xz",
+  "sha256": "ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17",
+  "bytes": 51211944,
+  "hash_verified": true,
+  "installed": false,
+  "executed": false
+}

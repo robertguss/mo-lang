@@ -694,6 +694,13 @@ direction separately from the lead's conservative execution interpretation.
 | Track upstream usage presence; unknown stays unknown, reported zero is separate, and legacy Mo integration must fail explicitly until its contract can represent the result. Preserve native tool-call IDs/signatures; Mo keeps every tool and subsequent-turn decision. | Astra lead | decided, semantic | missing/partial/zero usage and call-result-roundtrip controls |
 | Accept the terminal-auth worker's aggregate .mo.ids paths as authorized scope, restricted to Agent.Model and the new versioned recipe record. Worker HTTP matrix is reported green; independent lead acceptance is still owed. | Astra lead; implementation by GPT-6-Astra at low reasoning | recorded, pending acceptance | exact record diff plus lead matrix and extra status control |
 
+## Coding fixture v1 and generated evidence closure (19 Sep 2026, 12:57 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Start [[mo-coding-fixture-v1]] in a separate worker tree: existing Agent loop, exact edit, inert HTTP command fixtures and post-run JSONL. Adopt 16 steps, 4096 reported fixture tokens, 30-second run/2-second call limits, 64 KiB byte bounds and a separate 15-second recording/report grace. This does not execute candidate commands or connect the live provider. | Astra lead, informed by Astra/low interface review | decided, semantic | interpreter/native scripted repair and stop-bound controls |
+| Full auth integration exposed stale dependency verification (MO0317) and an unverified driver despite focused green checks. Authorize generated-only closure regeneration with existing simulation coverage preserved; eight source files remained identical. No policy, compiler or shared recipe change. | Astra lead; regeneration by GPT-6-Astra/low | recorded, acceptance pending | retained 241/243 failure, reviewed 9f4b433, lead full-suite recheck |
+
 ## Related
 
 - [[session-05]]

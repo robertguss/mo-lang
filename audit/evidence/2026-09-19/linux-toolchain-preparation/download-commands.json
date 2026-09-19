@@ -1,0 +1,38 @@
+[
+  {
+    "argv": [
+      "curl",
+      "--fail",
+      "--location",
+      "--connect-timeout",
+      "10",
+      "--max-time",
+      "120",
+      "--max-filesize",
+      "60000000",
+      "--output",
+      "/private/tmp/mo-linux-toolchain-bcqwt2vz/index.json",
+      "https://ziglang.org/download/index.json"
+    ],
+    "exit_code": 0,
+    "stderr": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n 42 76660   42 32519    0     0  65597      0  0:00:01 --:--:--  0:00:01 65562\n100 76660  100 76660    0     0   122k      0 --:--:-- --:--:-- --:--:--  122k\n"
+  },
+  {
+    "argv": [
+      "curl",
+      "--fail",
+      "--location",
+      "--connect-timeout",
+      "10",
+      "--max-time",
+      "120",
+      "--max-filesize",
+      "60000000",
+      "--output",
+      "/private/tmp/mo-linux-toolchain-bcqwt2vz/zig-aarch64-linux-0.16.0.tar.xz",
+      "https://ziglang.org/download/0.16.0/zig-aarch64-linux-0.16.0.tar.xz"
+    ],
+    "exit_code": 0,
+    "stderr": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\n  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n  0 48.8M    0  463k    0     0   501k      0  0:01:39 --:--:--  0:01:39  501k\n 38 48.8M   38 18.7M    0     0   9.9M      0  0:00:04  0:00:01  0:00:03  9.9M\n 88 48.8M   88 43.2M    0     0  15.2M      0  0:00:03  0:00:02  0:00:01 15.2M\n100 48.8M  100 48.8M    0     0  16.3M      0  0:00:02  0:00:02 --:--:-- 16.3M\n"
+  }
+]

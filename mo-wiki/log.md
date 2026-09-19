@@ -764,3 +764,29 @@
 - Updated the current board, handoff and state; historical audit gates remain.
 - Validation: 259 wiki pages checked, 25 inherited review/size notices and no
   structural/raw-drift errors; authored diff whitespace check passed.
+
+## [2026-09-19] verify | Auth integration and next Mo fixture
+
+- Native baseline: 243/243 passed, 5/5 build steps, exit 0 after the retained
+  earlier timeout. Integrated auth focused checks passed: 18 HTTP cases and
+  six additional lead controls (403/429 recovery, 401 with a valid body).
+- Integrated full suite returned 241/243, exit 1: stale Agent dependency
+  verification records and a missing verification line on the new driver.
+  Authorized generated-only refresh of the explicit dependency closure;
+  acceptance remains open. The model --sim invocation reported 3 tests passed
+  but simulation not run; no simulator coverage is inferred.
+- Executor review found its reaper could be disarmed before cleanup proof.
+  Requested a correction and collector-death control; worker is verifying it.
+- Added [[mo-coding-fixture-v1]] following a read-only interface review. This
+  next Mo slice uses inert command fixtures and disposable files, with explicit
+  reporting/bounds; actual isolated workspace and provider bridges remain owed.
+- Downloaded and hash-verified official Linux Zig 0.16.0 to a private temporary
+  directory. No installation or execution yet; executor tests continue alone
+  in the dedicated machine.
+- Dependency refresh worker commit 9f4b433 was reviewed and integrated as
+  c4ca43f: only eight Agent.Model dependency hashes and the driver record/lines
+  changed. The eight dependency source files remain byte-identical. Worker
+  targeted checks: 38/38 commands, 29 interpreter/29 native tests and 14
+  simulator tests under 100 seeds. Lead full-suite recheck is running.
+- Validation: 260 wiki pages, 25 inherited review/size notices; no structural
+  or raw-source-drift errors.

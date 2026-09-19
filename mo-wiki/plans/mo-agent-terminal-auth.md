@@ -56,6 +56,23 @@ provider calls, credentials, other application code or historical evidence.
 If the recipe runner requires another concrete path, report that dependency
 to the lead before changing it. The lead owns this policy and acceptance.
 
+### Generated dependency closure, 19 Sep 2026, 12:52 AM ET
+
+Lead full-suite verification after integration returned 241/243: dependent
+Agent modules rejected stale verification records (MO0317), and the new driver
+lacked a generated verification line. The focused 18-case matrix and six extra
+lead controls passed, but acceptance is open. Raw failure:
+`audit/evidence/2026-09-19/agent-terminal-auth/native-suite.stderr.txt`.
+
+The lead authorizes actual `mo test --write` regeneration for Agent `tools.mo`,
+`steps.mo`, `run.mo`, `registry.mo`, `server.mo`, `check.mo`, `main.mo`, `runs.mo`
+and the owned terminal-auth driver. Only their toolchain-generated verification
+lines and exact records in `examples/programs/.mo.ids` may change; no behavior
+edits. Preserve prior simulated-run coverage by rerunning those checks, not
+downgrading the record. Keep previous ID diffs/evidence immutable and add a new
+scope report. This is the concrete dependency closure required by the versioned
+model change; policy v1 and the shared recipe remain unchanged.
+
 ## Parts and checks
 
 1. Add tests that send actual HTTP statuses and independently count received

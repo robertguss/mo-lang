@@ -1,0 +1,26 @@
+{
+  "pgid": 12912,
+  "before": [
+    [
+      "12917",
+      "12912",
+      ".zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0x163d6d91 -Zdbb1cc3a192d5279 test -j2 --summary all"
+    ],
+    [
+      "12953",
+      "12912",
+      "./.zig-cache/o/529747537466987b0e808840a49fa331/test --cache-dir=./.zig-cache --seed=0x163d6d91 --listen=-"
+    ],
+    [
+      "17311",
+      "12912",
+      "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo build main.mo -o surface"
+    ],
+    [
+      "17312",
+      "12912",
+      "/opt/homebrew/bin/zig build-obj -OReleaseFast -fno-compiler-rt -fstrip --name crypto -mcpu native -femit-bin=zig-out/mo-build/.bricks/43fe902360000a82/crypto-25ac8d5a7ffc9ef2.o zig-out/mo-build/.bricks/43fe902360000a82/crypto-25ac8d5a7ffc9ef2.zig"
+    ]
+  ],
+  "after": []
+}

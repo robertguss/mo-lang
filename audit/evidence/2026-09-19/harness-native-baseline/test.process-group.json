@@ -1,0 +1,59 @@
+{
+  "pgid": 12912,
+  "members": [
+    [
+      "12912",
+      "12899",
+      "12912",
+      "04:41",
+      "0.0",
+      "16896",
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python bench/step36/guard.py 300 -- zig build test -j2 --summary all"
+    ],
+    [
+      "12913",
+      "12912",
+      "12912",
+      "04:41",
+      "0.0",
+      "33232",
+      "zig build test -j2 --summary all"
+    ],
+    [
+      "12917",
+      "12913",
+      "12912",
+      "04:41",
+      "0.0",
+      "6160",
+      ".zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0x163d6d91 -Zdbb1cc3a192d5279 test -j2 --summary all"
+    ],
+    [
+      "12953",
+      "12917",
+      "12912",
+      "04:34",
+      "0.0",
+      "143664",
+      "./.zig-cache/o/529747537466987b0e808840a49fa331/test --cache-dir=./.zig-cache --seed=0x163d6d91 --listen=-"
+    ],
+    [
+      "16662",
+      "12953",
+      "12912",
+      "00:01",
+      "0.0",
+      "4320",
+      "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo build lines-per-file.mo -o lines-per-file"
+    ],
+    [
+      "16663",
+      "16662",
+      "12912",
+      "00:01",
+      "98.1",
+      "140288",
+      "/opt/homebrew/bin/zig build-obj -OReleaseFast -fno-compiler-rt -fstrip --name crypto -mcpu native -femit-bin=zig-out/mo-build/.bricks/43fe902360000a82/crypto-1b3eca041df310f6.o zig-out/mo-build/.bricks/43fe902360000a82/crypto-1b3eca041df310f6.zig"
+    ]
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "python3",
+    "bench/step36/guard.py",
+    "300",
+    "--",
+    "zig",
+    "build",
+    "-j2"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang/toolchain",
+  "started_et": "2026-09-19T00:24:33.188065-04:00",
+  "finished_et": "2026-09-19T00:24:33.496338-04:00",
+  "exit_code": 0
+}

@@ -8,7 +8,7 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-19 | Total pages: 259
+> any question. Last updated: 2026-09-19 | Total pages: 260
 
 ## Directions we like
 
@@ -141,6 +141,8 @@ type: index
   first slice, protected verification, matched Pi comparison; implementation authorized
 - [[mo-executor-foundation]] — first provider-independent executor slice with
   bounded containers, independent cleanup and protected behavioral verdicts
+- [[mo-coding-fixture-v1]] — trusted headless Mo repair orchestration, exact edits
+  and JSONL before isolated workspace/provider integration.
 - [[mo-provider-foundation]] — pinned provider-only turns, synthetic SSE controls
   and usage/error distinctions before the Mo bridge or live authentication.
 - [[mo-agent-terminal-auth]] — versioned Agent-specific terminal-401 policy,

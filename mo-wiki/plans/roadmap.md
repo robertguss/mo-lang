@@ -23,15 +23,15 @@ The prior implementation pause and Amp/oracle workflow are superseded.
 
 **Current checkpoint, 19 Sep 2026, 12:41 AM ET:** the dedicated isolated
 OrbStack machine is provisioned. The executor worker is finalizing resource,
-verdict and cleanup controls. Terminal-auth v1 is committed in its worker tree
-with a reported 18/18 HTTP matrix; lead integration/acceptance is next. Native
-build passed; the full test suite is running under an extended guard after the
-first attempt timed out during compilation. No code acceptance yet.
+verdict and cleanup controls. Terminal-auth v1 is integrated: 18/18 HTTP cases and six additional lead
+controls passed. The integrated full suite found stale dependency verification
+records (241/243); generated refresh and another full check precede acceptance.
+The earlier native baseline passed 243/243 after a retained timeout.
 
 | board | current work |
 |---|---|
 | Now | Lead acceptance of [[mo-agent-terminal-auth]] and [[mo-executor-foundation]]; native suite running |
-| Next | [[mo-provider-foundation]] with actual pinned parser and synthetic responses, then a headless Mo coding path |
+| Next | [[mo-provider-foundation]] with actual pinned parser and synthetic responses, then [[mo-coding-fixture-v1]] |
 | Waiting on Robert's presence | Interactive subscription login when the adapter is ready; offline work continues |
 | Recently done | Mac isolation/setup evidence, terminal-401 worker implementation, provider source/API review |
 
