@@ -84,7 +84,7 @@ sockets are not added: the bridge and owner split that wanted them goes away.
 | 8   | Mo agent findings M2 to M8, including folding the flag-gated budget branches in `run.mo` into the existing budget logic                                                                                                     | —              |
 | 9   | Step 39 accepted, then capability 5 and the provider turn; provider findings P1 to P5 with it                                                                                                                               | about 250 js   |
 
-Briefs so far: [[mo-harness-step-1-executor]] and [[mo-harness-step-8-agent]] (both accepted 19 Sep), [[mo-harness-step-2-live-tables]], and beside the plan [[toolchain-raw-memory-report]]. Step 2 follows step 1, since both touch the executor's runners. Step 3 is the
+Briefs so far: [[mo-harness-step-1-executor]] and [[mo-harness-step-8-agent]] (both accepted 19 Sep), [[mo-harness-step-2-live-tables]], and beside the plan [[toolchain-raw-memory-report]]. Step 2 follows step 1, since both touch the executor's runners. **Order changed 19 Sep, 9:51 AM ET:** capability 3 (`Exec`) moves ahead of step 4, so the Mo six-tool server runs `docker` itself and serves all six tools natively; a Python shim for `command` would be throwaway work. **Measured so far:** step 1 took Python from 6,688 to 6,326 counted lines and step 2 raised it to 6,643 (better tests, a shared runner); the estimates in the Steps table are not holding, and cleaning Python is not where the reduction is. Step 3 is the
 first toolchain step and needs the lead's design page first.
 
 ## The size question (Robert, 19 Sep 2026, 8:20 AM ET)

@@ -43,6 +43,27 @@ the agent's 256 KiB report cap (a small brief). `step40-scope-opus` launched
 based on `9304fc65`, brief `mo-wiki/plans/interpreter-step-40.md`).
 `step2-tables-opus` still running.
 
+**Step 2 state, 9:51 AM ET.** `step2-tables-opus` finished (`699eed1d`, merged
+locally at `3b599174` and `0881f927`, tab closed). The lead's first live rerun
+found a regression the worker could not see offline: `application/controls.py`
+`scratch-fresh` failed in the new runner, which merged any truthy action return
+into the record. The worker's audit found five more rows leaking whole command
+results silently; the runner now accepts `None` or `cases.Fields` only, with a
+static test over all 100 actions. Lead reruns after the fix: unit 110 OK;
+live on the machine selftest 17 of 17, lifecycle exit 0, workspace 22 of 22,
+recovery 16 of 16, HTTP 22 of 22, HTTP `--application` 22 of 22, application
+23 of 23, inventory clean. **Python rose, 6,326 to 6,643 counted lines**
+(estimate was about 1,400 removed): cleaning Python does not shrink it; no more
+worker time goes into polishing Python that is moving to Mo. Not accepted until
+the lead's full suite, which waits for `step40-scope-opus` to leave the host
+(load average was 15 to 18 at 9:50 AM ET, mostly Robert's iOS Simulator
+`MediaAnalysis` process, not ours; left alone).
+
+**Order changed:** the Mo six-tool server (plan step 4) now follows `Exec`
+(a step 41 after step 40), so it can run `docker` itself and serve all six
+tools natively; serving `command` through a Python shim first would be
+throwaway work.
+
 **Queued toolchain step, runtime memory safety (Robert asked 19 Sep how to
 prevent the raw-memory class):** (1) the whole corpus run with compaction at
 every safe point in both runtimes (`-DMO_STRESS` exists for C in `mo_rt.h:240`
