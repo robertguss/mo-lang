@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "readiness",
+    "none",
+    "readiness-01"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1",
+  "seconds": 1500,
+  "head": "b7a84f91f19c66e2ea3e834bced81551a8e8cf10",
+  "dirty": [
+    "?? examples/programs/agent/tests/end-to-end-v1/"
+  ]
+}

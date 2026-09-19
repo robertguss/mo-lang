@@ -1,0 +1,4 @@
+{"part": "readiness", "case": "clean", "runtime": "none", "passed": true, "failed_checks": []}
+{"part": "readiness", "case": "faulty", "runtime": "none", "passed": true, "failed_checks": []}
+{"part": "readiness", "case": "repaired", "runtime": "none", "passed": true, "failed_checks": []}
+{"attempt": "readiness-01", "rows": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1/examples/programs/agent/tests/end-to-end-v1/evidence/readiness-01.jsonl", "failed": false}
