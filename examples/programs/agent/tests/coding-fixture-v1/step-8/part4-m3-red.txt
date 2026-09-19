@@ -1,0 +1,6 @@
+== coding-fixture.mo  exit=1
+FAIL  test "the fixture's deadline leaves room past the wall budget and the report grace for opening, creating and the report's reads": agent/coding-fixture.mo:131:3: assert fixture_deadline().ms - budget_ms >= 10_000 failed; left = 0, right = 10000
+FAIL  test "watching a run that never stops gives up only once its deadline is spent": agent/coding-fixture.mo:152:5: assert !output.text.contains?("report_deadline") or by.remaining == 0.ms failed
+0 passed, 2 failed, 0 skipped
+verified: types
+          proven: not run

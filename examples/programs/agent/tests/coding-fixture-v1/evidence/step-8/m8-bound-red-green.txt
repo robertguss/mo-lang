@@ -1,0 +1,37 @@
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+FAIL  test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused": agent/tests/coding-fixture-v1/boundaries.mo:340:11: assert seen.steps.size == 2 and tools.size == 1 and (tools.first or "").contains?("\"name\": \"read_file\"") and (tools.first or "").contains?("\"refused\": false") failed
+3 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused"
+4 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run
+
+#### old budget code (0222cca1 run.mo, steps.mo), new tests
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture grant cancellation deadline and recording boundaries"
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+FAIL  test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused": agent/tests/coding-fixture-v1/boundaries.mo:344:11: assert seen.steps.size == 2 and tools.size == 1 and (tools.first or "").contains?("\"name\": \"read_file\"") and (tools.first or "").contains?("\"refused\": false") failed
+3 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### new code
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "fixture grant cancellation deadline and recording boundaries"
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+pass  test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused"
+4 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run
+== tests/coding-fixture-v1/boundaries.mo --sim 100 exit=0
+pass  test "fixture grant cancellation deadline and recording boundaries": 100 simulated runs
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed": 100 simulated runs
+pass  test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused": 100 simulated runs
+4 passed, 0 failed, 0 skipped; 3 tests under 100 seeds with 5% faults: 3 held under faults, 0 passed only without faults
+verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
+          proven: not run

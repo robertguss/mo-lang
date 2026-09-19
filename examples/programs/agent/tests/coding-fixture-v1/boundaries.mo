@@ -3,7 +3,7 @@ module Agent.Tests.CodingFixtureV1.Boundaries
 use Agent.Book{Book}
 use Agent.Client{Sleeper}
 use Agent.CodingFixture{watched}
-use Agent.CommandAdapter{Endpoint}
+use Agent.CommandAdapter{Endpoint, dispatched, failure}
 use Agent.ExactEdit{edited}
 use Agent.Model{Model, Fake}
 use Agent.Record{Order, Budget, Record, record, fixture_tools}
@@ -170,18 +170,21 @@ fn boundary(mode: String, fs: Fs, logs: Fs, http: Http, clock: Clock,
   end
   listener.serve(into: fake, idle: 5000.ms)
   model = Model(host: "localhost", port: listener.port, tools: fixture_tools())
-  run = Run.start(book, fs.scoped("work").read_only, None, http, clock,
+  # The run holds a writer on its folder though its order grants no tool, so only the grant
+  # rule stands between the model's edit and the file.
+  writer = Writer.start(fs.scoped("work"))
+  run = Run.start(book, fs.scoped("work").read_only, Some(writer), http, clock,
     Setup(id: made.id, order: order, model: model))
   endpoint = Endpoint(host: "localhost", port: 1, workspace: "w")
   wait = if mode == "recording": 1.ms else: 1.minute
   if run.ask(ConfigureFixture(endpoint: endpoint), within: wait) != Ok(true)
-    return Error("configure unavailable")
+    return Error("configure refused")
   end
   began = run.ask(Begin(me: run), within: if mode == "deadline": 0.ms else: 30000.ms)
   if began is Error(_) and mode != "deadline"
-    return Error("begin unavailable")
+    return Error("begin unanswered")
   end
-  return Error("run unavailable") if !stopped?(run)
+  return Error("run never stopped") if !stopped?(run)
   observation(book, run, fake, fs, made.id)
 end
 
@@ -190,8 +193,88 @@ fn unknown_total?(record: Record, steps: List(String)) : Bool
   (text.lines.last or "").contains?("\"usage\": \"unknown\", \"tokens\": null")
 end
 
-fn call_limit(mode: String) : UInt64
-  if mode == "grant" or mode == "grace": 2 else: if mode == "deadline": 0 else: 1
+fn tool_step?(step: String) : Bool
+  step.contains?("\"kind\": \"tool\"")
+end
+
+fn grant_refusal?(step: String) : Bool
+  step.contains?("\"name\": \"exact_edit\"") and step.contains?("\\\"state\\\": \\\"refusal\\\", \\\"error_code\\\": \\\"grant\\\"")
+end
+
+# What each mode exists to show, held on the fixed schedule and under the simulator's faults,
+# which can fail any fixture call the run or the book makes. The file is never edited, since the
+# run holds a writer but no grant, and a run that completes took the whole scheduled path.
+fn held?(mode: String, seen: Observation) : Bool
+  kept = seen.kept
+  tools = seen.steps.filter(fn(step) tool_step?(step) end)
+  completed = kept.status == Done
+  case mode
+    "grant":
+      seen.calls <= 2 and tools.all?(fn(step)
+        grant_refusal?(step)
+      end) and (!completed or seen.steps.size == 3 and tools.size == 1 and seen.calls == 2)
+    "cancel":
+      kept.status == Cancelled and tools.size == 0 and seen.calls <= 1 and seen.steps.size <= 1 and unknown_total?(kept,
+        seen.steps)
+    "deadline":
+      seen.calls == 0 and seen.steps.size == 0 and (kept.status == Running or kept.status == OverBudget and kept.why == Some("wall_ms"))
+    "recording": kept.status == Running and seen.steps.size == 0 and seen.calls <= 1
+    "grace":
+      (seen.steps.size == 0 or seen.grace_ms < 15000) and seen.calls <= 2 and (!completed or seen.steps.size == 3 and seen.calls == 2)
+    _: false
+  end
+end
+
+# The errors a fault can give the test's own setup and observation; the run's own failures
+# (configure refused, begin unanswered, never stopped) are never among them.
+fn setup_fault?(why: String) : Bool
+  ["setup unavailable",
+    "create unavailable",
+    "cancel unavailable",
+    "listener unavailable",
+    "record unavailable",
+    "steps unavailable",
+    "count unavailable",
+    "file unavailable",
+    "grace unavailable"].contains?(why)
+end
+
+# A run whose one model call spends exactly its token budget, configured as a fixture run (recorded
+# steps count) or not (model calls count): the tool it named is used, and the next ask is refused.
+fn on_bound(fixture: Bool, fs: Fs, http: Http, clock: Clock, slow: Fs) : Result(Observation, String)
+  if fs.write("work/a", "before", within: 1.minute) is Error(_) or fs.mkdir("runs",
+    within: 1.minute) is Error(_)
+    return Error("setup unavailable")
+  end
+  book = Book.start(fs, clock, "runs", clock.now)
+  order = Order(goal: "g", folder: "work", tools: ["read_file"], hosts: [],
+    budget: Budget(steps: 16, tokens: 17, wall_ms: 30000, retries: 0, tool_ms: 2000))
+  made = case book.ask(Create(owner: "test", order: order), within: 1.minute)
+    Ok(Made(found)): found
+    Ok(_) | Error(_):
+      return Error("create unavailable")
+  end
+  replies = ["{\"tool\":\"read_file\",\"args\":{\"path\":\"a\"},\"tokens\":17}",
+    "{\"done\":\"past the budget\",\"tokens\":0}"]
+  fake = Fake.start(replies, slow)
+  listener = case http.listen(0, within: 1.minute)
+    Ok(found): found
+    Error(_):
+      return Error("listener unavailable")
+  end
+  listener.serve(into: fake, idle: 5000.ms)
+  model = Model(host: "localhost", port: listener.port, tools: fixture_tools())
+  run = Run.start(book, fs.scoped("work").read_only, None, http, clock,
+    Setup(id: made.id, order: order, model: model))
+  endpoint = Endpoint(host: "localhost", port: 1, workspace: "w")
+  if fixture and run.ask(ConfigureFixture(endpoint: endpoint), within: 1.minute) != Ok(true)
+    return Error("configure refused")
+  end
+  if run.ask(Begin(me: run), within: 30000.ms) is Error(_)
+    return Error("begin unanswered")
+  end
+  return Error("run never stopped") if !stopped?(run)
+  observation(book, run, fake, fs, made.id)
 end
 
 test "fixture value refusals and explicit reporting error"
@@ -219,24 +302,51 @@ test "fixture grant cancellation deadline and recording boundaries"
     logs = if mode == "recording" or mode == "grace": Fs.fixture(delay: 5.ms) else: fs
     found = boundary(mode, fs, logs, Http.fixture(), Clock.fixture(), Fs.fixture())
     case found
-      Ok(observed):
-        assert observed.unchanged and observed.grace_ms >= 0 and observed.grace_ms <= 15000
-        assert observed.calls <= call_limit(mode)
-        if mode == "cancel" and observed.kept.status == Cancelled
-          assert unknown_total?(observed.kept, observed.steps)
-        end
-        if mode == "grace" and observed.steps.size > 0
-          assert observed.grace_ms < 15000
-        end
-        if mode == "grant" and observed.kept.status == Done
-          assert observed.steps.size == 3 and (observed.steps.get(1) or "").contains?("grant")
-        end
+      Ok(seen):
+        assert seen.unchanged
+        assert held?(mode, seen)
       Error(why):
-        # Faults may prevent setup or observation; they never establish a successful run.
-        assert why.contains?("unavailable")
+        assert setup_fault?(why)
     end
   end
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+test "a completed command response in hand is reported as completed though the deadline has just passed"
+  http = Http.fixture()
+  body = "{\"version\": 1, \"run_id\": \"r_1\", \"call_id\": \"1\", \"workspace_id\": \"w\", \"state\": \"success\", \"exit_code\": 0, \"stdout\": \"\", \"stderr\": \"\", \"stdout_truncated\": false, \"stderr_truncated\": false, \"elapsed_ms\": 0, \"error_code\": \"none\", \"execution\": \"completed\"}"
+  # The scripted endpoint answers 5 ms on, as the 5 ms deadline runs out. A fault on the listen
+  # leaves nothing to send to, and a fault on the send is the transport failure it reports.
+  fake = Fake.start([body], Fs.fixture(delay: 5.ms))
+  if http.listen(0, within: 1.minute) is Ok(listener)
+    listener.serve(into: fake, idle: 5000.ms)
+    output = dispatched(http, Endpoint(host: "localhost", port: listener.port, workspace: "w"),
+      "r_1", "1", "test-key", Deadline.fixture(5.ms))
+    assert output == body or output == failure("failure", "transport",
+      "unknown") or output == failure("timeout", "transport", "unknown")
+  end
+end
+
+test "a model call that spends exactly the token budget still has its tool used, and the next ask is refused"
+  for fixture in [true, false]
+    fs = Fs.fixture()
+    found = on_bound(fixture, fs, Http.fixture(), Clock.fixture(), Fs.fixture())
+    case found
+      Ok(seen):
+        tools = seen.steps.filter(fn(step) tool_step?(step) end)
+        assert seen.calls <= 1 and seen.kept.status != Done
+        # A fault may leave the model's call late past the wall budget; an end on the token bound
+        # always has the tool step before it.
+        if seen.kept.status == OverBudget
+          assert seen.kept.why == Some("tokens") or seen.kept.why == Some("wall_ms")
+        end
+        if seen.kept.why == Some("tokens")
+          assert seen.steps.size == 2 and tools.size == 1 and (tools.first or "").contains?("\"name\": \"read_file\"") and (tools.first or "").contains?("\"refused\": false")
+        end
+      Error(why):
+        assert setup_fault?(why)
+    end
+  end
+end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (100 runs)
           proven: not run

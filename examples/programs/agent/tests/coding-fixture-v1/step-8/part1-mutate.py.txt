@@ -1,0 +1,25 @@
+"""mutate.py AGENT_DIR: apply the mutant named by $MUTNAME to a copy of the agent sources; $OLDTEST=1 swaps in the pre-rewrite boundaries.mo."""
+import os, sys, subprocess
+agent = sys.argv[1]
+MUTANTS = {
+  'grant': ('run.mo', '''  if !call.granted.contains?(call.tool)
+    return Used(output: failure("refusal", "grant", "not_started"), refused: true, allowed: false)
+  end
+''', ''),
+  'cancel': ('run.mo', '        Ok(Stop(_)): stopped(run)\n        Ok(Unrecorded) | Error(_): closing(me, run, ending(Failed, None, Some("recording_failure")))',
+             '        Ok(Stop(_)): went_on(me, advanced(run, step), setup, step)\n        Ok(Unrecorded) | Error(_): closing(me, run, ending(Failed, None, Some("recording_failure")))'),
+  'deadline': ('run.mo', 'state.run = begun(state.run, reply_by)', 'state.run = begun(state.run, state.report_by or reply_by)'),
+  'recording': ('run.mo', 'Ok(Unrecorded) | Error(_): closing(me, run, ending(Failed, None, Some("recording_failure")))',
+                'Ok(Unrecorded) | Error(_): went_on(me, advanced(run, step), setup, step)'),
+  'grace': ('run.mo', 'if spent >= ms: 0 else: ms - spent', 'if spent >= ms: ms else: ms'),
+  'never-stops': ('run.mo', '  next.missed = 0\n  me.send(Close(me: me))\n  next\n', '  next.missed = 0\n  next\n'),
+}
+name = os.environ['MUTNAME']
+if name != 'none':
+    f, old, new = MUTANTS[name]
+    p = os.path.join(agent, f); s = open(p).read()
+    assert s.count(old) == 1, (name, s.count(old))
+    open(p, 'w').write(s.replace(old, new))
+if os.environ.get('OLDTEST'):
+    old = subprocess.run(['git', '-C', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent', 'show', 'e87879a4:examples/programs/agent/tests/coding-fixture-v1/boundaries.mo'], capture_output=True, text=True, check=True).stdout
+    open(os.path.join(agent, 'tests/coding-fixture-v1/boundaries.mo'), 'w').write(old)

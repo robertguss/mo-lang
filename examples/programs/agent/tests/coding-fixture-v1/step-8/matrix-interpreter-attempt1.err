@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent/examples/programs/agent/tests/coding-fixture-v1/run.py", line 213, in <module>
+    results = [case(name, args.mode) for name in ([args.only] if args.only else CASES)]
+               ~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent/examples/programs/agent/tests/coding-fixture-v1/run.py", line 161, in case
+    evidence = invoke(command+args)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent/examples/programs/agent/tests/coding-fixture-v1/run.py", line 31, in invoke
+    os.killpg(proc.pid, signal.SIGKILL)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 1] Operation not permitted

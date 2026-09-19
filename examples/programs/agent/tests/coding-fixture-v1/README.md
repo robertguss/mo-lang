@@ -47,7 +47,8 @@ serialized model requests at 64 KiB, run deadline at 30 seconds and each
 model/tool call at 2 seconds, with zero model retries. Before each model dispatch
 its exact serialized request is measured. Recording waits consume a single
 15-second allowance measured by the shared deadline remaining before/after each wait; final retrieval receives a deadline for only its remainder,
-inside the overall 45-second controller deadline. Book.Write acknowledgement
+inside the overall controller deadline, derived since step 8 as the wall budget plus
+the 15-second allowance plus 10 seconds for setup and the final reads (55 seconds). Book.Write acknowledgement
 precedes subsequent dispatch. A recording failure stops dispatch without replay.
 Cancellation is observed at existing recording boundaries. Final reporting waits
 for Run.Stopped, then reads the stable Book record and transcript; a terminal
@@ -242,3 +243,8 @@ removed or overwritten. The three disposable copies remain retained under
 `/tmp/mo-coding-cold-red-01`, `/tmp/mo-coding-cold-fixed-01`, and
 `/tmp/mo-coding-invalid-native-01`. This corrects orchestration only; integrated
 acceptance and the full compiler suite remain the lead's responsibility.
+
+## Harness step 8 (M1 to M8)
+
+The review findings M1 to M8 and their evidence are in `step-8/README.md`. The
+matrix now has 24 cases per runtime (`edit-empty` and `command-failure` joined).

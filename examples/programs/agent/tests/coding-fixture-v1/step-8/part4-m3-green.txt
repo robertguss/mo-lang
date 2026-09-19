@@ -1,0 +1,12 @@
+== coding-fixture.mo  exit=0
+pass  test "the fixture's deadline leaves room past the wall budget and the report grace for opening, creating and the report's reads"
+pass  test "watching a run that never stops gives up only once its deadline is spent"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+== coding-fixture.mo --sim 100 exit=0
+pass  test "the fixture's deadline leaves room past the wall budget and the report grace for opening, creating and the report's reads"
+pass  test "watching a run that never stops gives up only once its deadline is spent": 100 simulated runs
+2 passed, 0 failed, 0 skipped; 1 test under 100 seeds with 5% faults: 1 held under faults, 0 passed only without faults
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+          proven: not run

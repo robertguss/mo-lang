@@ -17,7 +17,7 @@ use Agent.Application{Application, Launch}
 use Agent.Book{Book}
 use Agent.Check{Place, checked}
 use Agent.Client{Trip, Sleeper, request_of, shown}
-use Agent.CodingFixture{Fixture, Config}
+use Agent.CodingFixture{Fixture, Config, fixture_deadline}
 use Agent.Mock{Cursor, MockServer}
 use Agent.Model{Model}
 use Agent.Operator{Operator}
@@ -218,7 +218,7 @@ fn coding_fixture(http: Http, fs: Fs, clock: Clock, args: List(String)) : Result
   config = Config(dir: try dir_of(given.plain.first or ""), model_port: model.port,
     command_port: command.port, workspace: workspace, goal: goal)
   worker = Fixture.start(fs, http, clock)
-  case worker.ask(Start(config: config), within: 45_000.ms)
+  case worker.ask(Start(config: config), within: fixture_deadline())
     Ok(output): Ok(Said(text: output.text, code: output.code))
     Error(_):
       Ok(Said(text: "{\"schema\":\"mo-coding-fixture-v1\",\"run_id\":\"\",\"event\":\"reporting_error\",\"step_number\":0,\"payload\":{\"error\":\"fixture_deadline\"}}\n",

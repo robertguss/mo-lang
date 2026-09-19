@@ -1,0 +1,78 @@
+  40 deadline: calls=0 status=OverBudget why=wall_ms steps=0 tools=0 unchanged=true grace_lt=false
+  30 cancel: calls=1 status=Cancelled why=- steps=1 tools=0 unchanged=true grace_lt=false
+  27 grace: error=create unavailable
+  25 grant: error=create unavailable
+  25 deadline: error=create unavailable
+  23 recording: calls=1 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+  22 recording: calls=1 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=true
+  17 cancel: error=create unavailable
+  15 recording: error=setup unavailable
+  14 recording: error=create unavailable
+  13 recording: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+  11 grace: error=setup unavailable
+  10 deadline: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+   9 grace: calls=1 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+   9 deadline: calls=0 status=OverBudget why=wall_ms steps=0 tools=0 unchanged=true grace_lt=true
+   9 cancel: error=steps unavailable
+   8 grant: calls=1 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+   8 grace: calls=2 status=Done why=- steps=3 tools=1 unchanged=true grace_lt=true
+   8 cancel: error=setup unavailable
+   8 cancel: calls=1 status=Cancelled why=- steps=0 tools=0 unchanged=true grace_lt=false
+   7 grant: error=setup unavailable
+   7 grant: calls=2 status=Done why=- steps=3 tools=1 unchanged=true grace_lt=true
+   7 grace: calls=1 status=Running why=- steps=1 tools=0 unchanged=true grace_lt=true
+   7 deadline: error=steps unavailable
+   7 cancel: error=cancel unavailable
+   6 recording: error=steps unavailable
+   6 recording: error=file unavailable
+   6 grant: error=steps unavailable
+   5 grant: error=file unavailable
+   5 grace: error=steps unavailable
+   5 grace: error=file unavailable
+   5 grace: calls=2 status=Running why=- steps=2 tools=1 unchanged=true grace_lt=true
+   4 grant: calls=2 status=Done why=- steps=3 tools=1 unchanged=true grace_lt=false
+   4 grant: calls=1 status=Running why=- steps=1 tools=0 unchanged=true grace_lt=false
+   4 grace: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+   4 deadline: error=setup unavailable
+   4 cancel: calls=1 status=Cancelled why=- steps=1 tools=0 unchanged=true grace_lt=true
+   4 cancel: calls=1 status=Cancelled why=- steps=0 tools=0 unchanged=true grace_lt=true
+   4 cancel: calls=0 status=Cancelled why=- steps=1 tools=0 unchanged=true grace_lt=false
+   4 cancel: calls=0 status=Cancelled why=- steps=0 tools=0 unchanged=true grace_lt=true
+   3 grant: calls=1 status=Running why=- steps=1 tools=0 unchanged=true grace_lt=true
+   3 grant: calls=1 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=true
+   3 grant: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=false
+   3 grant: calls=0 status=Failed why=the model did not answer at its address steps=1 tools=0 unchanged=true grace_lt=false
+   3 grace: calls=2 status=Running why=- steps=3 tools=1 unchanged=true grace_lt=true
+   3 grace: calls=1 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=true
+   3 grace: calls=1 status=Failed why=the model did not answer at its address steps=1 tools=0 unchanged=true grace_lt=true
+   3 deadline: error=file unavailable
+   3 cancel: calls=0 status=Cancelled why=- steps=0 tools=0 unchanged=true grace_lt=false
+   2 grant: calls=2 status=Running why=- steps=3 tools=1 unchanged=true grace_lt=true
+   2 grant: calls=2 status=Running why=- steps=2 tools=1 unchanged=true grace_lt=false
+   2 grant: calls=1 status=Failed why=recording_failure steps=1 tools=0 unchanged=true grace_lt=false
+   2 grant: calls=0 status=OverBudget why=wall_ms steps=0 tools=0 unchanged=true grace_lt=true
+   2 grace: calls=1 status=OverBudget why=wall_ms steps=1 tools=0 unchanged=true grace_lt=true
+   2 grace: calls=1 status=Failed why=the model did not answer in time steps=1 tools=0 unchanged=true grace_lt=true
+   2 deadline: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=true
+   2 cancel: error=file unavailable
+   1 recording: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=true
+   1 grant: calls=2 status=Running why=- steps=3 tools=1 unchanged=true grace_lt=false
+   1 grant: calls=2 status=Running why=- steps=2 tools=1 unchanged=true grace_lt=true
+   1 grant: calls=2 status=Failed why=the model did not answer in time steps=3 tools=1 unchanged=true grace_lt=true
+   1 grant: calls=1 status=Running why=- steps=3 tools=1 unchanged=true grace_lt=false
+   1 grant: calls=1 status=Running why=- steps=2 tools=1 unchanged=true grace_lt=true
+   1 grant: calls=1 status=OverBudget why=wall_ms steps=2 tools=1 unchanged=true grace_lt=false
+   1 grant: calls=1 status=OverBudget why=wall_ms steps=1 tools=0 unchanged=true grace_lt=false
+   1 grant: calls=1 status=Failed why=the model did not answer in time steps=1 tools=0 unchanged=true grace_lt=true
+   1 grant: calls=1 status=Failed why=the model did not answer in time steps=1 tools=0 unchanged=true grace_lt=false
+   1 grant: calls=1 status=Failed why=the model did not answer at its address steps=3 tools=1 unchanged=true grace_lt=false
+   1 grant: calls=1 status=Failed why=the model did not answer at its address steps=1 tools=0 unchanged=true grace_lt=false
+   1 grant: calls=0 status=OverBudget why=wall_ms steps=0 tools=0 unchanged=true grace_lt=false
+   1 grant: calls=0 status=Failed why=the model did not answer in time steps=1 tools=0 unchanged=true grace_lt=false
+   1 grant: calls=0 status=Failed why=the model did not answer at its address steps=1 tools=0 unchanged=true grace_lt=true
+   1 grace: calls=2 status=OverBudget why=wall_ms steps=3 tools=1 unchanged=true grace_lt=true
+   1 grace: calls=2 status=Failed why=the model did not answer in time steps=3 tools=1 unchanged=true grace_lt=true
+   1 grace: calls=1 status=Running why=- steps=2 tools=1 unchanged=true grace_lt=true
+   1 grace: calls=1 status=Failed why=the model did not answer at its address steps=3 tools=1 unchanged=true grace_lt=true
+   1 grace: calls=0 status=Running why=- steps=0 tools=0 unchanged=true grace_lt=true
+   1 grace: calls=0 status=Failed why=the model did not answer in time steps=1 tools=0 unchanged=true grace_lt=true

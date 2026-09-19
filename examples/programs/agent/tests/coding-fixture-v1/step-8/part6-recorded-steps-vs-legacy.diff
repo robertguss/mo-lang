@@ -1,0 +1,8 @@
+48c48
+< 200 {"id": "r_5", "state": "over_budget", "goal": "two steps at most", "steps_taken": 2, "tokens_used": 21, "result": null, "error": "steps", "created_at": "<created_at>", "updated_at": "<updated_at>"}
+---
+> 200 {"id": "r_5", "state": "over_budget", "goal": "two steps at most", "steps_taken": 1, "tokens_used": 12, "result": null, "error": "steps", "created_at": "<created_at>", "updated_at": "<updated_at>"}
+62c62
+< 200 {"runs": [{"id": "r_5", "state": "over_budget", "goal": "two steps at most", "steps_taken": 2, "tokens_used": 21, "result": null, "error": "steps", "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "r_6", "state": "over_budget", "goal": "fifteen tokens at most", "steps_taken": 2, "tokens_used": 21, "result": null, "error": "tokens", "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "r_8", "state": "over_budget", "goal": "half a second", "steps_taken": 4, "tokens_used": 41, "result": null, "error": "wall_ms", "created_at": "<created_at>", "updated_at": "<updated_at>"}]}
+---
+> 200 {"runs": [{"id": "r_5", "state": "over_budget", "goal": "two steps at most", "steps_taken": 1, "tokens_used": 12, "result": null, "error": "steps", "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "r_6", "state": "over_budget", "goal": "fifteen tokens at most", "steps_taken": 2, "tokens_used": 21, "result": null, "error": "tokens", "created_at": "<created_at>", "updated_at": "<updated_at>"}, {"id": "r_8", "state": "over_budget", "goal": "half a second", "steps_taken": 4, "tokens_used": 41, "result": null, "error": "wall_ms", "created_at": "<created_at>", "updated_at": "<updated_at>"}]}

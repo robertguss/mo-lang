@@ -40,7 +40,13 @@ fn edited(files: Fs, path: String, old_text: String, new_text: String, by: Deadl
   end
   return result_text("refusal", "missing_match", "not_started") if matches == 0
   return result_text("refusal", "multiple_matches", "not_started") if matches > 1
-  changed = String.from_bytes(bytes.take(at).concat(new_text.bytes).concat(bytes.drop(at + needle.size))) or ""
+  # A match of whole characters leaves whole characters, so this refusal is not expected; it is
+  # still a refusal before the write, never an empty file written as success.
+  changed = case String.from_bytes(bytes.take(at).concat(new_text.bytes).concat(bytes.drop(at + needle.size)))
+    Some(whole): whole
+    None:
+      return result_text("refusal", "invalid_utf8", "not_started")
+  end
   return result_text("refusal", "size", "not_started") if changed.byte_size > 65_536
   case files.write(path, changed, within: by)
     Ok(_): result_text("success", "none", "completed")

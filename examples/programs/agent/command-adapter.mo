@@ -21,8 +21,9 @@ fn dispatched(http: Http, endpoint: Endpoint, run: String, call: String, command
   request = Request(method: "POST", path: "/fixture/v1/command",
     headers: Map.new().set("content-type", "application/json"), body: body)
   case http.send(request, host: endpoint.host, port: endpoint.port, within: by)
+    # A response in hand is what the endpoint did, reported as it said even when the deadline
+    # has just passed; the run's own budget decides whether it goes on.
     Ok(response):
-      return failure("timeout", "deadline", "unknown") if by.remaining == 0.ms
       return failure("failure", "http_status", "unknown") if response.status != 200
       checked(response.body, run, call, endpoint.workspace)
     Error(Timeout): failure("timeout", "transport", "unknown")
