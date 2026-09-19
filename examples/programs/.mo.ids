@@ -762,7 +762,7 @@
       "module": "Agent.Tests.ApplicationWorkspaceV1.Driver",
       "declarations": [
         { "id": "7240291d74f4", "name": "module Agent.Tests.ApplicationWorkspaceV1.Driver", "hash": "a9640a2065a56b93" },
-        { "id": "2348dbcb2ebb", "name": "use Agent.Application", "hash": "857f50c0e8440d24" },
+        { "id": "2348dbcb2ebb", "name": "use Agent.Application", "hash": "4a2308a81c250ac8" },
         { "id": "5224cb4a1b1d", "name": "use Agent.Book", "hash": "056c6243f14fcc93" },
         { "id": "c9d476813830", "name": "use Agent.Client", "hash": "221596b7540efa18" },
         { "id": "f8bffccca5c9", "name": "use Agent.Model", "hash": "7bc0f6f097da8deb" },
@@ -770,24 +770,26 @@
         { "id": "84379dbdaa1f", "name": "use Agent.Run", "hash": "a3140bc19f45c57f" },
         { "id": "70aa52209457", "name": "use Agent.Steps", "hash": "7772009520b51975" },
         { "id": "6d7b7c4ba1b8", "name": "use Agent.Tools", "hash": "752a1c23bb0a8f27" },
+        { "id": "98b46aba717b", "name": "use Agent.Transcript", "hash": "54924fdc6ede46c3" },
         { "id": "c8f4ae831543", "name": "use Agent.WorkspaceAdapter", "hash": "561c7b2d5d1a6a09" },
-        { "id": "8da50a37f6d6", "name": "intent", "hash": "4e2ab88b8f8716c6" },
+        { "id": "8da50a37f6d6", "name": "intent", "hash": "634115188827e6c2" },
         { "id": "6edcd88ed143", "name": "struct Words", "hash": "a575c54280a5e248" },
         { "id": "b86a30f620e6", "name": "struct Bind", "hash": "6915375ede6aa44d" },
         { "id": "cee216b7ee5c", "name": "process Probe", "hash": "14e2c5b9c9fddbfe" },
         { "id": "e2f9294bd50e", "name": "supervisor Probes", "hash": "a6db45e5fc151037" },
         { "id": "99ef4c4231c5", "name": "fn words_of", "hash": "d685a0957c7ad287" },
-        { "id": "0e0368f0c009", "name": "fn probed", "hash": "868af5efc84b37dd" },
+        { "id": "0e0368f0c009", "name": "fn probed", "hash": "3f9ebd40d40c4e50" },
         { "id": "e6334585eddb", "name": "fn near", "hash": "93d8fa99d1eed711" },
         { "id": "5843f35ad09f", "name": "fn launched", "hash": "0b0f0bff97e9d5fc" },
         { "id": "e488d897973d", "name": "fn begun_run", "hash": "7716435c5aa07c80" },
         { "id": "82e8abb94cc1", "name": "fn cancelled", "hash": "4c36f80d2df6544f" },
         { "id": "88b249ccbcd2", "name": "fn unbegun", "hash": "243f9895ae3e298a" },
+        { "id": "f260fc4794fc", "name": "fn oversized", "hash": "7210a1f5eee02ddf" },
         { "id": "3f433598aef1", "name": "fn settled", "hash": "e4bdb21524356a5d" },
         { "id": "ec4fecad5629", "name": "fn counted", "hash": "52edec26efa62628" },
         { "id": "5ad7be01f5a2", "name": "fn main", "hash": "e5851be63a69f30f" }
       ],
-      "verified": { "hash": "f8bcd71959e486d5", "declarations": "8133e8429a156e75", "uses": [{ "module": "Agent.Application", "hash": "0749640952bab52b" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.CommandAdapter", "hash": "97dcf89ac68a2ae7" }, { "module": "Agent.ExactEdit", "hash": "ca2869c702ee355b" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "4200157ed3bdf874" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "117481f1ce9a24c3" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "bff4ef3df61f9310", "uses": [{ "module": "Agent.Application", "hash": "0749640952bab52b" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.CommandAdapter", "hash": "97dcf89ac68a2ae7" }, { "module": "Agent.ExactEdit", "hash": "ca2869c702ee355b" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "4200157ed3bdf874" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "117481f1ce9a24c3" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
     },
     {
       "path": "agent/tests/coding-fixture-v1/boundaries.mo",

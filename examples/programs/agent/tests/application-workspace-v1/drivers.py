@@ -10,7 +10,7 @@ import time
 
 from common import HERE, MO, ROOT, Attempt, invoke, trimmed
 import fake_bridge as fb
-from matrix import done, tool, steps_in
+from matrix import PROFILE, done, tool, steps_in
 
 DRIVER = HERE / 'driver.mo'
 NATIVE = ROOT / 'zig-out/mo-build/application-driver/application-driver'
@@ -118,6 +118,20 @@ CASES = {
             no_later_dispatch=len(env.model.requests) == 1 and len(env.bridge.requests) == 1),
         replies=[tool('command', tokens=17, command='slow'), done()],
         script=lambda req, n: fb.success(req) + (1.5,)),
+    # A Book holding a transcript of exactly the report cap is reported whole; one byte more is a
+    # proved reporting error, not a report.
+    'report-at-cap': Case(lambda env: (env.drive(['oversized', env.config, env.root, env.model.port, 0, 'g']), {}),
+        lambda env, line: dict(
+            size=line.get('transcript_bytes') == PROFILE['report_bytes'], code=line.get('code') == 0,
+            terminal=json.loads(line.get('last') or '{}').get('payload', {}).get('state') == 'done',
+            no_bridge=not env.bridge.requests),
+        replies=[done('ok')]),
+    'report-past-cap': Case(lambda env: (env.drive(['oversized', env.config, env.root, env.model.port, 1, 'g']), {}),
+        lambda env, line: dict(
+            size=line.get('transcript_bytes') == PROFILE['report_bytes'] + 1, code=line.get('code') == 3,
+            refused=json.loads(line.get('last') or '{}').get('payload') == dict(error='transcript_too_large', persistence='proved'),
+            one_line=line.get('lines') == 1, no_bridge=not env.bridge.requests),
+        replies=[done('ok')]),
 }
 
 

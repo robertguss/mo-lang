@@ -17,12 +17,13 @@ EVIDENCE = HERE / 'evidence'
 MO = os.environ.get('MO_BIN', str(ROOT / 'toolchain/zig-out/bin/mo'))
 GUARD = ROOT / 'toolchain/bench/step36/guard.py'
 
-def invoke(args, seconds, cwd=ROOT, env=None):
+def invoke(args, seconds, cwd=ROOT, env=None, keep=4 << 20):
     """A guarded child in its own process group, killed with the group on every path.
 
     exit_code is only ever the return code actually observed from the guard process; the
     wrapper's own outcome (exited, outer_timeout, launch_error) and its reason are separate
-    fields, so an outer interruption never substitutes a synthetic code for an observed one."""
+    fields, so an outer interruption never substitutes a synthetic code for an observed one.
+    At most `keep` bytes of each stream are read back."""
     command = [sys.executable, str(GUARD), str(seconds), '--'] + [str(a) for a in args]
     outcome, reason, code = 'exited', None, None
     started = time.monotonic()
@@ -43,7 +44,7 @@ def invoke(args, seconds, cwd=ROOT, env=None):
             code = proc.wait()
         out.seek(0)
         err.seek(0)
-        stdout, stderr = out.read(4 << 20), err.read(4 << 20)
+        stdout, stderr = out.read(keep), err.read(keep)
     stderr = stderr.decode(errors='replace')
     return dict(command=command, exit_code=code, outcome=outcome, reason=reason,
                 guard_killed='guard: killed' in stderr, elapsed_s=round(time.monotonic() - started, 3),
