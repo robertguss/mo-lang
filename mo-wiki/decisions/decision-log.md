@@ -633,6 +633,13 @@ direction separately from the lead's conservative execution interpretation.
 | Approval selects the application and prepares its bounded brief. No worker launch or lead-readiness confirmation: exact paths, provider/executor, policy and budgets remain unresolved. Program 7 stays suspended; Step 39 and retained audit obligations are unchanged.                                            | Robert's agreement; Amp records scope | recorded | bounded start approval plus lead readiness                              |
 | The final DeepSeek-labelled attachment is byte-identical to the supplied Kimi review, confirmed by cmp and SHA-256. Four distinct bodies, not five; attribution cause unknown. Pi source inspection informed the application design, not new runtime acceptance.                                                    | Amp with oracle                       | recorded | new evidence if supplied                                                |
 
+## Report claim check proposed (18 Sep 2026, 11:00 PM ET)
+
+| decision | who | status | first tested by |
+| --- | --- | --- | --- |
+| Propose [[report-claim-check]]: TypeSafe (Jev) triage of worker report claims against raw outputs, citation-check shape; code-first exact checks; output orders the lead's attention and is never acceptance, raw evidence or a reading. Not in the Mo harness, so the Pi comparison stays matched. | Robert chose from lead's three options | recorded | calibration on step 36, Step 39 A/B and planted negative controls |
+| A TypeSafe account and API key, and sending raw logs to an external service, are Robert's call. Nothing is built or called before a bounded start and lead readiness. | lead | for Robert | Robert's answer |
+
 ## Related
 
 - [[session-05]]

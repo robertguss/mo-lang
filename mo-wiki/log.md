@@ -633,3 +633,14 @@
   structural or raw-source-drift errors. No toolchain tests run for this
   documentation-only checkpoint. Historical formatting restored with
   content-invariance checks.
+
+## [2026-09-18] plan | Report claim check proposed
+
+- 11:00 PM ET: of three possible TypeSafe uses the lead offered (report claim
+  check, failure triage inside the harness, a stdlib judge module), Robert chose
+  the report claim check. Added [[report-claim-check]]: code checks exact facts
+  first; Jev judges only the claims that remain; a confidence gate orders the
+  lead's attention. It is never acceptance and never reads auditor files.
+- Proposal only. Nothing built, installed or called; the implementation pause
+  holds. Open for Robert: a TypeSafe account, and whether logs may be sent out.
+  Auditor check at onboarding: zero new records.

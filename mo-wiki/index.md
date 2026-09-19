@@ -135,6 +135,8 @@ type: index
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[report-claim-check]] — proposed TypeSafe triage of worker report claims
+  against raw evidence; never acceptance; not built (18 Sep 2026)
 - [[mo-first-coding-harness]] — selected Mo-written coding application; headless
   first slice, protected verification, matched Pi comparison; planning only
 - [[interpreter-step-30|Step 30: processes on every core]] — a scheduler per core, messages across threads, fsync off the scheduler; accepted 15 Sep, the Mac table, the row that led to step 34
