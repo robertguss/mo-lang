@@ -21,15 +21,19 @@ decide and drive bounded harness setup, implementation and verification while
 he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
 The prior implementation pause and Amp/oracle workflow are superseded.
 
-**Current checkpoint, 18 Sep 2026, 11:58 PM ET:** the Codex (GPT-6) lead
-verified this clean Mac checkout at the handoff commit, native Zig 0.16.0 and
-OrbStack's Docker endpoint. Historical worktree paths, branches and transfer
-package are present; auditor pointer check found zero new records. No named
-Linux machine exists and no Mac executor has been tested. Evidence:
-`audit/evidence/2026-09-18/mac-arrival/`. Robert subsequently resolved the
-workflow: Astra lead, Astra/low Herdr workers, no oracle requirement. Earlier orb
-probe evidence remains at `audit/evidence/2026-09-18/executor-feasibility/` and
-does not validate the Mac. See [[mo-first-coding-harness]] and `HANDOFF.md`.
+**Current checkpoint, 19 Sep 2026, 12:41 AM ET:** the dedicated isolated
+OrbStack machine is provisioned. The executor worker is finalizing resource,
+verdict and cleanup controls. Terminal-auth v1 is committed in its worker tree
+with a reported 18/18 HTTP matrix; lead integration/acceptance is next. Native
+build passed; the full test suite is running under an extended guard after the
+first attempt timed out during compilation. No code acceptance yet.
+
+| board | current work |
+|---|---|
+| Now | Lead acceptance of [[mo-agent-terminal-auth]] and [[mo-executor-foundation]]; native suite running |
+| Next | [[mo-provider-foundation]] with actual pinned parser and synthetic responses, then a headless Mo coding path |
+| Waiting on Robert's presence | Interactive subscription login when the adapter is ready; offline work continues |
+| Recently done | Mac isolation/setup evidence, terminal-401 worker implementation, provider source/API review |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none
@@ -37,7 +41,7 @@ of its old gates is declared passed. Capabilities requirements and the separate
 generation-ten contract-catch rule are not retired. Step 39 remains unaccepted.
 New upstream TLS/script edits are not acceptance evidence.
 
-### Next discussion and documentation work
+### Next work in order
 
 1. Application chosen: [[mo-first-coding-harness]], written in Mo and initially
    maintaining Mo applications. Robert approved the lead/oracle recommendation.
@@ -46,7 +50,7 @@ New upstream TLS/script edits are not acceptance evidence.
    execution boundary through [[mo-executor-foundation]], then the brief's provider/executor,
    protected verification, worker write scope and budget decisions before
    declaring implementation readiness.
-2. After implementation approval: truthful instruments, one complete headless
+2. Under the overnight authority: truthful instruments, one complete headless
    coding path, 401 policy calibration, then two or three bounded application
    tasks and a matched Pi comparison. Add an affordable model after calibration.
    Version the Agent-specific policy and settle its recipe binding first.

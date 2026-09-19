@@ -1,0 +1,10 @@
+{
+  "agent": "mo-provider",
+  "pane": "w4:pT",
+  "model": "gpt-6-astra",
+  "reasoning": "low",
+  "source_revision": "36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+  "read_only": true,
+  "report_sha256": "c2c61a334fbca091ed0e3f7c0c700d9e2d2496e95f0b099a9f0d176889057a73",
+  "no_writers_reported": true
+}

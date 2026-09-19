@@ -44,8 +44,10 @@ do not amend the policy.
 
 One fresh Astra/low worker in a separate Herdr worktree owns only:
 
-- `examples/programs/agent/model.mo` and its existing/generated `.mo.ids`.
-- New `examples/recipes/agent-model-client-v1.mo` and its generated `.mo.ids`.
+- `examples/programs/agent/model.mo` and only its Agent.Model record in
+  `examples/programs/.mo.ids`.
+- New `examples/recipes/agent-model-client-v1.mo` and only its new module record
+  in `examples/recipes/.mo.ids`.
 - New `examples/programs/agent/tests/terminal-auth/` for the smallest status
   driver, independent HTTP fixture and test outputs needed for this unit.
 

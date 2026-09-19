@@ -24,44 +24,35 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 12:10 AM ET, Herdr workflow and overnight authority.
+**Last updated:** 19 Sep 2026, 12:41 AM ET, three harness work streams.
 
-**Overnight work authorized:** Robert asks Astra to remain lead, spawn fresh
-Astra workers at low reasoning in Herdr panes, and keep driving the work while
-he sleeps, deciding matters previously needing approval. The oracle requirement
-and earlier harness implementation pause are superseded. A worker launch and
-read-only executor review are complete; next is a dedicated isolated OrbStack
-boundary, protected verdicts and the headless Mo coding path. The lead records
-bounded decisions and verifies results before acceptance.
+Robert has authorized Astra to lead continuously while he sleeps and make the
+necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
+with separate implementation worktrees. The lead reviews, integrates and
+independently verifies their results.
 
-**Lead on the Mac:** this Codex (GPT-6) session inspected the clean handoff
-checkout, native Zig 0.16.0 and reachable OrbStack Docker backend. All 68
-historical worktree paths, 70 local branches and the private transfer package
-are present; the existing auditor ledger was retained and the pointer check
-found zero new records. No named OrbStack Linux machine exists, so a dedicated
-test boundary and Linux toolchain remain unverified. The subsequent Herdr
-instruction resolved the lead/review workflow choice.
-Evidence: `audit/evidence/2026-09-18/mac-arrival/`; next steps: `HANDOFF.md`.
+The dedicated isolated OrbStack machine now exists with bounded resources,
+Mac filesystem sharing disabled and a restricted Docker fixture environment.
+The executor worker is finalizing protected-verdict and cleanup controls.
+Terminal-401 policy v1 is committed in its worker branch with 18/18 reported
+HTTP cases; lead acceptance is next. The native compiler builds on this Mac.
+The full test suite exceeded its first five-minute compilation guard and is
+running again with a twenty-minute limit; that first failure is retained.
 
-**Executor feasibility, not harness acceptance:** separately authorized,
-credential-free orb probes ended with nine passing checks after correcting two
-probe failures. Raw outputs and the final script are preserved under
-`audit/evidence/2026-09-18/executor-feasibility/`. The checks exercised
-restricted containers, effective resource limits and cleanup, not a Mo executor
-or a protected behavioral verdict. Temporary Docker/services and all controller
-changes were removed/restored. Mac/OrbStack execution still needs verification;
-the host's outer VM isolation does not protect credentials from code inside it.
-OAuth remains provisional and untested. No implementation worker has started.
+Provider research confirmed the pinned Pi provider-only API and identified
+usage-presence and native-conversation requirements. [[mo-provider-foundation]]
+prepares the actual parser with synthetic responses before live authentication.
+No credentials were read, login started or live inference performed. The
+headless Mo coding path and an independently verified candidate repair remain
+unfinished. These slices do not establish language value or a Pi comparison.
 
-**Application chosen:** Robert approved [[mo-first-coding-harness]], a small
-coding harness written in Mo, initially maintaining existing Mo applications. Pi
-is its architectural reference and practical comparator, not a parity target.
-The bounded brief defines a headless coding path, external isolation and
-protected acceptance. It reuses the Agent selectively and excludes self-editing,
-compiler changes and UI/plugin expansion. Provider/executor and exact trial
-decisions remain before lead readiness; no workers or implementation started.
-This supersedes the open application/comparator question in the preceding review
-checkpoint. Program 7's disposition and audit obligations do not change.
+Historical worktrees and the private transfer package are present, and the
+arrival auditor pointer check found zero new records. Arrival/setup observations
+are under `audit/evidence/2026-09-18/mac-arrival/` and
+`audit/evidence/2026-09-19/executor-readiness/`. Older orb fixture results remain
+historical; the Mac acceptance is separate. Step 39 remains unaccepted and
+Program 7 suspended. Current order and worker receipts are in [[roadmap]] and
+`HANDOFF.md`.
 
 The final review labelled DeepSeek was byte-identical to the supplied Kimi body,
 verified by comparison and SHA-256. Four distinct review bodies, not five; the

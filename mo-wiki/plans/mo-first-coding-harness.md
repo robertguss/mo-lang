@@ -118,6 +118,10 @@ acceptance.
 
 ### B. One complete coding path
 
+[[mo-provider-foundation]] is the bounded offline provider slice: pin/artifact
+identity, actual SSE parser, usage presence and sanitized outcomes. The Mo
+bridge and interactive authentication follow independent acceptance.
+
 One session, one provider and one reference model; thin headless CLI plus
 machine-readable events. Read/search, targeted edits, writes and bounded command
 execution must support check → inspect failure → repair. Keep the model/tool

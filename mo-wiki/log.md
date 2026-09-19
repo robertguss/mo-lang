@@ -749,3 +749,18 @@
   in parallel with the executor foundation using trusted local HTTP fixtures.
 - Wiki lint: 258 pages, the same 25 inherited review/size notices and no
   structural/raw-drift errors. Authored diff whitespace check passed.
+
+## [2026-09-19] plan | Provider foundation and overnight progress
+
+- 12:41 AM ET: saved the read-only Astra/low provider report and source links.
+  Added [[mo-provider-foundation]] for pinned actual-parser tests with synthetic
+  credentials, usage presence and sanitized outcomes; Mo retains its own loop.
+- Terminal-auth worker tip bc784d8 includes the 18-case matrix and requested
+  portable-runner/unknown-selection corrections. Executor worker is finalizing
+  its lifecycle controls. Both remain pending independent lead acceptance.
+- Native build passed. The first 300-second full-test attempt timed out while
+  compiling examples; owned descendants were cleaned up. A separate 1200-second
+  attempt is running with process-group progress and bounded cleanup records.
+- Updated the current board, handoff and state; historical audit gates remain.
+- Validation: 259 wiki pages checked, 25 inherited review/size notices and no
+  structural/raw-drift errors; authored diff whitespace check passed.

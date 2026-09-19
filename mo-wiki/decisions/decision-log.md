@@ -686,6 +686,14 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Specialize Agent model calls: HTTP 401 returns its status error immediately and ends that call's retries; preserve all other retries and deadlines. Introduce Recipes.AgentModelClientV1.ModelClient and leave the generic Recipes.ModelClient recipe unchanged. This is a versioned application requirement, not a retroactive bug finding against the shared recipe. | Astra lead under Robert's overnight authority | decided, semantic | nine real-HTTP status/count controls in both runtimes, per [[mo-agent-terminal-auth]] |
 
+## Provider foundation and worker receipts (19 Sep 2026, 12:41 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Use Pi revision 36b60d2e8985899743c4cf5bd5f8929832a3f05d for a provider-only fixture boundary, with artifact/catalog provenance checked independently of the package version. Select gpt-6-astra, low reasoning, SSE and no hidden retries. This is not account entitlement or a scored comparison. | Astra lead, informed by Astra/low source review | decided | [[mo-provider-foundation]] actual-parser fixture tests |
+| Track upstream usage presence; unknown stays unknown, reported zero is separate, and legacy Mo integration must fail explicitly until its contract can represent the result. Preserve native tool-call IDs/signatures; Mo keeps every tool and subsequent-turn decision. | Astra lead | decided, semantic | missing/partial/zero usage and call-result-roundtrip controls |
+| Accept the terminal-auth worker's aggregate .mo.ids paths as authorized scope, restricted to Agent.Model and the new versioned recipe record. Worker HTTP matrix is reported green; independent lead acceptance is still owed. | Astra lead; implementation by GPT-6-Astra at low reasoning | recorded, pending acceptance | exact record diff plus lead matrix and extra status control |
+
 ## Related
 
 - [[session-05]]

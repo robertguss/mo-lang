@@ -22,12 +22,37 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-Next: establish an isolated named OrbStack machine and provider-independent
-executor with protected verdicts; then one complete headless Mo coding path
-and the versioned 401 calibration task. Ordinary OrbStack file sharing must
-not expose the Mac home to candidates. The installed CLI supports isolated
-machines and per-machine resource bounds; behavior still needs probes.
-Step 39 remains unaccepted and Program 7 suspended. No old audit gate is passed.
+### Active work, 19 Sep 2026, 12:41 AM ET
+
+- Dedicated `mo-executor-r01` exists with isolation/network isolation enabled,
+  2 CPU, 2 GiB RAM, 8 GiB disk, no Mac sharing/SSH forwarding. Docker and a
+  pinned BusyBox fixture are installed inside it. Do not use the shared Mac
+  Docker daemon. Setup evidence: `audit/evidence/2026-09-19/executor-readiness/`.
+- `mo-executor` is implementing only `toolchain/harness/executor/` in branch
+  `harness/executor-foundation-r01`, separate worktree under
+  `~/Projects/startups/mo-lang-worktrees/`. Worker reports 9 unit/17 live checks
+  passing and is finalizing lifecycle evidence; lead acceptance is still owed.
+- `mo-auth` has finished branch `harness/agent-terminal-auth-v1`, tip
+  `bc784d87cc9c98f8c5a4978316c324129a69b1de`. Worker reports 18/18 status/count
+  cases, 16 versioned and 9 inherited recipe tests, model 3/3. Lead reviewed
+  the change and requested portable test paths/unknown-selection rejection;
+  corrections are committed. Integration and lead controls are next.
+- Read-only `mo-provider` research is complete and its pane closed after
+  receipt. [[mo-provider-foundation]] in `mo-wiki/plans/` defines the next
+  isolated worker: actual pinned Pi parser, synthetic upstream traffic, honest
+  usage and error distinctions. No credentials/login/inference started.
+- Native `zig build -j2` passed. The first full test attempt hit its 300-second
+  guard while compiling examples; the lead cleaned its owned process group.
+  A second guarded 1200-second attempt is running. Preserve its evidence under
+  `audit/evidence/2026-09-19/harness-native-baseline/`; do not change Mo/compiler
+  source in main until this baseline finishes.
+
+Rediscover Herdr IDs; currently lead w4:p1, executor worker w4:pN/run w4:pQ,
+completed auth worker w4:pR, baseline run w4:pV. Close only owned panes after
+writers stop and results are retained. Main has local documentation commits;
+no push yet. Historical worktrees stay intact. Next: independent acceptance,
+provider foundation and a versioned headless Mo integration brief. Step 39
+remains unaccepted and Program 7 suspended.
 
 ## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
 
