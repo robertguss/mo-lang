@@ -46,8 +46,8 @@ Type strings: `T`, `U`, `A`, `E`, `K`, `V` are type variables fresh at each call
 | `HttpError` | | error enum | stdlib (09) |
 | `Runtime` | | capability: the runtime surface, `platform.runtime` | stdlib (09), Session 5, step 23 |
 | `ProcessInfo`, `SourceInfo`, `MemoryInfo` | | struct (`## Runtime`) | stdlib (09), Session 5, step 23 |
-| `Entry` | `name: String`, `kind: EntryKind` | struct: what `Fs.list_kinds` gives | stdlib (09), step 28 |
-| `EntryKind` | `File`, `Folder` | enum | stdlib (09), step 28 |
+| `Entry` | `name: String`, `kind: EntryKind`, `links: UInt64`, `setuid: Bool` | struct: what `Fs.list_kinds` and `Fs.kind_of` give | stdlib (09), step 28; step 40: `links`, `setuid` |
+| `EntryKind` | `File`, `Folder`, `Link` | enum | stdlib (09), step 28; step 40: `Link` |
 | `RuntimeError` | | error enum | stdlib (09), Session 5, step 23 |
 | `Event` | | enum: one of the runtime's events | stdlib (09), Session 5, step 23 |
 | `Hash`, `AesGcm`, `ChaCha`, `X25519`, `Ed25519`, `Password` | | rows only: the crypto brick's, called on the name, with no values of their own, so none is a type a signature can name (MO0202) | stdlib (09), step 35 |
@@ -244,8 +244,9 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `read_bytes` | `String` | `Result(List(UInt8), FsError)`: the file's bytes, UTF-8 or not | yes | | stdlib (09) |
 | `Fs` | `fold_lines` | `String`, `A`, `fn(A, String) A` | `Result(A, FsError)`: each line handed to the function with the value so far as the file is read, `Ok` with the last call's; a line that is not UTF-8 handed on with U+FFFD for each byte that begins no UTF-8 character, so never `NotText` (session 6, step 27). Session 5, step 19: the streaming row, `each_line` gone | yes | | stdlib (09) |
 | `Fs` | `size` | `String` | `Result(UInt64, FsError)` | yes | | stdlib (09) |
+| `Fs` | `kind_of` | `String` | `Result(Entry, FsError)`: the name at the path, never followed; `name` the path as written, `kind` `File`, `Folder`, or `Link`, its hard link count and setuid bit | yes | | stdlib (09), step 40 |
 | `Fs` | `list` | | `Result(List(String), FsError)` | yes | | stdlib (09) |
-| `Fs` | `list_kinds` | | `Result(List(Entry), FsError)`: the names `list` gives, in its order, each an `Entry` whose `kind` is `File` or `Folder`; a link counts as what it points at | yes | | stdlib (09), step 28 |
+| `Fs` | `list_kinds` | | `Result(List(Entry), FsError)`: the names `list` gives, in its order, each an `Entry` whose `kind` is `File`, `Folder`, or `Link`, stat'ed without following it (step 40: a link is `Link`), with its `links` and `setuid` | yes | | stdlib (09), step 28 |
 | `Fs` | `scoped` | `String` | `Fs` | | | grammar |
 | `Fs` | `read_only` | | `Fs`, read-only: its own type, going wherever an `Fs` goes, refused by the checker where a write reaches it (`MO0404`) | | | grammar |
 | `Fs` | `write` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
@@ -253,6 +254,7 @@ Every function is called with a dot on its receiver (`xs.push(x)`), or on the ty
 | `Fs` | `remove` | `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `rename` | `String`, `String` | `Result(none, FsError)` | yes | | stdlib (09) |
 | `Fs` | `mkdir` | `String` | `Result(none, FsError)`: a folder made in a folder that is there; `Ok` when a folder is there already | yes | | stdlib (09), Session 5, step 19 |
+| `Fs` | `replace` | `String`, `String` | `Result(none, FsError)`: the text swapped in whole (a temporary name in the same folder, mode 0600, synced, renamed over the path, the folder synced); refused through a read-only `Fs` (`MO0404`); as `write` on a fixture | yes | | stdlib (09), step 40 |
 | `Fs` (on type) | `fixture` | | `Fs`: a `..` that climbs above a scope's folder, the fixture's root included, is `Missing` as on the real `Fs`; `list` on a folder that is not there is `Missing(".")` as on the real `Fs` | | tests | grammar, Session 5, step 21; Session 5, step 22: `list` |
 | `Fs` (on type) | `fixture` | `delay: Duration` | `Fs` | | tests | grammar |
 | `Events` | `emit` | `T` | none | | | grammar |

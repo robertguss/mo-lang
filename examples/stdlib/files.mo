@@ -99,9 +99,9 @@ test "list_kinds tells a file from a folder, sorted by name as list sorts"
   assert fs.write("logs/b.log", "two", within: 1.minute) is Ok(_)
   assert fs.write("a.log", "one", within: 1.minute) is Ok(_)
   assert fs.list(within: 1.minute) == Ok(["a.log", "logs", "old.log"])
-  assert fs.list_kinds(within: 1.minute) == Ok([Entry(name: "a.log", kind: File),
-    Entry(name: "logs", kind: Folder),
-    Entry(name: "old.log", kind: Folder)])
+  assert fs.list_kinds(within: 1.minute) == Ok([Entry(name: "a.log", kind: File, links: 1, setuid: false),
+    Entry(name: "logs", kind: Folder, links: 1, setuid: false),
+    Entry(name: "old.log", kind: Folder, links: 1, setuid: false)])
   assert log_names(fs) == Ok(["a.log", "old.log"])
   assert log_files(fs) == Ok(["a.log"])
   assert log_files(Fs.fixture(delay: 2.minute)) is Error(Slow)

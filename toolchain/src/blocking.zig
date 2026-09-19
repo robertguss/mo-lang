@@ -16,16 +16,30 @@ const vm_mod = @import("vm.zig");
 /// The pool's threads.
 pub const pool_threads = 4;
 
-/// A write the pool runs: `path` NUL-terminated, the text, and how it ended.
+/// A write the pool runs: to a file the caller opened (step 40: the scope resolved it, so the pool
+/// never looks a path up), or a replace in a folder the caller opened, and how it ended.
 const Job = struct {
-    path: [*:0]const u8,
+    op: Op,
+    /// The open file a write goes to, or the folder a replace is in.
+    fd: posix.fd_t,
+    /// The name a replace swaps, in `fd`'s folder, and the Io its temporary name's randomness comes from.
+    name: [:0]const u8 = "",
+    io: ?std.Io = null,
     text: []const u8,
-    append: bool,
     ok: bool = false,
     done: std.atomic.Value(bool) = .init(false),
     read_fd: posix.fd_t = -1,
     write_fd: posix.fd_t = -1,
     next: ?*Job = null,
+
+    const Op = enum { write, replace };
+
+    fn now(job: *const Job) bool {
+        return switch (job.op) {
+            .write => writeNow(job.fd, job.text),
+            .replace => replaceNow(job.io.?, job.fd, job.name, job.text),
+        };
+    }
 };
 
 const Pool = struct {
@@ -39,14 +53,23 @@ const Pool = struct {
 
 var pool: Pool = .{};
 
-/// Writes `text` to `path` (the file created when it is not there, else truncated, or added to at its
-/// end when `append`) and syncs it. Under `mo run` with processes the write runs on the pool and the
-/// caller waits holding no scheduler; without, on this thread. True once it is on disk.
-pub fn write(vm: *vm_mod.Vm, path: [:0]const u8, text: []const u8, append: bool) vm_mod.Error!bool {
-    const sim = vm.sim orelse return writeNow(path, text, append);
-    const t = sim.turns orelse return writeNow(path, text, append);
-    var job: Job = .{ .path = path.ptr, .text = text, .append = append };
-    if (!openSignal(&job) or !start(t.io)) return writeNow(path, text, append);
+/// Writes `text` to the open file `fd` and syncs it. Under `mo run` with processes the write runs on
+/// the pool and the caller waits holding no scheduler; without, on this thread. True once it is on disk.
+pub fn write(vm: *vm_mod.Vm, fd: posix.fd_t, text: []const u8) vm_mod.Error!bool {
+    return run(vm, .{ .op = .write, .fd = fd, .text = text });
+}
+
+/// `Fs.replace` (step 40): `name` in the open folder `dir` holds exactly `text`, swapped in whole
+/// (replaceNow), on the pool as `write` is.
+pub fn replace(vm: *vm_mod.Vm, io: std.Io, dir: posix.fd_t, name: [:0]const u8, text: []const u8) vm_mod.Error!bool {
+    return run(vm, .{ .op = .replace, .fd = dir, .name = name, .io = io, .text = text });
+}
+
+fn run(vm: *vm_mod.Vm, first: Job) vm_mod.Error!bool {
+    var job = first;
+    const sim = vm.sim orelse return job.now();
+    const t = sim.turns orelse return job.now();
+    if (!openSignal(&job) or !start(t.io)) return job.now();
     defer closeSignal(&job);
     submit(&job);
     // An hour at a time: the write answers when it is done, and its deadline is checked after it.
@@ -83,22 +106,20 @@ fn worker() void {
         pool.head = job.next;
         if (pool.head == null) pool.tail = null;
         pool.mutex.unlock(pool.io);
-        job.ok = writeNow(std.mem.span(job.path), job.text, job.append);
+        job.ok = job.now();
         job.done.store(true, .release);
         const one: u64 = 1;
         _ = posix.system.write(job.write_fd, std.mem.asBytes(&one), if (builtin.os.tag == .linux) 8 else 1);
     }
 }
 
-/// The write and its sync, on this thread.
-pub fn writeNow(path: [:0]const u8, text: []const u8, append: bool) bool {
+/// The write and its sync, on this thread, to a file already open for writing.
+pub fn writeNow(fd: posix.fd_t, text: []const u8) bool {
+    return writeAll(fd, text) and syncFd(fd);
+}
+
+fn writeAll(fd: posix.fd_t, text: []const u8) bool {
     const sys = posix.system;
-    var flags: posix.O = .{ .ACCMODE = .WRONLY, .CREAT = true, .CLOEXEC = true };
-    if (append) flags.APPEND = true else flags.TRUNC = true;
-    const rc = sys.open(path.ptr, flags, @as(posix.mode_t, 0o666));
-    if (posix.errno(rc) != .SUCCESS) return false;
-    const fd: posix.fd_t = @intCast(rc);
-    defer _ = sys.close(fd);
     var done: usize = 0;
     while (done < text.len) {
         const w = sys.write(fd, text[done..].ptr, text.len - done);
@@ -111,11 +132,51 @@ pub fn writeNow(path: [:0]const u8, text: []const u8, append: bool) bool {
             else => return false,
         }
     }
-    while (true) switch (posix.errno(sys.fsync(fd))) {
+    return true;
+}
+
+/// fsync, as `write` has always synced (step 39 part F owes F_FULLFSYNC on macOS).
+fn syncFd(fd: posix.fd_t) bool {
+    while (true) switch (posix.errno(posix.system.fsync(fd))) {
         .SUCCESS => return true,
         .INTR => continue,
         else => return false,
     };
+}
+
+/// The replace, on this thread (design: mo-capabilities-for-the-harness, section 2): the text is
+/// written to a new name in the same folder, unpredictable and created exclusively with mode 0600,
+/// synced, renamed over `name`, and the folder synced, so a reader sees the old file or the new
+/// one, never a part. Any failure removes the temporary name and leaves `name` as it was.
+pub fn replaceNow(io: std.Io, dir: posix.fd_t, name: [:0]const u8, text: []const u8) bool {
+    const sys = posix.system;
+    var buf: [std.fs.max_name_bytes + 1]u8 = undefined;
+    var fd: posix.fd_t = -1;
+    var temp: [:0]const u8 = undefined;
+    for (0..8) |_| {
+        var nonce: [12]u8 = undefined;
+        io.randomSecure(&nonce) catch io.random(&nonce);
+        temp = std.fmt.bufPrintZ(&buf, ".{s}.mo-{x}", .{ name, nonce }) catch return false;
+        const flags: posix.O = .{ .ACCMODE = .WRONLY, .CREAT = true, .EXCL = true, .NOFOLLOW = true, .CLOEXEC = true };
+        const rc = sys.openat(dir, temp.ptr, flags, @as(posix.mode_t, 0o600));
+        switch (posix.errno(rc)) {
+            .SUCCESS => {
+                fd = @intCast(rc);
+                break;
+            },
+            .EXIST, .INTR => continue,
+            else => return false,
+        }
+    }
+    if (fd < 0) return false;
+    const written = writeAll(fd, text) and syncFd(fd);
+    _ = sys.close(fd);
+    if (!written or posix.errno(sys.renameat(dir, temp.ptr, dir, name.ptr)) != .SUCCESS) {
+        _ = sys.unlinkat(dir, temp.ptr, 0);
+        return false;
+    }
+    // The rename is on disk once its folder is.
+    return syncFd(dir);
 }
 
 fn openSignal(job: *Job) bool {
@@ -139,19 +200,45 @@ fn closeSignal(job: *Job) void {
     if (job.write_fd != job.read_fd) _ = posix.system.close(job.write_fd);
 }
 
-test "a write on the pool is on disk when it answers" {
+test "a write on the pool is on disk when it answers, and a replace leaves no temporary name" {
     var dir_buf: [64]u8 = undefined;
-    const path = try std.fmt.bufPrintZ(&dir_buf, "/tmp/mo-blocking-{d}.txt", .{std.os.linux.getpid()});
-    defer _ = posix.system.unlink(path.ptr);
-    try std.testing.expect(writeNow(path, "one\n", false));
-    try std.testing.expect(writeNow(path, "two\n", true));
-    var job: Job = .{ .path = path.ptr, .text = "three\n", .append = true };
-    try std.testing.expect(openSignal(&job) and start(std.testing.io));
+    const sys = posix.system;
+    const folder = try std.fmt.bufPrintZ(&dir_buf, "/tmp/mo-blocking-{d}", .{std.os.linux.getpid()});
+    const io = std.testing.io;
+    std.Io.Dir.cwd().deleteTree(io, folder) catch {};
+    try std.Io.Dir.cwd().createDir(io, folder, .default_dir);
+    defer std.Io.Dir.cwd().deleteTree(io, folder) catch {};
+    const dir_rc = sys.open(folder.ptr, .{ .ACCMODE = .RDONLY, .DIRECTORY = true, .CLOEXEC = true }, @as(posix.mode_t, 0));
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(dir_rc));
+    const dir: posix.fd_t = @intCast(dir_rc);
+    defer _ = sys.close(dir);
+    const rc = sys.openat(dir, "a.txt", .{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true, .CLOEXEC = true }, @as(posix.mode_t, 0o666));
+    try std.testing.expectEqual(posix.E.SUCCESS, posix.errno(rc));
+    const fd: posix.fd_t = @intCast(rc);
+    defer _ = sys.close(fd);
+    try std.testing.expect(writeNow(fd, "one\n"));
+    try std.testing.expect(writeNow(fd, "two\n"));
+    var job: Job = .{ .op = .write, .fd = fd, .text = "three\n" };
+    try std.testing.expect(openSignal(&job) and start(io));
     defer closeSignal(&job);
     submit(&job);
     try std.testing.expect(@import("poller.zig").pollOne(job.read_fd, .read, 10_000));
     try std.testing.expect(job.done.load(.acquire) and job.ok);
-    const got = try std.Io.Dir.cwd().readFileAlloc(std.testing.io, path, std.testing.allocator, .limited(1 << 10));
+    const a = try std.fmt.allocPrint(std.testing.allocator, "{s}/a.txt", .{folder});
+    defer std.testing.allocator.free(a);
+    const got = try std.Io.Dir.cwd().readFileAlloc(io, a, std.testing.allocator, .limited(1 << 10));
     defer std.testing.allocator.free(got);
     try std.testing.expectEqualStrings("one\ntwo\nthree\n", got);
+    try std.testing.expect(replaceNow(io, dir, "a.txt", "whole\n"));
+    const swapped = try std.Io.Dir.cwd().readFileAlloc(io, a, std.testing.allocator, .limited(1 << 10));
+    defer std.testing.allocator.free(swapped);
+    try std.testing.expectEqualStrings("whole\n", swapped);
+    // A name no temporary file can be made beside: nothing is left behind.
+    try std.testing.expect(!replaceNow(io, dir, "x" ** 250, "no"));
+    var opened = try std.Io.Dir.cwd().openDir(io, folder, .{ .iterate = true });
+    defer opened.close(io);
+    var it = opened.iterate();
+    var names: usize = 0;
+    while (try it.next(io)) |_| names += 1;
+    try std.testing.expectEqual(@as(usize, 1), names);
 }

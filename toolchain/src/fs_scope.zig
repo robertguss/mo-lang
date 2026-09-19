@@ -45,6 +45,13 @@ const Setup = struct {
         return .{ interp, try s.guarded("60", &.{binary}) };
     }
 
+    /// A file's tests built by `mo build --tests` and run as a binary.
+    fn nativeTests(s: Setup, file: []const u8, name: []const u8) !Ran {
+        const built = try s.guarded("300", &.{ s.mo_exe, "build", "--tests", file, "-o", name });
+        try std.testing.expectEqual(@as(u8, 0), built.code);
+        return s.guarded("120", &.{try std.fmt.allocPrint(s.arena, "./zig-out/mo-build/{s}/{s}", .{ name, name })});
+    }
+
     fn read(s: Setup, path: []const u8) ![]const u8 {
         const full = try std.fs.path.join(s.arena, &.{ s.cwd, path });
         return Io.Dir.cwd().readFileAlloc(s.io, full, s.arena, .limited(64 << 20));
@@ -300,7 +307,7 @@ test "corpus: step 40, Fs.kind_of names a link, counts hard links, and sees setu
         \\  assert fs.write("logs/a.log", "one", within: 1.minute) is Ok(_)
         \\  assert fs.kind_of("logs/a.log", within: 1.minute) == Ok(Entry(name: "logs/a.log", kind: File, links: 1, setuid: false))
         \\  assert fs.kind_of("logs", within: 1.minute) == Ok(Entry(name: "logs", kind: Folder, links: 1, setuid: false))
-        \\  assert fs.kind_of("b.log", within: 1.minute) == Error(Missing("b.log"))
+        \\  assert fs.kind_of("b.log", within: 1.minute) == Error(Missing(path: "b.log"))
         \\  assert Fs.fixture(delay: 2.minute).kind_of("a", within: 1.minute) == Error(Timeout)
         \\end
         \\
@@ -332,8 +339,8 @@ test "corpus: step 40, Fs.kind_of names a link, counts hard links, and sees setu
     const tested = try s.guarded("120", &.{ s.mo_exe, "test", "kinds.mo" });
     std.debug.print("---- mo test, exit {d}\n{s}", .{ tested.code, tested.stdout });
     try std.testing.expectEqual(@as(u8, 0), tested.code);
-    const native = try s.guarded("300", &.{ s.mo_exe, "test", "--native", "kinds.mo" });
-    std.debug.print("---- mo test --native, exit {d}\n{s}", .{ native.code, native.stdout });
+    const native = try s.nativeTests("kinds.mo", "kinds-tests");
+    std.debug.print("---- mo build --tests, exit {d}\n{s}", .{ native.code, native.stdout });
     try std.testing.expectEqual(@as(u8, 0), native.code);
 }
 
@@ -346,6 +353,7 @@ test "corpus: step 40, Fs.replace swaps a file whole, private to its owner, and 
     defer tmp.cleanup();
     const s = try setup(arena, io, &tmp);
     const tree = hostile_tree ++ "\nprintf old > work/t.txt\nchmod 644 work/t.txt\n";
+    try s.sh(tree);
     try tmp.dir.writeFile(io, .{ .sub_path = "swap.mo", .data = "module Swap\nexpose main\n\n" ++ shows ++
         \\fn main(platform: Platform)
         \\  work = platform.fs.scoped("work")
@@ -408,8 +416,8 @@ test "corpus: step 40, Fs.replace swaps a file whole, private to its owner, and 
     const tested = try s.guarded("120", &.{ s.mo_exe, "test", "swap.mo" });
     std.debug.print("---- mo test, exit {d}\n{s}", .{ tested.code, tested.stdout });
     try std.testing.expectEqual(@as(u8, 0), tested.code);
-    const native = try s.guarded("300", &.{ s.mo_exe, "test", "--native", "swap.mo" });
-    std.debug.print("---- mo test --native, exit {d}\n{s}", .{ native.code, native.stdout });
+    const native = try s.nativeTests("swap.mo", "swap-tests");
+    std.debug.print("---- mo build --tests, exit {d}\n{s}", .{ native.code, native.stdout });
     try std.testing.expectEqual(@as(u8, 0), native.code);
 }
 
@@ -435,8 +443,8 @@ const flipper =
     \\
     \\fn main(platform: Platform)
     \\  work = platform.fs.scoped("work")
-    \\  rounds = (platform.args.get(1) or "0").to_u64 or 0
-    \\  size = (platform.args.get(2) or "0").to_u64 or 0
+    \\  rounds = (platform.args.get(0) or "0").to_u64 or 0
+    \\  size = (platform.args.get(1) or "0").to_u64 or 0
     \\  one = "a".repeat(size)
     \\  two = "b".repeat(size / 2)
     \\  var done = 0

@@ -20,6 +20,8 @@ const std = @import("std");
 const sources = @import("sources.zig");
 const blocking = @import("blocking.zig");
 const Io = std.Io;
+const posix = std.posix;
+const sys = posix.system;
 const bytecode = @import("bytecode.zig");
 const contracts = @import("contracts.zig");
 const diag = @import("diag.zig");
@@ -56,6 +58,10 @@ pub const Scope = struct {
     read_only: bool = false,
     /// `scoped` was given a path outside the scope it narrowed, so nothing is readable.
     empty: bool = false,
+    /// The folder every path's walk starts from (step 40): the one `platform.fs.scoped` named,
+    /// opened as the operator named it, links followed. A narrowing of a narrowed Fs keeps it, so
+    /// the program's own `scoped` walks from it without links. Null for `platform.fs` itself.
+    anchor: ?[]const u8 = null,
 };
 
 pub const Ran = union(enum) { exited: u8, crashed: contracts.Report };
@@ -274,7 +280,10 @@ pub const Server = struct {
         } else {
             const full = try std.fs.path.resolve(s.gpa, &.{ scope.base, path });
             scope.base = full;
-            if (within(scope.root, full)) scope.root = full else scope.empty = true;
+            if (within(scope.root, full)) {
+                scope.root = full;
+                if (scope.anchor == null) scope.anchor = full;
+            } else scope.empty = true;
         }
         const handle: u32 = @intCast(s.scopes.items.len);
         try s.scopes.append(s.gpa, scope);
@@ -282,8 +291,8 @@ pub const Server = struct {
     }
 
     /// `fs.read(path, within: d)`: `Ok(text)`; `Missing(path)`, with the path as the
-    /// program wrote it, for anything that is not a readable file inside the scope (a
-    /// symbolic link that leads out of it included); or `Timeout`.
+    /// program wrote it, for anything that is not a regular file inside the scope (a link at
+    /// any component, a FIFO, or a device included; step 40); or `Timeout`.
     ///
     /// The deadline is enforced after the fact in this step: the read runs to its end, is
     /// measured, and one that took longer than `d` is `Timeout`, its text dropped. True
@@ -309,20 +318,17 @@ pub const Server = struct {
     /// made; `Ok` holds the value the last call gave.
     pub fn foldLines(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, f: Value.Func, acc: Value, within_ms: i64) Error!Value {
         const t0 = Io.Clock.Timestamp.now(s.io, .awake);
-        const real = try s.realScoped(s.scopes.items[fs.handle], path) orelse
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const fd = try s.openScoped(scratch.allocator(), s.scopes.items[fs.handle], path, .read) orelse
             return if (s.late(t0, within_ms)) timeout(vm) else missing(vm, path);
-        const file = Io.Dir.cwd().openFile(s.io, real, .{}) catch
-            return if (s.late(t0, within_ms)) timeout(vm) else missing(vm, path);
-        defer file.close(s.io);
+        defer _ = sys.close(fd);
         var feed: stdlib.LineFeed = .init(vm, f, acc);
         var chunk: [1 << 16]u8 = undefined;
-        var buffers = [_][]u8{&chunk};
         while (true) {
             if (s.late(t0, within_ms)) return timeout(vm);
-            const n = file.readStreaming(s.io, &buffers) catch |err| switch (err) {
-                error.EndOfStream => break,
-                else => return missing(vm, path),
-            };
+            const n = readSome(fd, &chunk) orelse return missing(vm, path);
+            if (n == 0) break;
             try feed.bytes(chunk[0..n]);
             if (feed.partial.items.len > read_limit) return missing(vm, path);
         }
@@ -330,39 +336,62 @@ pub const Server = struct {
         return vm.variant("Ok", &.{feed.acc});
     }
 
-    /// `fs.size(path, within: d)`: `Ok(bytes)` of a file inside the scope; anything else
+    /// `fs.size(path, within: d)`: `Ok(bytes)` of a regular file inside the scope; anything else
     /// is `Missing(path)`, or `Timeout`, as `read` answers.
     pub fn size(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
         const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
         const bytes: ?u64 = blk: {
-            const real = try s.realScoped(s.scopes.items[fs.handle], path) orelse break :blk null;
-            const stat = Io.Dir.cwd().statFile(s.io, real, .{}) catch break :blk null;
-            break :blk if (stat.kind == .file) stat.size else null;
+            const at = try s.place(scratch.allocator(), s.scopes.items[fs.handle], path) orelse break :blk null;
+            defer at.close();
+            const st = s.statAt(at, at.follow) orelse break :blk null;
+            break :blk if (st.kind == .file) st.size else null;
         };
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const n = bytes orelse return missing(vm, path);
         return vm.variant("Ok", &.{.{ .int = n }});
     }
 
-    /// `fs.list(within: d)`: the names of the files and folders directly inside the
-    /// scope's folder, sorted byte by byte; `Missing(".")` when it is not a readable folder.
-    /// With `kinds`, `fs.list_kinds`: each name as an `Entry` that says whether it is a folder (step 28).
+    /// `fs.kind_of(path, within: d)` (step 40): the `Entry` of the name at `path`, its `name` the
+    /// path as the program wrote it, a link reported as `Link` and never followed; its hard link
+    /// count and its setuid bit, which a harness checks before it trusts a file. `Missing(path)`
+    /// when nothing is there or a folder on the way is a link.
+    pub fn kindOf(s: *Server, vm: *Vm, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const st: ?Io.File.Stat = blk: {
+            const at = try s.place(scratch.allocator(), s.scopes.items[fs.handle], path) orelse break :blk null;
+            defer at.close();
+            break :blk s.statAt(at, false);
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        const got = st orelse return missing(vm, path);
+        return vm.variant("Ok", &.{try stdlib.entryOf(vm, path, kindOfStat(got), got.nlink, setuid(got))});
+    }
+
+    /// `fs.list(within: d)`: the names of everything directly inside the scope's folder, links
+    /// included, sorted byte by byte; `Missing(".")` when it is not a readable folder. With
+    /// `kinds`, `fs.list_kinds`: each name as an `Entry` whose kind is `File`, `Folder`, or `Link`
+    /// (step 40: a link is not reported as what it points at), with its link count and setuid bit.
     pub fn list(s: *Server, vm: *Vm, fs: Value.Cap, within_ms: i64, kinds: bool) Error!Value {
         const t0 = Io.Clock.Timestamp.now(s.io, .awake);
-        const names = try s.listScoped(s.scopes.items[fs.handle]);
+        const names = try s.listScoped(s.scopes.items[fs.handle], kinds);
         if (s.late(t0, within_ms)) return vm.variant("Error", &.{try vm.variant("Timeout", &.{})});
         const got = names orelse return missing(vm, ".");
         const out = try vm_mod.rawAlloc(vm.heap, Value, got.len);
-        for (got, out) |entry, *o| o.* = if (kinds) try stdlib.entryOf(vm, entry.name, entry.folder) else .{ .string = entry.name };
+        for (got, out) |entry, *o| o.* = if (kinds) try stdlib.entryOf(vm, entry.name, entry.kind, entry.links, entry.setuid) else .{ .string = entry.name };
         return vm.variant("Ok", &.{.{ .list = out }});
     }
 
     /// `fs.write(path, text)` and `fs.append(path, text)`: the file holds the text, or has it
     /// added at its end, created when it is not there, and is on disk (fsync) before `Ok`.
-    /// `Missing(path)` for a path that leaves the scope, a folder that is not there, or
-    /// anything that is not a file. The deadline is enforced after the fact, as `read`'s is:
-    /// a write that took longer is `Timeout`, and is on disk all the same.
-    /// The write and its sync run on the blocking pool (blocking.zig, step 30): under processes the caller
+    /// `Missing(path)` for a path that leaves the scope, a folder that is not there, a link at
+    /// any component, or anything that is not a regular file. The deadline is enforced after
+    /// the fact, as `read`'s is: a write that took longer is `Timeout`, and is on disk all the same.
+    /// The file is opened here, from the scope's folder, and the write and its sync run on the
+    /// blocking pool on that descriptor (blocking.zig, step 30): under processes the caller
     /// waits holding no scheduler, and the answer comes once the text is on disk.
     pub fn writeFile(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, text: []const u8, within_ms: i64, append: bool) Error!Value {
         const scope = s.scopes.items[fs.handle];
@@ -371,16 +400,39 @@ pub const Server = struct {
         // Paths are resolved in an arena of the call's own: a server appends on every change.
         var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
         defer scratch.deinit();
-        const wrote = if (try s.targetScoped(scratch.allocator(), scope, path)) |target|
-            try blocking.write(vm, try scratch.allocator().dupeZ(u8, target), text, append)
-        else
-            false;
+        const wrote = if (try s.openScoped(scratch.allocator(), scope, path, if (append) .append else .write)) |fd| blk: {
+            defer _ = sys.close(fd);
+            break :blk try blocking.write(vm, fd, text);
+        } else false;
         if (s.late(t0, within_ms)) return timeout(vm);
         if (!wrote) return missing(vm, path);
         return vm.variant("Ok", &.{.none});
     }
 
-    /// `fs.remove(path)`: the file is gone; `Missing(path)` when no such file is in the scope.
+    /// `fs.replace(path, text)` (step 40): the file holds exactly the text, swapped in whole: a
+    /// temporary name in the same folder, written, synced, renamed over `path`, and the folder
+    /// synced (blocking.replaceNow). `Missing(path)` as `write` answers, and for a name that is a
+    /// link or anything but a regular file.
+    pub fn replace(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, text: []const u8, within_ms: i64) Error!Value {
+        const scope = s.scopes.items[fs.handle];
+        if (scope.read_only) return refuse(vm, row, path);
+        const t0 = Io.Clock.Timestamp.now(s.io, .awake);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const swapped = blk: {
+            const at = try s.place(scratch.allocator(), scope, path) orelse break :blk false;
+            defer at.close();
+            if (at.name.len == 0) break :blk false;
+            if (s.statAt(at, false)) |st| if (st.kind != .file) break :blk false;
+            break :blk try blocking.replace(vm, s.io, at.dir, at.name, text);
+        };
+        if (s.late(t0, within_ms)) return timeout(vm);
+        if (!swapped) return missing(vm, path);
+        return vm.variant("Ok", &.{.none});
+    }
+
+    /// `fs.remove(path)`: the file is gone; `Missing(path)` when no regular file is at `path` in the
+    /// scope. A link is refused, never removed through.
     pub fn remove(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
         const scope = s.scopes.items[fs.handle];
         if (scope.read_only) return refuse(vm, row, path);
@@ -388,9 +440,9 @@ pub const Server = struct {
         var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
         defer scratch.deinit();
         const gone = blk: {
-            const real = try s.fileScoped(scratch.allocator(), scope, path) orelse break :blk false;
-            Io.Dir.cwd().deleteFile(s.io, real) catch break :blk false;
-            break :blk true;
+            const at = try s.fileAt(scratch.allocator(), scope, path) orelse break :blk false;
+            defer at.close();
+            break :blk posix.errno(sys.unlinkat(at.dir, at.name.ptr, 0)) == .SUCCESS;
         };
         if (s.late(t0, within_ms)) return timeout(vm);
         if (!gone) return missing(vm, path);
@@ -398,8 +450,9 @@ pub const Server = struct {
     }
 
     /// `fs.mkdir(path)`: a folder at `path`, made when it is not there, in a folder that is.
-    /// `Missing(path)` when the path leaves the scope, its folder is not there, or a file is
-    /// at it. The folder is not synced: a write into it syncs the file, not the folder.
+    /// `Missing(path)` when the path leaves the scope, its folder is not there, a link is on the
+    /// way or at it, or a file is at it. The folder is not synced: a write into it syncs the file,
+    /// not the folder.
     pub fn mkdir(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, path: []const u8, within_ms: i64) Error!Value {
         const scope = s.scopes.items[fs.handle];
         if (scope.read_only) return refuse(vm, row, path);
@@ -407,15 +460,17 @@ pub const Server = struct {
         var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
         defer scratch.deinit();
         const made = blk: {
-            const target = try s.targetScoped(scratch.allocator(), scope, path) orelse break :blk false;
-            Io.Dir.cwd().createDir(s.io, target, .default_dir) catch |err| switch (err) {
-                error.PathAlreadyExists => {
-                    const stat = Io.Dir.cwd().statFile(s.io, target, .{}) catch break :blk false;
-                    break :blk stat.kind == .directory;
+            const at = try s.place(scratch.allocator(), scope, path) orelse break :blk false;
+            defer at.close();
+            if (at.name.len == 0) break :blk false;
+            switch (posix.errno(sys.mkdirat(at.dir, at.name.ptr, 0o777))) {
+                .SUCCESS => break :blk true,
+                .EXIST => {
+                    const st = s.statAt(at, at.follow) orelse break :blk false;
+                    break :blk st.kind == .directory;
                 },
                 else => break :blk false,
-            };
-            break :blk true;
+            }
         };
         if (s.late(t0, within_ms)) return timeout(vm);
         if (!made) return missing(vm, path);
@@ -423,8 +478,8 @@ pub const Server = struct {
     }
 
     /// `fs.rename(from, to)`: the file at `from` is at `to`, replacing a file there.
-    /// `Missing(from)` when no such file is in the scope, `Missing(to)` when `to` leaves it
-    /// or names a folder that is not there.
+    /// `Missing(from)` when no regular file is at `from` in the scope, `Missing(to)` when `to` leaves
+    /// it, names a folder that is not there, or is a link or anything but a regular file.
     pub fn rename(s: *Server, vm: *Vm, row: prelude.Fn, fs: Value.Cap, from: []const u8, to: []const u8, within_ms: i64) Error!Value {
         const scope = s.scopes.items[fs.handle];
         if (scope.read_only) return refuse(vm, row, from);
@@ -433,39 +488,18 @@ pub const Server = struct {
         defer scratch.deinit();
         const gpa = scratch.allocator();
         const missed: ?[]const u8 = blk: {
-            const real = try s.fileScoped(gpa, scope, from) orelse break :blk from;
-            const target = try s.targetScoped(gpa, scope, to) orelse break :blk to;
-            Io.Dir.rename(Io.Dir.cwd(), real, Io.Dir.cwd(), target, s.io) catch break :blk to;
+            const old = try s.fileAt(gpa, scope, from) orelse break :blk from;
+            defer old.close();
+            const new = try s.place(gpa, scope, to) orelse break :blk to;
+            defer new.close();
+            if (new.name.len == 0) break :blk to;
+            if (s.statAt(new, false)) |st| if (st.kind != .file) break :blk to;
+            if (posix.errno(sys.renameat(old.dir, old.name.ptr, new.dir, new.name.ptr)) != .SUCCESS) break :blk to;
             break :blk null;
         };
         if (s.late(t0, within_ms)) return timeout(vm);
         if (missed) |p| return missing(vm, p);
         return vm.variant("Ok", &.{.none});
-    }
-
-    /// The real path of a file (not a folder) inside the scope, or null.
-    fn fileScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
-        const real = try s.realScopedIn(gpa, scope, path) orelse return null;
-        const stat = Io.Dir.cwd().statFile(s.io, real, .{}) catch return null;
-        return if (stat.kind == .file) real else null;
-    }
-
-    /// Where a write to `path` lands: its folder's real path and its name, when that folder is
-    /// inside the scope, and a name already there, which may be a link, leads inside it too.
-    fn targetScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
-        if (scope.empty) return null;
-        const full = try std.fs.path.resolve(gpa, &.{ scope.base, path });
-        if (!within(scope.root, full) or std.mem.eql(u8, full, scope.root)) return null;
-        const cwd = Io.Dir.cwd();
-        const real_root = cwd.realPathFileAlloc(s.io, scope.root, gpa) catch |err| return unreadable(err);
-        const folder = std.fs.path.dirname(full) orelse return null;
-        const real_folder = cwd.realPathFileAlloc(s.io, folder, gpa) catch |err| return unreadable(err);
-        if (!within(real_root, real_folder)) return null;
-        const target = try std.fs.path.join(gpa, &.{ real_folder, std.fs.path.basename(full) });
-        if (cwd.realPathFileAlloc(s.io, target, gpa)) |real| {
-            if (!within(real_root, real)) return null;
-        } else |err| if (err == error.OutOfMemory) return error.OutOfMemory;
-        return target;
     }
 
     /// Whether a call that began at `t0` took longer than its deadline. Enforced after the
@@ -475,41 +509,121 @@ pub const Server = struct {
         return ns > @as(i96, within_ms) * std.time.ns_per_ms;
     }
 
-    /// The real path of `path` under the scope, or null when it is outside the scope or
-    /// is not there. Compared again as real paths, so a symbolic link inside the scope
-    /// cannot reach out.
-    fn realScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
-        return s.realScopedIn(s.gpa, scope, path);
-    }
-
-    fn realScopedIn(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?[]const u8 {
-        if (scope.empty) return null;
+    /// Where `path` is in the scope (step 40): the open folder its last name is in, reached one
+    /// name at a time from the scope's folder with `O_NOFOLLOW | O_DIRECTORY`, so a link at any
+    /// folder on the way is refused and nothing is looked up by path again. Null when the path
+    /// leaves the scope, holds a NUL, or a folder on the way is not there or is a link.
+    ///
+    /// The scope's folder itself is opened as the operator named it, links followed: that path was
+    /// given to `platform.fs.scoped`, not found by the program. `platform.fs`, never narrowed, is the
+    /// whole file system: its paths are resolved by the system, links and all.
+    fn place(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?Place {
+        _ = s;
+        if (scope.empty or std.mem.indexOfScalar(u8, path, 0) != null) return null;
         const full = try std.fs.path.resolve(gpa, &.{ scope.base, path });
         if (!within(scope.root, full)) return null;
-        const cwd = Io.Dir.cwd();
-        const real_root = cwd.realPathFileAlloc(s.io, scope.root, gpa) catch |err| return unreadable(err);
-        const real = cwd.realPathFileAlloc(s.io, full, gpa) catch |err| return unreadable(err);
-        if (!within(real_root, real)) return null;
-        return real;
+        const anchor = scope.anchor orelse {
+            const folder = std.fs.path.dirname(full) orelse return .{ .dir = openFolder(posix.AT.FDCWD, "/", true) orelse return null, .name = "", .follow = true };
+            const dir = openFolder(posix.AT.FDCWD, try gpa.dupeZ(u8, folder), true) orelse return null;
+            return .{ .dir = dir, .name = try gpa.dupeZ(u8, std.fs.path.basename(full)), .follow = true };
+        };
+        var dir = openFolder(posix.AT.FDCWD, try gpa.dupeZ(u8, anchor), true) orelse return null;
+        var names = std.mem.tokenizeScalar(u8, full[anchor.len..], '/');
+        var name: []const u8 = names.next() orelse return .{ .dir = dir, .name = "" };
+        while (names.next()) |next| {
+            const inner = openFolder(dir, try gpa.dupeZ(u8, name), false);
+            _ = sys.close(dir);
+            dir = inner orelse return null;
+            name = next;
+        }
+        return .{ .dir = dir, .name = try gpa.dupeZ(u8, name) };
+    }
+
+    /// The name at a place, stat'ed without following it (or following it, for `platform.fs`);
+    /// the folder itself when the place is the scope's folder.
+    fn statAt(s: *Server, at: Place, follow: bool) ?Io.File.Stat {
+        if (at.name.len == 0) return (Io.File{ .handle = at.dir, .flags = .{ .nonblocking = false } }).stat(s.io) catch null;
+        return (Io.Dir{ .handle = at.dir }).statFile(s.io, at.name, .{ .follow_symlinks = follow }) catch null;
+    }
+
+    /// A regular file at `path`, for `remove` and `rename`: its place, or null.
+    fn fileAt(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8) Error!?Place {
+        const at = try s.place(gpa, scope, path) orelse return null;
+        const st = if (at.name.len == 0) null else s.statAt(at, false);
+        if (st == null or st.?.kind != .file) {
+            at.close();
+            return null;
+        }
+        return at;
+    }
+
+    const Opening = enum { read, write, append };
+
+    /// A regular file inside the scope, opened: for reading, or for writing (created when it is
+    /// not there; emptied for `write`). `O_NOFOLLOW` refuses a link at the last name; `O_NONBLOCK`
+    /// keeps a FIFO from blocking the open, and the descriptor is then checked to be a regular file,
+    /// so a FIFO or a device is refused before a byte moves. Null for anything else.
+    fn openScoped(s: *Server, gpa: std.mem.Allocator, scope: Scope, path: []const u8, how: Opening) Error!?posix.fd_t {
+        const at = try s.place(gpa, scope, path) orelse return null;
+        defer at.close();
+        if (at.name.len == 0) return null;
+        var flags: posix.O = .{ .ACCMODE = if (how == .read) .RDONLY else .WRONLY, .NONBLOCK = true, .CLOEXEC = true, .NOFOLLOW = !at.follow };
+        if (how != .read) flags.CREAT = true;
+        if (how == .append) flags.APPEND = true;
+        const rc = sys.openat(at.dir, at.name.ptr, flags, @as(posix.mode_t, 0o666));
+        if (posix.errno(rc) != .SUCCESS) return null;
+        const fd: posix.fd_t = @intCast(rc);
+        const st = (Io.File{ .handle = fd, .flags = .{ .nonblocking = false } }).stat(s.io) catch null;
+        if (st == null or st.?.kind != .file or (how == .write and posix.errno(sys.ftruncate(fd, 0)) != .SUCCESS)) {
+            _ = sys.close(fd);
+            return null;
+        }
+        return fd;
     }
 
     fn readScoped(s: *Server, scope: Scope, path: []const u8) Error!?[]const u8 {
-        const real = try s.realScoped(scope, path) orelse return null;
-        return Io.Dir.cwd().readFileAlloc(s.io, real, s.gpa, .limited(read_limit)) catch |err| unreadable(err);
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const fd = try s.openScoped(scratch.allocator(), scope, path, .read) orelse return null;
+        defer _ = sys.close(fd);
+        var text: std.ArrayList(u8) = .empty;
+        errdefer text.deinit(s.gpa);
+        while (true) {
+            try text.ensureUnusedCapacity(s.gpa, 1 << 16);
+            const n = readSome(fd, text.unusedCapacitySlice()) orelse return null;
+            if (n == 0) break;
+            text.items.len += n;
+            if (text.items.len > read_limit) return null;
+        }
+        return text.items;
     }
 
-    const Listed = struct { name: []const u8, folder: bool };
+    const Listed = struct { name: []const u8, kind: stdlib.EntryKind = .file, links: u64 = 1, setuid: bool = false };
 
-    fn listScoped(s: *Server, scope: Scope) Error!?[]const Listed {
-        const real = try s.realScoped(scope, ".") orelse return null;
-        var dir = Io.Dir.cwd().openDir(s.io, real, .{ .iterate = true }) catch return null;
-        defer dir.close(s.io);
+    /// Everything in the scope's folder, reached as `place` reaches a folder. With `kinds`, each
+    /// name's kind, link count, and setuid bit, stat'ed without following it.
+    fn listScoped(s: *Server, scope: Scope, kinds: bool) Error!?[]const Listed {
+        var scratch = std.heap.ArenaAllocator.init(std.heap.smp_allocator);
+        defer scratch.deinit();
+        const at = try s.place(scratch.allocator(), scope, ".") orelse return null;
+        const fd = if (at.name.len == 0) at.dir else blk: {
+            defer at.close();
+            break :blk openFolder(at.dir, at.name, at.follow) orelse return null;
+        };
+        const dir: Io.Dir = .{ .handle = fd };
+        defer _ = sys.close(fd);
         var names: std.ArrayList(Listed) = .empty;
         var it = dir.iterate();
         while (it.next(s.io) catch return null) |entry| {
-            // A link counts as what it points at.
-            const folder = entry.kind == .directory or (entry.kind == .sym_link and if (dir.statFile(s.io, entry.name, .{})) |st| st.kind == .directory else |_| false);
-            try names.append(s.gpa, .{ .name = try s.gpa.dupe(u8, entry.name), .folder = folder });
+            var listed: Listed = .{ .name = try s.gpa.dupe(u8, entry.name) };
+            if (kinds) {
+                if (dir.statFile(s.io, entry.name, .{ .follow_symlinks = false })) |st| {
+                    listed.kind = kindOfStat(st);
+                    listed.links = st.nlink;
+                    listed.setuid = setuid(st);
+                } else |_| listed.kind = if (entry.kind == .directory) .folder else if (entry.kind == .sym_link) .link else .file;
+            }
+            try names.append(s.gpa, listed);
         }
         std.mem.sort(Listed, names.items, {}, struct {
             fn lt(_: void, a: Listed, b: Listed) bool {
@@ -519,6 +633,50 @@ pub const Server = struct {
         return names.items;
     }
 };
+
+/// Where a path is in a scope (Server.place): the open folder its last name is in, and that name,
+/// "" when the path is the scope's folder itself. `follow`: `platform.fs`, whose last name the
+/// system resolves.
+const Place = struct {
+    dir: posix.fd_t,
+    name: [:0]const u8,
+    follow: bool = false,
+
+    fn close(at: Place) void {
+        _ = sys.close(at.dir);
+    }
+};
+
+/// A folder opened by `name` in `dir`, following a link only when `follow`, or null.
+fn openFolder(dir: posix.fd_t, name: [*:0]const u8, follow: bool) ?posix.fd_t {
+    const rc = sys.openat(dir, name, .{ .ACCMODE = .RDONLY, .DIRECTORY = true, .NOFOLLOW = !follow, .CLOEXEC = true }, @as(posix.mode_t, 0));
+    if (posix.errno(rc) != .SUCCESS) return null;
+    return @intCast(rc);
+}
+
+/// Up to `buf.len` bytes of `fd`: 0 at its end, null when the read failed.
+fn readSome(fd: posix.fd_t, buf: []u8) ?usize {
+    while (true) {
+        const rc = sys.read(fd, buf.ptr, buf.len);
+        switch (posix.errno(rc)) {
+            .SUCCESS => return @intCast(rc),
+            .INTR => continue,
+            else => return null,
+        }
+    }
+}
+
+fn kindOfStat(st: Io.File.Stat) stdlib.EntryKind {
+    return switch (st.kind) {
+        .directory => .folder,
+        .sym_link => .link,
+        else => .file,
+    };
+}
+
+fn setuid(st: Io.File.Stat) bool {
+    return @intFromEnum(st.permissions) & 0o4000 != 0;
+}
 
 fn missing(vm: *Vm, path: []const u8) Error!Value {
     return vm.variant("Error", &.{try vm.variant("Missing", &.{.{ .string = path }})});
@@ -533,10 +691,6 @@ fn timeout(vm: *Vm) Error!Value {
 fn refuse(vm: *Vm, row: prelude.Fn, path: []const u8) Error!Value {
     vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.gpa, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path }), .within = row.name, .at = 0 };
     return error.Crash;
-}
-
-fn unreadable(err: anyerror) Error!?[]const u8 {
-    return if (err == error.OutOfMemory) error.OutOfMemory else null;
 }
 
 /// Whether the resolved absolute `path` is `root` or inside it.
