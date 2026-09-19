@@ -43,6 +43,20 @@ the agent's 256 KiB report cap (a small brief). `step40-scope-opus` launched
 based on `9304fc65`, brief `mo-wiki/plans/interpreter-step-40.md`).
 `step2-tables-opus` still running.
 
+**Queued toolchain step, runtime memory safety (Robert asked 19 Sep how to
+prevent the raw-memory class):** (1) the whole corpus run with compaction at
+every safe point in both runtimes (`-DMO_STRESS` exists for C in `mo_rt.h:240`
+but only one test uses it; the interpreter's budgets are settable only from Zig
+unit tests, `vm.zig:2337`), as a standing part of the suite; (2) released
+region memory poisoned in that mode so a stale read fails loudly, with ASan
+region poisoning for the C runtime; (3) a one-time audit of everything the
+runtimes hold outside the stack across a frame return (pending answers were
+one; check timers, mailboxes, kept replies, the runtime surface's snapshots,
+bricks' buffers), and a Zig type split between a region value and an owned
+parcel so a long-lived struct cannot hold the former; (4) compaction points as
+a dimension the simulator varies by seed. Brief to write after step 40 lands,
+since both edit `toolchain/src`.
+
 **Plan of record:** `mo-wiki/plans/mo-harness-in-mo.md` (the harness moved into
 Mo, nine steps) and `mo-wiki/plans/mo-capabilities-for-the-harness.md` (the
 design: `scoped` made to hold against symlinks, `Fs.replace`, `Exec`).
