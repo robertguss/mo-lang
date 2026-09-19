@@ -73,3 +73,5 @@ re-run on the machine.
 ## Related
 
 - [[mo-harness-in-mo]]
+- [[mo-executor-foundation]]
+- [[mo-workspace-recovery-v1]]

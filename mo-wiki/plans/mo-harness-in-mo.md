@@ -84,7 +84,7 @@ sockets are not added: the bridge and owner split that wanted them goes away.
 | 8   | Mo agent findings M2 to M8, including folding the flag-gated budget branches in `run.mo` into the existing budget logic                                                                                                     | —              |
 | 9   | Step 39 accepted, then capability 5 and the provider turn; provider findings P1 to P5 with it                                                                                                                               | about 250 js   |
 
-Steps 1, 2 and 8 touch different files and can run in parallel. Step 3 is the
+Briefs so far: [[mo-harness-step-1-executor]] and [[mo-harness-step-8-agent]], launched together on 19 Sep. Step 2 follows step 1, since both touch the executor's runners. Step 3 is the
 first toolchain step and needs the lead's design page first.
 
 ## The size question (Robert, 19 Sep 2026, 8:20 AM ET)
