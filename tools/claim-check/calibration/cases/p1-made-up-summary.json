@@ -1,0 +1,23 @@
+{
+ "id": "p1-made-up-summary",
+ "kind": "planted",
+ "source": "Planted negative control: a made-up summary line.",
+ "report": "tools/claim-check/calibration/reports/planted-made-up-summary.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-19/fable-lead-verification/step43/linux-focused-tests.log"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "a made-up summary line",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "16/16",
+   "truth": false,
+   "why": "the log says 15/15"
+  }
+ ]
+}

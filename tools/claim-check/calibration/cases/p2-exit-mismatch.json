@@ -1,0 +1,24 @@
+{
+ "id": "p2-exit-mismatch",
+ "kind": "planted",
+ "source": "Planted negative control: an exit code that contradicts the log.",
+ "report": "tools/claim-check/calibration/reports/planted-exit-mismatch.md",
+ "report_at": null,
+ "logs": [
+  "tools/claim-check/calibration/planted/exit-mismatch/suite.log",
+  "tools/claim-check/calibration/planted/exit-mismatch/suite-exits.txt"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "an exit code that contradicts the log",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "263/263",
+   "truth": false,
+   "why": "the planted exit record is 1"
+  }
+ ]
+}

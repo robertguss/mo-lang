@@ -1,0 +1,24 @@
+{
+ "id": "h1-step36",
+ "kind": "historical",
+ "source": "Step 36 (17 Sep 2026): the part C report said zig build test was green at every commit and the corpus green under both runtimes; the suite hung (KeyUpdate test) and the corpus test of tls-echo.mo failed until fix 2. mo-wiki/plans/interpreter-step-36.md, 'What verification found'.",
+ "report": "tools/claim-check/calibration/reports/step36.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-17/step-36/fable-probe/tls-brick-tests-before-fix.log",
+  "audit/evidence/2026-09-17/step-36/worker-raw/fix1-report-pane.txt"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "Two defects behind a reported green suite: a test that hung on every run, and a corpus test that failed (224 of 225).",
+ "expected": "caught",
+ "caught_by_incomplete": true,
+ "labels": [
+  {
+   "kind": "commit",
+   "contains": "9c753e17",
+   "truth": true,
+   "why": "part A is on main"
+  }
+ ]
+}

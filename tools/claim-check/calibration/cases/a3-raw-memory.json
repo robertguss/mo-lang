@@ -1,0 +1,17 @@
+{
+ "id": "a3-raw-memory",
+ "kind": "accurate",
+ "source": "The raw-memory fix, merged at 2a852d68; the lead's full suite test5 (244 of 244, exit 0).",
+ "report": "toolchain/STEP-RAW-MEMORY-REPORT.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-19/fable-lead-verification/test5.tail.txt",
+  "audit/evidence/2026-09-19/fable-lead-verification/test5.exit"
+ ],
+ "ref": "HEAD",
+ "defective": false,
+ "defect": "",
+ "expected": "none",
+ "caught_by_incomplete": false,
+ "labels": []
+}

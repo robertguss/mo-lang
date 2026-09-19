@@ -1,0 +1,1648 @@
+{
+ "01e6dafde879e8d5c5d86904c17e6dc453da4ee685c362ee664898ecc189b03b": {
+  "judgment": {
+   "confidence": 0.2,
+   "empty_selection": 0.16,
+   "input_tokens": 1350,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.2,
+    "says_nothing": 0.34,
+    "supports": 0.45999999999999996
+   },
+   "relation": "supports",
+   "seconds": 0.269,
+   "skipped": 0.1
+  },
+  "state": {
+   "claim": "The measurement for `read` 16 folders down (2,000) / after is 176.4.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tmo run\tsize\t2000\t48.6\t11.10\t9.90\t10.33\n1\tafter\tmo run\twrite\t300\t44.0\t58.72\t9.90\t9.90\n1\tafter\tmo run\tappend\t300\t40.1\t45.70\t9.90\t9.90\n1\tafter\tmo run\tfold\t1\t45.4\t19023.17\t9.90\t9.90\n1\tafter\tmo run\tlist\t30\t162.8\t4547.19\t8.51\t9.35\n1\tafter\tmo run\tlist_kinds\t30\t512.1\t16189.17\t7.00\t8.51\n1\tafter\tbinary\tnone\t0\t25.4\t0.00\t11.14\t11.14\n1\tafter\tbinary\tread\t2000\t64.4\t19.53\t11.14\t11.14\n1\tafter\tbinary\tdeep\t2000\t378.3\t176.45\t10.33\t10.33\n1\tafter\tbinary\tsize\t2000\t45.3\t9.98\t9.90\t10.33\n1\tafter\tbinary\twrite\t300\t43.0\t58.69\t9.90\t9.90\n1\tafter\tbinary\tappend\t300\t40.3\t49.94\t9.90\t9.90\n1\tafter\tbinary\tfold\t1\t37.2\t11870.08\t9.90\t9.90\n1\tafter\tbinary\tlist\t30\t150.6\t4175.70\t8.51\t9.35\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "05e48e8ecf39a6703302807e1ca70a4a51020846b4d21f8bde79916bb5f1b602": {
+  "judgment": {
+   "confidence": 0.85,
+   "empty_selection": 0.02,
+   "input_tokens": 895,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.05,
+    "says_nothing": 0.05,
+    "supports": 0.9
+   },
+   "relation": "supports",
+   "seconds": 0.235,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 21.6 ms for the row `fold_lines`, 200,000 lines (1), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96",
+   "number_match": "21582.42 in this line, counted in thousandths, rounds to the claimed 21.6",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "091380d3366295f00e42ff765279368d5212181d34707cefa85e48aa0edff81c": {
+  "judgment": {
+   "confidence": 1.0,
+   "empty_selection": 0.02,
+   "input_tokens": 871,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.155,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 10.8 \u00b5s for the row `size` (2,000), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96",
+   "number_match": "10.82 in this line rounds to the claimed 10.8",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "0c56255872cf424c81096c6f24bb9cf979c000d261a27b47244cef4f8ba7944b": {
+  "judgment": {
+   "confidence": 0.27,
+   "empty_selection": 0.06,
+   "input_tokens": 1321,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.13,
+    "says_nothing": 0.52,
+    "supports": 0.35
+   },
+   "relation": "says_nothing",
+   "seconds": 0.204,
+   "skipped": 0.52
+  },
+  "state": {
+   "claim": "The measurement for `read` 16 folders down (2,000) / after is 174.4.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tmo run\tnone\t0\t26.4\t0.00\t11.14\t11.14\n1\tbefore\tmo run\tread\t2000\t84.0\t28.77\t11.14\t11.14\n1\tbefore\tmo run\tdeep\t2000\t128.6\t51.07\t10.33\t11.14\n1\tbefore\tmo run\tsize\t2000\t64.0\t18.80\t9.90\t10.33\n1\tbefore\tmo run\twrite\t300\t48.4\t73.41\t9.90\t9.90\n1\tbefore\tmo run\tappend\t300\t45.2\t62.76\t9.90\t9.90\n1\tbefore\tmo run\tfold\t1\t45.5\t19033.25\t9.90\t9.90\n1\tbefore\tmo run\tlist\t30\t162.5\t4537.21\t9.16\t9.90\n1\tbefore\tmo run\tlist_kinds\t30\t174.4\t4932.02\t7.35\t8.51\n1\tbefore\tbinary\tnone\t0\t25.5\t0.00\t11.14\t11.14\n1\tbefore\tbinary\tread\t2000\t78.1\t26.30\t11.14\t11.14\n1\tbefore\tbinary\tdeep\t2000\t120.7\t47.60\t10.33\t11.14\n1\tbefore\tbinary\tsize\t2000\t59.1\t16.78\t9.90\t10.33\n1\tbefore\tbinary\twrite\t300\t47.2\t72.29\t9.90\t9.90\n1\tbefore\tbinary\tappend\t300\t42.1\t55.33\t9.90\t9.90",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "1a3de7dfeaa8d5fd3a347fe8b28393c4231c9366091572932a30dd3c4925d638": {
+  "judgment": {
+   "confidence": 0.95,
+   "empty_selection": 0.16,
+   "input_tokens": 1324,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.02,
+    "says_nothing": 0.01,
+    "supports": 0.97
+   },
+   "relation": "supports",
+   "seconds": 0.164,
+   "skipped": 0.26
+  },
+  "state": {
+   "claim": "The measurement for `append`, synced (300) / after is 49.3.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "243b211cf5d184e7df1b71e56aa030033084238993085fda2491732a6bcb8376": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 872,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.01,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.207,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 19.2 \u00b5s for the row `read` small file (2,000), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30",
+   "number_match": "19.15 in this line rounds to the claimed 19.2",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "24e945eee5afd68a477255277209a04f4e0dcd771f8c68f39a7fff4038d69e30": {
+  "judgment": {
+   "confidence": 0.94,
+   "empty_selection": 0.02,
+   "input_tokens": 897,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.02,
+    "says_nothing": 0.01,
+    "supports": 0.97
+   },
+   "relation": "supports",
+   "seconds": 0.171,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 4.94 ms for the row `list_kinds`, 10,000 names (30), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65",
+   "number_match": "4938.63 in this line, counted in thousandths, rounds to the claimed 4.94",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "26490a4d49fda9228606ba53b209906f5b9d990c86d05dc78416a8dac645cdd3": {
+  "judgment": {
+   "confidence": 0.95,
+   "empty_selection": 0.02,
+   "input_tokens": 896,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.02,
+    "says_nothing": 0.02,
+    "supports": 0.96
+   },
+   "relation": "supports",
+   "seconds": 0.135,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 71.8 ms for the row `list_kinds`, 10,000 names (30), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65",
+   "number_match": "71761.95 in this line, counted in thousandths, rounds to the claimed 71.8",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "26fe134abffa53660bda256ccc9945de921201e24270030533493e95797ff2b1": {
+  "judgment": {
+   "confidence": 0.79,
+   "empty_selection": 0.02,
+   "input_tokens": 893,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.07,
+    "says_nothing": 0.07,
+    "supports": 0.86
+   },
+   "relation": "supports",
+   "seconds": 0.175,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 21.5 ms for the row `fold_lines`, 200,000 lines (1), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96",
+   "number_match": "21459.54 in this line, counted in thousandths, rounds to the claimed 21.5",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "2751e05be771edfce15323e0bc8ff0d487fd819807693f682113ce5a2604d28f": {
+  "judgment": {
+   "confidence": 0.3,
+   "empty_selection": 0.16,
+   "input_tokens": 1309,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.44,
+    "says_nothing": 0.03,
+    "supports": 0.53
+   },
+   "relation": "supports",
+   "seconds": 0.217,
+   "skipped": 0.14
+  },
+  "state": {
+   "claim": "The measurement for `list`, 10,000 names (30) / `mo run` before is 4.75.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "27acd57ebaa18ba1c2a660b853dba0365af16226183c1ea475fea5dc0320d16e": {
+  "judgment": {
+   "confidence": 0.23,
+   "empty_selection": 0.18,
+   "input_tokens": 1158,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.48,
+    "says_nothing": 0.21,
+    "supports": 0.31
+   },
+   "relation": "contradicts",
+   "seconds": 0.152,
+   "skipped": 0.13
+  },
+  "state": {
+   "claim": "The measurement for `list`, 10,000 names (30) / after is 4.36.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22\n2\tafter\tbinary\tlist_kinds\t30\t400.2\t12493.83\t5.46\t6.65",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "28c2d866ce978921b971f216d8b3c0e88bbcaddd658daff650dae45b86d87f70": {
+  "judgment": {
+   "confidence": 0.64,
+   "empty_selection": 0.23,
+   "input_tokens": 1218,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.12,
+    "says_nothing": 0.12,
+    "supports": 0.76
+   },
+   "relation": "supports",
+   "seconds": 0.214,
+   "skipped": 0.11
+  },
+  "state": {
+   "claim": "The measurement for `append`, synced (300) / after is 46.3.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22\n2\tafter\tbinary\tlist_kinds\t30\t400.2\t12493.83\t5.46\t6.65",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "28cea924980f6eb4af029da194bcaad62fd2c0bbcc9b351dbced24ae41d14ff9": {
+  "judgment": {
+   "confidence": 1.0,
+   "empty_selection": 0.02,
+   "input_tokens": 867,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.295,
+   "skipped": 0.04
+  },
+  "state": {
+   "claim": "The report's table gives 65.3 \u00b5s for the row `append`, synced (300), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96",
+   "number_match": "65.31 in this line rounds to the claimed 65.3",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "2d98eb9859ce8960ee32032f45b7bf8e70216437e2f4cb2690b64d7b4ed41e01": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 863,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.186,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 66.5 \u00b5s for the row `append`, synced (300), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96",
+   "number_match": "66.54 in this line rounds to the claimed 66.5",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "2f9d93c848339f552d5c6937c1bede02e6a8d92392d7bcfa0922965d5bac76bc": {
+  "judgment": {
+   "confidence": 0.61,
+   "empty_selection": 0.27,
+   "input_tokens": 1196,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.03,
+    "says_nothing": 0.74,
+    "supports": 0.23
+   },
+   "relation": "says_nothing",
+   "seconds": 0.2,
+   "skipped": 0.13
+  },
+  "state": {
+   "claim": "The measurement for `fold_lines`, 200,000 lines (1) / after is 13.4.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22\n2\tafter\tbinary\tlist_kinds\t30\t400.2\t12493.83\t5.46\t6.65",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "3143ed167a43c15e2ba75a48a1a63bb807093fc388a3bda743f3aa773b36958a": {
+  "judgment": {
+   "confidence": 0.84,
+   "empty_selection": 0.12,
+   "input_tokens": 1135,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.05,
+    "says_nothing": 0.05,
+    "supports": 0.9
+   },
+   "relation": "supports",
+   "seconds": 0.163,
+   "skipped": 0.09
+  },
+  "state": {
+   "claim": "The measurement for `size` (2,000) / after is 9.9.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tmo run\tnone\t0\t26.4\t0.00\t11.14\t11.14\n1\tbefore\tmo run\tread\t2000\t84.0\t28.77\t11.14\t11.14\n1\tbefore\tmo run\tdeep\t2000\t128.6\t51.07\t10.33\t11.14\n1\tbefore\tmo run\tsize\t2000\t64.0\t18.80\t9.90\t10.33\n1\tbefore\tmo run\twrite\t300\t48.4\t73.41\t9.90\t9.90\n1\tbefore\tmo run\tappend\t300\t45.2\t62.76\t9.90\t9.90\n1\tbefore\tmo run\tfold\t1\t45.5\t19033.25\t9.90\t9.90\n1\tbefore\tmo run\tlist\t30\t162.5\t4537.21\t9.16\t9.90\n1\tbefore\tmo run\tlist_kinds\t30\t174.4\t4932.02\t7.35\t8.51\n1\tbefore\tbinary\tnone\t0\t25.5\t0.00\t11.14\t11.14",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "318cb9e665d078ab5e049044e9503d99752e8aaee0cddba246e3845e3c862b8c": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 1274,
+   "masked_failure": 0.07,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.0,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.131,
+   "skipped": 0.07
+  },
+  "state": {
+   "claim": "The run printed the summary `87,440 inputs in 2,186 batches, seed 3701: 0 crashes`.",
+   "log_excerpt": "80000 inputs, 0 crashes, 3292 CPU s, 3263 s\n81000 inputs, 0 crashes, 3334 CPU s, 3304 s\n82000 inputs, 0 crashes, 3375 CPU s, 3345 s\n83000 inputs, 0 crashes, 3417 CPU s, 3386 s\n84000 inputs, 0 crashes, 3459 CPU s, 3428 s\n85000 inputs, 0 crashes, 3501 CPU s, 3470 s\n86000 inputs, 0 crashes, 3542 CPU s, 3510 s\n87000 inputs, 0 crashes, 3584 CPU s, 3551 s\n# 87440 inputs in 2186 batches, seed 3701: 0 crashes; 3601 CPU s (60.0 min), 3569 s wall\n# mutations: cut 20098, delete 19897, drop 19976, dup 19753, flip 19926, insert 19684, kind 19739, length 19853, repeat 19917, set 19801, splice 19806\n2026-09-18 06:01:25 UTC\n06:01:25 up 3 days, 17:40,  0 user,  load average: 1.51, 1.27, 1.23",
+   "report_words": "Fuzz hour (fuzz.py --seed 3701 --minutes 60), 05:01:54 to 06:01:25 UTC\n87,440 inputs in 2,186 batches, seed 3701: 0 crashes; 3,601 CPU s (60.0 min), 3,569 s wall\nBefore the hour: a planted panic exited 134 and a planted hang exited 3 (the watchdog); each\nwas counted as a crash."
+  }
+ },
+ "3360e390a9783b04e02fde4d114fde315ecb552f2605042ff705c751855606e0": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.31,
+   "input_tokens": 1294,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.0,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.211,
+   "skipped": 0.3
+  },
+  "state": {
+   "claim": "The measurement for `size` (2,000) / binary before is 16.4.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "441f59ff1368c4d1f9d9b28d9457cecc432a573dabd3257ecf2bf59158fc4b26": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.26,
+   "input_tokens": 1317,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.0,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.201,
+   "skipped": 0.3
+  },
+  "state": {
+   "claim": "The measurement for `read` small file (2,000) / after is 20.3.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "45b9b1bc9fe9fee861f20c480fea78f73cdf79c9a9935da1a901905ffe3f68c2": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 892,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.197,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 174.4 \u00b5s for the row `read` 16 folders down (2,000), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30",
+   "number_match": "174.39 in this line rounds to the claimed 174.4",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "48303b163b9a43cd6c223dffeaa06c576a86ee9b2eef4949fc1eb1200c53cd1c": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 865,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.174,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 61.8 \u00b5s for the row `write`, synced (300), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96",
+   "number_match": "61.75 in this line rounds to the claimed 61.8",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "4cdabae8cb01be6f5bc558d5a575195f63876fe5b28f21b8b237e77a50be6b23": {
+  "judgment": {
+   "confidence": 0.94,
+   "empty_selection": 0.18,
+   "input_tokens": 1302,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.02,
+    "says_nothing": 0.02,
+    "supports": 0.96
+   },
+   "relation": "supports",
+   "seconds": 0.171,
+   "skipped": 0.3
+  },
+  "state": {
+   "claim": "The measurement for `append`, synced (300) / binary before is 66.5.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "55b47fdcdf65e8b5b2dc5a765d20bc139077fe967f0c3fbb45c984a0fb0e77c6": {
+  "judgment": {
+   "confidence": 0.9,
+   "empty_selection": 0.02,
+   "input_tokens": 891,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.05,
+    "says_nothing": 0.02,
+    "supports": 0.93
+   },
+   "relation": "supports",
+   "seconds": 0.216,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 13.4 ms for the row `fold_lines`, 200,000 lines (1), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96",
+   "number_match": "13417.33 in this line, counted in thousandths, rounds to the claimed 13.4",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "55bac7e94bdf751b814ef2ad1c57b57555e3328e74f09516632e1fb0159a8bb5": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 865,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.01,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.199,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 46.3 \u00b5s for the row `append`, synced (300), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96",
+   "number_match": "46.25 in this line rounds to the claimed 46.3",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "56b53bbed80e8ffa320cfe0458aac082bc4df5d7a678b2f29b026ddc92f93636": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 889,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.236,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 75.0 ms for the row `list`, 10,000 names (30), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22",
+   "number_match": "75017.26 in this line, counted in thousandths, rounds to the claimed 75.0",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "56f52340e3a5e136c8764853ac9c9157dd7239133304c8bc547c47d35a500543": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.15,
+   "input_tokens": 1140,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.139,
+   "skipped": 0.08
+  },
+  "state": {
+   "claim": "The measurement for `size` (2,000) / `mo run` before is 18.8.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tmo run\tnone\t0\t26.4\t0.00\t11.14\t11.14\n1\tbefore\tmo run\tread\t2000\t84.0\t28.77\t11.14\t11.14\n1\tbefore\tmo run\tdeep\t2000\t128.6\t51.07\t10.33\t11.14\n1\tbefore\tmo run\tsize\t2000\t64.0\t18.80\t9.90\t10.33\n1\tbefore\tmo run\twrite\t300\t48.4\t73.41\t9.90\t9.90\n1\tbefore\tmo run\tappend\t300\t45.2\t62.76\t9.90\t9.90\n1\tbefore\tmo run\tfold\t1\t45.5\t19033.25\t9.90\t9.90\n1\tbefore\tmo run\tlist\t30\t162.5\t4537.21\t9.16\t9.90\n1\tbefore\tmo run\tlist_kinds\t30\t174.4\t4932.02\t7.35\t8.51\n1\tbefore\tbinary\tnone\t0\t25.5\t0.00\t11.14\t11.14",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "5a0cc537291609fbeb49c1bc69dcb2db50b7acb5c20bc9cd75bee2baadb83d2a": {
+  "judgment": {
+   "confidence": 0.97,
+   "empty_selection": 0.02,
+   "input_tokens": 897,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.149,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 12.5 ms for the row `list_kinds`, 10,000 names (30), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tlist_kinds\t30\t400.2\t12493.83\t5.46\t6.65",
+   "number_match": "12493.83 in this line, counted in thousandths, rounds to the claimed 12.5",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "611303d85c7e90f6b6494fdfa9e01cae3f40c4a0488a6c15f32e59caabc0752d": {
+  "judgment": {
+   "confidence": 0.95,
+   "empty_selection": 0.18,
+   "input_tokens": 1296,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.02,
+    "says_nothing": 0.02,
+    "supports": 0.96
+   },
+   "relation": "supports",
+   "seconds": 0.154,
+   "skipped": 0.38
+  },
+  "state": {
+   "claim": "The measurement for `write`, synced (300) / binary before is 79.2.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "61246d61c49412213ac758f2f65e0822284ba68023b4378d7774564893c8ed9e": {
+  "judgment": {
+   "confidence": 0.89,
+   "empty_selection": 0.13,
+   "input_tokens": 1334,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.06,
+    "says_nothing": 0.02,
+    "supports": 0.92
+   },
+   "relation": "supports",
+   "seconds": 0.226,
+   "skipped": 0.2
+  },
+  "state": {
+   "claim": "The measurement for `list`, 10,000 names (30) / after is 4.79.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "62ed998adceb0909c96d937ca4fa3d710dded10342fa8415ae9f1b8dddc78eb5": {
+  "judgment": {
+   "confidence": 0.96,
+   "empty_selection": 0.02,
+   "input_tokens": 888,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.02,
+    "says_nothing": 0.01,
+    "supports": 0.97
+   },
+   "relation": "supports",
+   "seconds": 0.175,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 4.36 ms for the row `list`, 10,000 names (30), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22",
+   "number_match": "4355.62 in this line, counted in thousandths, rounds to the claimed 4.36",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "6a568906cf30b2329f4c209bb7d3853a27ce12a8f33e44e6a8c443adbf80ac82": {
+  "judgment": {
+   "confidence": 1.0,
+   "empty_selection": 0.02,
+   "input_tokens": 874,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.32,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 28.7 \u00b5s for the row `read` small file (2,000), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30",
+   "number_match": "28.69 in this line rounds to the claimed 28.7",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "6c53ad52b4cc611d2b3a2d0bad790f14684b8b0f4fb8d628c3182a47ff980107": {
+  "judgment": {
+   "confidence": 0.24,
+   "empty_selection": 0.13,
+   "input_tokens": 1349,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.41,
+    "says_nothing": 0.1,
+    "supports": 0.49
+   },
+   "relation": "supports",
+   "seconds": 0.242,
+   "skipped": 0.5
+  },
+  "state": {
+   "claim": "The measurement for `list_kinds`, 10,000 names (30) / after is 16.2.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tmo run\tnone\t0\t26.4\t0.00\t11.14\t11.14\n1\tafter\tmo run\tread\t2000\t66.4\t19.99\t11.14\t11.14\n1\tafter\tmo run\tdeep\t2000\t376.9\t175.25\t10.33\t10.33\n1\tafter\tmo run\tsize\t2000\t48.6\t11.10\t9.90\t10.33\n1\tafter\tmo run\twrite\t300\t44.0\t58.72\t9.90\t9.90\n1\tafter\tmo run\tappend\t300\t40.1\t45.70\t9.90\t9.90\n1\tafter\tmo run\tfold\t1\t45.4\t19023.17\t9.90\t9.90\n1\tafter\tmo run\tlist\t30\t162.8\t4547.19\t8.51\t9.35\n1\tafter\tmo run\tlist_kinds\t30\t512.1\t16189.17\t7.00\t8.51\n1\tafter\tbinary\tnone\t0\t25.4\t0.00\t11.14\t11.14\n1\tafter\tbinary\tread\t2000\t64.4\t19.53\t11.14\t11.14\n1\tafter\tbinary\tdeep\t2000\t378.3\t176.45\t10.33\t10.33\n1\tafter\tbinary\tsize\t2000\t45.3\t9.98\t9.90\t10.33\n1\tafter\tbinary\twrite\t300\t43.0\t58.69\t9.90\t9.90\n1\tafter\tbinary\tappend\t300\t40.3\t49.94\t9.90\t9.90",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "6da2fc71bc3658a08aa249056f744e5c978f0add7e10c565aee968fe0cc79c08": {
+  "judgment": {
+   "confidence": 0.97,
+   "empty_selection": 0.02,
+   "input_tokens": 901,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.167,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 16.2 ms for the row `list_kinds`, 10,000 names (30), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tmo run\tlist_kinds\t30\t512.1\t16189.17\t7.00\t8.51",
+   "number_match": "16189.17 in this line, counted in thousandths, rounds to the claimed 16.2",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "6f0a82f5ca8e4fef5a28ee0f1a2d7366dac0953bde113f431220cd4af06e16ea": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 992,
+   "masked_failure": 0.04,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.01,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.169,
+   "skipped": 0.08
+  },
+  "state": {
+   "claim": "The run printed the summary `Build Summary: 5/5 steps succeeded; 6/6 tests passed`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-19/fable-lead-verification/step40-darwin-full.exit: test exit 0",
+   "log_excerpt": "build-exit 0\nstep40-exit 0\nLinux 6.12.93 x86_64\nBuild Summary: 5/5 steps succeeded; 6/6 tests passed",
+   "report_words": "- `zig build test -Dtest-filter=\"step 40\" --summary all`: exit **0**, `Build Summary: 5/5\nsteps succeeded; 6/6 tests passed`. Reader control: `1000 replaced`, 602 reads under\n`mo run` and 981 in the binary, 0 partial, 0 not there (937 and 1,278 before: the 50\nmicrosecond wait costs some reads, still hundreds per 1,000 replaces). Kill control: 8 of 8\nrounds killed under each, the target whole every time. Zig prints a `failed command:` line for\nthe test binary because the tests write to stderr; the summary and exit code are the result."
+  }
+ },
+ "70a73a63ff1c012b142c6e02a7b37d727dfea8983d664148c7fa81bbd283cf1c": {
+  "judgment": {
+   "confidence": 0.43,
+   "empty_selection": 0.01,
+   "input_tokens": 1008,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.38,
+    "supports": 0.61
+   },
+   "relation": "supports",
+   "seconds": 0.211,
+   "skipped": 0.04
+  },
+  "state": {
+   "claim": "The run printed the summary `Build Summary: 5/5 steps succeeded; 234/234 tests passed`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-C1.log: exit=0",
+   "log_excerpt": "Fri Sep 18 05:04:32 AM UTC 2026\n 05:04:32 up 3 days, 16:43,  0 user,  load average: 1.08, 0.97, 0.96\nBuild Summary: 5/5 steps succeeded; 234/234 tests passed\ntest success\n+- run test 234 pass (234 total) 12m MaxRSS:450M\n   +- compile test Debug native success 3s MaxRSS:304M\n   +- install mo success\n      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G\n",
+   "report_words": "Run 2, 06:01:58 to 06:14:17 UTC (the main tree, the committed tree):\nBuild Summary: 5/5 steps succeeded; 234/234 tests passed\nexit=0"
+  }
+ },
+ "7468b8d4f37dc6b23fc27f15d0df97862a825d16bef67c660866857020badd21": {
+  "judgment": {
+   "confidence": 0.71,
+   "empty_selection": 0.19,
+   "input_tokens": 1315,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.17,
+    "says_nothing": 0.02,
+    "supports": 0.81
+   },
+   "relation": "supports",
+   "seconds": 0.169,
+   "skipped": 0.46
+  },
+  "state": {
+   "claim": "The measurement for `list`, 10,000 names (30) / binary before is 75.0.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "750865c4a1dff8ef0e8e364222a22f6a5c7f8f0e99ac929482bc9b6be706ce39": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.01,
+   "input_tokens": 963,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.471,
+   "skipped": 0.08
+  },
+  "state": {
+   "claim": "The run printed the summary `Build Summary: 5/5 steps succeeded; 6/6 tests passed`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-19/fable-lead-verification/step40-darwin-full.exit: test exit 0",
+   "log_excerpt": "build-exit 0\nstep40-exit 0\nLinux 6.12.93 x86_64\nBuild Summary: 5/5 steps succeeded; 6/6 tests passed",
+   "report_words": "- `zig build test -Dtest-filter=\"step 40\" --summary all`: exit **0**, `Build Summary: 5/5\nsteps succeeded; 6/6 tests passed` (RED in `373d7f85`: exit 1, `1/6 tests passed (5\nfailed)`). The hostile program prints exactly the `want` of part A under `mo run` and in a\nbinary, and outside files and links are untouched. `kind_of`, `replace` (with the 255-byte\nname), their fixture tests under `mo test` and `mo build --tests`: all pass."
+  }
+ },
+ "757a9565d0667c3a53a2468e26b94f9fc7bd6827ab952c6085e85555675cc949": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 892,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.148,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 4.79 ms for the row `list`, 10,000 names (30), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22",
+   "number_match": "4794.27 in this line, counted in thousandths, rounds to the claimed 4.79",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "758b12df0b85e68aa47bd1124463e5291c3fee02bcda9d3ae3c6222824bd2d16": {
+  "judgment": {
+   "confidence": 0.69,
+   "empty_selection": 0.01,
+   "input_tokens": 1026,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.2,
+    "supports": 0.8
+   },
+   "relation": "supports",
+   "seconds": 0.243,
+   "skipped": 0.07
+  },
+  "state": {
+   "claim": "The run printed the summary `Ran 59 tests in 1.362s`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-19/workspace-recovery/local-01/local.status.json: \"exit\": 0,",
+   "log_excerpt": "test_create_partial_root_uses_precreated_ownership (test_edges.Edges.test_create_partial_root_uses_precreated_ownership) ... ok\ntest_omitted_completed_execution_is_conflict (test_edges.Edges.test_omitted_completed_execution_is_conflict) ... ok\ntest_healthy_delete_retains_completed_proof (test_edges.Edges.test_healthy_delete_retains_completed_proof) ... ok\ntest_dispatched_before_bootstrap_has_reserved_authority (test_edges.Edges.test_dispatched_before_bootstrap_has_reserved_authority) ... ok\ntest_incomplete_nonboolean_proofs_never_confirm (test_validation.Proofs.test_incomplete_nonboolean_proofs_never_confirm) ... ok\ntest_matching_ids_do_not_authorize_malformed_response (test_validation.Responses.test_matching_ids_do_not_authorize_malformed_response) ... ok\n\n----------------------------------------------------------------------\nRan 59 tests in 1.362s\n\nOK",
+   "report_words": "- `recovery/local_suite.py`: exit 0, `Ran 59 tests in 1.362s` / `OK`."
+  }
+ },
+ "77066edd9b21a000474613d6b312cbdfec88f77fcf148feb7114a3a698427fc5": {
+  "judgment": {
+   "confidence": 0.81,
+   "empty_selection": 0.09,
+   "input_tokens": 1327,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.87,
+    "says_nothing": 0.05,
+    "supports": 0.08
+   },
+   "relation": "contradicts",
+   "seconds": 0.181,
+   "skipped": 0.23
+  },
+  "state": {
+   "claim": "The measurement for `read` 16 folders down (2,000) / binary before is 47.2.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tmo run\tappend\t300\t45.2\t62.76\t9.90\t9.90\n1\tbefore\tmo run\tfold\t1\t45.5\t19033.25\t9.90\t9.90\n1\tbefore\tmo run\tlist\t30\t162.5\t4537.21\t9.16\t9.90\n1\tbefore\tmo run\tlist_kinds\t30\t174.4\t4932.02\t7.35\t8.51\n1\tbefore\tbinary\tnone\t0\t25.5\t0.00\t11.14\t11.14\n1\tbefore\tbinary\tread\t2000\t78.1\t26.30\t11.14\t11.14\n1\tbefore\tbinary\tdeep\t2000\t120.7\t47.60\t10.33\t11.14\n1\tbefore\tbinary\tsize\t2000\t59.1\t16.78\t9.90\t10.33\n1\tbefore\tbinary\twrite\t300\t47.2\t72.29\t9.90\t9.90\n1\tbefore\tbinary\tappend\t300\t42.1\t55.33\t9.90\t9.90\n1\tbefore\tbinary\tfold\t1\t37.2\t11710.67\t9.90\t9.90\n1\tbefore\tbinary\tlist\t30\t2170.9\t71512.95\t8.51\t9.35\n1\tbefore\tbinary\tlist_kinds\t30\t2184.3\t71959.36\t7.00\t8.51\n1\tafter\tmo run\tnone\t0\t26.4\t0.00\t11.14\t11.14\n1\tafter\tmo run\tread\t2000\t66.4\t19.99\t11.14\t11.14",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "8b16f75d316e45ff6f095438f7d3d599572d8a230889da8c6224226131d02464": {
+  "judgment": {
+   "confidence": 0.41,
+   "empty_selection": 0.26,
+   "input_tokens": 1329,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.61,
+    "says_nothing": 0.18,
+    "supports": 0.21
+   },
+   "relation": "contradicts",
+   "seconds": 0.236,
+   "skipped": 0.11
+  },
+  "state": {
+   "claim": "The measurement for `read` 16 folders down (2,000) / `mo run` before is 50.5.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tsize\t2000\t45.3\t9.98\t9.90\t10.33\n1\tafter\tbinary\twrite\t300\t43.0\t58.69\t9.90\t9.90\n1\tafter\tbinary\tappend\t300\t40.3\t49.94\t9.90\t9.90\n1\tafter\tbinary\tfold\t1\t37.2\t11870.08\t9.90\t9.90\n1\tafter\tbinary\tlist\t30\t150.6\t4175.70\t8.51\t9.35\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "8b274ba495d984fdc994372f8f1847c0d7b163c387b31f303fe64c0759504406": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 867,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.155,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 83.8 \u00b5s for the row `write`, synced (300), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96",
+   "number_match": "83.80 in this line rounds to the claimed 83.8",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "8f9d2011eb4546a518425e8627e0c521bfecb5e6617fa01f5e57fbb9a89ed8cd": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.13,
+   "input_tokens": 1303,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.172,
+   "skipped": 0.13
+  },
+  "state": {
+   "claim": "The measurement for `write`, synced (300) / `mo run` before is 83.8.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tappend\t300\t40.3\t49.94\t9.90\t9.90\n1\tafter\tbinary\tfold\t1\t37.2\t11870.08\t9.90\t9.90\n1\tafter\tbinary\tlist\t30\t150.6\t4175.70\t8.51\t9.35\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "9125c5cca2bb6eaaa7003f6726c987001bacc1c5d2d5c65b9040ada7412ab968": {
+  "judgment": {
+   "confidence": 0.42,
+   "empty_selection": 0.27,
+   "input_tokens": 1315,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.28,
+    "says_nothing": 0.61,
+    "supports": 0.11
+   },
+   "relation": "says_nothing",
+   "seconds": 0.175,
+   "skipped": 0.29
+  },
+  "state": {
+   "claim": "The measurement for `fold_lines`, 200,000 lines (1) / `mo run` before is 21.5.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tlist\t30\t150.6\t4175.70\t8.51\t9.35\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "9865e5211ab808fa15e6ddabce1e1bd3438ac28030fb4e9998c3e0803f41d746": {
+  "judgment": {
+   "confidence": 0.86,
+   "empty_selection": 0.01,
+   "input_tokens": 1125,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.08,
+    "supports": 0.91
+   },
+   "relation": "supports",
+   "seconds": 0.388,
+   "skipped": 0.04
+  },
+  "state": {
+   "claim": "The run printed the summary `Build Summary: 5/5 steps succeeded; 234/234 tests passed`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-C1.log: exit=0",
+   "log_excerpt": "Fri Sep 18 05:04:32 AM UTC 2026\n 05:04:32 up 3 days, 16:43,  0 user,  load average: 1.08, 0.97, 0.96\nBuild Summary: 5/5 steps succeeded; 234/234 tests passed\ntest success\n+- run test 234 pass (234 total) 12m MaxRSS:450M\n   +- compile test Debug native success 3s MaxRSS:304M\n   +- install mo success\n      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G\n",
+   "report_words": "The suites behind the earlier commits:\nPart A, run 1 (02:56 UTC): exit=124, no summary. That brick took 14.4 s to compile, and I was\nrunning other work beside the suite.\nPart A, run 2 (03:30 to 03:44): Build Summary: 5/5 steps succeeded; 234/234 tests passed, exit=0\nPart B, run 1 (03:52): exit=124, no summary, with my own abuse.py builds running beside it.\nPart B, run 2 (04:23 to 04:35): Build Summary: 5/5 steps succeeded; 234/234 tests passed, exit=0"
+  }
+ },
+ "9dabba9d082f26a5f65adc14d2c4e92590c6b5361d6653e2c708a3403794b1a1": {
+  "judgment": {
+   "confidence": 0.55,
+   "empty_selection": 0.01,
+   "input_tokens": 1009,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.3,
+    "supports": 0.7
+   },
+   "relation": "supports",
+   "seconds": 0.149,
+   "skipped": 0.04
+  },
+  "state": {
+   "claim": "The run printed the summary `Build Summary: 5/5 steps succeeded; 234/234 tests passed`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-C1.log: exit=0",
+   "log_excerpt": "Fri Sep 18 05:04:32 AM UTC 2026\n 05:04:32 up 3 days, 16:43,  0 user,  load average: 1.08, 0.97, 0.96\nBuild Summary: 5/5 steps succeeded; 234/234 tests passed\ntest success\n+- run test 234 pass (234 total) 12m MaxRSS:450M\n   +- compile test Debug native success 3s MaxRSS:304M\n   +- install mo success\n      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G\n",
+   "report_words": "Run 1, 05:04:32 to 05:18:02 UTC (worktree holding exactly part C's files):\nBuild Summary: 5/5 steps succeeded; 234/234 tests passed\nexit=0"
+  }
+ },
+ "9ddb536a688ca673cdd572243c6523ee4ad07046cb0d1bd62d76b5f82b028bb9": {
+  "judgment": {
+   "confidence": 0.62,
+   "empty_selection": 0.02,
+   "input_tokens": 889,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.2,
+    "says_nothing": 0.06,
+    "supports": 0.74
+   },
+   "relation": "supports",
+   "seconds": 0.163,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 13.1 ms for the row `fold_lines`, 200,000 lines (1), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96",
+   "number_match": "13117.42 in this line, counted in thousandths, rounds to the claimed 13.1",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "a0f8b65b861a8ff1b5209ff949c6dd5440fd45a2f796ba94cf773ccff2c9e2cc": {
+  "judgment": {
+   "confidence": 0.21,
+   "empty_selection": 0.22,
+   "input_tokens": 1041,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.47,
+    "says_nothing": 0.06,
+    "supports": 0.47
+   },
+   "relation": "contradicts",
+   "seconds": 0.156,
+   "skipped": 0.3
+  },
+  "state": {
+   "claim": "The measurement for `read` small file (2,000) / binary before is 26.4.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tmo run\tnone\t0\t26.4\t0.00\t11.14\t11.14\n1\tbefore\tmo run\tread\t2000\t84.0\t28.77\t11.14\t11.14\n1\tbefore\tmo run\tdeep\t2000\t128.6\t51.07\t10.33\t11.14\n1\tbefore\tmo run\tsize\t2000\t64.0\t18.80\t9.90\t10.33\n1\tbefore\tmo run\twrite\t300\t48.4\t73.41\t9.90\t9.90\n1\tbefore\tmo run\tappend\t300\t45.2\t62.76\t9.90\t9.90\n1\tbefore\tmo run\tfold\t1\t45.5\t19033.25\t9.90\t9.90",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "a24d9b0920bb67b2231e9dd37de9e361d2071404d2bcb13bb3bc491684549f4d": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 1138,
+   "masked_failure": 0.04,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.0,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.14,
+   "skipped": 0.22
+  },
+  "state": {
+   "claim": "The run printed the summary `2 passed, 0 failed, 0 skipped`, and it exited with code 0.",
+   "exit_record": "audit/evidence/2026-09-19/coding-fixture/attempt-02/verify.stdout.txt: ## step write-tests/coding-fixture-v1/boundaries: exit 0",
+   "log_excerpt": "pass  test \"a model garbage three times fails the run under two retries\": 100 simulated runs\npass  test \"a run cancelled in the middle stops, and no tool runs after the cancel is written\": 100 simulated runs\n8 passed, 0 failed, 0 skipped; 8 tests under 100 seeds with 5% faults: 8 held under faults, 0 passed only without faults\nverified: types, contracts, tests (8), property (0 seeds), sim (100 runs)\n          proven: not run\n## step write-tests/coding-fixture-v1/boundaries: exit 0\npass  test \"fixture value refusals and explicit reporting error\"\npass  test \"fixture grant cancellation deadline and recording boundaries\": 100 simulated runs\n2 passed, 0 failed, 0 skipped; 1 test under 100 seeds with 5% faults: 1 held under faults, 0 passed only without faults\nverified: types, contracts, tests (2), property (0 seeds), sim (100 runs)\n          proven: not run\n## step model-conformance: exit 0\nrecipe Recipes.AgentModelClientV1.ModelClient: 3 signatures match\npass  test rejects \"a call retried more than ten times\": tripped requires retries <= 10\npass  test \"the body is the goal, the granted tools, and the steps so far\"",
+   "report_words": "- `mo test --write tests/coding-fixture-v1/boundaries.mo --sim 100`: exit 0,\n`2 passed, 0 failed, 0 skipped`."
+  }
+ },
+ "aa6af801947ce96ab622926b3fbe0365b54084d112f6d745e97cbe983f876e9f": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 863,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.252,
+   "skipped": 0.04
+  },
+  "state": {
+   "claim": "The report's table gives 79.2 \u00b5s for the row `write`, synced (300), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96",
+   "number_match": "79.20 in this line rounds to the claimed 79.2",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "b3dfcea359845cc06ef384fa9491d39da783267f3be1ac67cb84ce2009b936cf": {
+  "judgment": {
+   "confidence": 0.49,
+   "empty_selection": 0.27,
+   "input_tokens": 1317,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.12,
+    "says_nothing": 0.66,
+    "supports": 0.22
+   },
+   "relation": "says_nothing",
+   "seconds": 0.18,
+   "skipped": 0.42
+  },
+  "state": {
+   "claim": "The measurement for `fold_lines`, 200,000 lines (1) / binary before is 13.1.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "bcec81b378b8e1b5d7a43f936f1ec3accf960c1ee6a3bcf4d2ef87870816aea5": {
+  "judgment": {
+   "confidence": 0.8,
+   "empty_selection": 0.02,
+   "input_tokens": 890,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.1,
+    "says_nothing": 0.04,
+    "supports": 0.86
+   },
+   "relation": "supports",
+   "seconds": 0.136,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 4.75 ms for the row `list`, 10,000 names (30), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22",
+   "number_match": "4746.73 in this line, counted in thousandths, rounds to the claimed 4.75",
+   "report_words": "| `list`, 10,000 names (30) | 4.75 ms | 4.79 ms | 75.0 ms | 4.36 ms | 4.8\u20137.2 |"
+  }
+ },
+ "bebf7a9807318cf841c2abe42bd5471bc36a45dd2b91d5c3fe98dc225b9af99e": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 864,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.195,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 9.9 \u00b5s for the row `size` (2,000), in the column binary after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tsize\t2000\t45.3\t9.98\t9.90\t10.33",
+   "number_match": "9.90 in this line rounds to the claimed 9.9",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "c116a858d8012d7b87cc48e54366c23f83b46394d56ed16c38ae4a652cec1449": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.19,
+   "input_tokens": 1316,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.0,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.177,
+   "skipped": 0.08
+  },
+  "state": {
+   "claim": "The measurement for `size` (2,000) / after is 10.8.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "c235563ee1d72b65e36e95ad6053869b8cf9f83b6bdbcbcd606c0c096162bd6c": {
+  "judgment": {
+   "confidence": 0.93,
+   "empty_selection": 0.01,
+   "input_tokens": 1027,
+   "masked_failure": 0.86,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.04,
+    "says_nothing": 0.01,
+    "supports": 0.95
+   },
+   "relation": "supports",
+   "seconds": 0.216,
+   "skipped": 0.15
+  },
+  "state": {
+   "claim": "The run printed the summary `Build Summary: 5/5 steps succeeded; 225/225 tests passed`, and it exited with code 0.",
+   "exit_record": "tools/claim-check/calibration/planted/timeout-success/suite.log: EXIT 0",
+   "log_excerpt": "8/16 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK\n9/16 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK\n10/16 tls.test.a Finished whose verify data is wrong is decrypt_error...OK\n11/16 tls.test.a KeyUpdate round trip...timeout 300 zig test src/bricks/tls.zig  2.37s user 0.20s system 0% cpu 5:00.01 total\nBuild Summary: 5/5 steps succeeded; 225/225 tests passed\ntest success\n+- run test 225 pass (225 total) 10m MaxRSS:465M\n   +- compile test Debug native cached 7ms MaxRSS:40M\n   +- install mo cached\n      +- compile exe mo ReleaseSafe native cached 8ms MaxRSS:41M\n",
+   "report_words": "- `zig build test --summary all`: exit 0,\n`Build Summary: 5/5 steps succeeded; 225/225 tests passed`."
+  }
+ },
+ "c51186f53311339af56310606e1f621d9f5d0a277f1e6a763df8f3e2268f2695": {
+  "judgment": {
+   "confidence": 0.7,
+   "empty_selection": 0.24,
+   "input_tokens": 1338,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.06,
+    "says_nothing": 0.79,
+    "supports": 0.15
+   },
+   "relation": "says_nothing",
+   "seconds": 0.174,
+   "skipped": 0.36
+  },
+  "state": {
+   "claim": "The measurement for `fold_lines`, 200,000 lines (1) / after is 21.6.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96",
+   "report_words": "| `fold_lines`, 200,000 lines (1) | 21.5 ms | 21.6 ms | 13.1 ms | 13.4 ms | 4.8\u20135.0 |"
+  }
+ },
+ "c53341ef03674737ddac28a4aa95047eed767aae494736f785ace39b2e7daefd": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 870,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.17,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 26.4 \u00b5s for the row `read` small file (2,000), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30",
+   "number_match": "26.35 in this line rounds to the claimed 26.4",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "c5873e2344d64c3f806281263e4278cfe0b28388e4c9eb09b3c9aa7315a7e38c": {
+  "judgment": {
+   "confidence": 0.47,
+   "empty_selection": 0.09,
+   "input_tokens": 1124,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.29,
+    "says_nothing": 0.06,
+    "supports": 0.65
+   },
+   "relation": "supports",
+   "seconds": 0.157,
+   "skipped": 0.11
+  },
+  "state": {
+   "claim": "The measurement for `list_kinds`, 10,000 names (30) / after is 12.5.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22\n2\tafter\tbinary\tlist_kinds\t30\t400.2\t12493.83\t5.46\t6.65",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "cd79d5500590f1baceb594f3457290460e4dea87defc5ff03b05543e1add2970": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 870,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.158,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 18.8 \u00b5s for the row `size` (2,000), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tmo run\tsize\t2000\t64.0\t18.80\t9.90\t10.33",
+   "number_match": "18.80 in this line rounds to the claimed 18.8",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "d85366ea765dd13d959b8b6e0db605629e7c2f0e7d4770605d04ad9ecfa45dc6": {
+  "judgment": {
+   "confidence": 1.0,
+   "empty_selection": 0.02,
+   "input_tokens": 869,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.166,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 66.7 \u00b5s for the row `write`, synced (300), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96",
+   "number_match": "66.68 in this line rounds to the claimed 66.7",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "d9882ab939700108545cebc356a50dcc0b693603d8cd787d611053a3930371c8": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 890,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.01,
+    "supports": 0.99
+   },
+   "relation": "supports",
+   "seconds": 0.133,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 50.5 \u00b5s for the row `read` 16 folders down (2,000), in the column `mo run` before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30",
+   "number_match": "50.47 in this line rounds to the claimed 50.5",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "da124cfee0e1d488e3cc48a455728088bc8675c11bad2874072a5df9885d596b": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.31,
+   "input_tokens": 1311,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.157,
+   "skipped": 0.2
+  },
+  "state": {
+   "claim": "The measurement for `write`, synced (300) / after is 66.7.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "dc350e74b92805ac229ee5e9532008ae24c2e35df45d089c825dc049e1c309c5": {
+  "judgment": {
+   "confidence": 1.0,
+   "empty_selection": 0.01,
+   "input_tokens": 876,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.194,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 20.3 \u00b5s for the row `read` small file (2,000), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30",
+   "number_match": "20.34 in this line rounds to the claimed 20.3",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "dec11e5f4636cab60d4342331575d59c5264bcf497c4e3cb59ba1b452afcd416": {
+  "judgment": {
+   "confidence": 0.6,
+   "empty_selection": 0.03,
+   "input_tokens": 882,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.08,
+    "says_nothing": 0.74,
+    "supports": 0.18
+   },
+   "relation": "says_nothing",
+   "seconds": 0.15,
+   "skipped": 0.1
+  },
+  "state": {
+   "claim": "The report's table gives 47.2 \u00b5s for the row `read` 16 folders down (2,000), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tbefore\tbinary\twrite\t300\t47.2\t72.29\t9.90\t9.90",
+   "number_match": "47.2 in this line rounds to the claimed 47.2",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "e1648e6be464018dc58fe58914e6b254d89528e30a91797577a9d9b0fcdbc2bc": {
+  "judgment": {
+   "confidence": 0.94,
+   "empty_selection": 0.02,
+   "input_tokens": 896,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.03,
+    "supports": 0.96
+   },
+   "relation": "supports",
+   "seconds": 0.161,
+   "skipped": 0.06
+  },
+  "state": {
+   "claim": "The report's table gives 176.4 \u00b5s for the row `read` 16 folders down (2,000), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30",
+   "number_match": "176.35 in this line rounds to the claimed 176.4",
+   "report_words": "| `read` 16 folders down (2,000) | 50.5 \u00b5s | **176.4 \u00b5s** | 47.2 \u00b5s | **174.4 \u00b5s** | 5.0\u20135.3 |"
+  }
+ },
+ "e3a98d4b7721b9dd7dfc7e958079d0c8863bd8399205e438b0c589dff534d138": {
+  "judgment": {
+   "confidence": 0.91,
+   "empty_selection": 0.26,
+   "input_tokens": 1252,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.03,
+    "says_nothing": 0.03,
+    "supports": 0.94
+   },
+   "relation": "supports",
+   "seconds": 0.169,
+   "skipped": 0.09
+  },
+  "state": {
+   "claim": "The measurement for `write`, synced (300) / after is 61.8.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22\n2\tafter\tbinary\tlist_kinds\t30\t400.2\t12493.83\t5.46\t6.65",
+   "report_words": "| `write`, synced (300) | 83.8 \u00b5s | 66.7 \u00b5s | 79.2 \u00b5s | 61.8 \u00b5s | 5.0 |"
+  }
+ },
+ "e60e2eb19cf04f575759b780971d3a5868359ba10a5043eb1b822f9742bd7915": {
+  "judgment": {
+   "confidence": 0.98,
+   "empty_selection": 0.02,
+   "input_tokens": 865,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.209,
+   "skipped": 0.04
+  },
+  "state": {
+   "claim": "The report's table gives 16.4 \u00b5s for the row `size` (2,000), in the column binary before.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96",
+   "number_match": "16.40 in this line rounds to the claimed 16.4",
+   "report_words": "| `size` (2,000) | 18.8 \u00b5s | 10.8 \u00b5s | 16.4 \u00b5s | 9.9 \u00b5s | 5.0 |"
+  }
+ },
+ "efc3766127e39971ea908e6c0d00b435d5616dd5761a11812a835ceaa4904a38": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.02,
+   "input_tokens": 869,
+   "masked_failure": 0.02,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.177,
+   "skipped": 0.05
+  },
+  "state": {
+   "claim": "The report's table gives 49.3 \u00b5s for the row `append`, synced (300), in the column `mo run` after.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96",
+   "number_match": "49.27 in this line rounds to the claimed 49.3",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "f02df335360e14bd36a45dd1b10e5dbd934bd5212d9dcae3f433821370ae2a1f": {
+  "judgment": {
+   "confidence": 0.99,
+   "empty_selection": 0.32,
+   "input_tokens": 1318,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.0,
+    "says_nothing": 0.0,
+    "supports": 1.0
+   },
+   "relation": "supports",
+   "seconds": 0.221,
+   "skipped": 0.12
+  },
+  "state": {
+   "claim": "The measurement for `read` small file (2,000) / `mo run` before is 28.7.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tdeep\t2000\t378.3\t176.45\t10.33\t10.33\n1\tafter\tbinary\tsize\t2000\t45.3\t9.98\t9.90\t10.33\n1\tafter\tbinary\twrite\t300\t43.0\t58.69\t9.90\t9.90\n1\tafter\tbinary\tappend\t300\t40.3\t49.94\t9.90\t9.90\n1\tafter\tbinary\tfold\t1\t37.2\t11870.08\t9.90\t9.90\n1\tafter\tbinary\tlist\t30\t150.6\t4175.70\t8.51\t9.35\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "f5582d9b68817f9d04125e3045d47159eec6bae17c11f163f9ea8ac8a320ce58": {
+  "judgment": {
+   "confidence": 0.88,
+   "empty_selection": 0.1,
+   "input_tokens": 1318,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.07,
+    "says_nothing": 0.01,
+    "supports": 0.92
+   },
+   "relation": "supports",
+   "seconds": 0.172,
+   "skipped": 0.74
+  },
+  "state": {
+   "claim": "The measurement for `list_kinds`, 10,000 names (30) / binary before is 71.8.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96\n2\tbefore\tbinary\tfold\t1\t38.4\t13117.42\t4.80\t4.96\n2\tbefore\tbinary\tlist\t30\t2275.8\t75017.26\t4.80\t7.22\n2\tbefore\tbinary\tlist_kinds\t30\t2178.2\t71761.95\t5.76\t6.65\n2\tafter\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tafter\tmo run\tread\t2000\t66.7\t20.34\t5.30\t5.30\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ },
+ "f6d92e31f1f5dcfd35cbbe4979ce92e63e7c5bfda8b9d987472d32f6b2b34ffd": {
+  "judgment": {
+   "confidence": 0.86,
+   "empty_selection": 0.17,
+   "input_tokens": 1327,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.05,
+    "says_nothing": 0.04,
+    "supports": 0.91
+   },
+   "relation": "supports",
+   "seconds": 0.175,
+   "skipped": 0.14
+  },
+  "state": {
+   "claim": "The measurement for `read` small file (2,000) / after is 19.2.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tafter\tmo run\tdeep\t2000\t378.7\t176.35\t4.96\t5.30\n2\tafter\tmo run\tsize\t2000\t47.6\t10.82\t4.96\t4.96\n2\tafter\tmo run\twrite\t300\t46.0\t66.68\t4.96\t4.96\n2\tafter\tmo run\tappend\t300\t40.8\t49.27\t4.96\t4.96\n2\tafter\tmo run\tfold\t1\t47.6\t21582.42\t4.80\t4.96\n2\tafter\tmo run\tlist\t30\t169.8\t4794.27\t4.80\t7.22\n2\tafter\tmo run\tlist_kinds\t30\t511.3\t16175.04\t5.76\t6.65\n2\tafter\tbinary\tnone\t0\t25.4\t0.00\t5.30\t5.59\n2\tafter\tbinary\tread\t2000\t63.7\t19.15\t5.30\t5.30\n2\tafter\tbinary\tdeep\t2000\t374.2\t174.39\t4.96\t5.30\n2\tafter\tbinary\tsize\t2000\t45.2\t9.88\t4.96\t4.96\n2\tafter\tbinary\twrite\t300\t43.9\t61.75\t4.96\t4.96\n2\tafter\tbinary\tappend\t300\t39.3\t46.25\t4.96\t4.96\n2\tafter\tbinary\tfold\t1\t38.8\t13417.33\t4.80\t4.96\n2\tafter\tbinary\tlist\t30\t156.1\t4355.62\t4.80\t7.22",
+   "report_words": "| `read` small file (2,000) | 28.7 \u00b5s | 20.3 \u00b5s | 26.4 \u00b5s | 19.2 \u00b5s | 5.3 |"
+  }
+ },
+ "f84725b71d56b2263760929e44e4d6e31ea6197f5c257d0dd1dce31c3233e3ee": {
+  "judgment": {
+   "confidence": 0.96,
+   "empty_selection": 0.08,
+   "input_tokens": 1304,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.01,
+    "says_nothing": 0.01,
+    "supports": 0.98
+   },
+   "relation": "supports",
+   "seconds": 0.187,
+   "skipped": 0.14
+  },
+  "state": {
+   "claim": "The measurement for `append`, synced (300) / `mo run` before is 65.3.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n1\tafter\tbinary\tfold\t1\t37.2\t11870.08\t9.90\t9.90\n1\tafter\tbinary\tlist\t30\t150.6\t4175.70\t8.51\t9.35\n1\tafter\tbinary\tlist_kinds\t30\t395.7\t12343.25\t7.00\t8.51\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30",
+   "report_words": "| `append`, synced (300) | 65.3 \u00b5s | 49.3 \u00b5s | 66.5 \u00b5s | 46.3 \u00b5s | 5.0 |"
+  }
+ },
+ "fe072ce1d9bbe8c4697924fac762cbf18b7955368fc164247b69913555c9b5ca": {
+  "judgment": {
+   "confidence": 0.25,
+   "empty_selection": 0.09,
+   "input_tokens": 1307,
+   "masked_failure": 0.03,
+   "model": "jev-1.13.0",
+   "probabilities": {
+    "contradicts": 0.38,
+    "says_nothing": 0.12,
+    "supports": 0.5
+   },
+   "relation": "supports",
+   "seconds": 0.194,
+   "skipped": 0.26
+  },
+  "state": {
+   "claim": "The measurement for `list_kinds`, 10,000 names (30) / `mo run` before is 4.94.",
+   "log_excerpt": "run\texe\truntime\trow\tcalls\tbest_process_ms\tper_call_us\tload_1m_min\tload_1m_max\n2\tbefore\tmo run\tnone\t0\t26.0\t0.00\t5.59\t5.59\n2\tbefore\tmo run\tread\t2000\t83.3\t28.69\t5.30\t5.30\n2\tbefore\tmo run\tdeep\t2000\t126.9\t50.47\t4.96\t5.30\n2\tbefore\tmo run\tsize\t2000\t63.5\t18.75\t4.96\t4.96\n2\tbefore\tmo run\twrite\t300\t51.1\t83.80\t4.96\t4.96\n2\tbefore\tmo run\tappend\t300\t45.5\t65.31\t4.96\t4.96\n2\tbefore\tmo run\tfold\t1\t47.4\t21459.54\t4.80\t4.96\n2\tbefore\tmo run\tlist\t30\t168.4\t4746.73\t4.80\t7.22\n2\tbefore\tmo run\tlist_kinds\t30\t174.1\t4938.63\t5.76\t6.65\n2\tbefore\tbinary\tnone\t0\t25.3\t0.00\t5.59\t5.59\n2\tbefore\tbinary\tread\t2000\t78.0\t26.35\t5.30\t5.30\n2\tbefore\tbinary\tdeep\t2000\t119.7\t47.18\t4.96\t5.30\n2\tbefore\tbinary\tsize\t2000\t58.1\t16.40\t4.96\t4.96\n2\tbefore\tbinary\twrite\t300\t49.1\t79.20\t4.96\t4.96\n2\tbefore\tbinary\tappend\t300\t45.3\t66.54\t4.96\t4.96",
+   "report_words": "| `list_kinds`, 10,000 names (30) | 4.94 ms | **16.2 ms** | 71.8 ms | 12.5 ms | 5.5\u20136.7 |"
+  }
+ }
+}

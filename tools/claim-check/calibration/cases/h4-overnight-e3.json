@@ -1,0 +1,24 @@
+{
+ "id": "h4-overnight-e3",
+ "kind": "historical",
+ "source": "Overnight review E3 (audit/evidence/2026-09-19/fable-overnight-review/README.md): four recovery tests pass with read_json broken.",
+ "report": "tools/claim-check/calibration/reports/overnight-e3.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-19/workspace-recovery/local-01/local.stderr.txt",
+  "audit/evidence/2026-09-19/workspace-recovery/local-01/local.status.json"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "Four of the 59 tests cannot fail; the output is a true 'Ran 59 tests ... OK'.",
+ "expected": "missed",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "Ran 59 tests",
+   "truth": true,
+   "why": "the output prints it; the defect is in what four tests assert"
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "id": "h3-fuzz-accounting",
+ "kind": "historical",
+ "source": "The lead's reproduction of the fuzz counting defect with the unchanged driver, 18 Sep 2026 (audit/evidence/2026-09-18/current-state-lead/README.md): a mocked batch exits 134, both singleton replays exit 0, and the driver prints 0 crashes.",
+ "report": "tools/claim-check/calibration/reports/fuzz-accounting.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-18/current-state-lead/fuzz-accounting.log"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "A batch failed (exit 134) and the count says 0 crashes.",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "0 crashes",
+   "truth": false,
+   "why": "a batch exited 134 before the count"
+  }
+ ]
+}
