@@ -14,7 +14,7 @@ for the lead. Worker threads read the role and safety rules, then follow their
 bounded brief; they do not check or operate the lead's audit inbox,
 publish/integrate audit records, or take over lead decisions.
 
-- Fable (Claude Code) is the lead on Robert's Mac since 19 Sep 2026, 7:35 AM ET,
+- Fable (Claude Code) is the lead on Robert's Mac since 19 Sep 2026, 7:18 AM ET,
   taking over from Astra. It directs, verifies, decides and records.
 - Robert's 19 Sep 2026 morning instruction: workers are fresh Claude Opus
   sessions in Herdr panes, started with bypass permissions. Follow `mo-lead` for launch, ownership and acceptance.

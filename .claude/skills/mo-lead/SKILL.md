@@ -16,7 +16,7 @@ The onboarding/audit loop is lead-only. Worker threads identify themselves as
 workers, follow shared safety rules and their bounded brief, and do not run the
 lead's audit inbox, publication/integration or decision-recording workflow.
 
-**Mac workflow (Robert, 19 Sep 2026, 7:35 AM ET):** Fable (Claude Code) is the
+**Mac workflow (Robert, 19 Sep 2026, 7:18 AM ET):** Fable (Claude Code) is the
 lead on Robert's Mac, taking over from Astra. Spawn fresh Claude Opus workers in
 Herdr panes. This supersedes the overnight Astra-lead/Astra-low-worker workflow
 and the earlier Amp orb/thread workflow; no oracle is available or required. OrbStack is the proposed Linux execution
@@ -74,7 +74,7 @@ audit rules; do not treat unavailable evidence as passed.
    to the right with explicit cwd and `--no-focus`; wait for its shell prompt.
    Start a uniquely named agent with `herdr agent start <name> --kind claude
    --pane <id> -- --model opus --dangerously-skip-permissions` (Robert, 19 Sep
-   2026, 8:05 AM ET: every worker runs with bypass permissions; the brief's
+   2026, 7:33 AM ET: every worker runs with bypass permissions; the brief's
    write scope and constraints are the boundary).
    Verify the startup output names Opus before sending the brief with
    `herdr agent prompt`. A read-only review is bounded by its brief.

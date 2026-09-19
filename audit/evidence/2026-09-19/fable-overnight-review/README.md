@@ -1,6 +1,6 @@
 # Fable's source review of Astra's overnight harness work
 
-19 Sep 2026, about 8:10 to 8:30 AM ET. Robert asked the incoming lead to review
+19 Sep 2026, about 7:25 to 7:42 AM ET. Robert asked the incoming lead to review
 the ten components GPT-6-Astra built and accepted overnight (commits
 `3b6c7536..edb75165`). Four read-only Claude Opus reviewers, one per area, each
 told to be sceptical and to separate what it traced in code (CONFIRMED) from

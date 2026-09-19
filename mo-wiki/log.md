@@ -943,7 +943,8 @@
   Logstat preparation review retained; semantic RED and900s workflow remain unmeasured.
 
 ## [2026-09-19] update | Lead change to Fable; Opus workers; application workspace restarts
-- Robert, 7:35 AM ET: Fable leads, workers are Opus. Astra's session ended about 7:12 AM ET with `mo-application-workspace-v1` unfinished; its worktree is preserved at WIP snapshot `0b1404b5` and the slice is rebuilt from `030290b8`. Three rows in decisions/decision-log.md. Files: CLAUDE.md, .claude/skills/mo-lead/SKILL.md, HANDOFF.md, plans/roadmap.md.
+- Robert, 7:18 AM ET: Fable leads, workers are Opus. Astra's session ended about 7:12 AM ET with `mo-application-workspace-v1` unfinished; its worktree is preserved at WIP snapshot `0b1404b5` and the slice is rebuilt from `030290b8`. Three rows in decisions/decision-log.md. Files: CLAUDE.md, .claude/skills/mo-lead/SKILL.md, HANDOFF.md, plans/roadmap.md.
 
 ## [2026-09-19] review | Fable's source review of Astra's overnight harness work
 - Four read-only Opus reviews: all ten components kept, recovery's `recover()` to be rewritten, acceptance wording qualified. Evidence: audit/evidence/2026-09-19/fable-overnight-review/README.md. Four rows in decisions/decision-log.md; queue in HANDOFF.md.
+- Correction, 8:12 AM ET: the times first written on this morning's takeover rows and pages were the lead's estimates and ran up to 50 minutes late; they now match the commit times (takeover 7:18, rebuild 7:20, launch 7:22, bypass 7:33, review 7:42, Mo-first 8:08).

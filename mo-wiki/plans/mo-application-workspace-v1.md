@@ -10,7 +10,7 @@ status: in-progress
 
 # Mo application workspace v1: recorded remote tools
 
-## Rebuild from scratch, 19 Sep 2026, 7:40 AM ET
+## Rebuild from scratch, 19 Sep 2026, 7:20 AM ET
 
 Robert and the Fable lead decided ([[decision-log]]) to discard Astra's
 unfinished attempt and rebuild this slice from accepted base `030290b8`. The

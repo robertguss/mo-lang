@@ -28,7 +28,7 @@ regressions and two new extras pass. Full243/243,5/5;17339 unchanged files,
 
 | board | current work |
 |---|---|
-| Now | [[mo-application-workspace-v1]], Mo routing to all six remote tools: **restarting from scratch** (19 Sep, 7:40 AM ET). Fable leads, Opus workers; Astra's unfinished attempt is preserved, not merged |
+| Now | [[mo-application-workspace-v1]], Mo routing to all six remote tools: **restarting from scratch** (19 Sep, 7:20 AM ET). Fable leads, Opus workers; Astra's unfinished attempt is preserved, not merged |
 | Next | Scripted Logstat repair and protected checks; then provider integration |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
 | Recently done | [[mo-workspace-http-v1]], [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |

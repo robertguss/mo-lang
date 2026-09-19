@@ -1,6 +1,6 @@
 # Mo Lang — Fable lead and Opus Herdr workers
 
-## Current instruction: Fable takes over, 19 Sep 2026, 7:35 AM ET
+## Current instruction: Fable takes over, 19 Sep 2026, 7:18 AM ET
 
 Robert's instruction: **Fable (Claude Code, Herdr pane `w4:p1`) is the lead;
 workers are fresh Claude Opus sessions in Herdr panes.** This supersedes the
@@ -15,7 +15,7 @@ run pane remains; panes `p2E`/`p2F` named below are gone. Machine
 `edb75165` before this takeover's records. Auditor check at 7:15 AM ET: zero
 new records.
 
-**Decided with Robert (decision-log, 19 Sep 7:40 AM ET):** the unfinished
+**Decided with Robert (decision-log, 19 Sep 7:20 AM ET):** the unfinished
 application workspace is scrapped and rebuilt from accepted base `030290b8` by
 a fresh Opus worker. The Astra worktree
 `~/Projects/startups/mo-lang-worktrees/harness-application-workspace-v1` is
@@ -37,16 +37,16 @@ then live provider integration, which needs Robert for the subscription login.
 Still open from before: Step 39 unaccepted, Darwin `F_FULLFSYNC` unmet,
 Program 7 suspended pending a versioned replacement scope.
 
-**In flight, 19 Sep 2026, 8:00 AM ET:** Opus worker `app-workspace-v2-opus`
+**In flight, 19 Sep 2026, 7:22 AM ET:** Opus worker `app-workspace-v2-opus`
 (Herdr `w4:p2K`, Claude Code, Opus 5 confirmed at startup, accept-edits with
 shell allowed) on branch `harness/application-workspace-v2`, worktree
 `~/Projects/startups/mo-lang-worktrees/harness-application-workspace-v2`, base
 `030290b8`. Brief revised at `10a9e1a8` (seven carried findings RED first,
 evidence under 2 MiB). Released for local work and focused both-runtime tests
 only; machine runs and the full suite stay lead-gated. Follow with
-`herdr agent get/read app-workspace-v2-opus`. Workers from here on start with bypass permissions (Robert, 8:05 AM ET).
+`herdr agent get/read app-workspace-v2-opus`. Workers from here on start with bypass permissions (Robert, 7:33 AM ET).
 
-**Overnight work reviewed, 8:35 AM ET:** four Opus source reviews are in
+**Overnight work reviewed, 7:42 AM ET:** four Opus source reviews are in
 `audit/evidence/2026-09-19/fable-overnight-review/README.md`; four decision-log
 rows. All ten components kept; recovery's machine-side `recover()` to be
 rewritten and its acceptance qualified. Queue after the application workspace
@@ -57,7 +57,7 @@ the live-provider slice. Check the rebuilt adapter against H4 and H5 at
 acceptance. The lead's own full-suite run on `main` is still owed; not run while
 a worker uses the host.
 
-**Robert, 8:55 AM ET:** fix all review findings, and refactor so the harness is
+**Robert, 8:08 AM ET:** fix all review findings, and refactor so the harness is
 Mo wherever possible, Python/JS at their minimum, Astra's verbosity cut
 (decision-log row). An Opus design map of the non-Mo code is running; its
 result decides the migration briefs and replaces the plain fix queue above
