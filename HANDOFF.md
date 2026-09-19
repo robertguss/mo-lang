@@ -89,6 +89,16 @@ commit `5caec127`, before the 256 KiB cap). Robert asked at 8:20 AM ET that any
 Python-to-Mo size reduction be verified and documented: the protocol is "The
 size question" in `mo-wiki/plans/mo-harness-in-mo.md`.
 
+**In flight, 8:22 AM ET:** two Opus workers with bypass permissions, both based
+on `e87879a4`: `step1-executor-opus` (Herdr `w4:p2M`, branch
+`harness/step-1-executor`, brief `mo-wiki/plans/mo-harness-step-1-executor.md`)
+and `step8-agent-opus` (`w4:p2N`, branch `harness/step-8-agent`, brief
+`mo-wiki/plans/mo-harness-step-8-agent.md`). Neither may run the full suite or
+touch the machine. The finished `app-workspace-v2-opus` pane (`w4:p2K`) stays
+open until its acceptance. The lead meanwhile writes the capability design page
+(strict scope, `Fs.replace`, `platform.exec`). Local `main` is ahead of origin
+and holds the unaccepted merge `ddd81c06`; push after acceptance.
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
