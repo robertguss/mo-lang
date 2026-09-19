@@ -23,3 +23,10 @@ Branch `lead/verify-step43` at `4ad89c1a` (`main` plus the worker's
   exits 70 with the overflow message in both. `hex.mo` and `exp-float.mo` are
   parse errors: Mo has no such literals.
 - The lead read the whole diff of `check.zig` and `number.zig`.
+
+## The Linux full suite (2:07 PM ET)
+
+On the VM at `4ad89c1a`, detached under `guard.py 3600`: `Build Summary: 5/5 steps
+succeeded; 263/263 tests passed`, `run test 263 pass (263 total) 18m
+MaxRSS:455M`, exit 0 (`linux-full-suite.log`, `linux-exits.txt`). No test binary
+left running.

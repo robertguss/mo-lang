@@ -984,3 +984,6 @@
 
 ## [2026-09-19] review | research PR 16 (Hermes, Bend2) read and merged
 - 2:03 PM ET: lint 282 pages, 26 inherited notices, no hash drift; two citations verified against upstream at the pin; one row in decisions/decision-log.md; review comment on the PR. Index total 282.
+
+## [2026-09-19] verify | step 43 on Linux: 263 of 263
+- 2:07 PM ET: the VM full suite at 4ad89c1a, exit 0, 18 minutes; added to the step 43 evidence. Step 43 is now green on both platforms.
