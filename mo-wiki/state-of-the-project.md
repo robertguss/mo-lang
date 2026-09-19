@@ -27,7 +27,8 @@ here, and the [[roadmap]] table is the authority on order.
 **Current, 19 Sep 2026, evening:** Robert authorized resuming the Mo server's
 part A and step 42 memory safety after recording an OMP workflow: Astra leads
 in the existing pane; every worker assignment starts a fresh clean Sol/high
-session. Workers own code; Astra reviews and independently runs acceptance
+session. Both new workers acknowledged and began their assignments in separate
+worktrees/tabs. Workers own code; Astra reviews and independently runs acceptance
 builds/tests. Their saved WIP is not accepted. The last accepted Darwin suite
 is 268 of 268; Linux remains owed. The live provider, model-driven task and Pi
 comparison are still ahead. [[roadmap]] and `HANDOFF.md` carry current status.

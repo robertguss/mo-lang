@@ -1,6 +1,6 @@
 # Mo Lang — Astra lead and fresh OMP/Sol workers (read START HERE)
 
-## START HERE: OMP workflow recorded; resumption authorized, 19 Sep 2026
+## START HERE: both units resumed under OMP/Sol, 19 Sep 2026
 
 Robert's Claude Code subscription is unavailable. Astra leads in this existing
 OMP session; workers use OMP with GPT Sol at high reasoning. Robert explicitly
@@ -46,6 +46,19 @@ Resume each with a **fresh clean OMP/Sol/high session** in its saved worktree.
 Read the current brief from the lead checkout, then the worker's `WIP.md`,
 then its branch history. Old worktree role instructions are superseded by the
 current lead skill and explicit launch brief. Keep all prior evidence.
+
+**Live launch receipt:** workflow committed as `ef3b8796` before either
+worker started. `server4a-sol` is in tab `w4:t15`, pane `w4:p36`;
+`step42-sol` is in tab `w4:t16`, pane `w4:p37`. These are this launch's
+pointers, not IDs to reuse for new workers. Both started from new shell tabs
+with `--model openai-codex/gpt-5.6-sol --thinking high --no-prewalk
+--auto-approve`, no session-resume flags, and acknowledged and began their
+assignments. Exact prompts/receipts: `audit/evidence/2026-09-19/omp-resumption/launch.json`.
+Herdr 0.9.0 reports OMP `idle` even during visible tool activity: inspect
+output, report and process completion rather than treating that badge as done.
+Full suites and benchmarks remain lead-scheduled; neither worker may use the
+Linux VM or executor machine. The server first qualifies F1 without altered
+clients; memory work excludes all server files. Nothing newly accepted.
 
 ### Next, in order
 
