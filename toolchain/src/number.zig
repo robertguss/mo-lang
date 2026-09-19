@@ -342,6 +342,19 @@ test "number: the largest literals and bounds run alike under mo run and as a bi
         \\end
         \\
         },
+        .{ .name = "float-underscores", .exit = 0, .stderr = "", .stdout = "1000.5 1.5 10.25 1.5\n", .source = 
+        \\module P.FloatUnderscores
+        \\fn sign(x: Float64) : Float64
+        \\  case x
+        \\    -2__5.0: 1.5
+        \\    _: -2.5
+        \\  end
+        \\end
+        \\fn main(platform: Platform)
+        \\  platform.stdout.write("#{1_000.5} #{1_.5} #{1__0.25} #{sign(0.0 - 25.0)}\n")
+        \\end
+        \\
+        },
         .{ .name = "int-sub", .exit = 70, .stdout = "", .stderr = "main crashed: int-sub.mo:4:7: overflow in 0 - n; left = 0, right = -9223372036854775808\n", .source =
         \\module P.IntSub
         \\fn main(platform: Platform)
