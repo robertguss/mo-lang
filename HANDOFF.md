@@ -29,8 +29,8 @@ terminal-401, offline provider, BusyBox executor, workspace, coding fixture,
 private auth, native-history provider bridge, isolated application builds and
 cleanup-only workspace recovery. Current recovery integration is de71578d,
 worker exact tip6266d293; inspect git for the subsequent acceptance/docs commit.
-Last published checkpoint1edc1259 and wiki run35429060879 passed; the recovery
-acceptance checkpoint is being prepared for publication.
+Recovery acceptance is published at68e50ed6a2c27d56b0c1ce6fa5452baca2112646;
+wiki run35432372898 succeeded.
 
 Recovery lead local59/schema21/selection negatives pass. Real recovery16,
 workspace22/executor17/lifecycle1/application23 and an actual post-effect lost
@@ -62,7 +62,10 @@ profile, then scripted Logstat repair and protected checks. Fresh Astra/low
 workers in separate Herdr panes/worktrees own implementation. Fresh worker mo-workspace-http-v1 is active in w4:p28, tabw4:tK, at exact
 base3023a01a744d1580ca9814e595ddf990a12e456d on harness/workspace-http-v1.
 Only new executor/workspace_http/ is owned; local work released, machine/full
-compiler gates held. Actual Astra/low process74596 verified. See retained source reviews
+compiler gates held. Actual Astra/low process74596 verified. Read-only contract review is retained at workspace-http/contract-review-01.md;
+p2A is closed. Brief clarifies admission lease, cleanup after in-flight work,
+outcome persistence before bounded IPC notification and terminal late-result handling. The lead retains application-profile-design.md
+as readiness only, awaiting frozen/accepted HTTP schema before Mo implementation. See retained source reviews
 in audit/evidence/2026-09-19/workspace-wire-readiness/.
 
 The HTTP owner must outlive a request and use cleanup-only recovery after owner

@@ -1,0 +1,59 @@
+{
+  "pane": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 75672,
+        "foreground_processes": [
+          {
+            "argv": [
+              "codex",
+              "--model",
+              "gpt-6-astra",
+              "-c",
+              "model_reasoning_effort=\"low\"",
+              "--sandbox",
+              "read-only",
+              "--ask-for-approval",
+              "never",
+              "--no-alt-screen"
+            ],
+            "argv0": "codex",
+            "cmdline": "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox read-only --ask-for-approval never --no-alt-screen",
+            "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+            "name": "codex",
+            "pid": 75672
+          }
+        ],
+        "pane_id": "w4:p2A",
+        "shell_pid": 75472
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "agent": {
+    "id": "cli:agent:get",
+    "result": {
+      "agent": {
+        "agent": "codex",
+        "agent_status": "done",
+        "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+        "focused": false,
+        "foreground_cwd": "/Users/robertguss/Projects/startups/mo-lang",
+        "interactive_ready": true,
+        "name": "mo-http-contract-review",
+        "pane_id": "w4:p2A",
+        "revision": 51,
+        "state_change_seq": 315,
+        "tab_id": "w4:t1",
+        "terminal_id": "term_65bd1e4becd4653",
+        "terminal_title": "Review workspace HTTP contract | mo-lang",
+        "terminal_title_stripped": "Review workspace HTTP contract | mo-lang",
+        "workspace_id": "w4"
+      },
+      "type": "agent_info"
+    }
+  },
+  "report_retained": "contract-review-01.md",
+  "tests_and_machine_commands": "none; read-only worker could not send report due PermissionDenied, lead read exact own session"
+}

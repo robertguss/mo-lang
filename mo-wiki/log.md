@@ -907,3 +907,6 @@
 - Fresh HTTP worker w4:p28/tabtK starts at exact3023a01a, actual Astra/low
   verified; new workspace_http/ only, local work released and machine/full
   compiler gates held. No competing machine workload.
+- Fresh read-only HTTP contract review identified lease/admission wording,
+  blocked-owner cleanup timing, bounded IPC/late-result ordering and intent versus
+  outcome persistence. Clarified brief without core edits or wider guarantees.

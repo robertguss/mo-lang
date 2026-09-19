@@ -56,9 +56,11 @@ lead owns it now. No /opt, image, configuration or ceiling changes are needed.
    to finish/cleanup after IPC EOF; owner death permits explicit cleanup-only
    recovery once death is proved. Never steal a live owner lock or retry a tool.
    Successful local socket write is not proof the client received the result.
-4. Persist private0700/0600 operator state before effects: external run/workspace
-   bindings, generated core32hex IDs, external call→core call mapping, payload
-   hash, dispatch intent and result. Repeated/conflicting call IDs are refused,
+   IPC result delivery is bounded and never gates cleanup on frontend ACK. Close
+   inherited pipe duplicates; terminal admission wins over every late result.
+4. Persist private0700/0600 claims before effects: external run/workspace bindings,
+   core32hex IDs, external call→core call mapping, payload hash and dispatch intent.
+   Persist outcomes afterward, before notifying frontend. Repeated/conflicting IDs are refused,
    even if the previous response was lost. No cached-result replay or resume.
    Journal cap4MiB; reserve worst-case record space before dispatch, refuse when
    exhausted. Atomic replacement is sufficient; no fsync/crash-durability claim.
@@ -128,8 +130,11 @@ Fixed profile:16 admitted calls,900s admission lease from readiness,2s file
 response wait,300s command response wait, candidate timeout_ms500..120000 integer.
 Clamp candidate time to remaining lease before dispatch; insufficient minimum
 refuses before effects. Use monotonic remaining budgets without resets. Lease
-expiration closes admission and starts cleanup; it does not prove physical
-cleanup finished within900s. Protected verifier uses existing configured policy.
+expiration closes admission and requests cleanup after the in-flight call. A
+blocked owner cannot process cleanup concurrently; retain unresolved until proof.
+The lease is admission expiry: later registration can establish a fresh candidate
+deadline, so clamping is not an absolute execution-finish cutoff. Protected
+verifier uses existing configured policy; no cleanup-within900s claim.
 Separate cleanup attempt budget60s, retain unresolved if proof cannot be obtained.
 
 Inherited locks, local I/O and launch prevent an unconditional finite synchronous
