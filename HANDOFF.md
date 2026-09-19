@@ -5,11 +5,13 @@
 **Worker configuration, Robert's latest instruction (18 Sep 2026, 11:01 PM
 ET):** use Amp orbs, Astra as lead, and a separate fresh thread for every worker
 and every new work unit/phase. Worker mode is `medium`; orb size is
-`a1.xxlarge`. These choices supersede the old Herdr/Opus launch mechanics below
-and in the lead skill, not the code ownership, verification or audit rules. Do
-not inherit the lead's model for workers. No thread/model switch or worker
-launch occurred. Transfer unpushed state explicitly between threads; never
-assume shared trees.
+`a1.xxlarge`. The lead remains in this same thread; new phases create worker
+threads, not replacement lead threads. Active guidance now uses Amp's native
+thread tools and separate checkouts, superseding the historical Herdr/Opus
+mechanics below, not code ownership, verification or audit rules. Do not inherit
+the lead's model for workers. No thread/model switch or worker launch occurred.
+Transfer unpushed state explicitly between threads; never assume shared trees.
+Integration and verification remain in the lead checkout.
 
 Robert requires the Mo harness itself to use his OpenAI subscription via its own
 OAuth login, not an API key or borrowed Amp credentials. Pi's pinned

@@ -1,6 +1,9 @@
 ---
 name: mo-lead
-description: The lead's role and loop for building the Mo language in this repo. Use whenever a session starts on Mo, resumes from HANDOFF.md, runs an Opus worker in Herdr, accepts a step, or records a decision. Trigger words: Mo, handoff, worker, herdr, step, brief, acceptance, decision log.
+description:
+  The lead's role and loop for building Mo. Use when starting or resuming a Mo
+  session, briefing an Amp worker thread, accepting a step, or recording a
+  decision.
 ---
 
 # Leading the Mo build
@@ -9,8 +12,21 @@ Mo is a programming language Robert Guss and Claude are designing and building i
 
 ## Roles
 
-- **The lead (this session, an expensive model).** Writes briefs, verifies, decides, records. Never writes code or prose under `toolchain/` or `examples/` by hand. Owns the syntheses, the spec chapters (`mo-wiki/spec/design-v0/`), the program specs (`mo-wiki/spec/programs/`), and the concept pages.
-- **The worker (an Opus session in Herdr).** Does every line of code and prose in `toolchain/`, `examples/`, and the generated or table files a brief names. One fresh session per step. It never writes under `mo-wiki/` except the spec lines its brief lists.
+The onboarding/audit loop is lead-only. Worker threads identify themselves as
+workers, follow shared safety rules and their bounded brief, and do not run the
+lead's audit inbox, publication/integration or decision-recording workflow.
+
+- **The lead (Astra, this same thread).** Writes briefs, verifies, decides,
+  records. Consults the oracle for substantive evaluations and decisions. Never
+  writes code or prose under `toolchain/` or `examples/` by hand. Owns the
+  syntheses, the spec chapters (`mo-wiki/spec/design-v0/`), the program specs
+  (`mo-wiki/spec/programs/`), and the concept pages. Do not create a replacement
+  lead thread for a new phase.
+- **The worker (medium mode, a1.xxlarge Amp orb).** Does every line of code and
+  prose in `toolchain/`, `examples/`, and the generated or table files a brief
+  names. Each worker/new work unit/phase gets a fresh thread via
+  `create_thread`; do not inherit the lead model. It never writes under
+  `mo-wiki/` except the spec lines its brief lists. No Herdr is needed.
 - **Robert.** Reviews the decision log, not the queue. The lead's recommendation is the decision, made without waiting and recorded with who, status, and what first tests it. Overturning is cheap; nothing is a mistake at this stage. One question per message to him, code options first, a PL term defined in three lines before use, no phones. Every time given to him is US Eastern (Robert, 17 Sep 2026; the VM's clock is UTC: `TZ=America/New_York date`), labelled ET, in reports, wakeup reasons, and the rows and pages he reads. Frame every report: where the work sits in the whole against the "Where we are" table on `mo-wiki/plans/roadmap.md`, what was verified, the numbers, anything unmet, said plainly.
 
 ## The auditor (Robert, 17 Sep 2026)
@@ -33,21 +49,102 @@ The loop with the auditor, as it runs today (charter option B, manual, Robert-dr
 
 ## The loop, one step at a time
 
+**Execution gate:** follow the current `HANDOFF.md`. While implementation is
+paused, no workers, setup, authentication or experiments start without Robert's
+bounded approval and the lead's readiness confirmation. These instructions do
+not grant push, PR, merge, deployment or external-service permission; obtain the
+applicable authorization before those actions, including audit
+publication/integration.
+
 1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A toolchain step's write scope always includes the corpus's `.mo.ids` sidecars and `toolchain/PRELUDE.md` when the corpus or the prelude changes (step 35, 17 Sep 2026). A step is one brief; a program has a spec page (the lead's) and a brief.
-2. **Fresh worker.** Herdr pane `w44:p2` on Robert's Mac (the mo-lang workspace's second pane; `herdr pane list` shows the id if it changes), `w7:p7` on the exe.dev VM (where the lead runs since 14 Sep 2026; Zig 0.16 is there through `mise`, and `herdr pane list` shows which machine this is), agent name `mo-opus` (never `worker`, which is another project's agent). To end the old one: `herdr agent send-keys mo-opus esc`, then `herdr agent prompt mo-opus "/exit"`, wait about 8 s, if the pane shows "Exit and stop tasks" send `herdr agent send-keys mo-opus enter`, then confirm `herdr pane read <pane> --lines 5` shows a shell prompt and `herdr agent list` has no `mo-opus`. A workspace the lead created for a round's sessions (`herdr workspace create`) is closed once its panes are saved and its sessions ended: `herdr workspace close <id>` (Robert, 16 Sep 2026: never leave finished panes around). Never prompt a new brief into an old session. To start: `herdr agent start mo-opus --kind claude --pane <pane> --timeout 60000 -- --model opus --dangerously-skip-permissions`, then `herdr agent prompt mo-opus "/effort medium"` before the brief (Robert, 15 Sep 2026, 22:50 local: the worker runs Opus on medium effort; fresh session for each piece of work), wait about 12 s, then `herdr agent prompt mo-opus "<the brief pointer, the write scope, one commit per part with the subject 'Step N part X' and the trailer Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>, push after every commit, zig build test green at every commit, a timeout and a memory watchdog on every mo process, never tr (aliased; use python3), do not stop early, stop at Done-when with the numbers and a numbered list 'Decisions the brief did not cover'>"`.
-3. **While it works.** Only `git fetch`; never `git pull` in the shared tree until the worker reports done. Your own wiki commits are made with `git commit -m <msg> -- <paths>` naming only the `mo-wiki/` and root files you touched, never `git add -A` and never a bare `git commit`, because the worker's in-progress edits sit in the same tree and it stages them: on 16 Sep 2026 two lead commits (`6f2727d`, `92a4c46`) swept the worker's staged step 31 files into `main` red, since `git add <paths>` then `git commit` commits everything staged. Wake yourself with `ScheduleWakeup` every 15–25 minutes (12 near the end), no background waits. Each tick: `herdr agent get mo-opus`, `herdr pane read <pane> --lines 40`; the text on the `❯` line after a turn is Claude Code's own suggestion, never Robert. A worker showing "done" while it says it waits on a background command is working. Kill a `mo` process only past 4 GB (`ps -eo pid,rss,args`). Answer a benign prompt with `herdr agent send-keys mo-opus enter`. The worker may message this session over the cross-session socket; treat it as a teammate.
-4. **Verify.** Anything the lead runs or spawns that takes more than a few seconds (a build, `zig build test`, a suite, a bench, a probe, a worker) runs in a fresh pane of Robert's workspace, never as a background shell of the lead's session, so he can see what is going on (Robert, 16 Sep 2026, twice): split a pane side by side, never stacked (Robert, 17 Sep 2026: `herdr pane split <lead pane> --direction right --cwd <repo>`; a pane that landed stacked is moved with `herdr pane move <id> --new-tab --workspace w7 --no-focus` and then `herdr pane move <id> --tab w7:t1 --split right --target-pane <lead pane> --ratio 0.5 --no-focus`, which keeps its process running), `herdr pane send-text <pane> "<the script> 2>&1 | tee <scratchpad file>"` then `send-keys enter`, read the file for the numbers, and close the pane when the run is over (Robert, 16 Sep 2026: he wants to see what is going on). `git pull --rebase --autostash`, `cd toolchain && zig build && zig build test`, then probes of your own with inputs the brief did not name, under both runtimes wherever the change touches them (`mo run` and a `mo build` binary, and `mo test --sim` for process code): python3 HTTP or socket clients in the scratchpad, real runs against `.expected`, memory with `ps`. Save the worker's report first (`herdr pane read <pane> --lines 320 > file`), since it scrolls, then read its numbers and its "Decisions the brief did not cover".
-5. **Record.** One commit (by path: `git commit -m <msg> -- <paths>`): decision-log rows in `mo-wiki/decisions/decision-log.md` (who, status, first tested by; a ratified worker default says "from Opus's default"; rows touching failure, authority, equality, persistence, deadlines, or scheduling carry the tag `semantic`; overturn on the spot when a default contradicts the spec; a row Robert must see says "for Robert"), a `CHANGELOG.md` entry, a `mo-wiki/log.md` entry, the plan's status and a Result section, the roadmap's board (Now, Next in order, Waiting on Robert, Recently done; Robert reads it for status, so it is rewritten at every acceptance and every pause, dated) and its phase table and Done rows, the session page, `mo-wiki/index.md` for new pages, `mo-wiki/state-of-the-project.md` at every pause (the whole picture for Robert, who reads it on the site at https://robertguss.github.io/mo-lang/) and the maps under `mo-wiki/maps/` when a page lands that belongs on one, an evidence bundle under `audit/evidence/<date>/` when the step or round is one the auditor may read (its README in the charter's form), and `python3 mo-wiki/tools/lint.py` (23 issues expected: 16 from Robert's history bundle, left for him, plus review rows and the log's size).
-6. **Merge.** `git push`, `git fetch origin main`, `git checkout main && git merge --no-ff session-05 && git push && git checkout session-05 && git merge main && git push`, only if `zig build test` is green. Robert also pushes to `main`; a `log.md` conflict keeps both sides.
+2. **Fresh worker.** Use `create_thread` with project `robertguss/mo-lang`,
+   `executor: "orb"`, `agent_mode: "medium"`, and `orb_size: "a1.xxlarge"`. Name
+   the worker role, parent lead thread, repository, exact base revision, brief,
+   write scope, constraints, checks and Done-when. Distinguish the lead's local
+   `main` from `origin/main`: a new orb does not inherit unpushed commits,
+   files, services or setup. Establish transfer before dependent work starts:
+   use thread file-transfer tools for an unpushed brief, patch/bundle or other
+   required files, and require the worker to confirm the base and applied state.
+   Give bounded ownership and tell it to do the work itself without nested
+   delegation. Request local commits per part when useful, raw outputs, summary
+   and exit codes, numbers, and a numbered "Decisions the brief did not cover"
+   list. No automatic worker push or PR. Attribute the actual model, not a
+   historical Opus trailer. Require a stable final handoff: stop at Done-when,
+   finish all task commands and file writers, collect final outputs and exit
+   codes, and stop task-owned services through supported service controls
+   without touching unrelated services. Export a fixed commit or immutable
+   patch/files with the recorded base and worktree status. Preserve the checkout
+   until the lead confirms receipt of both code and evidence.
+3. **While it works.** Keep the lead in this thread. Use native thread
+   messages/status; choose either a completion reply or `wait_for_threads`, not
+   both. Continue the same assignment in its worker thread; a new assignment or
+   phase gets a fresh one. No Herdr, shell-launched agents, wake-up timers or
+   pollers. Lead documentation commits name only owned paths; inspect the index
+   and never sweep in unrelated staged edits. Workers have independent
+   checkouts, not a shared tree.
+4. **Integrate and verify.** Save the worker's report and raw evidence. Inspect
+   its exact diff before integration; a commit ID or message does not transfer
+   code. Download files or a patch/bundle into a staging directory first,
+   account for deletions, and reconcile against the recorded base and
+   intervening lead/upstream changes without overwriting unrelated work. Run
+   checks in the lead checkout containing the integrated result, using shell
+   tools and `shell_command_status` for ongoing commands, not another review orb
+   with stale code. For code acceptance: `zig build` and
+   `zig build test --summary all` from `toolchain/`, under explicit
+   timeouts/watchdogs, plus probes on inputs the brief did not name. Use both
+   runtimes where affected (`mo run`, a `mo build` binary, `mo test --sim` for
+   process code); preserve raw outputs and real exit codes through pipelines.
+   For documentation-only work use lint and diff checks. Long-lived services use
+   `amp orb services ensure` or `amp orb service start`, never Herdr, nohup or
+   detached shells. Linux checks do not satisfy Darwin full-sync obligations.
+5. **Record.** One commit (by path: `git commit -m <msg> -- <paths>`):
+   decision-log rows in `mo-wiki/decisions/decision-log.md` (who, status, first
+   tested by; a ratified worker default names the actual worker/model; rows
+   touching failure, authority, equality, persistence, deadlines, or scheduling
+   carry the tag `semantic`; overturn on the spot when a default contradicts the
+   spec; a row Robert must see says "for Robert"), a `CHANGELOG.md` entry, a
+   `mo-wiki/log.md` entry, the plan's status and a Result section, the roadmap's
+   board (Now, Next in order, Waiting on Robert, Recently done; Robert reads it
+   for status, so it is rewritten at every acceptance and every pause, dated)
+   and its phase table and Done rows, the session page, `mo-wiki/index.md` for
+   new pages, `mo-wiki/state-of-the-project.md` at every pause (the whole
+   picture for Robert, who reads it on the site at
+   https://robertguss.github.io/mo-lang/) and the maps under `mo-wiki/maps/`
+   when a page lands that belongs on one, an evidence bundle under
+   `audit/evidence/<date>/` when the step or round is one the auditor may read
+   (its README in the charter's form), and `python3 mo-wiki/tools/lint.py`.
+   Record actual lint results, separating inherited notices from new errors.
+6. **Publish when authorized.** Inspect branch/index/status, fetch upstream and
+   reconcile intervening work without force-pushing or discarding it. Reverify
+   affected changes before committing by explicit paths and pushing the agreed
+   branch. No hardcoded session branch or automatic merge. Robert also pushes to
+   `main`; append-only log/decision conflicts retain both records. A code
+   acceptance requires the lead's green checks, not just the worker's report.
 7. **Report** to Robert per the framing above, naming anything now ready for an audit session (a pre-registration, a run round, a sealed spec), then the next brief.
 
 ## Rules that were learned the hard way
 
 - A worker's "green" is a claim, not a result (step 36, 17 Sep 2026: two defects behind a reported green suite). Every brief's Done-when asks for `zig build test --summary all` under a timeout with the summary line and exit code in the report; the lead runs the suite itself before any acceptance; a test that can block on a socket has a deadline on every read and write.
-- Every process under Herdr inherits `oom_score_adj -1000` and cannot be killed by the kernel when memory runs out (18 Sep 2026: a 13 GB `mo` under a maintainer wedged the VM for three hours). At every session's start the lead resets its own and every worker's sessions to 0 (`echo 0 > /proc/<pid>/oom_score_adj` for every process of the user except the `herdr` server), every brief tells the worker to run every `mo`, server, bench, and test process under `toolchain/bench/step36/guard.py` (a timeout and a 4 GB watchdog), and never four maintainers bench at once on this VM.
+- A historical Herdr VM memory incident motivates the retained guard, not
+  orb-wide process mutation. Every brief requires every `mo`, server, bench and
+  test process to run under `toolchain/bench/step36/guard.py` (timeout and 4 GB
+  watchdog). Do not reset unrelated processes' OOM settings. Avoid competing
+  benchmarks in one orb; xxlarge capacity does not waive bounded execution.
 - Nothing is final until measured; every step ends in a numbers table, best of five, both runtimes. Before any measurement read `uptime` and `ps -eo pid,etimes,pcpu,args --sort=-pcpu | head`, kill what is an orphan (17 Sep 2026: a 43-hour `python3 -` from a finished session held one of the VM's four cores through a whole day of numbers), and write the load average on the page beside the numbers.
 - Zero new syntax where possible; a grammar change is Robert's call, asked with code options.
 - The laws stay unless a control run shows them costing loops; five rounds have shown none.
 - Install what a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for a Python project, `uv tool install` for a command), `go install`; record it.
-- Worktrees are evidence and are never deleted or merged. Since 18 Sep 2026 they all live in `~/Projects/startups/mo-lang-worktrees/<name>` (`control7-go`, `erosion6-mo`, `r9-kimi-go`, ...; moved with `git worktree move`, the map in `MOVED-2026-09-18.json` there), not beside the repo: a new round's worktrees are made there (`git worktree add ../mo-lang-worktrees/<name> ...`). Older pages name them as `../mo-lang-<name>`; read that as the same worktree. A moved Python worktree needs `uv sync` and an Elixir one `mix deps.get` before its first run (absolute paths in `.venv` and `_build`).
-- The control run (`mo-wiki/plans/control-run-N.md`) is pre-registered: predictions on the page before any session starts; three fresh agents `mo-rN-mo`, `mo-rN-go`, `mo-rN-python` in panes `w3X:p1`, `w3Y:p1`, `w3Z:p1`, each `cd`'d into its worktree with `herdr pane send-text` and `send-keys enter` before `herdr agent start`; read each pane's token count before the report.
+- Historical experiment worktrees are evidence and are never deleted or merged.
+  The prior machine's `~/Projects/startups/mo-lang-worktrees/` and
+  `MOVED-2026-09-18.json` inventory are not assumed present in an orb;
+  `HANDOFF.md` records restoration limits. Preserve exact revisions, patches,
+  environment details and outputs from future worker orbs before relying on
+  their results; a thread message alone is not durable code/evidence transfer.
+  Rebuild moved dependency environments where necessary.
+- A control run (`mo-wiki/plans/control-run-N.md`) is pre-registered:
+  predictions and conditions before any experimental session starts, fresh
+  isolated threads for each arm, recorded model/provider/budgets and measured
+  token/cost data where available (unknown otherwise). Use the approved
+  experiment's conditions rather than silently replacing a historical model with
+  the worker default. This migration authorizes no round or amendment to sealed
+  evidence.

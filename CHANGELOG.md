@@ -2,6 +2,16 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Amp orb/thread workflow — 18 Sep 2026, 11:14 PM ET
+
+- Active guidance now keeps the Astra lead in the same thread and launches each
+  approved worker/new work unit/phase in a fresh medium-mode xxlarge orb.
+  Replaces Herdr mechanics with explicit state transfer, stable handoff,
+  role-aware onboarding and lead-side verification; preserves audit rules.
+- Recorded the subscription OAuth research and provisional Pi provider adapter.
+  No login, worker, setup or implementation started; readiness remains
+  incomplete.
+
 ## Mo-first coding harness selected — 18 Sep 2026, 10:29 PM ET
 
 - Robert approved the lead/oracle recommendation: a Mo-written, Mo-first coding

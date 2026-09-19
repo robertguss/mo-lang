@@ -1,7 +1,7 @@
 ---
 title: "How we work"
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-18
 type: map
 tags: [process]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -22,7 +22,20 @@ The working agreements, the roles, the loop, and the instruments, for anyone (or
 
 ## The roles
 
-The lead (a Fable session) writes briefs, verifies, decides, and records; it never writes code by hand. A worker (an Opus session in Herdr, one fresh session per step, medium effort) writes every line under `toolchain/` and `examples/`. Robert reviews the decision log. The rounds' agents are fresh sessions in their own worktrees, and the suites are written after the branching and never shown to them.
+The Astra lead stays in the same thread, writes briefs, verifies, decides, and
+records, using the oracle for substantive judgments. Workers write every line
+under `toolchain/` and `examples/`. Each approved worker/new work unit/phase
+gets a fresh Amp orb thread in `medium` mode on `a1.xxlarge`, through
+`create_thread`, not Herdr. Robert reviews the decision log.
+
+Threads have separate checkouts. Briefs identify the repository, exact base and
+write scope; unpushed work is transferred explicitly. The lead inspects and
+integrates returned changes, preserves raw evidence, and reruns acceptance in
+its own checkout. A worker's green report is not acceptance. Use native thread
+coordination and supervised orb services; preserve historical experiment
+worktrees and keep sealed suites away from workers. See the lead skill for the
+full loop. Workflow migration does not lift the implementation pause in
+`HANDOFF.md`.
 
 ## The auditor (17 Sep 2026)
 

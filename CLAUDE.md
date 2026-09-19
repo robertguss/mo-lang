@@ -1,9 +1,34 @@
 # Mo Lang
 
-A programming language for the AI era, designed and built by Robert Guss and Claude. Start every session by invoking the `mo-lead` skill (`.claude/skills/mo-lead/SKILL.md`): it holds the roles, the worker loop in Herdr, and the acceptance checklist. Then read `HANDOFF.md` for the current state and queue, then `mo-wiki/SCHEMA.md` for the working agreements. Then, before any work, check what the auditor has posted since the last session: `git fetch origin && python3 audit/automation/fable_poll.py check` (pointers only; follow the lead skill's Receive rules for each line, and never open an auditor reading before the lead's own is on `main`).
+A programming language for the AI era, designed and built by Robert Guss and
+Claude. Start every session by loading the `mo-lead` skill
+(`.claude/skills/mo-lead/SKILL.md`; read it directly if it is not registered):
+it holds the roles, the Amp orb/thread worker loop, and the acceptance
+checklist. Then read `HANDOFF.md` for the current state and queue, then
+`mo-wiki/SCHEMA.md` for the working agreements. Then, before any work, check
+what the auditor has posted since the last session:
+`git fetch origin && python3 audit/automation/fable_poll.py check` (pointers
+only; follow the lead skill's Receive rules for each line, and never open an
+auditor reading before the lead's own is on `main`). This onboarding sequence is
+for the lead. Worker threads read the role and safety rules, then follow their
+bounded brief; they do not check or operate the lead's audit inbox,
+publish/integrate audit records, or take over lead decisions.
 
-- The lead session directs, verifies, decides, and records. An Opus worker in a Herdr pane split to the right of the lead's (agent `mo-opus`, one fresh session per step; `herdr pane list` shows the machine and the ids) writes all code under `toolchain/` and `examples/`.
-- Commit wiki work with `git add <paths>`, never `git add -A`: the worker shares the tree.
+- The Astra lead stays in the same thread: it directs, verifies, decides, and
+  records, consulting the oracle for substantive evaluations and decisions.
+  Workers write code under `toolchain/` and `examples/`.
+- Launch each approved worker/new work unit/phase with `create_thread`,
+  `agent_mode: "medium"`, `executor: "orb"`, `orb_size: "a1.xxlarge"`. Do not
+  use Herdr or shell commands to launch agents. Workers use separate checkouts;
+  transfer unpushed files explicitly and verify the exact integrated changes in
+  the lead checkout. Follow the skill's briefing and integration rules.
+- Stage and commit only named paths (`git add <paths>` and
+  `git commit -m <message> -- <paths>`), never `git add -A`. Inspect existing
+  staged changes; do not sweep in someone else's work.
+- The implementation pause in `HANDOFF.md` remains in force until Robert
+  approves a bounded start and the lead confirms readiness. Workflow
+  instructions are not permission to launch workers, authenticate, or run
+  experiments.
 - Robert's decisions and the lead's are rows in `mo-wiki/decisions/decision-log.md`; he reviews the log, not the queue.
 - Never use `tr` in shell commands (aliased on this machine); use python3.
 - Install any tool a step needs without asking: Homebrew, `mise`, `uv` (`uv init` for Python projects), `go install`.
