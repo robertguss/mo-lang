@@ -74,6 +74,21 @@ worker's toolchain defect (raw memory printed by the native binary on reports
 over about 0.35 MB), then launch steps 1, 2 and 8 in parallel and write the
 design page for capabilities 1 to 3.
 
+**Application workspace acceptance, state at 8:22 AM ET (not accepted yet):**
+merged locally at `ddd81c06`. Lead build exit 0. Lead full suite: 242 of 243,
+exit 1, 8:18 AM ET; the one failure is the TLS corpus test "a fatal alert where
+a hello belongs is Handshake and a reset mid-hello is Closed" (found `Handshake`
+where `Closed` was expected). Rerun alone five times under the guard: 4 pass, 1
+fail. The slice touches no TLS or toolchain source, so this is a flake in the
+TLS brick, measured at about 1 in 5, and belongs with step 39; it is not
+explained. Still owed before acceptance: lead probes beyond the brief, the
+machine run through `live.py --application`, and a toolchain brief for the
+worker's defect (native binary prints raw memory on reports over about 0.35 MB;
+interpreter panics at `vm.zig:1531` over about 0.8 MB; reproduce at worker
+commit `5caec127`, before the 256 KiB cap). Robert asked at 8:20 AM ET that any
+Python-to-Mo size reduction be verified and documented: the protocol is "The
+size question" in `mo-wiki/plans/mo-harness-in-mo.md`.
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
