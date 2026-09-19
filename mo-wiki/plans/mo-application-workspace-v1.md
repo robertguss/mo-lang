@@ -10,6 +10,48 @@ status: in-progress
 
 # Mo application workspace v1: recorded remote tools
 
+## Rebuild from scratch, 19 Sep 2026, 7:40 AM ET
+
+Robert and the Fable lead decided ([[decision-log]]) to discard Astra's
+unfinished attempt and rebuild this slice from accepted base `030290b8`. The
+attempt (checkpoint `0a74a0fc`, WIP `0b1404b5`, branch
+`harness/application-workspace-v1`) is historical evidence: do not merge, copy
+from or edit it. The worker is a fresh Claude Opus session on branch
+`harness/application-workspace-v2` in worktree
+`~/Projects/startups/mo-lang-worktrees/harness-application-workspace-v2`.
+Everything below stands except where this section differs.
+
+**Findings the rebuild must close, RED first.** Each gets a failing control
+committed before its fix, in both runtimes. Read the four reviews under
+`audit/evidence/2026-09-19/application-workspace/` for the exact bodies.
+
+1. A pre-admission refusal with null identities (HTTP 401, `not_started`) keeps
+   `not_started`; it must not become `invalid_response/unknown`. Stopping is fine.
+2. HTTP status is checked against the contract for unaccepted responses too: a
+   `busy` refusal on HTTP 500 is a contract violation, since busy is 409.
+3. A command result's streams are both strings, or both null with
+   `failure/output_encoding`. A success with null output, or mixed null and
+   string, is rejected.
+4. `state=success` with a nonzero exit code is rejected. Do not add a
+   signal-null condition; the producer does not establish one.
+5. Near-expiry: the candidate timeout is taken after request encoding, or the
+   matrix proves that time spent encoding a large request cannot dispatch
+   below the 500 ms minimum.
+6. Evidence never adds `.mo` files under `examples/`: `corpus.zig` collects
+   every `.mo` file and would run saved copies and deliberate failures as
+   corpus entries. Keep source copies as non-`.mo` artifacts with a path and
+   SHA mapping; failing controls live where the corpus does not read them.
+7. The guard wrapper records the child's actual return code separately from
+   its own outcome and reason; a synthetic 124 never replaces an observed exit.
+
+**Proportionate evidence.** Per attempt keep the command, real exit code,
+summary line and failing output. No per-run process tables or full
+source-identity manifests; one source manifest at the final freeze. The whole
+slice's retained evidence stays under 2 MiB, replacing the 16 MiB-per-attempt
+allowance below. Commits are authored by the worker as itself, with a
+`Co-Authored-By` line naming its model; the Astra attribution rules below do
+not apply.
+
 ## Orientation
 
 Released for local implementation after HTTP acceptance atcf99cd88; the lead
@@ -19,11 +61,10 @@ this slice. No live provider/authentication or language-value acceptance here.
 Read audit/evidence/2026-09-19/workspace-wire-readiness/application-profile-design.md
 and application-budget-review-01.md, then accepted workspace_http/CONTRACT.md.
 
-The lead owns decisions/integration/wiki/evidence; a fresh GPT-6-Astra low worker
+The lead owns decisions/integration/wiki/evidence; a fresh Claude Opus worker
 in Herdr owns implementation in a separate exact-base worktree. You are not alone;
 preserve others' changes. No nested agents, push/rebase, compiler/provider/core
-executor changes, downloads, image/configuration/ceiling or /opt changes. Actual
-commits must explicitly identify GPT-6-Astra as author AND committer. Retain all
+executor changes, downloads, image/configuration/ceiling or /opt changes. Retain all
 failed attempts and do not edit a running source. Every test/build/server uses
 an owned right/no-focus Herdr pane, numeric guard and owned group cleanup.
 
@@ -180,8 +221,7 @@ follow final frozen source and machine cleanup; all failures remain retained.
 
 ## Done when
 
-Freeze clean exact base/tip, explicit Astra attribution and source/ID/evidence
-manifest. Report numbered decisions/limitations and exact reproduction commands,
+Freeze clean exact base/tip and one source/ID/evidence manifest. Report numbered decisions/limitations and exact reproduction commands,
 selected counts and actual outcomes versus cleanup proofs. Release machine and
 close only idle run panes after process proof; preserve worktree/worker for review.
 Lead immutable review, independent integrated reruns and extra control determine
