@@ -14,7 +14,7 @@
  "ref": "HEAD",
  "defective": false,
  "defect": "",
- "expected": "caught",
+ "expected": "none",
  "caught_by_incomplete": false,
  "labels": []
 }
