@@ -1,0 +1,703 @@
+diff --git a/toolchain/harness/executor/adapter.py b/toolchain/harness/executor/adapter.py
+index 62f7ba9e..64d087e0 100644
+--- a/toolchain/harness/executor/adapter.py
++++ b/toolchain/harness/executor/adapter.py
+@@ -121,12 +121,17 @@ class Run:
+         payload_data = {'source': source, 'manifest': self.manifest}
+         if 'workspace' in self.manifest:
+             payload_data['workspace_sources'] = {name: Path(__file__).with_name(name + '.py').read_text()
+-                for name in ('workspace_controller', 'workspace_files')}
++                for name in ('workspace_files', 'workspace_controller')}
+         payload = json.dumps(payload_data).encode()
+-        bootstrap = '''import fcntl,json,pathlib,subprocess,sys,time
++        bootstrap = '''import fcntl,json,pathlib,subprocess,sys,time,types
+ p=json.load(sys.stdin); m=p['manifest']; root=pathlib.Path(sys.argv[1])
+ with open('/tmp/mo-executor-registration.lock','w') as lock:
+  fcntl.flock(lock,fcntl.LOCK_EX)
++ if 'workspace' in m:
++  for module, source in {'remote':p['source'], **p['workspace_sources']}.items():
++   loaded=types.ModuleType(module);sys.modules[module]=loaded;exec(compile(source,module+'.py','exec'),loaded.__dict__)
++  from workspace_controller import bootstrap_barrier
++  bootstrap_barrier(m)
+  units=subprocess.run(['systemctl','list-units','--all','--no-legend','mo-executor-*.timer'],capture_output=True,check=True).stdout
+  containers=subprocess.run(['docker','ps','-aq','--filter','name=^/mo-executor-'],capture_output=True,check=True).stdout
+  if units.strip() or containers.strip(): raise RuntimeError('another candidate is registered')
+diff --git a/toolchain/harness/executor/recovery/__init__.py b/toolchain/harness/executor/recovery/__init__.py
+new file mode 100644
+index 00000000..ee7a755a
+--- /dev/null
++++ b/toolchain/harness/executor/recovery/__init__.py
+@@ -0,0 +1,192 @@
++"""Trusted operator ownership records and explicit cleanup-only recovery."""
++from contextlib import contextmanager
++import fcntl
++import json
++import math
++import os
++from pathlib import Path
++import stat
++import time
++import uuid
++
++from remote import IMAGE, WORKSPACE_POLICY, selection, write
++from workspace_controller import identity
++
++VERSION = 'mo-workspace-ownership-v1'
++MAX_EXECUTIONS = 1000
++MAX_RECORD = 1024 * 1024
++
++
++def validate(receipt):
++    if not isinstance(receipt, dict) or set(receipt) != {'version', 'run_id', 'workspace_id', 'selection', 'directory', 'executions'}:
++        raise ValueError('ownership schema')
++    if receipt['version'] != VERSION:
++        raise ValueError('ownership version')
++    for key in ('run_id', 'workspace_id'):
++        identity(receipt[key])
++    selected = receipt['selection']
++    if not isinstance(selected, dict) or selected != {'policy': selected.get('policy'), 'image': selected.get('image'), 'toolchain': selected.get('toolchain')}:
++        raise ValueError('ownership selection')
++    selection(**selected)
++    if not isinstance(receipt['directory'], str) or not Path(receipt['directory']).is_absolute():
++        raise ValueError('ownership directory')
++    rows = receipt['executions']
++    if not isinstance(rows, list) or len(rows) > MAX_EXECUTIONS:
++        raise ValueError('ownership bound')
++    seen = set()
++    for row in rows:
++        if not isinstance(row, dict) or set(row) != {'execution_id', 'call_id', 'directory', 'readonly', 'dispatch_requested'}:
++            raise ValueError('execution schema')
++        for key in ('execution_id', 'call_id'):
++            identity(row[key])
++            if row[key] in seen:
++                raise ValueError('duplicate execution identity')
++            seen.add(row[key])
++        if row['directory'] != 'execution-' + row['execution_id'] or type(row['readonly']) is not bool or type(row['dispatch_requested']) is not bool:
++            raise ValueError('execution binding')
++    if len(json.dumps(receipt).encode()) > MAX_RECORD:
++        raise ValueError('ownership bound')
++    return receipt
++
++
++def safe_directory(path):
++    path = Path(os.path.abspath(path))
++    # macOS /tmp is an alias; the persisted path is canonical at creation.
++    for parent in (*reversed(path.parents), path):
++        if parent.is_symlink():
++            raise ValueError('linked ownership directory')
++    info = path.stat()
++    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
++        raise ValueError('nonprivate ownership directory')
++    return path
++
++
++def read_receipt(path):
++    path = Path(os.path.abspath(path))
++    directory = safe_directory(path.parent)
++    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
++    try:
++        info = os.fstat(fd)
++        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.getuid() or info.st_size > MAX_RECORD:
++            raise ValueError('ownership file')
++        with os.fdopen(fd, 'rb', closefd=False) as stream:
++            receipt = validate(json.load(stream))
++    finally:
++        os.close(fd)
++    if receipt['directory'] != str(directory):
++        raise ValueError('foreign result directory')
++    return receipt
++
++
++def validate_supporting(receipt):
++    for row in receipt['executions']:
++        directory = safe_directory(Path(receipt['directory']) / row['directory'])
++        path = directory / 'manifest.json'
++        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
++        try:
++            info = os.fstat(fd)
++            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > MAX_RECORD:
++                raise ValueError('execution record')
++            with os.fdopen(fd, 'rb', closefd=False) as stream:
++                manifest = json.load(stream)
++        finally:
++            os.close(fd)
++        selected = receipt['selection']
++        if (manifest.get('run_id') != row['execution_id'] or manifest.get('name') != 'mo-executor-' + row['execution_id'] or
++                any(manifest.get(k) != selected[k] for k in ('policy', 'image', 'toolchain'))):
++            raise ValueError('conflicting execution record')
++        workspace = manifest.get('workspace', {})
++        if 'workspace_id' in workspace and (workspace.get('workspace_id') != receipt['workspace_id'] or
++                workspace.get('workspace_run_id') != receipt['run_id'] or workspace.get('readonly') != row['readonly'] or
++                manifest.get('workspace_call_id') != row['call_id']):
++            raise ValueError('conflicting workspace binding')
++
++
++@contextmanager
++def owner_lock(directory, deadline):
++    fd = os.open(Path(directory) / 'ownership.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
++    try:
++        while True:
++            try:
++                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++                break
++            except BlockingIOError:
++                if time.monotonic() >= deadline:
++                    raise TimeoutError('ownership busy')
++                time.sleep(.01)
++        yield
++    finally:
++        os.close(fd)
++
++
++def initialize(ws):
++    ws.directory = ws.directory.resolve()
++    ws.ownership = {'version': VERSION, 'run_id': ws.run_id, 'workspace_id': ws.workspace_id,
++                    'selection': {'policy': ws.selection.get('policy', WORKSPACE_POLICY),
++                                  'image': ws.selection.get('image', IMAGE), 'toolchain': ws.selection.get('toolchain')},
++                    'directory': str(ws.directory), 'executions': []}
++    persist(ws)
++    ws._ownership_fd = os.open(ws.directory / 'ownership.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
++    fcntl.flock(ws._ownership_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++
++
++def persist(ws):
++    validate(ws.ownership)
++    write(ws.directory / 'ownership.json', ws.ownership)
++    os.chmod(ws.directory / 'ownership.json', 0o600)
++
++
++def intent(ws, run, call_id, readonly):
++    identity(call_id)
++    execution_id = run.manifest['run_id']
++    target = ws.directory / ('execution-' + execution_id)
++    run.directory.rename(target)
++    run.directory = target
++    ws.ownership['executions'].append({'execution_id': execution_id, 'call_id': call_id,
++                                      'directory': target.name, 'readonly': readonly, 'dispatch_requested': False})
++    persist(ws)
++
++
++def recover(receipt_path, *, seconds=60):
++    """Retire and clean exact recorded ownership. Never start/resume execution."""
++    if type(seconds) not in (int, float) or not math.isfinite(seconds) or not .5 <= seconds <= 1800:
++        raise ValueError('recovery budget')
++    receipt = read_receipt(receipt_path)  # invalid records cause no transport/effects
++    deadline = time.monotonic() + seconds
++    result = {'run_id': receipt['run_id'], 'workspace_id': receipt['workspace_id'],
++              'cleanup': 'unresolved', 'execution': 'unknown', 'completed': [],
++              'unresolved': [row['execution_id'] for row in receipt['executions']]}
++    acquired = False
++    try:
++        with owner_lock(receipt['directory'], deadline):
++            acquired = True
++            receipt = read_receipt(receipt_path)
++            validate_supporting(receipt)
++            Path(receipt['directory'], 'recovery-requested').touch()
++            source_dir = Path(__file__).resolve().parents[1]
++            sources = {name: (source_dir / (name + '.py')).read_text()
++                       for name in ('remote', 'workspace_files', 'workspace_controller')}
++            sources['recovery'] = Path(__file__).read_text()
++            sources['recovery_machine'] = Path(__file__).with_name('machine.py').read_text()
++            bootstrap = """import json,sys,types
++p=json.load(sys.stdin)
++for name,source in p['sources'].items():
++ m=types.ModuleType(name);sys.modules[name]=m;exec(compile(source,name+'.py','exec'),m.__dict__)
++print(json.dumps(sys.modules['recovery_machine'].recover(p['receipt'],p['seconds'])))
++"""
++            import adapter
++            remaining = max(.01, deadline - time.monotonic())
++            raw = adapter.remote(['python3', '-c', bootstrap],
++                                 data=json.dumps({'sources': sources, 'receipt': receipt, 'seconds': remaining}).encode(),
++                                 timeout=remaining)
++            response = json.loads(raw)
++            if any(response.get(k) != receipt[k] for k in ('run_id', 'workspace_id')):
++                raise ValueError('recovery response identity')
++            result.update(response)
++    except Exception as exc:
++        result['error'] = 'ownership_busy' if isinstance(exc, TimeoutError) and not acquired else 'recovery_unknown'
++    # Each attempt is new evidence; original execution observations are untouched.
++    path = Path(receipt['directory']) / ('recovery-' + uuid.uuid4().hex + '.json')
++    with path.open('x') as stream:
++        json.dump(result, stream, indent=2)
++    return result
+diff --git a/toolchain/harness/executor/recovery/machine.py b/toolchain/harness/executor/recovery/machine.py
+new file mode 100644
+index 00000000..b5de58a4
+--- /dev/null
++++ b/toolchain/harness/executor/recovery/machine.py
+@@ -0,0 +1,164 @@
++"""Cleanup only, loaded from installed caller sources, never retained scripts."""
++from contextlib import nullcontext
++import json
++from pathlib import Path
++import shutil
++import signal
++import time
++
++import remote
++import workspace_controller as controller
++from recovery import validate
++
++EXECUTION_BASE = Path('/tmp')
++
++
++def read_json(path, limit=1024 * 1024):
++    if path.is_symlink() or not path.is_file() or path.stat().st_nlink != 1 or path.stat().st_size > limit:
++        raise ValueError('invalid remote record')
++    return json.loads(path.read_text())
++
++
++def absence(execution_id):
++    name = 'mo-executor-' + execution_id
++    containers = remote.command(['docker', 'ps', '-aq', '--no-trunc', '--filter', 'name=^/' + name + '$'])
++    units = remote.command(['systemctl', 'list-units', '--all', '--no-legend', name + '*'])
++    if containers.stdout.strip() or units.stdout.strip():
++        raise ValueError('unowned runtime remains')
++
++
++def mounted_paths(root):
++    # Inventory only for absence proof, never resource adoption.
++    paths = {line.split()[4] for line in Path('/proc/self/mountinfo').read_text().splitlines()}
++    return {path for path in paths if path == str(root) or path.startswith(str(root) + '/')}
++
++
++def recover(receipt, seconds):
++    receipt = validate(receipt)
++    deadline = time.time() + seconds
++    result = {'run_id': receipt['run_id'], 'workspace_id': receipt['workspace_id'],
++              'cleanup': 'unresolved', 'execution': 'unknown', 'completed': [],
++              'unresolved': [r['execution_id'] for r in receipt['executions']]}
++    root = controller.root_for(receipt['workspace_id'])
++    terminal = controller.terminal_path(receipt['workspace_id'])
++    def expired(*_):
++        raise TimeoutError('recovery budget')
++    previous = signal.signal(signal.SIGALRM, expired)
++    signal.setitimer(signal.ITIMER_REAL, max(.01, seconds))
++    try:
++        with remote.registration_lock(deadline):
++            controller.BASE.mkdir(mode=0o755, exist_ok=True)
++            if root.is_symlink():
++                raise ValueError('linked workspace')
++            with (controller.lock(root, deadline) if root.exists() else nullcontext()):
++                prior = read_json(terminal) if terminal.exists() else None
++                if prior and prior.get('ownership') != receipt:
++                    raise ValueError('conflicting terminal ownership')
++                state = read_json(root / 'state.json') if root.exists() and ((root / 'state.json').exists() or not prior or prior.get('phase') != 'cleaned') else None
++                if state and (state.get('run_id') != receipt['run_id'] or state.get('workspace_id') != receipt['workspace_id'] or
++                              remote.selection(**receipt['selection']) != state.get('selection', {})):
++                    raise ValueError('foreign workspace')
++                if terminal.exists() and read_json(terminal).get('ownership') != receipt:
++                    raise ValueError('conflicting terminal ownership')
++                retired = controller.BASE / ('.retired-' + receipt['workspace_id'])
++                if retired.exists():
++                    old = read_json(retired)
++                    if any(old.get(k) != receipt[k] for k in ('run_id', 'workspace_id')):
++                        raise ValueError('foreign retired workspace')
++                retained = read_json(terminal).get('executions', {}) if terminal.exists() else {}
++                rows = {r['execution_id']: r for r in receipt['executions']}
++                active = state.get('active') if state else None
++                if active and active['execution_id'] not in rows:
++                    raise ValueError('unrecorded active execution')
++                # Validate every surviving identity before any cleanup side effect.
++                for row in rows.values():
++                    eroot = EXECUTION_BASE / ('mo-executor-' + row['execution_id'])
++                    if eroot.is_symlink():
++                        raise ValueError('linked execution')
++                    if eroot.exists() and ((eroot / 'manifest.json').exists() or row['execution_id'] not in retained):
++                        m = read_json(eroot / 'manifest.json')
++                        w = m.get('workspace', {})
++                        if (m.get('run_id') != row['execution_id'] or m.get('name') != eroot.name or
++                                w.get('workspace_id') != receipt['workspace_id'] or w.get('workspace_run_id') != receipt['run_id'] or
++                                w.get('readonly') != row['readonly'] or m.get('workspace_call_id') != row['call_id']):
++                            raise ValueError('foreign execution')
++                        remote.manifest_policy(m)
++                        if remote.workspace_selection(w) != remote.selection(**receipt['selection']):
++                            raise ValueError('foreign execution selection')
++                if not terminal.exists():
++                    remote.write(terminal, {'ownership': receipt, 'phase': 'cleaning', 'executions': {}})
++                record = read_json(terminal)
++                result['completed'].append('terminal_barrier')
++                if state:
++                    state['phase'] = 'quarantined'
++                    controller.state_write(root, state)
++                for row in rows.values():
++                    eid = row['execution_id']
++                    eroot = EXECUTION_BASE / ('mo-executor-' + eid)
++                    if eroot.exists() and not (eroot / 'manifest.json').exists() and eid in retained:
++                        absence(eid)
++                        proof = retained[eid]
++                        if not all(proof.get(k) is True for k in ('host_confirmed', 'host_cgroup_absent', 'services_absent')):
++                            raise ValueError('incomplete disposal proof')
++                        if proof.get('host_cgroup') and Path(proof['host_cgroup']).exists():
++                            raise ValueError('candidate cgroup remains')
++                        shutil.rmtree(eroot)
++                    if eroot.exists():
++                        proof = remote.finalize(eroot, locked=True)
++                        if not all(proof.get(k) is True for k in ('host_confirmed', 'host_cgroup_absent', 'services_absent')):
++                            raise ValueError('cleanup proof missing')
++                        record['executions'][eid] = proof
++                        remote.write(terminal, record)  # survives interruption during disposal
++                        if active and active['execution_id'] == eid:
++                            state['active'] = None
++                            controller.state_write(root, state)
++                        remote.dispose(eroot, locked=True)
++                    else:
++                        absence(eid)
++                        proof = record['executions'].get(eid) or (state or {}).get('completed_executions', {}).get(eid)
++                        if proof:
++                            record['executions'][eid] = proof
++                            remote.write(terminal, record)
++                        if row['dispatch_requested'] and not proof:
++                            raise ValueError('dispatched execution proof missing')
++                        if proof and proof.get('host_cgroup') and Path(proof['host_cgroup']).exists():
++                            raise ValueError('candidate cgroup remains')
++                        if active and active['execution_id'] == eid:
++                            if active.get('started') and not proof:
++                                raise ValueError('started execution proof missing')
++                            state['active'] = None
++                            controller.state_write(root, state)
++                    result['completed'].append(eid)
++                    result['unresolved'].remove(eid)
++                mounts = mounted_paths(root)
++                if mounts - {str(root / 'snapshot'), str(root / 'storage')}:
++                    raise ValueError('unexpected workspace mount')
++                if root.exists():
++                    for name in ('snapshot', 'storage'):
++                        mount = root / name
++                        if mount.is_symlink():
++                            raise ValueError('linked mount')
++                        if mount.exists():
++                            if str(mount) in mounts:
++                                controller.mount_bounds(mount)
++                                remote.command(['umount', str(mount)])
++                            if str(mount) in mounted_paths(root):
++                                raise ValueError('mount remains')
++                            mount.rmdir()
++                    if state:
++                        state['phase'] = 'deleted'
++                        controller.state_write(root, state)
++                if mounted_paths(root):
++                    raise ValueError('workspace mounts remain')
++                record['phase'] = 'cleaned'
++                remote.write(terminal, record)
++            if root.exists():
++                shutil.rmtree(root)
++            result['completed'].append('workspace_deleted')
++            result['cleanup'] = 'confirmed'
++    except Exception:
++        result['error'] = 'cleanup_unknown'
++    finally:
++        signal.setitimer(signal.ITIMER_REAL, 0)
++        signal.signal(signal.SIGALRM, previous)
++    return result
+diff --git a/toolchain/harness/executor/remote.py b/toolchain/harness/executor/remote.py
+index bb2e2a3a..12844f18 100644
+--- a/toolchain/harness/executor/remote.py
++++ b/toolchain/harness/executor/remote.py
+@@ -1,6 +1,6 @@
+ """Trusted machine-side supervisor. Candidate text is only Docker argv data."""
+ import base64
+-from contextlib import contextmanager
++from contextlib import contextmanager, nullcontext
+ import fcntl
+ import hashlib
+ import json
+@@ -141,16 +141,26 @@ def cleanup(name, deadline=None):
+ 
+ 
+ @contextmanager
+-def registration_lock():
++def registration_lock(deadline=None):
+     # Shared with bootstrap: no late supervisor can appear after cleanup proof.
+     with open('/tmp/mo-executor-registration.lock', 'a') as lock:
+-        fcntl.flock(lock, fcntl.LOCK_EX)
++        if deadline is None:
++            fcntl.flock(lock, fcntl.LOCK_EX)
++        else:
++            while True:
++                try:
++                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
++                    break
++                except BlockingIOError:
++                    if time.time() >= deadline:
++                        raise TimeoutError('registration busy')
++                    time.sleep(.01)
+         yield
+ 
+ 
+-def finalize(root):
++def finalize(root, *, locked=False):
+     """Leave the independent reaper armed until writers and candidate are gone."""
+-    with registration_lock():
++    with (nullcontext() if locked else registration_lock()):
+         name = root.name
+         command(['systemctl', 'stop', name + '.service'], check=False)
+         active = command(['systemctl', 'list-units', '--all', '--no-legend',
+@@ -189,8 +199,8 @@ def finalize(root):
+         return result
+ 
+ 
+-def dispose(root):
+-    with registration_lock():
++def dispose(root, *, locked=False):
++    with (nullcontext() if locked else registration_lock()):
+         name = root.name
+         containers = command(['docker', 'ps', '-aq', '--filter', 'name=^/' + name + '$'])
+         units = command(['systemctl', 'list-units', '--all', '--no-legend', name + '*'])
+diff --git a/toolchain/harness/executor/workspace.py b/toolchain/harness/executor/workspace.py
+index a793be60..3adcb9c7 100644
+--- a/toolchain/harness/executor/workspace.py
++++ b/toolchain/harness/executor/workspace.py
+@@ -5,6 +5,9 @@ import json
+ from pathlib import Path
+ import time
+ import uuid
++import threading
++import os
++from contextlib import contextmanager
+ 
+ from adapter import Run, remote, validate_checks, verify
+ from remote import CAP, IMAGE, WORKSPACE_POLICY, policy_errors, selection, workspace_selection, manifest_policy
+@@ -89,40 +92,59 @@ class Workspace:
+         self.active = None
+         self.snapshot = None
+         self._calls = set()
++        self._owner_mutex = threading.RLock()
++        from recovery import initialize
++        initialize(self)
++
++    def __del__(self):
++        fd = getattr(self, '_ownership_fd', None)
++        if fd is not None:
++            os.close(fd)
++            self._ownership_fd = None
++
++    @contextmanager
++    def _ownership(self):
++        # The file lock belongs to the object lifetime, including the interval
++        # between start_command and collect. The mutex serializes its threads.
++        with self._owner_mutex:
++            if self._ownership_fd is None or (self.directory / 'recovery-requested').exists():
++                raise files.Refusal('recovery_closed')
++            yield
+ 
+     def call(self, operation, args=None, *, call_id=None, seconds=30):
+-        from workspace_controller import identity
+-        call_id = identity(call_id or uuid.uuid4().hex)
+-        if call_id in self._calls:
+-            raise files.Refusal('duplicate_call')
+-        if not isinstance(seconds, (int, float)) or not .5 <= seconds <= 60:
+-            raise files.Refusal('deadline')
+-        self._calls.add(call_id)
+-        request = {'run_id': self.run_id, 'workspace_id': self.workspace_id, 'call_id': call_id,
+-                   'operation': operation, 'args': args or {}, 'deadline': time.time() + seconds}
+-        attempt = self.directory / ('call-' + call_id)
+-        attempt.mkdir(mode=0o700)
+-        (attempt / 'request.json').write_text(json.dumps(request))
+-        sources = {name: Path(__file__).with_name(name + '.py').read_text()
+-                   for name in ('remote', 'workspace_files', 'workspace_controller')}
+-        bootstrap = """import json,sys,types
++        with self._ownership():
++            from workspace_controller import identity
++            call_id = identity(call_id or uuid.uuid4().hex)
++            if call_id in self._calls:
++                raise files.Refusal('duplicate_call')
++            if not isinstance(seconds, (int, float)) or not .5 <= seconds <= 60:
++                raise files.Refusal('deadline')
++            self._calls.add(call_id)
++            request = {'run_id': self.run_id, 'workspace_id': self.workspace_id, 'call_id': call_id,
++                       'operation': operation, 'args': args or {}, 'deadline': time.time() + seconds}
++            attempt = self.directory / ('call-' + call_id)
++            attempt.mkdir(mode=0o700)
++            (attempt / 'request.json').write_text(json.dumps(request))
++            sources = {name: Path(__file__).with_name(name + '.py').read_text()
++                       for name in ('remote', 'workspace_files', 'workspace_controller')}
++            bootstrap = """import json,sys,types
+ payload=json.load(sys.stdin)
+ for name,source in payload['sources'].items():
+  module=types.ModuleType(name); sys.modules[name]=module; exec(compile(source,name+'.py','exec'),module.__dict__)
+ print(json.dumps(sys.modules['workspace_controller'].handle(payload['request'])))
+ """
+-        try:
+-            raw = remote(['python3', '-c', bootstrap], data=json.dumps({'sources': sources, 'request': request}).encode(), timeout=seconds + 5)
+-            result = json.loads(raw)
+-            if any(result.get(k) != request[k] for k in ('run_id', 'workspace_id', 'call_id')):
+-                raise RuntimeError('mismatched response identity')
+-        except Exception:
+-            result = {k: request[k] for k in ('run_id', 'workspace_id', 'call_id')}
+-            result.update(state='failure', execution='unknown', error='transport_unknown')
++            try:
++                raw = remote(['python3', '-c', bootstrap], data=json.dumps({'sources': sources, 'request': request}).encode(), timeout=seconds + 5)
++                result = json.loads(raw)
++                if any(result.get(k) != request[k] for k in ('run_id', 'workspace_id', 'call_id')):
++                    raise RuntimeError('mismatched response identity')
++            except Exception:
++                result = {k: request[k] for k in ('run_id', 'workspace_id', 'call_id')}
++                result.update(state='failure', execution='unknown', error='transport_unknown')
++                (attempt / 'result.json').write_text(json.dumps(result, indent=2))
++                raise
+             (attempt / 'result.json').write_text(json.dumps(result, indent=2))
+-            raise
+-        (attempt / 'result.json').write_text(json.dumps(result, indent=2))
+-        return result
++            return result
+ 
+     def require(self, operation, args=None, **kwargs):
+         result = self.call(operation, args, **kwargs)
+@@ -154,38 +176,46 @@ print(json.dumps(sys.modules['workspace_controller'].handle(payload['request']))
+         return self.require('exact_edit', {'path': path, 'old': old, 'new': new}, **kwargs)
+ 
+     def _prepare_command(self, script, *, checks=None, seconds=10, call_id=None):
+-        call_id = call_id or uuid.uuid4().hex
+-        readonly = checks is not None
+-        if readonly:
+-            validate_checks(checks)
+-        if self.active:
+-            raise files.Refusal('cleanup_required')
+-        # Initialize identity before reserving dispatch; no dummy behavioral checks.
+-        run = WorkspaceRun(script, self.directory / ('execution-' + uuid.uuid4().hex), seconds, self.selection, checks)
+-        reserved = self.require('reserve', {'execution_id': run.manifest['run_id'], 'readonly': readonly,
+-                                         'selection': self.selection}, call_id=call_id)
+-        run.manifest['workspace'] = reserved['workspace']
+-        # A changed local selection cannot widen a previously registered workspace.
+-        manifest_policy(run.manifest)
+-        run.manifest['workspace_call_id'] = call_id
+-        run.persist()
+-        self.active = run
+-        return run
++        with self._ownership():
++            call_id = call_id or uuid.uuid4().hex
++            readonly = checks is not None
++            if readonly:
++                validate_checks(checks)
++            if self.active:
++                raise files.Refusal('cleanup_required')
++            # Initialize identity before reserving dispatch; no dummy behavioral checks.
++            run = WorkspaceRun(script, self.directory / ('execution-' + uuid.uuid4().hex), seconds, self.selection, checks)
++            from recovery import intent
++            intent(self, run, call_id, readonly)
++            reserved = self.require('reserve', {'execution_id': run.manifest['run_id'], 'readonly': readonly,
++                                             'selection': self.selection}, call_id=call_id)
++            run.manifest['workspace'] = reserved['workspace']
++            # A changed local selection cannot widen a previously registered workspace.
++            manifest_policy(run.manifest)
++            run.manifest['workspace_call_id'] = call_id
++            run.persist()
++            self.active = run
++            return run
+ 
+     def start_command(self, script, *, checks=None, seconds=10, call_id=None):
+-        run = self._prepare_command(script, checks=checks, seconds=seconds, call_id=call_id)
+-        run.start()
+-        return run
++        with self._ownership():
++            run = self._prepare_command(script, checks=checks, seconds=seconds, call_id=call_id)
++            from recovery import persist
++            self.ownership['executions'][-1]['dispatch_requested'] = True
++            persist(self)
++            run.start()
++            return run
+ 
+     def collect(self):
+-        if not self.active:
+-            raise files.Refusal('not_started')
+-        run = self.active
+-        result = run.collect()
+-        self.require('complete', {'execution_id': run.manifest['run_id']})
+-        run.dispose()
+-        self.active = None
+-        return result
++        with self._ownership():
++            if not self.active:
++                raise files.Refusal('not_started')
++            run = self.active
++            result = run.collect()
++            self.require('complete', {'execution_id': run.manifest['run_id']})
++            run.dispose()
++            self.active = None
++            return result
+ 
+     def command(self, script, *, seconds=10, call_id=None):
+         call_id = call_id or uuid.uuid4().hex
+@@ -226,4 +256,6 @@ print(json.dumps(sys.modules['workspace_controller'].handle(payload['request']))
+         return self.collect()
+ 
+     def delete(self, **kwargs):
+-        return self.require('delete', **kwargs)
++        result = self.require('delete', **kwargs)
++        self.__del__()
++        return result
+diff --git a/toolchain/harness/executor/workspace_controller.py b/toolchain/harness/executor/workspace_controller.py
+index a630f6ea..60f576cc 100644
+--- a/toolchain/harness/executor/workspace_controller.py
++++ b/toolchain/harness/executor/workspace_controller.py
+@@ -12,7 +12,7 @@ import shutil
+ import signal
+ import time
+ 
+-from remote import command, write, selection, manifest_policy
++from remote import command, write, selection, manifest_policy, registration_lock
+ import workspace_files as files
+ 
+ BASE = Path('/var/lib/mo-harness')
+@@ -33,6 +33,20 @@ def root_for(workspace_id):
+     return BASE / ('mo-workspace-' + identity(workspace_id))
+ 
+ 
++def terminal_path(workspace_id):
++    return BASE / ('.recovery-' + identity(workspace_id))
++
++
++def reject_terminal(workspace_id):
++    if terminal_path(workspace_id).exists():
++        raise files.Refusal('recovery_closed')
++
++
++def bootstrap_barrier(manifest):
++    """Registration lock must be held, before creating execution storage."""
++    reject_terminal(manifest['workspace']['workspace_id'])
++
++
+ @contextmanager
+ def lock(root, deadline):
+     with (root / 'lock').open('a') as stream:
+@@ -98,8 +112,10 @@ def binding(root, state, readonly=False):
+ def authorize(manifest):
+     """Called by existing bootstrap, with the executor registration lock held."""
+     w = manifest['workspace']
++    reject_terminal(w['workspace_id'])
+     root = root_for(w['workspace_id'])
+     with lock(root, time.time() + 4):
++        reject_terminal(w['workspace_id'])
+         state = state_read(root)
+         active = state.get('active')
+         if not active or active['execution_id'] != manifest['run_id'] or active.get('started'):
+@@ -135,6 +151,7 @@ def dispatch(root, state, operation, args, deadline):
+             state['phase'] = 'quarantined'
+             raise files.Refusal('cleanup_unknown')
+         state['last_cleanup'] = proof
++        state.setdefault('completed_executions', {})[active['execution_id']] = proof
+         state['active'] = None
+         return {'cleanup': proof}
+     if operation == 'delete' and state.get('active'):
+@@ -209,6 +226,12 @@ def dispatch(root, state, operation, args, deadline):
+ 
+ 
+ def create(request, root):
++    with registration_lock(request['deadline']):
++        reject_terminal(request['workspace_id'])
++        return _create(request, root)
++
++
++def _create(request, root):
+     selected = selection(**request['args'].get('selection', {}))
+     entries = [(row[0], base64.b64decode(row[1], validate=True)) for row in request['args']['files']]
+     files.validate_import(entries)
+@@ -271,6 +294,7 @@ def handle(request):
+             response['result'] = create(request, root)
+         else:
+             with lock(root, deadline):
++                reject_terminal(request['workspace_id'])
+                 state = state_read(root)
+                 if state['run_id'] != request['run_id']:
+                     raise files.Refusal('foreign_run')
