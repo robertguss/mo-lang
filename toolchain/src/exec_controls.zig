@@ -181,9 +181,10 @@ const shows =
     \\  "#{b}"
     \\end
     \\
-    \\fn took(r: Result(Done, ExecError)) : String
+    \\# `took` is whole milliseconds, truncated: a run under 1 ms took 0.ms.
+    \\fn took(r: Result(Done, ExecError), least: Duration) : String
     \\  case r
-    \\    Ok(done): yes(done.took > 0.ms and done.took < 10.seconds)
+    \\    Ok(done): yes(done.took >= least and done.took < 10.seconds)
     \\    Error(e): failure(e)
     \\  end
     \\end
@@ -253,7 +254,9 @@ test "corpus: step 41, Exec runs a fixed command: exit codes, a signal, a deadli
         \\  show(out, "descriptors", out_of(sh.command([Fixed(text: "-c"), Fixed(text: "for f in /dev/fd/*; do [ -e \"$f\" ] && printf '%s,' \"${f\#/dev/fd/}\"; done; exit 0")]).run([], within: 10.seconds)))
         \\  show(out, "terminal", out_of(sh.command([Fixed(text: "-c"), Fixed(text: "if (exec 3</dev/tty) 2>/dev/null; then echo tty; else echo none; fi")]).run([], within: 10.seconds)))
         \\  show(out, "group", out_of(sh.command([Fixed(text: "-c"), Fixed(text: "g=$(ps -o pgid= -p $$); [ $g -eq $$ ] && echo leads || echo joined")]).run([], within: 10.seconds)))
-        \\  show(out, "took", took(code.run(["0"], within: 10.seconds)))
+        \\  show(out, "took, a fast run", took(code.run(["0"], within: 10.seconds), 0.ms))
+        \\  nap = sh.command([Fixed(text: "-c"), Fixed(text: "sleep 0.2")])
+        \\  show(out, "took, a 0.2-second sleep", took(nap.run([], within: 10.seconds), 150.ms))
         \\end
         \\
     });
@@ -299,7 +302,8 @@ test "corpus: step 41, Exec runs a fixed command: exit codes, a signal, a deadli
         \\
         \\group: leads
         \\
-        \\took: true
+        \\took, a fast run: true
+        \\took, a 0.2-second sleep: true
         \\
     ;
     const bin = try s.built("controls.mo", "controls", false);
