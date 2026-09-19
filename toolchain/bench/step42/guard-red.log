@@ -1,0 +1,4 @@
+timeout: guard exit 137 (want 137); child 34434 gone; grandchild 34436 alive; stderr 'guard: killed 34434 (rss 1 MB, 2 s)': FAIL
+term: guard exit 143 (want 143); child 34685 gone; grandchild 34687 alive; stderr '': FAIL
+int: guard exit 130 (want 130); child 34876 gone; grandchild 34878 alive; stderr '': FAIL
+guard_test: FAILED
