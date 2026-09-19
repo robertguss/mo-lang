@@ -1,5 +1,5 @@
 ---
-title: "The agent's report cap: from a defect's margin to the profile's own bound"
+title: "The agent's report cap and the clamped command's margin"
 created: 2026-09-19
 updated: 2026-09-19
 type: plan
@@ -8,7 +8,7 @@ sources: [plans/toolchain-raw-memory-report.md, plans/mo-application-workspace-v
 status: briefed
 ---
 
-# The agent's report cap
+# The agent's report cap and the clamped command's margin
 
 ## Orientation
 
@@ -45,6 +45,18 @@ is aliased, use `/bin/ls`.
 4. **Whole-report check.** For the largest size, diff the entire report between
    `mo run` and the `mo build` binary (the raw-memory worker compared only the
    last line).
+
+5. **The clamped command's collection margin (end to end v1's defect D1).**
+   `examples/programs/agent/workspace-adapter.mo` `timed` sends a command the
+   whole of what the run has left, and `posted` then waits for the reply for
+   that same time; the service needs 0.5 to 1.4 s more to collect and prove
+   cleanup (measured), so the last clamped command is always reported
+   `transport_timeout`, execution unknown, though it completed. RED first
+   against the loopback service with a delayed reply; then send
+   `remaining - margin` with a margin of a few seconds stated as a named
+   function, refuse below the floor as now, and show the reply received and
+   the execution known. `workspace-adapter.mo` and its tests join the write
+   scope.
 
 ## Numbers
 
