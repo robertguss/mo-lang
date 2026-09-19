@@ -33,6 +33,12 @@ builds/tests. Their saved WIP is not accepted. The last accepted Darwin suite
 is 268 of 268; Linux remains owed. The live provider, model-driven task and Pi
 comparison are still ahead. [[roadmap]] and `HANDOFF.md` carry current status.
 
+The server's unchanged-wire blocker F1 is now filed at `8b0ff352`: its client
+times out before the line-only API supplies the 155-byte body.
+[[interpreter-step-44]] is the bounded byte-source unblock, not an HTTP
+rewrite. The server continues independent work; full wire acceptance waits
+for the capability and its integration. Step 42 remains separately in flight.
+
 The account below preserves the earlier checkpoints.
 
 **19 Sep, the day so far.** Robert made Fable (Claude Code) the lead at 7:18 AM

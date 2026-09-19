@@ -8,7 +8,7 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-19 | Total pages: 284
+> any question. Last updated: 2026-09-19 | Total pages: 285
 
 ## Directions we like
 
@@ -135,6 +135,7 @@ type: index
 - [[two-altitudes|Two altitudes in one language]] — - Spec altitude (what humans read): module and function signatures, contracts (`requires` / `ensures`), effect declarations, an `intent` …
 
 ## Plans
+- [[interpreter-step-44]] — brief: bounded binary `Conn.chunks`, the server's unchanged-wire F1 blocker, both runtimes, TLS and simulation
 - [[report-claim-check]] — proposed TypeSafe triage of worker report claims
   against raw evidence; never acceptance; not built (18 Sep 2026)
 - [[interpreter-step-41]] — brief: `Exec`, a child process narrowed in `main` to fixed commands, both runtimes and the simulator

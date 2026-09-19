@@ -1,7 +1,7 @@
 ---
 title: "The runtime"
 created: 2026-09-16
-updated: 2026-09-17
+updated: 2026-09-19
 type: map
 tags: [runtime, processes]
 sources: [index.md, plans/roadmap.md, decisions/decision-log.md]
@@ -42,6 +42,11 @@ A map of content for layer 1: the process model, the failure model, the two runt
 - [[interpreter-step-32]] — crash reports kept apart from the ring; the reopening restart in the corpus
 - [[interpreter-step-33]] — the crash report freed after printing (46 MiB a restart to under 0.3); the interpreter's abort on a large log
 - [[interpreter-step-34]] — placement with the starter, the crossing made cheap (100,000 cross-scheduler asks 4 s to 0.14), measured at 1, 4, and 14 cores
+
+## Current harness-driven work
+
+- [[interpreter-step-42]] — in progress: stress compaction, poisoned memory, owned parcels and process-group cleanup
+- [[interpreter-step-44]] — briefed: bounded binary connection chunks to unblock [[mo-workspace-server-4a]] without changing clients
 
 ## The runtime's own row
 

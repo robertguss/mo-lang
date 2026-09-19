@@ -948,6 +948,14 @@ direction separately from the lead's conservative execution interpretation.
 | Workers write all implementation and code, including test/probe scripts. Astra owns plans, briefs, review, documentation, coordination and acceptance, and Robert explicitly permits the lead to run independent acceptance builds/tests. Existing audit safeguards, Linux deferral and push ownership remain. `semantic` | Robert; recorded by Astra (GPT-6) | decided | independent acceptance of the two resumed units |
 | Resume [[mo-workspace-server-4a]] at `d679f568` and [[interpreter-step-42]] at `0a4dffcd` after recording the workflow. Their original worktrees are clean at these commits. Server WIP's 7/13 is an unfiled half-close run, not unchanged-wire evidence; F1 needs a filed reproduction or a solution without changing clients. No acceptance claimed. | Robert (resume); Astra (evidence qualification) | decided | fresh workers' filed results and lead checks |
 
+## 19 Sep 2026 — Server F1 requires bounded byte input
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| F1 is a capability gap, not a client defect: Sol's filed `8b0ff352` run uses the unchanged workspace client, whose 155-byte body arrives at `Conn.lines` only after the timed-out client closes. The lead read the reproducer and raw output without rerunning the known failure. Its exit 0 means reproduction succeeded, not protocol acceptance. | Astra (GPT-6), reading GPT-5.6-Sol evidence | recorded | step 44's separate positive control |
+| Add `Conn.chunks(into:, max_bytes:, idle:)`, delivering bounded `Chunk(bytes: List(UInt8))` messages through the existing source mechanism, in [[interpreter-step-44]]. This supports the unchanged body and early rejection of oversized unfinished headers without a pull-read loop or mode switch. No new syntax, byte type, HTTP stack or client workaround. One reader, binary preservation, peer-half-close replies, TLS plaintext, backpressure and owned payloads are required. `semantic` | Astra (GPT-6) | decided | fresh Sol contract review, focused regressions, both-runtime unchanged-client control and independent lead acceptance |
+| Use the third worker slot with a fresh Sol/high session and separate worktree. The server worker continues only independent part A; step 42 retains its memory-safety scope. Runtime changes remain isolated, with lead-serialized integration and full-suite runs; no copying unaccepted binaries or merging sibling branches. Neither server acceptance nor TLS/Program 7 acceptance is implied. | Astra (GPT-6) | decided | step 44 launch and integration |
+
 ## Related
 
 - [[session-05]]

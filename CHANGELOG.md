@@ -2,6 +2,14 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Server wire blocker filed; byte-source step briefed — 19 Sep 2026, evening
+
+- F1 at `8b0ff352` demonstrates that the unchanged client's body is withheld
+  by line-only input until the client times out and closes.
+- Step 44 is briefed to add bounded binary `Conn.chunks` through existing
+  runtime sources. This is a planned unblock, not a shipped capability or
+  accepted server. Clients and D2's independent operator path stay unchanged.
+
 ## OMP workflow and authorized WIP resumption — 19 Sep 2026, evening
 
 - Astra leads in the existing OMP pane; workers use GPT Sol at high reasoning.

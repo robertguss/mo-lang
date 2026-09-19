@@ -60,6 +60,15 @@ Full suites and benchmarks remain lead-scheduled; neither worker may use the
 Linux VM or executor machine. The server first qualifies F1 without altered
 clients; memory work excludes all server files. Nothing newly accepted.
 
+**F1 update:** server worker filed `8b0ff352`; exact unchanged client, 155-byte
+body, timeout before close, body delivered only after close. `f1-06-exact-client`
+is a successful reproduction (exit 0), not GREEN. Lead brief:
+`mo-wiki/plans/interpreter-step-44.md`, bounded binary `Conn.chunks` using
+existing runtime sources; third fresh Sol/high worker to launch separately.
+Server continues only independent work until lead-approved capability
+integration. Step 42 stays isolated; lead reconciles overlapping runtime
+files, and schedules all full suites/benchmarks. No new acceptance.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

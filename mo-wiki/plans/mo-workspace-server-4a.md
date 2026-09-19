@@ -39,6 +39,12 @@ or half-close as a substitute for the original wire. Keep D2's operator
 independence and report conflicting inherited tests rather than weaken them.
 No machine or full-suite release. Benchmark runs require lead scheduling.
 
+**F1 filed:** `8b0ff352`, `evidence/f1-06-exact-client/`: the unchanged client
+waits without a newline/half-close, times out, then the server receives the
+155-byte body after close. [[interpreter-step-44]] adds a bounded binary
+source; no adoption or toolchain merge in this worktree until lead release.
+Continue genuinely independent part A work. Full wire acceptance remains blocked.
+
 ## Write scope
 
 New: `examples/programs/workspace-server/**` (Mo sources, their tests,
