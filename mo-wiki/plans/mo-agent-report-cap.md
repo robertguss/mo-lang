@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, runtime, verification]
 sources: [plans/toolchain-raw-memory-report.md, plans/mo-application-workspace-v1.md]
-status: in-progress
+status: done
 ---
 
 # The agent's report cap and the clamped command's margin
@@ -70,6 +70,22 @@ the agent's `mo test` green in both runtimes with real summary lines and exit
 codes; **the full suite and the machine are the lead's**. **Write your final
 report to `examples/programs/agent/tests/application-workspace-v1/REPORT-CAP.md`
 and commit it.** While anything runs, wait in the foreground.
+
+## Result
+
+Accepted 3:06 PM ET, 19 Sep 2026, merged to `main` through `lead/verify-reportcap`
+(`78b093f3`). Worker: Claude Opus 5, report
+`examples/programs/agent/tests/application-workspace-v1/REPORT-CAP.md`.
+`report_cap()` is 16 × (851,968 + 524,288) + 1,048,576 = 23,068,672 bytes,
+derived from the profile; transcripts of 300,598, 1,000,598 and 3,669,468
+bytes render whole and identical across runtimes outside `took_ms`; the bound
+renders and one byte past it is a proved `transcript_too_large`. Defect D1 is
+fixed with `candidate_margin_ms()` of 5 s, and the lead saw it hold against the
+real service on the machine (the last clamped command received, execution
+known). Darwin full suite 263 of 263. Found and not caused by this work:
+`real_bridge.py` fails 2 of 3 cases on the base tree too, because the
+executor's test double changed in harness steps 1 and 2; queued. Evidence:
+`audit/evidence/2026-09-19/fable-lead-verification/reportcap/`.
 
 ## Related
 

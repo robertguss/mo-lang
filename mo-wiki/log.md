@@ -993,3 +993,6 @@
 
 ## [2026-09-19] accept | the claim check's calibration (TypeSafe, Jev)
 - 2:22 PM ET: merged tools/claim-check (9431e12b). Lead reran pytest (55 passed), ruff, mypy; key in no tracked or sent file. 73 requests, $0.0033. Acceptance does not depend on the tool; briefs now ask for a filed log and exit file per quoted run. Two rows in decisions/decision-log.md.
+
+## [2026-09-19] accept | the agent's report cap and the collection margin (D1)
+- 3:06 PM ET: merged to main through lead/verify-reportcap (78b093f3). Darwin full suite 263 of 263; the machine's outer-deadline run green, the last clamped command received with execution known; inventory clean. Three rows in decisions/decision-log.md; CHANGELOG entry. real_bridge.py found stale since harness steps 1 and 2.
