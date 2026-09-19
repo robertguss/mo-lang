@@ -59,6 +59,15 @@ the lead's full suite, which waits for `step40-scope-opus` to leave the host
 (load average was 15 to 18 at 9:50 AM ET, mostly Robert's iOS Simulator
 `MediaAnalysis` process, not ours; left alone).
 
+**Research PR 14 merged, 10:10 AM ET** (Hermes: OTP late replies, AWS idempotency).
+Verified and commented on the PR. Carry into the Mo six-tool server's brief:
+report admission, execution, reply (produced versus received) and cleanup as
+four separate observations. **Note:** `origin/main` received pushes at 9:28,
+9:33 and 10:06 AM ET that the lead did not run (the reflog says "update by
+push"; no git or Claude hook pushes). So the locally merged, not yet accepted
+step 2 and raw-memory fix are already on `origin/main`. Asked Robert whether he
+is pushing.
+
 **Order changed:** the Mo six-tool server (plan step 4) now follows `Exec`
 (a step 41 after step 40), so it can run `docker` itself and serve all six
 tools natively; serving `command` through a Python shim first would be

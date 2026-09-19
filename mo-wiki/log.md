@@ -957,3 +957,6 @@
 
 ## [2026-09-19] accept | application workspace rebuild, harness steps 1 and 8
 - 9:03 AM ET: full suite 243 of 243 exit 0 on the combined tree; seven live suites and a clean inventory on the machine. Four rows in decisions/decision-log.md; CHANGELOG entry; evidence audit/evidence/2026-09-19/fable-lead-verification/. Lint: 26 notices of the inherited kinds, no errors.
+
+## [2026-09-19] review | research PR 14 (Hermes, timeout outcomes and retry contracts) read and merged
+- 10:10 AM ET: both raw snapshots' hashes verified, every cited claim found in the saved text, no conflicts. Its four separate observations (admission, execution, reply produced versus received, cleanup) go into the Mo six-tool server's brief. Index total corrected to 276. Review comment on the PR.
