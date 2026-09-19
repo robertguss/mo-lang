@@ -61,11 +61,18 @@ Next: versioned Python six-tool workspace HTTP bridge, then Mo application
 profile, then scripted Logstat repair and protected checks. Fresh Astra/low
 workers in separate Herdr panes/worktrees own implementation. Fresh worker mo-workspace-http-v1 is active in w4:p28, tabw4:tK, at exact
 base3023a01a744d1580ca9814e595ddf990a12e456d on harness/workspace-http-v1.
-Only new executor/workspace_http/ is owned; local work released, machine/full
-compiler gates held. Actual Astra/low process74596 verified. Read-only contract review is retained at workspace-http/contract-review-01.md;
+Only new executor/workspace_http/ is owned; local work released. Machine explicitly released to this worker after fresh
+preflight and owner/API review; full compiler gate remains held until machine
+workloads end. Actual Astra/low process74596 verified. Read-only contract review is retained at workspace-http/contract-review-01.md;
 p2A is closed. Brief clarifies admission lease, cleanup after in-flight work,
 outcome persistence before bounded IPC notification and terminal late-result handling. The lead retains application-profile-design.md
-as readiness only, awaiting frozen/accepted HTTP schema before Mo implementation. See retained source reviews
+as readiness only, awaiting frozen/accepted HTTP schema before Mo implementation.
+HTTP intermediate checkpoint75680f31 has local22/inherited59 green; exact20-file
+snapshot is /private/tmp/mo-workspace-http-review-75680f31. Fresh read-only
+mo-http-source-review p2B/process79284 examines bridge.py/protocol.py there;
+lead owner/API review is retained. Worker continues local boundary hardening and
+released real controls from immutable per-attempt sources. Lead never edits
+workspace_http/. Private tokens must stay out of Book/model/log evidence. See retained source reviews
 in audit/evidence/2026-09-19/workspace-wire-readiness/.
 
 The HTTP owner must outlive a request and use cleanup-only recovery after owner
@@ -78,10 +85,11 @@ caps. Diminishing15s reporting reserve stays inside900s; terminal Book AND
 Run.Stopped precede final reread. These are readiness decisions, not implementation
 or repair acceptance. No unconditional synchronous bound across inherited locks.
 
-Machine mo-executor-r01 is exclusively LEAD-OWNED and currently has no task
-workloads. Both existing slices are active: mo-executor.slice512MiB/CPU1/PIDs128,
+Machine mo-executor-r01 is now exclusively WORKSPACE-HTTP-WORKER-OWNED for
+the brief controls/regressions. No competing lead machine commands. Fresh
+preflight before release proved zero workloads. Both existing slices are active: mo-executor.slice512MiB/CPU1/PIDs128,
 mo-application.slice1536MiB/CPU1/PIDs192; outer2GiB/CPU2/swap0. Do not change
-images, config, limits or /opt inputs. A fresh worker requires exact release.
+images, config, limits or /opt inputs. The existing explicit release applies only to mo-workspace-http-v1.
 Application image sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4;
 manifest d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb at
 /opt/mo-harness/application-build-v1/package-02/package/manifest.json. Trusted
@@ -89,7 +97,7 @@ Linux Mo /opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl and Zig distribution
 /opt/mo-harness/zig-aarch64-linux-0.16.0 remain unchanged. Application candidate
 limits1GiB/CPU1/PIDs128/120s, /build512MiB exec, source/tmp noexec.
 
-Lead w4:p1; lead runpanesp1D/p1M idle; rediscover IDs before use. All earlier
+Lead w4:p1; lead runpanep1D idle; p1M closed after fresh shell-only/zero-descendant proof; rediscover IDs before use. All earlier
 implementation/review panes closed and worktrees preserved. Lead owns wiki,
 HANDOFF, integration and audit evidence; workers alone write toolchain/examples.
 No oracle, nested workers, worker push, shared Mac candidate execution or live

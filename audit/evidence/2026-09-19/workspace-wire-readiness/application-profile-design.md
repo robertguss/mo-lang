@@ -43,6 +43,15 @@ not the candidate source. Put conflicting read/write canaries there during tests
 to prove all application tool effects occur remotely. Operator files must never
 be added to model context merely to make configuration convenient.
 
+## HTTP serialization source check
+
+The existing serializer already emits HTTP/1.1, Host with the exact host:port,
+Content-Length and Connection: close (toolchain/src/http.zig:381-403). Its send
+paths use requestBytes at536 and621. The proposed strict framing therefore does
+not justify a compiler edit. This is a bounded source check, not both-runtime
+application wire acceptance; retain real request headers in later sanitized
+interpreter/native controls without exposing the capability token.
+
 ## Budgets and dispatch
 
 Keep serialized Budget/Order shapes and validators:16 steps,4096 synthetic

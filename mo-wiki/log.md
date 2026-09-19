@@ -910,3 +910,8 @@
 - Fresh read-only HTTP contract review identified lease/admission wording,
   blocked-owner cleanup timing, bounded IPC/late-result ordering and intent versus
   outcome persistence. Clarified brief without core edits or wider guarantees.
+- HTTP checkpoint75680f31 local22/inherited59 passes; lead owner/API reading
+  supports bounded machine release after fresh active-slice/pin/empty-inventory
+  proof. Independent frontend/projection review continues; acceptance pending.
+- Recovery wiki deployment35432372898 succeeded at68e50ed6. Mo profile source
+  readiness confirms existing HTTP framing and keeps token/Book binding separate.

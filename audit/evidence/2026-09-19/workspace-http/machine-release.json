@@ -1,0 +1,11 @@
+{
+  "worker": "mo-workspace-http-v1",
+  "reviewed_checkpoint": "75680f31a03423d2990efaaf85fd84251f816a4a",
+  "machine": "mo-executor-r01",
+  "exclusive_owner": "worker w4:p28",
+  "allowed": "brief real HTTP/lifecycle controls and inherited workspace22/executor17/lifecycle1/application23 with unchanged core namespaces, images, policies and opt inputs",
+  "compiler_gate": "closed until machine workloads end",
+  "lead_preflight": "preflight-01",
+  "source_review": "lead owner/API review complete for isolated tests; independent protocol review pending, acceptance pending",
+  "time_et": "2026-09-19 04:49:02 AM EDT"
+}

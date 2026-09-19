@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "60",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-recovery/inventory.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/preflight-01",
+    "--readiness"
+  ],
+  "exit": 0,
+  "group": 78864,
+  "group_remaining": false,
+  "source_sha256": "9e14c4211caa509fcbe35aafc42ffd53ece3390e57be1d6fc5f920609a6d88f1"
+}
