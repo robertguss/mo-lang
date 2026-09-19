@@ -10,7 +10,7 @@ from adapter import remote
 base = Path(sys.argv[1])
 output = Path(sys.argv[2])
 output.mkdir(parents=True,exist_ok=False)
-workspaces, executions, cgroups = set(), set(), set()
+workspaces, executions, cgroups, groups = set(), set(), set(), set()
 for path in base.rglob('*.json'):
     if 'sources' in path.parts:
         continue
@@ -18,6 +18,10 @@ for path in base.rglob('*.json'):
         value = json.loads(path.read_text())
     except (ValueError,UnicodeError):
         continue
+    if path.name in ('exit.json', 'owner-exit.json'):
+        group = value.get('group', value.get('pid')) if isinstance(value, dict) else None
+        if type(group) is int and group > 0:
+            groups.add(group)
     def visit(value):
         if isinstance(value,dict):
             wid = value.get('workspace_id')
@@ -35,6 +39,13 @@ for path in base.rglob('*.json'):
         elif isinstance(value,str) and re.fullmatch('/sys/fs/cgroup/[A-Za-z0-9_./-]+/docker-[0-9a-f]{64}.scope',value):
             cgroups.add(value)
     visit(value)
+history = {path.name:sum(item.lstat().st_size for item in path.rglob('*') if item.is_file()) for path in base.iterdir() if path.is_dir()}
+local = subprocess.check_output(['ps','-axo','pid=,pgid=,stat=,command='])
+remaining = [line.decode() for line in local.splitlines() if len(line.split(None,3)) >= 3 and int(line.split(None,3)[1]) in groups]
+(output/'local-processes.txt').write_bytes(local)
+(output/'history.json').write_text(json.dumps({'groups':sorted(groups),'remaining':remaining,'attempt_bytes':history},indent=2))
+assert not remaining, remaining
+assert all(size <= 16*1024*1024 for size in history.values()), history
 selection={'workspaces':sorted(workspaces),'executions':sorted(executions),'cgroups':sorted(cgroups)}
 (output/'selection.json').write_text(json.dumps(selection,indent=2))
 source='''import json,pathlib,subprocess,sys
@@ -73,4 +84,4 @@ assert all(not row['root_exists'] and not row['mounts'] for row in r['workspaces
 assert all(not any(row[k] for k in ('root_exists','container_present','unit_present')) for row in r['executions'])
 assert all(not row['exists'] for row in r['cgroups'])
 assert all(not text.strip() for parent in r['parents'].values() for text in parent['tasks'].values())
-print(json.dumps({'workspaces':len(workspaces),'executions':len(executions),'actual_cgroups':len(cgroups),'shared':5,'absent':True}))
+print(json.dumps({'workspaces':len(workspaces),'executions':len(executions),'actual_cgroups':len(cgroups),'shared':5,'local_groups':len(groups),'absent':True}))
