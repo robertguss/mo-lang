@@ -1,0 +1,88 @@
+diff --git a/examples/programs/.mo.ids b/examples/programs/.mo.ids
+index 927685e..cf2623d 100644
+--- a/examples/programs/.mo.ids
++++ b/examples/programs/.mo.ids
+@@ -100,7 +100,7 @@
+         { "id": "969e43f5d151", "name": "fn found", "hash": "aff42a2c511c9654" },
+         { "id": "96714cf75d50", "name": "test \"the clock's numbers are steadied, and a brief line keeps the status and the state\"", "hash": "871cb8753e3603a9" }
+       ],
+-      "verified": { "hash": "5f546a8156bbec0d", "declarations": "62619b08a8113eba", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "e4c4b1ab62a4c388" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Server", "hash": "2bd1533b2c32a763" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "5f546a8156bbec0d", "declarations": "62619b08a8113eba", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "e4c4b1ab62a4c388" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Server", "hash": "2bd1533b2c32a763" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+     },
+     {
+       "path": "agent/client.mo",
+@@ -229,7 +229,7 @@
+         { "id": "a308ce2e57e6", "name": "test \"a missing folder, model, or port, a flag out of place, or an unknown command is a usage error\"", "hash": "d856956eb9e4d72f" },
+         { "id": "7da85410eeb5", "name": "test \"a step prints on one line, and a usage error exits 2 where a folder or port exits 1\"", "hash": "a99fc7d706278544" }
+       ],
+-      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "17938e84b0f2fee0", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Check", "hash": "c2418f0a69b164b2" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Operator", "hash": "f64c9fe94827ee4d" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "e4c4b1ab62a4c388" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Server", "hash": "2bd1533b2c32a763" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "aebcf16a09c92b5c", "declarations": "17938e84b0f2fee0", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Check", "hash": "c2418f0a69b164b2" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Operator", "hash": "f64c9fe94827ee4d" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "e4c4b1ab62a4c388" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Server", "hash": "2bd1533b2c32a763" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+     },
+     {
+       "path": "agent/mock.mo",
+@@ -405,7 +405,7 @@
+         { "id": "c33c6964d72f", "name": "fn created", "hash": "1672184d0b09e3fd" },
+         { "id": "741a9ba527a8", "name": "fn looked_up", "hash": "259c6458eebf0404" }
+       ],
+-      "verified": { "hash": "f8bcd71959e486d5", "declarations": "e4c4b1ab62a4c388", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "f8bcd71959e486d5", "declarations": "e4c4b1ab62a4c388", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+     },
+     {
+       "path": "agent/run.mo",
+@@ -434,7 +434,7 @@
+         { "id": "0e9ee508ac92", "name": "test rejects \"a run begun twice\"", "hash": "6bb70bf6dc4b8944" },
+         { "id": "b010aa388196", "name": "test rejects \"a run begun again once it has stopped\"", "hash": "50c5966574883abb" }
+       ],
+-      "verified": { "hash": "265d6b676d818742", "declarations": "252f177b7d60a4e9", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "265d6b676d818742", "declarations": "252f177b7d60a4e9", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+     },
+     {
+       "path": "agent/runs.mo",
+@@ -470,7 +470,7 @@
+         { "id": "fca8cbf69395", "name": "test \"a model garbage three times fails the run under two retries\"", "hash": "e485dcd6fec69166" },
+         { "id": "d0936ac89779", "name": "test \"a run cancelled in the middle stops, and no tool runs after the cancel is written\"", "hash": "6f228c20d3e893c5" }
+       ],
+-      "verified": { "hash": "8976b33b78e50195", "declarations": "588e3c851cb3e9d9", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "8976b33b78e50195", "declarations": "588e3c851cb3e9d9", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+     },
+     {
+       "path": "agent/server.mo",
+@@ -499,7 +499,7 @@
+         { "id": "2ac68ca6b366", "name": "test \"each status comes back over the wire, unless a call fails\"", "hash": "24939cbb60fa6653" },
+         { "id": "ad5d9bddb749", "name": "test \"under faults every answer is right or a 503, and once they stop every run ends\"", "hash": "8ef387ddd46cc2c9" }
+       ],
+-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "7a2d648b061e0ee8", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "e4c4b1ab62a4c388" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "7a2d648b061e0ee8", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Registry", "hash": "e4c4b1ab62a4c388" }, { "module": "Agent.Run", "hash": "88a830588b7ef7e9" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
+     },
+     {
+       "path": "agent/shelf.mo",
+@@ -588,7 +588,19 @@
+         { "id": "2a163275a10f", "name": "test rejects \"a tool call past the steps budget\"", "hash": "5bfee7a644fd6192" },
+         { "id": "66a8c27fbace", "name": "test rejects \"a tool call past the tokens budget\"", "hash": "d36f7d19955e1233" }
+       ],
+-      "verified": { "hash": "12e60bd49f90b827", "declarations": "e6c870a0e55b21cc", "uses": [{ "module": "Agent.Model", "hash": "838cfb22d769a166" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++      "verified": { "hash": "12e60bd49f90b827", "declarations": "e6c870a0e55b21cc", "uses": [{ "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "bff610a728131564" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Tools", "hash": "e3a0403dc72c3c24" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }] }
++    },
++    {
++      "path": "agent/tests/terminal-auth/driver.mo",
++      "module": "Agent.TerminalAuth.Driver",
++      "declarations": [
++        { "id": "10b0e49dd00f", "name": "module Agent.TerminalAuth.Driver", "hash": "2cb7386fac165a09" },
++        { "id": "38c040c1da30", "name": "use Agent.Model", "hash": "a24ab7d5ffad2d24" },
++        { "id": "5e91510c7c18", "name": "process Caller", "hash": "f822542dfa59344c" },
++        { "id": "066f901850fd", "name": "supervisor Callers", "hash": "41f6e14ec4ee0a33" },
++        { "id": "1396787a394e", "name": "fn main", "hash": "0a7a231d7e11f305" }
++      ],
++      "verified": { "hash": "f8bcd71959e486d5", "declarations": "a7f1696f418e2099", "uses": [{ "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }] }
+     },
+     {
+       "path": "agent/tools.mo",
+@@ -635,7 +647,7 @@
+         { "id": "05e07ea2d9c6", "name": "test \"a file over 64 KiB is not read, and a search stops at 200 lines\"", "hash": "6c3b8b571bccd761" },
+         { "id": "701a461be844", "name": "test \"http_get reaches only a host on the run's list\"", "hash": "33a65fe4e39d4b59" }
+       ],
+-      "verified": { "hash": "70a0d639349b1a4c", "declarations": "45c59d450ab80f32", "uses": [{ "module": "Agent.Model", "hash": "838cfb22d769a166" }] }
++      "verified": { "hash": "70a0d639349b1a4c", "declarations": "45c59d450ab80f32", "uses": [{ "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }] }
+     },
+     {
+       "path": "agent/transcript.mo",

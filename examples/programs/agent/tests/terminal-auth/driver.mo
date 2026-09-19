@@ -43,3 +43,6 @@ fn main(platform: Platform)
     Error(_): platform.stdout.write_line("CallerTimeout")
   end
 end
+
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run

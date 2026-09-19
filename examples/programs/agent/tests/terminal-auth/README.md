@@ -124,3 +124,45 @@ python3 toolchain/bench/step36/guard.py 120 -- python3 examples/programs/agent/t
 `evidence/review-corrections-1.jsonl` and its `.exit` record the passing focused
 run. The entire 18-case matrix was not rerun for these runner-only corrections;
 lead will repeat it after integration.
+
+## Generated dependency closure v2
+
+After integration, lead's native suite reported MO0317 in the eight dependent
+Agent modules and a missing verified line in the new driver (241/243 overall).
+Lead authorized this exact generated-only closure on the existing worker tip
+`bc784d87cc9c98f8c5a4978316c324129a69b1de`, without rebasing or behavioral edits.
+The earlier scope/evidence above describes the initial implementation; v2 extends
+that scope only as follows:
+
+- `tools.mo`, `steps.mo`, `run.mo`, `registry.mo`, `server.mo`, `check.mo`,
+  `main.mo`, `runs.mo`: actual `mo test --write` refreshed their aggregate
+  records. All eight source files remain byte-identical. In each record, only
+  the verified dependency hash for Agent.Model changed; declaration IDs/hashes
+  and every other verified field are unchanged.
+- `tests/terminal-auth/driver.mo`: actual `mo test --write --sim 100` appended
+  the generated verified/proven lines and added its aggregate record. It has
+  zero tests, so the compiler truthfully records `sim (not run)`.
+- The existing sim100 records in tools/run/server/runs were preserved by actual
+  `--sim 100` runs: 2 + 2 + 2 + 8 tests, each under 100 seeds with 5% faults;
+  all 14 held under faults. Run's invariant evidence remains kept 2 / tripped 2.
+
+With `MO_BIN` set as above, the exact orchestration commands were:
+
+```sh
+python3 toolchain/bench/step36/guard.py 600 -- python3 examples/programs/agent/tests/terminal-auth/dependency-checks-v2.py
+python3 toolchain/bench/step36/guard.py 60 -- python3 examples/programs/agent/tests/terminal-auth/verify.py
+```
+
+`evidence/dependency-checks-v2-1.jsonl` records 38 passing commands: nine actual
+regenerations (29 tests total), nine module checks, Agent and driver builds,
+nine compiled test builds and nine compiled test executions (29 tests total).
+Every nested command has a 180-second guard. Native test executions do not run
+simulation and do not rewrite the sim100 metadata preserved by the interpreter.
+No full compiler suite or HTTP matrix was repeated; lead owns full-suite rerun.
+
+`evidence/generated-ids-v2.diff` is the exact aggregate-ID delta from the previous
+worker tip. The original `generated-ids.diff` is unchanged. The extended
+`verify.py` validates both stages separately, enforces this exact closure and
+unchanged dependent behavior, and verifies all 32 earlier evidence files against
+that prior tip. Its passing result is `evidence/verification-v2-1.json`.
+No additional dependency or write-scope expansion was needed.
