@@ -121,12 +121,17 @@ class Run:
         payload_data = {'source': source, 'manifest': self.manifest}
         if 'workspace' in self.manifest:
             payload_data['workspace_sources'] = {name: Path(__file__).with_name(name + '.py').read_text()
-                for name in ('workspace_controller', 'workspace_files')}
+                for name in ('workspace_files', 'workspace_controller')}
         payload = json.dumps(payload_data).encode()
-        bootstrap = '''import fcntl,json,pathlib,subprocess,sys,time
+        bootstrap = '''import fcntl,json,pathlib,subprocess,sys,time,types
 p=json.load(sys.stdin); m=p['manifest']; root=pathlib.Path(sys.argv[1])
 with open('/tmp/mo-executor-registration.lock','w') as lock:
  fcntl.flock(lock,fcntl.LOCK_EX)
+ if 'workspace' in m:
+  for module, source in {'remote':p['source'], **p['workspace_sources']}.items():
+   loaded=types.ModuleType(module);sys.modules[module]=loaded;exec(compile(source,module+'.py','exec'),loaded.__dict__)
+  from workspace_controller import bootstrap_barrier
+  bootstrap_barrier(m)
  units=subprocess.run(['systemctl','list-units','--all','--no-legend','mo-executor-*.timer'],capture_output=True,check=True).stdout
  containers=subprocess.run(['docker','ps','-aq','--filter','name=^/mo-executor-'],capture_output=True,check=True).stdout
  if units.strip() or containers.strip(): raise RuntimeError('another candidate is registered')

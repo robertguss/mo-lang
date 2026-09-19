@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 import time
 import uuid
+import threading
+import os
+from contextlib import contextmanager
 
 from adapter import Run, remote, validate_checks, verify
 from remote import CAP, IMAGE, WORKSPACE_POLICY, policy_errors, selection, workspace_selection, manifest_policy
@@ -89,40 +92,59 @@ class Workspace:
         self.active = None
         self.snapshot = None
         self._calls = set()
+        self._owner_mutex = threading.RLock()
+        from recovery import initialize
+        initialize(self)
+
+    def __del__(self):
+        fd = getattr(self, '_ownership_fd', None)
+        if fd is not None:
+            os.close(fd)
+            self._ownership_fd = None
+
+    @contextmanager
+    def _ownership(self):
+        # The file lock belongs to the object lifetime, including the interval
+        # between start_command and collect. The mutex serializes its threads.
+        with self._owner_mutex:
+            if self._ownership_fd is None or (self.directory / 'recovery-requested').exists():
+                raise files.Refusal('recovery_closed')
+            yield
 
     def call(self, operation, args=None, *, call_id=None, seconds=30):
-        from workspace_controller import identity
-        call_id = identity(call_id or uuid.uuid4().hex)
-        if call_id in self._calls:
-            raise files.Refusal('duplicate_call')
-        if not isinstance(seconds, (int, float)) or not .5 <= seconds <= 60:
-            raise files.Refusal('deadline')
-        self._calls.add(call_id)
-        request = {'run_id': self.run_id, 'workspace_id': self.workspace_id, 'call_id': call_id,
-                   'operation': operation, 'args': args or {}, 'deadline': time.time() + seconds}
-        attempt = self.directory / ('call-' + call_id)
-        attempt.mkdir(mode=0o700)
-        (attempt / 'request.json').write_text(json.dumps(request))
-        sources = {name: Path(__file__).with_name(name + '.py').read_text()
-                   for name in ('remote', 'workspace_files', 'workspace_controller')}
-        bootstrap = """import json,sys,types
+        with self._ownership():
+            from workspace_controller import identity
+            call_id = identity(call_id or uuid.uuid4().hex)
+            if call_id in self._calls:
+                raise files.Refusal('duplicate_call')
+            if not isinstance(seconds, (int, float)) or not .5 <= seconds <= 60:
+                raise files.Refusal('deadline')
+            self._calls.add(call_id)
+            request = {'run_id': self.run_id, 'workspace_id': self.workspace_id, 'call_id': call_id,
+                       'operation': operation, 'args': args or {}, 'deadline': time.time() + seconds}
+            attempt = self.directory / ('call-' + call_id)
+            attempt.mkdir(mode=0o700)
+            (attempt / 'request.json').write_text(json.dumps(request))
+            sources = {name: Path(__file__).with_name(name + '.py').read_text()
+                       for name in ('remote', 'workspace_files', 'workspace_controller')}
+            bootstrap = """import json,sys,types
 payload=json.load(sys.stdin)
 for name,source in payload['sources'].items():
  module=types.ModuleType(name); sys.modules[name]=module; exec(compile(source,name+'.py','exec'),module.__dict__)
 print(json.dumps(sys.modules['workspace_controller'].handle(payload['request'])))
 """
-        try:
-            raw = remote(['python3', '-c', bootstrap], data=json.dumps({'sources': sources, 'request': request}).encode(), timeout=seconds + 5)
-            result = json.loads(raw)
-            if any(result.get(k) != request[k] for k in ('run_id', 'workspace_id', 'call_id')):
-                raise RuntimeError('mismatched response identity')
-        except Exception:
-            result = {k: request[k] for k in ('run_id', 'workspace_id', 'call_id')}
-            result.update(state='failure', execution='unknown', error='transport_unknown')
+            try:
+                raw = remote(['python3', '-c', bootstrap], data=json.dumps({'sources': sources, 'request': request}).encode(), timeout=seconds + 5)
+                result = json.loads(raw)
+                if any(result.get(k) != request[k] for k in ('run_id', 'workspace_id', 'call_id')):
+                    raise RuntimeError('mismatched response identity')
+            except Exception:
+                result = {k: request[k] for k in ('run_id', 'workspace_id', 'call_id')}
+                result.update(state='failure', execution='unknown', error='transport_unknown')
+                (attempt / 'result.json').write_text(json.dumps(result, indent=2))
+                raise
             (attempt / 'result.json').write_text(json.dumps(result, indent=2))
-            raise
-        (attempt / 'result.json').write_text(json.dumps(result, indent=2))
-        return result
+            return result
 
     def require(self, operation, args=None, **kwargs):
         result = self.call(operation, args, **kwargs)
@@ -154,38 +176,46 @@ print(json.dumps(sys.modules['workspace_controller'].handle(payload['request']))
         return self.require('exact_edit', {'path': path, 'old': old, 'new': new}, **kwargs)
 
     def _prepare_command(self, script, *, checks=None, seconds=10, call_id=None):
-        call_id = call_id or uuid.uuid4().hex
-        readonly = checks is not None
-        if readonly:
-            validate_checks(checks)
-        if self.active:
-            raise files.Refusal('cleanup_required')
-        # Initialize identity before reserving dispatch; no dummy behavioral checks.
-        run = WorkspaceRun(script, self.directory / ('execution-' + uuid.uuid4().hex), seconds, self.selection, checks)
-        reserved = self.require('reserve', {'execution_id': run.manifest['run_id'], 'readonly': readonly,
-                                         'selection': self.selection}, call_id=call_id)
-        run.manifest['workspace'] = reserved['workspace']
-        # A changed local selection cannot widen a previously registered workspace.
-        manifest_policy(run.manifest)
-        run.manifest['workspace_call_id'] = call_id
-        run.persist()
-        self.active = run
-        return run
+        with self._ownership():
+            call_id = call_id or uuid.uuid4().hex
+            readonly = checks is not None
+            if readonly:
+                validate_checks(checks)
+            if self.active:
+                raise files.Refusal('cleanup_required')
+            # Initialize identity before reserving dispatch; no dummy behavioral checks.
+            run = WorkspaceRun(script, self.directory / ('execution-' + uuid.uuid4().hex), seconds, self.selection, checks)
+            from recovery import intent
+            intent(self, run, call_id, readonly)
+            reserved = self.require('reserve', {'execution_id': run.manifest['run_id'], 'readonly': readonly,
+                                             'selection': self.selection}, call_id=call_id)
+            run.manifest['workspace'] = reserved['workspace']
+            # A changed local selection cannot widen a previously registered workspace.
+            manifest_policy(run.manifest)
+            run.manifest['workspace_call_id'] = call_id
+            run.persist()
+            self.active = run
+            return run
 
     def start_command(self, script, *, checks=None, seconds=10, call_id=None):
-        run = self._prepare_command(script, checks=checks, seconds=seconds, call_id=call_id)
-        run.start()
-        return run
+        with self._ownership():
+            run = self._prepare_command(script, checks=checks, seconds=seconds, call_id=call_id)
+            from recovery import persist
+            self.ownership['executions'][-1]['dispatch_requested'] = True
+            persist(self)
+            run.start()
+            return run
 
     def collect(self):
-        if not self.active:
-            raise files.Refusal('not_started')
-        run = self.active
-        result = run.collect()
-        self.require('complete', {'execution_id': run.manifest['run_id']})
-        run.dispose()
-        self.active = None
-        return result
+        with self._ownership():
+            if not self.active:
+                raise files.Refusal('not_started')
+            run = self.active
+            result = run.collect()
+            self.require('complete', {'execution_id': run.manifest['run_id']})
+            run.dispose()
+            self.active = None
+            return result
 
     def command(self, script, *, seconds=10, call_id=None):
         call_id = call_id or uuid.uuid4().hex
@@ -226,4 +256,6 @@ print(json.dumps(sys.modules['workspace_controller'].handle(payload['request']))
         return self.collect()
 
     def delete(self, **kwargs):
-        return self.require('delete', **kwargs)
+        result = self.require('delete', **kwargs)
+        self.__del__()
+        return result

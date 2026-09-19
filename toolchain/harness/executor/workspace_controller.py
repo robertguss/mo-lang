@@ -12,7 +12,7 @@ import shutil
 import signal
 import time
 
-from remote import command, write, selection, manifest_policy
+from remote import command, write, selection, manifest_policy, registration_lock
 import workspace_files as files
 
 BASE = Path('/var/lib/mo-harness')
@@ -31,6 +31,20 @@ def identity(value):
 
 def root_for(workspace_id):
     return BASE / ('mo-workspace-' + identity(workspace_id))
+
+
+def terminal_path(workspace_id):
+    return BASE / ('.recovery-' + identity(workspace_id))
+
+
+def reject_terminal(workspace_id):
+    if terminal_path(workspace_id).exists():
+        raise files.Refusal('recovery_closed')
+
+
+def bootstrap_barrier(manifest):
+    """Registration lock must be held, before creating execution storage."""
+    reject_terminal(manifest['workspace']['workspace_id'])
 
 
 @contextmanager
@@ -98,8 +112,10 @@ def binding(root, state, readonly=False):
 def authorize(manifest):
     """Called by existing bootstrap, with the executor registration lock held."""
     w = manifest['workspace']
+    reject_terminal(w['workspace_id'])
     root = root_for(w['workspace_id'])
     with lock(root, time.time() + 4):
+        reject_terminal(w['workspace_id'])
         state = state_read(root)
         active = state.get('active')
         if not active or active['execution_id'] != manifest['run_id'] or active.get('started'):
@@ -135,6 +151,7 @@ def dispatch(root, state, operation, args, deadline):
             state['phase'] = 'quarantined'
             raise files.Refusal('cleanup_unknown')
         state['last_cleanup'] = proof
+        state.setdefault('completed_executions', {})[active['execution_id']] = proof
         state['active'] = None
         return {'cleanup': proof}
     if operation == 'delete' and state.get('active'):
@@ -209,6 +226,12 @@ def dispatch(root, state, operation, args, deadline):
 
 
 def create(request, root):
+    with registration_lock(request['deadline']):
+        reject_terminal(request['workspace_id'])
+        return _create(request, root)
+
+
+def _create(request, root):
     selected = selection(**request['args'].get('selection', {}))
     entries = [(row[0], base64.b64decode(row[1], validate=True)) for row in request['args']['files']]
     files.validate_import(entries)
@@ -271,6 +294,7 @@ def handle(request):
             response['result'] = create(request, root)
         else:
             with lock(root, deadline):
+                reject_terminal(request['workspace_id'])
                 state = state_read(root)
                 if state['run_id'] != request['run_id']:
                     raise files.Refusal('foreign_run')

@@ -1,6 +1,6 @@
 """Trusted machine-side supervisor. Candidate text is only Docker argv data."""
 import base64
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import fcntl
 import hashlib
 import json
@@ -141,16 +141,26 @@ def cleanup(name, deadline=None):
 
 
 @contextmanager
-def registration_lock():
+def registration_lock(deadline=None):
     # Shared with bootstrap: no late supervisor can appear after cleanup proof.
     with open('/tmp/mo-executor-registration.lock', 'a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        if deadline is None:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        else:
+            while True:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.time() >= deadline:
+                        raise TimeoutError('registration busy')
+                    time.sleep(.01)
         yield
 
 
-def finalize(root):
+def finalize(root, *, locked=False):
     """Leave the independent reaper armed until writers and candidate are gone."""
-    with registration_lock():
+    with (nullcontext() if locked else registration_lock()):
         name = root.name
         command(['systemctl', 'stop', name + '.service'], check=False)
         active = command(['systemctl', 'list-units', '--all', '--no-legend',
@@ -189,8 +199,8 @@ def finalize(root):
         return result
 
 
-def dispose(root):
-    with registration_lock():
+def dispose(root, *, locked=False):
+    with (nullcontext() if locked else registration_lock()):
         name = root.name
         containers = command(['docker', 'ps', '-aq', '--filter', 'name=^/' + name + '$'])
         units = command(['systemctl', 'list-units', '--all', '--no-legend', name + '*'])

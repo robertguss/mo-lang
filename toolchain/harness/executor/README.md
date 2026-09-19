@@ -253,3 +253,14 @@ the BusyBox workspace policy. The registered identity cannot change per command.
 See [application/README.md](application/README.md) for pinned offline packaging,
 resource limits and controls, and [application/HTTP-CONTRACT.md](application/HTTP-CONTRACT.md)
 for the current public API and the limits of its caller wall-time guarantees.
+
+## Cleanup after workspace owner loss
+
+New workspaces retain a private ownership receipt before remote effects and
+hold an OS ownership lock across their lifetime, including split
+`start_command` / `collect` calls. After the original owner exits, call the
+cleanup-only `recovery.recover(receipt_path, seconds=60)` API. It retires the
+named ownership, reconciles only recorded executions, and removes exact owned
+storage. It never resumes execution or converts lost outcomes into success.
+See [recovery/README.md](recovery/README.md) for schema, budgets, terminal
+barriers, controls, and the explicit new-receipt requirement.
