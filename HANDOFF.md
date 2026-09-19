@@ -29,15 +29,15 @@ provider, BusyBox executor, workspace, coding fixture, private auth, native-hist
 provider bridge, isolated application builds, cleanup-only recovery and workspace
 HTTP. Recovery acceptance published at68e50ed6; wiki35432372898 succeeded. HTTP
 is accepted atcf99cd88e186cf293a4112582fe2d26a0f7b69ff after independent full
-compiler and cross-attempt closure. Acceptance/docs commit follows this source.
+compiler and cross-attempt closure. Acceptance/docs commit is030290b8918e356be5588da2b12ad4e494aeac00.
 
 HTTP worker42015b73cce5f4f97d4479413354780c94b13e6c is clean; product freeze
 1cf268b356a63665214ca8331bfc55828b643603. Exact6211 new owned paths,6210 manifest
 entries and production/contract/seven-core-file hashes verified. No compiler,
 provider or Mo source changes. Final evidence-only transfer matches exact worker
 tree; all commits have actual Astra author and committer. Historical worktree
-harness-workspace-http-v1 remains preserved. Worker w4:p28 is idle for corrections;
-its runp29 was closed after shell-only/no-children proof. No worker machine or
+harness-workspace-http-v1 remains preserved. Former worker w4:p28 returned its final idle receipt;
+its runp29 and workerp28 are closed after fresh done/process proofs. No worker machine or
 compiler commands remain. Machine is explicitly lead-owned.
 
 Lead HTTP local22/inherited59 and six invalid-selection controls pass. Actual
@@ -69,8 +69,12 @@ now<=55s plus core transport allowance inside60s. Actual numeric60.05 rejected/
 
 Next: fresh Astra/low implementation worker for
 mo-wiki/plans/mo-application-workspace-v1.md, then a separate scripted Logstat
-repair/protected-verification slice. Local scope is released; exact worktree/base
-and pane receipt follow. Machine/full gates stay closed for that worker. Lead readiness
+repair/protected-verification slice. Fresh mo-application-workspace-v1 is in
+w4:p2E/tabw4:tP, actual Astra/low PID19318, shell19087, exact base030290b8, branch
+harness/application-workspace-v1 in the corresponding historical worktree root.
+Local implementation and focused Mo I/native builds/tests released; machine/full
+gates closed. It may copy the accepted lead Mo binary read-only (SHAacf1d593).
+See application-worker-release-01.json. Lead readiness
 reviews are in audit/evidence/2026-09-19/workspace-wire-readiness/; reviewerp2C
 andp2D closed after done/process proofs. Four architecture findings incorporated:
 fresh runs-directory preflight before Open, all-six-tool terminal classification

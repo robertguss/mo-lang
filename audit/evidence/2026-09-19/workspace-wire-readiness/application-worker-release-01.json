@@ -1,0 +1,64 @@
+{
+  "base": "030290b8918e356be5588da2b12ad4e494aeac00",
+  "branch": "harness/application-workspace-v1",
+  "agent": {
+    "id": "cli:agent:get",
+    "result": {
+      "agent": {
+        "agent": "codex",
+        "agent_status": "working",
+        "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-workspace-v1",
+        "focused": false,
+        "foreground_cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-workspace-v1",
+        "interactive_ready": true,
+        "name": "mo-application-workspace-v1",
+        "pane_id": "w4:p2E",
+        "revision": 43,
+        "state_change_seq": 347,
+        "tab_id": "w4:tP",
+        "terminal_id": "term_65bd3abe3834e57",
+        "terminal_title": "\u280b Implement application workspace v1 | harness-application-w...",
+        "terminal_title_stripped": "Implement application workspace v1 | harness-application-w...",
+        "workspace_id": "w4"
+      },
+      "type": "agent_info"
+    }
+  },
+  "process": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 19318,
+        "foreground_processes": [
+          {
+            "argv": [
+              "codex",
+              "--model",
+              "gpt-6-astra",
+              "-c",
+              "model_reasoning_effort=\"low\"",
+              "--sandbox",
+              "danger-full-access",
+              "--ask-for-approval",
+              "never",
+              "--no-alt-screen"
+            ],
+            "argv0": "codex",
+            "cmdline": "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox danger-full-access --ask-for-approval never --no-alt-screen",
+            "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-workspace-v1",
+            "name": "codex",
+            "pid": 19318
+          }
+        ],
+        "pane_id": "w4:p2E",
+        "shell_pid": 19087
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "brief": "mo-wiki/plans/mo-application-workspace-v1.md",
+  "machine_released": false,
+  "full_compiler_released": false,
+  "focused_local_released": true,
+  "read_only_mo_sha256": "acf1d5934260e4f55ca3f6d1b0bf998149f57bb0e2572c25a315ef4b3a12738a"
+}
