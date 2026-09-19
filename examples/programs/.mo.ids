@@ -1019,6 +1019,22 @@
       "verified": { "hash": "5f546a8156bbec0d", "declarations": "15fccd6fd8ce7c11" }
     },
     {
+      "path": "deferred-large.mo",
+      "module": "Programs.DeferredLarge",
+      "declarations": [
+        { "id": "d806c1510462", "name": "module Programs.DeferredLarge", "hash": "78cbafedcb21c9bb" },
+        { "id": "9329859ec99e", "name": "expose", "hash": "8efc31d28b29d281" },
+        { "id": "b1c382a44023", "name": "intent", "hash": "9543fd33504c7aff" },
+        { "id": "299d80e0c5ee", "name": "struct Output", "hash": "b47aaa8e5b98c2a7" },
+        { "id": "2661651b9702", "name": "process Holder", "hash": "96cded836f4aafa9" },
+        { "id": "a96181a91f79", "name": "supervisor Holders", "hash": "76fab74242aa3a92" },
+        { "id": "e0ec75412f0a", "name": "fn built", "hash": "2cfd9727c2323267" },
+        { "id": "b1557d1b1fa7", "name": "fn quoted", "hash": "0274df0cacee9987" },
+        { "id": "8529f01f9288", "name": "fn main", "hash": "794091afb813e07a" }
+      ],
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "f6fd5c031d5e96b2" }
+    },
+    {
       "path": "each-line.mo",
       "module": "Programs.EachLine",
       "declarations": [

@@ -5092,8 +5092,9 @@ MoValue mo_all(uint32_t index) {
  * line, by handle, and the call as a report names it (sim.zig, Wait). */
 typedef struct { bool listener; uint32_t handle; const char *call; } Wait;
 
-/* An `answer` the running update made, delivered when it commits (step 31). */
-typedef struct { uint64_t seq; MoValue value; } PendingAnswer;
+/* An `answer` the running update made, delivered when it commits (step 31); `parcel` is the answer
+ * packed when `answer` ran, as a send is, so a compaction later in the update cannot move it. */
+typedef struct { uint64_t seq; MoValue value; Parcel *parcel; } PendingAnswer;
 /* Without turns: a reply that came for an inline ask still waiting. */
 typedef struct { uint64_t seq; bool has; MoValue value; } InlineAnswer;
 
@@ -5823,6 +5824,23 @@ static void route_answer(uint64_t seq, bool has, MoValue value) {
     ianswers[nianswers++] = (InlineAnswer){seq, has, value};
 }
 
+/* An answer mo_answer already packed: routed as route_answer routes one, its parcel freed when
+ * nothing waits for it. */
+static void route_packed(PendingAnswer a) {
+    if (turns_on) {
+        turns_answer(a.seq, true, a.value, a.parcel);
+        return;
+    }
+    size_t i = 0;
+    while (i < niwaiting && iwaiting[i] != a.seq) i++;
+    if (i == niwaiting) {
+        parcel_free(a.parcel);
+        return;
+    }
+    GROW_ARRAY(ianswers, nianswers, capianswers);
+    ianswers[nianswers++] = (InlineAnswer){a.seq, true, a.value};
+}
+
 /* Every ask `id` holds goes Down: its process crashed, restarted, or ended (step 31). */
 static void down_kept(uint32_t id) {
     Proc *p = procs[id];
@@ -5850,8 +5868,11 @@ MoValue mo_answer(MoValue reply, MoValue value) {
     for (size_t i = 0; i < p->npending; i++) {
         if (p->pending[i].seq == seq) return MO_NONE_V;
     }
+    /* Packed now, as a send is: the value lives in the update's region, which a loop's or a walk's
+     * compaction may move before the update commits, and the commit's copy would read freed memory. */
+    Parcel *parcel = packs ? pack(value) : NULL;
     GROW_ARRAY(p->pending, p->npending, p->cappending);
-    p->pending[p->npending++] = (PendingAnswer){seq, value};
+    p->pending[p->npending++] = (PendingAnswer){seq, parcel ? parcel->value : value, parcel};
     return MO_NONE_V;
 }
 
@@ -6450,6 +6471,7 @@ static Delivered deliver(uint32_t id) {
         p->noutbox = 0;
         p->has_wait = p->doomed = false;
         p->asking = NOBODY;
+        for (size_t i = 0; i < p->npending; i++) parcel_free(p->pending[i].parcel);
         p->npending = 0;
         if (gave_up) raise_report(last_report, JUMP_CRASH);
         crashed(id, before);
@@ -6491,7 +6513,7 @@ static Delivered deliver(uint32_t id) {
             p->nkept--;
             break;
         }
-        route_answer(a.seq, true, a.value);
+        route_packed(a);
         p = procs[id];
     }
     p->npending = 0;
