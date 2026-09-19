@@ -1,0 +1,105 @@
+[
+  {
+    "step": "cold-runner",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr/cold-runner/run.py",
+      "100",
+      "node",
+      "--version"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  },
+  {
+    "step": "setup",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "setup.py"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  },
+  {
+    "step": "install",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "run.py",
+      "100",
+      "npm",
+      "ci",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  },
+  {
+    "step": "provenance",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "provenance.py"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  },
+  {
+    "step": "prepare",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "prepare.py"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  },
+  {
+    "step": "catalog",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "run.py",
+      "100",
+      "node",
+      "catalog.mjs"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  },
+  {
+    "step": "verify",
+    "command": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/bench/step36/guard.py",
+      "150",
+      "--",
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "verify.py"
+    ],
+    "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01/toolchain/harness/provider/.cache/clean-setup-3z_nkmvr",
+    "exit": 0
+  }
+]

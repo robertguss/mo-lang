@@ -2,6 +2,7 @@
 import hashlib, json, pathlib, urllib.request, tarfile, base64
 root = pathlib.Path(__file__).resolve().parent
 cache = root / '.cache'
+cache.mkdir(parents=True, exist_ok=True)
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 pin = '36b60d2e8985899743c4cf5bd5f8929832a3f05d'
 def download(url, name):

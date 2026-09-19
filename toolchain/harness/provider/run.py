@@ -2,7 +2,7 @@
 import os, pathlib, signal, subprocess, sys, shutil, json
 root = pathlib.Path(__file__).resolve().parent
 cache = root / '.cache'
-(cache / 'home').mkdir(exist_ok=True)
+(cache / 'home').mkdir(parents=True, exist_ok=True)
 for name in ('user.npmrc', 'global.npmrc'): (cache / name).write_text('')
 resolved = {name: shutil.which(name) for name in ('node', 'npm')}
 assert all(resolved.values()), 'node and npm must be on PATH'

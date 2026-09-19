@@ -75,20 +75,36 @@ and error bodies), a deliberately stricter bound than final text alone.
 ## Reproduce
 
 Run from the repository root, in a fresh owned Herdr run pane without focus.
-All setup/test commands need the numeric outer guard. `run.py` resolves Node/npm
-from PATH before constructing an empty-home, isolated-npm environment; it records
-paths/versions. It creates an owned process group with an earlier internal deadline
-and kills remaining descendants before returning. No npm lifecycle scripts run.
+Use a new evidence directory name for each attempt. This command is safe to run
+from main: it creates a fresh provider copy under ignored `.cache/`, runs the
+complete documented sequence there, and compares generated records with the
+originals. It refuses an existing output directory. Historical tracked bytes
+are checked unchanged; setup outputs stay in the owned copy.
 
 ```sh
-python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/setup.py
-python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/run.py 1000 npm ci --ignore-scripts --no-audit --no-fund
-python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/provenance.py
-python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/prepare.py
-python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/run.py 1000 node catalog.mjs
-python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/verify.py
-python3 toolchain/bench/step36/guard.py 600 -- python3 toolchain/harness/provider/run.py 550 node test.mjs evidence/review.outbound.json
+python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/clean_setup.py evidence/clean-review-01
 ```
+
+The seven steps are a cold `run.py` invocation, `setup.py`, locked `npm ci`,
+`provenance.py`, `prepare.py`, `catalog.mjs`, and `verify.py`. Each has a 150-second
+guard; npm/Node runner children have an earlier 100-second process-group bound.
+The output directory records exact commands, real exit codes, logs, before/after
+tracked hashes and seven generated-record comparisons. The owned copy starts
+without `.cache` or `node_modules`; the cold runner has its own empty directory.
+
+For provider tests after setup, use the copy path printed in the new
+`commands.json`, preserving the original provider directory. From repository root:
+
+```sh
+python3 toolchain/bench/step36/guard.py 600 -- python3 <owned-copy>/run.py 550 node test.mjs evidence/review.outbound.json
+```
+
+`run.py` resolves Node/npm from PATH before constructing an empty-home,
+isolated-npm environment and records paths/versions. It creates an owned process
+group with an earlier internal deadline and kills remaining descendants before
+returning. No npm lifecycle scripts run. Direct setup/provenance/prepare/catalog/
+verify commands regenerate records in their own directory, so use the clean-copy
+command above instead of invoking them against historical evidence on main.
 
 `setup.py` verifies immutable source/artifact hashes before extracting. `prepare.py`
 hydrates ignored source and applies the disclosed patch; `catalog.mjs` evaluates

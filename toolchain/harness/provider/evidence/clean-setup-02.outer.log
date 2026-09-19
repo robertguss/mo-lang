@@ -1,0 +1,8 @@
+cold-runner exit 0
+setup exit 0
+install exit 0
+provenance exit 0
+prepare exit 0
+catalog exit 0
+verify exit 0
+PASS: cold runner, clean setup sequence, 7 byte-identical generated records; tracked bytes unchanged
