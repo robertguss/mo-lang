@@ -48,3 +48,14 @@ after real cleanup, then explicitly repeats recovery with unchanged ownership
 and no execution replay. The schema controls use three execution IDs and cover
 ordered completion, valid partial cleanup, foreign/duplicate IDs and conflicting
 statuses. All acceptance remains pending.
+
+At 03:48 ET, the observed workspace rerun exposed a distinct provisioning
+failure: its first command returned infrastructure_failure with
+`RuntimeError('missing slice control group')`. The post-reboot probe accepted
+inactive/absent slices as cleanup evidence but incorrectly allowed that state
+to pass the execution readiness gate. The lead authorized starting only the
+existing unchanged mo-executor.slice and mo-application.slice after exact owned
+cleanup. Active exact cgroups, effective limits, empty task sets, pinned inputs
+and unit hashes must pass before dispatch. No product auto-provisioning change
+is authorized. Lead acceptance now has the same read-only preflight. This does
+not establish the cause of the first malformed transport response.

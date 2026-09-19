@@ -113,6 +113,12 @@ claimed. Fresh regression and compiler runs must be sequential after cleanup.
 Worker run panes are w4:p22 and w4:p26; fresh review p25 was closed after report.
 Lead independent acceptance scripts are prepared under workspace-recovery audit
 evidence but not run. Machine release and final worker receipt remain pending.
+Observed rerun then failed before execution: missing slice control group after
+reboot. Inactive slice absence was sufficient cleanup evidence but insufficient
+execution readiness. Lead authorized reactivating the two existing unchanged
+slices after exact cleanup, with active cgroup/effective-limit/input checks
+before dispatch. No provisioning code or limit changes. Initial malformed
+response remains unexplained. See corrected lead review for both failures.
 
 Wire/encoding and cleanup reviews are retained under workspace-wire-readiness;
 their review panes are closed. Next: finish application acceptance and cleanup

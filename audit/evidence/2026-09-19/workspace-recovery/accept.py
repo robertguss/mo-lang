@@ -81,6 +81,7 @@ try:
         run('build', 180, ['zig', 'build'], ROOT / 'toolchain')
         run('test', 900, ['zig', 'build', 'test', '--summary', 'all'], ROOT / 'toolchain')
     else:
+        run('readiness', 90, ['python3', '-B', HERE / 'inventory.py', OUT, '--readiness'])
         run('local', 120, ['python3', '-B', RECOVERY / 'local_suite.py'])
         run('schema-extra', 30, ['python3', '-B', HERE / 'schema-controls.py', OUT / 'schema-extra'])
         for name, selection in [('unknown', ['not-a-group']), ('empty', []),
