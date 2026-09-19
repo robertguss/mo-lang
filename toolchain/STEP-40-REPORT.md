@@ -1,8 +1,8 @@
 # Step 40 report: a scope that holds, and `Fs.replace`
 
-Worker: Claude Opus 5 in its own worktree (`toolchain/step-40-scope`). This file grows
-with the step; this first version holds only part A (the sweep and the RED run),
-committed before any fix.
+Worker: Claude Opus 5 in its own worktree (`toolchain/step-40-scope`). Part A (the sweep
+and the RED run) was committed before any fix; the rest was written by the worker who
+finished the step (see "Who finished this step").
 
 ## A. Sweep, then RED
 
