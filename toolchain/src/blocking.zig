@@ -207,7 +207,7 @@ fn closeSignal(job: *Job) void {
 test "a write on the pool is on disk when it answers, and a replace leaves no temporary name" {
     var dir_buf: [64]u8 = undefined;
     const sys = posix.system;
-    const folder = try std.fmt.bufPrintZ(&dir_buf, "/tmp/mo-blocking-{d}", .{std.os.linux.getpid()});
+    const folder = try std.fmt.bufPrintZ(&dir_buf, "/tmp/mo-blocking-{d}", .{sys.getpid()});
     const io = std.testing.io;
     std.Io.Dir.cwd().deleteTree(io, folder) catch {};
     try std.Io.Dir.cwd().createDir(io, folder, .default_dir);
