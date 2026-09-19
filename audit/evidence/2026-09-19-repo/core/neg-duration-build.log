@@ -1,0 +1,4 @@
+neg-duration.mo:4:4: MO0101 expected the end of the line
+    n: Int64 = -9223372036854775807 - 1
+     ^
+  why: spec/grammar.md allows only this at this point in the production.

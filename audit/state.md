@@ -1,5 +1,12 @@
 # The auditor's state
 
+## Repository implementation review — 19 September 2026 (PR integration pending)
+
+- [`mo-audit-2026-09-19-repo.md`](mo-audit-2026-09-19-repo.md): Robert-requested bounded current-state audit at `8342cfe09fd2715792296ce44767ca953ed928c0`; not a cold experimental reading. New findings: out-of-range sized-integer literals accepted (high), oversized mailbox bounds accepted before run/build abort (medium), and invalid fuzz durations succeeding with zero fuzz inputs (medium).
+- Build and targeted native/local tests passed; the full suite timed out at 180 seconds. Both subreviews were interrupted by provider safety-filter refusals; deeper executor review, live provider/container acceptance and exhaustive compiler coverage remain incomplete. Evidence and precise limitations are in the report.
+- The failed-batch fuzz accounting repair is verified with a labelled mocked regression: batch failure remains counted/retained when singleton replays pass. This closes only that narrow prior behavior. Native TLS's 31 tests passed; prior independent generated-chain/full-runtime closure was not reverified here. Other standing concerns remain open, including the lack of tracked compiler/test CI.
+- All new artifacts are under `audit/`, on `audit/2026-09-19-repo` for PR integration. No implementation edits, rule changes, merge, or automatic intake. Lead comparison must preserve independent filing order.
+
 ## Current-state review — 18 September 2026 (PR integration pending)
 
 - `mo-audit-2026-09-18-current-state.md`: Robert-requested retrospective review anchored at `0f827a9018b1640d87ee503334f3517c8996b6d4`, with the program-7 baseline delta through `1fa19e3bd3870593ea152847e7ac9970efc3d724` checked separately. Not a cold subject reading.

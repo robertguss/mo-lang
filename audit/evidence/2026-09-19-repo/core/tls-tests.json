@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/home/exedev/.hermes/profiles/mo-auditor/workspace/audit-tools/zig-x86_64-linux-0.16.0/zig",
+    "test",
+    "src/bricks/tls.zig",
+    "-OReleaseSafe"
+  ],
+  "cwd": "toolchain",
+  "timeout_seconds": "120",
+  "returncode": 0,
+  "elapsed_seconds": 40.673162523889914
+}

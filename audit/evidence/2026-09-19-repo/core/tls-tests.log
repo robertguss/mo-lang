@@ -1,0 +1,32 @@
+1/31 tls.test.a handshake and a megabyte both ways against Zig's own client, each suite and each key type...OK
+2/31 tls.test.a small handshake against Zig's own client, each suite and each key type...OK
+3/31 tls.test.a truncated record waits, and never answers on its own...OK
+4/31 tls.test.a record past 16 KiB plus 256 is record_overflow...OK
+5/31 tls.test.a plain HTTP request is unexpected_message...OK
+6/31 tls.test.a client with no TLS 1.3 is protocol_version...OK
+7/31 tls.test.a client with no X25519 at all is handshake_failure...OK
+8/31 tls.test.a client that supports X25519 but shares none gets one HelloRetryRequest...OK
+9/31 tls.test.a wrong Finished is decrypt_error, and a bad tag is bad_record_mac...OK
+10/31 tls.test.a Finished whose verify data is wrong is decrypt_error...OK
+11/31 tls.test.a KeyUpdate round trip...OK
+12/31 tls.test.PEM: a chain, a key, and the pair that does not match...OK
+13/31 tls.test.RFC 8448 section 3: the key schedule's derived secrets...OK
+14/31 tls.test.a record's nonce is the IV xor the sequence number...OK
+15/31 tls.test.a megabyte both ways, each suite and each key type...OK
+16/31 tls.test.a small session, each suite and each key type...OK
+17/31 tls.test.the brick's client and server: a handshake and a megabyte both ways, each suite, each key type, with and without ALPN...OK
+18/31 tls.test.the chain: three certificates, five, an address, and the name in any case, all accepted...OK
+19/31 tls.test.an alert where a hello belongs: a fatal one leaves the server's read failed, close_notify closed...OK
+20/31 tls.test.the chain: each refusal is the alert RFC 8446 names...OK
+21/31 tls.test.the chain made here: a plain path, and each restriction met, accepted with both key types...OK
+22/31 tls.test.the chain made here: each restriction broken is refused, with both key types...OK
+23/31 tls.test.a certificate's Time as RFC 5280 reads it: UTCTime's two-digit year in 1950 to 2049, GeneralizedTime as written...OK
+24/31 tls.test.a trust PEM with no certificate in it is BadPem, and a bad block among good ones is left out...OK
+25/31 tls.test.ALPN: the server's first that the client offered, nothing shared, and either side alone...OK
+26/31 tls.test.ALPN: an offer is searched whole, sixty-five names or the longest list, and a list past max_alpn_bytes cannot be offered...OK
+27/31 tls.test.a KeyUpdate started by the client and one started by the server, records flowing after each...OK
+28/31 tls.test.a client that shares no key gets one HelloRetryRequest and answers it...OK
+29/31 tls.test.a record in the clear after the ServerHello is the client's own failure; the server still reads a client's plaintext alert before its Finished...OK
+30/31 tls.test.the five rejections, fed to the client...OK
+31/31 tls.test.RFC 8448 section 3 replayed through the client: its hello, its Finished, and the records after, byte for byte...OK
+All 31 tests passed.

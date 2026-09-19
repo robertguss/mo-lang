@@ -1,0 +1,14 @@
+1/13 lexer.test.every keyword...OK
+2/13 lexer.test.every operator...OK
+3/13 lexer.test.names, numbers, and comments...OK
+4/13 lexer.test.a string with a hole...OK
+5/13 lexer.test.a triple-quoted block...OK
+6/13 lexer.test.a joined line...OK
+7/13 lexer.test.a block inside parens keeps its newlines; a one-line fn does not...OK
+8/13 lexer.test.a one-line if inside parens opens nothing, so the lines after it still join...OK
+9/13 lexer.test.a string knows its escapes, a code point among them, and refuses any other...OK
+10/13 lexer.test.errors are records with stable codes...OK
+11/13 diag.test.prose names the line, the column, and why...OK
+12/13 diag.test.json is one line per record, with its text escaped...OK
+13/13 token.test.every grammar keyword is in the table...OK
+All 13 tests passed.

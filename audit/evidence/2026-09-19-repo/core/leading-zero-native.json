@@ -1,0 +1,9 @@
+{
+  "command": [
+    "./zig-out/mo-build/leading-zero/leading-zero"
+  ],
+  "cwd": "audit/evidence/2026-09-19-repo/core",
+  "timeout_seconds": "15",
+  "returncode": 0,
+  "elapsed_seconds": 0.0012763889972120523
+}

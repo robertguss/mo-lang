@@ -1,0 +1,4 @@
+literal-rejected-control.mo:4:3: MO0217 4294967296 does not fit in UInt32
+    4294967296
+    ^
+  why: Integers are sized; a literal must fit the type it is given, and overflow is never implicit.

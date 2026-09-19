@@ -1,0 +1,16 @@
+thread 178152 panic: integer does not fit in destination type
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/types.zig:191:31: 0x11971ab in lower (mo)
+            cur = p.vars.items[t.a].bound orelse return cur;
+                              ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/pipeline.zig:81:35: 0x12ec68f in mainProgram (mo)
+    lowered.* = try bytecode.lower(gpa, checked);
+                                  ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/main.zig:292:42: 0x11904b5 in run (mo)
+        const m = mo.pipeline.mainProgram(arena, program, &diags) catch |e| switch (e) {
+                                         ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/repo-audit-september/toolchain/src/main.zig:77:19: 0x117c800 in onStack (mo)
+    result.* = run(init);
+                  ^
+/home/exedev/.hermes/profiles/mo-auditor/workspace/audit-tools/zig-x86_64-linux-0.16.0/lib/std/os/linux/x86_64.zig:105:5: 0x1177c91 in clone (mo)
+    asm volatile (
+    ^

@@ -1,0 +1,8 @@
+{
+  "commit": "8342cfe09fd2715792296ce44767ca953ed928c0",
+  "zig": "/home/exedev/.hermes/profiles/mo-auditor/workspace/audit-tools/zig-x86_64-linux-0.16.0/zig",
+  "zig_version": "0.16.0",
+  "platform": "Linux-6.12.93-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "mo_sha256": "b132eb4604402eca2c7321ace1932590fed650dc28b4c702b20249f959d3d735"
+}

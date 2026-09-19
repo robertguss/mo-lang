@@ -1,0 +1,16 @@
+{
+  "kind": "offline-component-controls",
+  "oauth": "synthetic stub; no pinned runtime or inference exercised",
+  "node": "v26.8.1",
+  "passed": [
+    "schemas reject duplicates, unknown tools and freeze exact arguments",
+    "structured command result rejects inconsistent success and marks uncertain execution terminal",
+    "continuation rejects changed tool args and prefix",
+    "journal serializes snapshots and refuses existing or symlink targets",
+    "logout invalidates an in-flight synthetic login",
+    "deadline prevents late synthetic login persistence",
+    "corrupt store fails closed without overwriting bytes"
+  ],
+  "total": 7,
+  "outbound": 0
+}
