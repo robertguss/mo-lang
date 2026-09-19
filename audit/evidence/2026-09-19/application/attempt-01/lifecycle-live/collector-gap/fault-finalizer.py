@@ -1,0 +1,1 @@
+import sys,json; sys.path.insert(0,sys.argv[1]); import remote as machine; machine.cleanup=lambda name: {'absent':False,'removed_rc':1}; from remote import finalize; from pathlib import Path; print(json.dumps(finalize(Path(sys.argv[1]))))

@@ -1,0 +1,39 @@
+[
+    {
+        "Architecture": "arm64",
+        "Config": {
+            "Env": [
+                "PATH=/opt/mo:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "HOME=/build",
+                "TMPDIR=/tmp",
+                "ZIG_GLOBAL_CACHE_DIR=/build/zig-global",
+                "ZIG_LOCAL_CACHE_DIR=/build/zig-local"
+            ],
+            "User": "65534:65534",
+            "WorkingDir": "/workspace"
+        },
+        "Created": "2026-09-19T02:39:59.23973797-04:00",
+        "Descriptor": {
+            "digest": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "size": 969
+        },
+        "Id": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+        "Metadata": {
+            "LastTagTime": "2026-09-19T06:39:59.284448543Z"
+        },
+        "Os": "linux",
+        "Parent": "sha256:ee24619dcfa5b724b4b4404c0c5808ac9e8404dacdbbd9cc2b6cc0143e37a8ec",
+        "RepoDigests": [],
+        "RepoTags": [],
+        "RootFS": {
+            "Layers": [
+                "sha256:cf368bccc9215a2046ce2fab1cd85406ea7490196119398203897f99fa362c90",
+                "sha256:6d15277e771c7a286e5df5822bdda022331deb1d82ae071f0f429aeecd9d3fc0",
+                "sha256:ac5aaddb998cf780387274bf3bc20f102b0c75028142b8685aaaa2aa1c7afb7e"
+            ],
+            "Type": "layers"
+        },
+        "Size": 92184587
+    }
+]

@@ -1,0 +1,10 @@
+{"check": "build", "exit": 0, "group_remaining": false}
+{"check": "test", "exit": 1, "group_remaining": false}
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/application/accept.py", line 79, in <module>
+    run('test', 900, ['zig', 'build', 'test', '--summary', 'all'], ROOT / 'toolchain')
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/application/accept.py", line 66, in run
+    assert rc == 0 and not forced and not remaining and not left, name
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: test

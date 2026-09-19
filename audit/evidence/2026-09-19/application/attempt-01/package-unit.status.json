@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "60",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/application/test_package.py"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T03:00:11.347051-04:00",
+  "finished": "2026-09-19T03:00:11.754200-04:00",
+  "exit": 0,
+  "forced": false,
+  "cleanup_before": [],
+  "group_remaining": false
+}

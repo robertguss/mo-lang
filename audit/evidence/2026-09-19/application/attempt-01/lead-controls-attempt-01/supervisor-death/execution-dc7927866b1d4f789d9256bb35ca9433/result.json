@@ -1,0 +1,61 @@
+{
+  "run_id": "92146ed64b714431b395d6c8e373dd77",
+  "workspace_id": "f47499189a4c4a73871c2c543c38b9a2",
+  "call_id": "22a2a189b1904c7ebeebdd962bb2580c",
+  "state": "failure",
+  "execution": "unknown",
+  "exit_code": null,
+  "signal": null,
+  "stdout": "",
+  "stderr": "",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": null,
+  "execution_valid": false,
+  "manifest": {
+    "run_id": "ca59c6a8b2d44b99b453e8ff7e236f73",
+    "name": "mo-executor-ca59c6a8b2d44b99b453e8ff7e236f73",
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "candidate_sha256": "43a397073cd55db9993f9fdd9f48c26e3b8cc6b9d780a85bbb7c51c6b311cc1b",
+    "script": "ZWNobyBwYXJlbnQKL2Jpbi9zaCAtYyAnZWNobyBjaGlsZDsgL2Jpbi9zaCAtYyAiZWNobyBncmFuZGNoaWxkOyBzbGVlcCAzMCIgJiB3YWl0JyAmCnNldHNpZCAvYmluL3NoIC1jICdlY2hvIHNlc3Npb247IHNsZWVwIDMwJyAmCndhaXQ=",
+    "checks": null,
+    "seconds": 5,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+    "supervisor_sha256": "a3a3c83955a6c326897d3c53d04c8d0f331ac5d2c9d9aa530ad5017c25e1e8c7",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace": {
+      "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "policy": "application-build-v1",
+      "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+      "workspace_id": "f47499189a4c4a73871c2c543c38b9a2",
+      "workspace_run_id": "92146ed64b714431b395d6c8e373dd77",
+      "source": "/var/lib/mo-harness/mo-workspace-f47499189a4c4a73871c2c543c38b9a2/storage/data",
+      "readonly": false,
+      "snapshot": null
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+    "check_inventory_sha256": null,
+    "workspace_call_id": "22a2a189b1904c7ebeebdd962bb2580c",
+    "deadline": 1789801349.033206
+  },
+  "observation": {
+    "status": "infrastructure_failure",
+    "error": "supervisor observation missing",
+    "cleanup": {
+      "host_confirmed": true,
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-fd8d6f06614dffae3671e3fcb4bfe6b95e5ea7e98afff0a4debc9f67caf92731.scope",
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    }
+  }
+}

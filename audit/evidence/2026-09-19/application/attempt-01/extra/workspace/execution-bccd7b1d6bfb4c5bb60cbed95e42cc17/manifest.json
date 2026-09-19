@@ -1,0 +1,36 @@
+{
+  "run_id": "b744198289b34b2b81bd6654aeb77cd3",
+  "name": "mo-executor-b744198289b34b2b81bd6654aeb77cd3",
+  "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+  "policy": "application-build-v1",
+  "candidate_sha256": "ebc177f0111e8d312af9a46e41fdcf539ccc5372d0b9d1e44098cd3e48c8000a",
+  "script": "c2V0IC1ldQp0ZXN0IC16ICIkKGxzIC1BIC9idWlsZCkiCm1rZGlyICcvYnVpbGQvc3BhY2UgZGlyJwpjZCAnL2J1aWxkL3NwYWNlIGRpcicKbW8gYnVpbGQgL3dvcmtzcGFjZS9oZWxsby5tbyA+L2J1aWxkL2NvbXBpbGVyLmxvZyAyPiYxIHx8IHsgcmM9JD87IGNhdCAvYnVpbGQvY29tcGlsZXIubG9nID4mMjsgZXhpdCAiJHJjIjsgfQpjYXQgL2J1aWxkL2NvbXBpbGVyLmxvZyA+JjIKJy4vemlnLW91dC9tby1idWlsZC9oZWxsby9oZWxsbycgJ1pvw6sg8J+MmScKaWYgZWNobyBtdXRhdGlvbiA+PiAvd29ya3NwYWNlL2hlbGxvLm1vOyB0aGVuIGV4aXQgMTsgZmkK",
+  "checks": [
+    {
+      "id": "unicode-greeting",
+      "stream": "stdout",
+      "mode": "exact",
+      "expected": "Hello, Zo\u00eb \ud83c\udf19!\n"
+    }
+  ],
+  "seconds": 120,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+  "supervisor_sha256": "a3a3c83955a6c326897d3c53d04c8d0f331ac5d2c9d9aa530ad5017c25e1e8c7",
+  "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+  "workspace": {
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace_id": "337a31d00c3d41bc8d34ec737a42e7b8",
+    "workspace_run_id": "d5cba5816fca4fe697975714f6a2fefc",
+    "source": "/var/lib/mo-harness/mo-workspace-337a31d00c3d41bc8d34ec737a42e7b8/snapshot/data",
+    "readonly": true,
+    "snapshot": "a5a4cd955763faeb94d221efcb39c31c9ee89c072b9175954ae517c842ae3e16"
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+  "check_inventory_sha256": "b0828b181218ded0916c692b94d2e39e75b24437a79199a12420f730141cea45",
+  "workspace_call_id": "a4c40a2ff83040e89cecf3979fcc43c3",
+  "deadline": 1789801578.7292871
+}

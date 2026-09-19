@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "120",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/test_lifecycle_live.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/application/attempt-01/lifecycle-live"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T03:04:08.646631-04:00",
+  "finished": "2026-09-19T03:04:18.388265-04:00",
+  "exit": 0,
+  "forced": false,
+  "cleanup_before": [],
+  "group_remaining": false
+}

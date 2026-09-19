@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-workspace-foundation.md, plans/mo-first-coding-harness.md]
-status: in-progress
+status: complete
 ---
 
 # Mo application build v1: isolated pinned toolchain
@@ -160,9 +160,37 @@ are also authorized. Existing pinned Mo/Zig inputs are read-only. Exact original
 Zig archive path and SHA were supplied. Raw inspection/provision commands and
 results are under `audit/evidence/2026-09-19/application-preparation/`.
 
+## Result — 19 Sep 2026, 3:16 AM ET
+
+Accepted at integrated `aa7ec7623f634d5c05f6d602b894428c211b4869`, worker tip
+`0b93d5df22b7a49fe135b231256271e8245feebb`. Exact 2316 changed files match.
+First two worker commits retain Astra author/Robert committer; subsequent worker
+and all lead commits have actual Astra attribution. All historical failures stay.
+
+Lead local27/policy8/package3, actual exported image19544 files, fixed runtime23,
+workspace22/executor17/lifecycle1 and independent spaced-path Unicode cold
+snapshot build pass. Image SHA b9fda4ae and full toolchain manifest d31b5c5e match
+the worker package. Fresh packaging reused Docker layers; no uncached-image
+reproducibility claim. Hello/Logstat/snapshot actual peaks were respectively
+747450368/646533120/614055936 bytes, with zero cold-build OOM kills.
+
+Full-01 retained 242/243: TLS echo counted one TCP connection in the interpreter
+and zero natively. Ten focused runs pass; full-02 passes 243/243, 5/5, exit0.
+The source counts TCP accepts before TLS success; the extra client is unknown.
+No runtime/example change or claim that the original failure was fixed.
+All 5799 tracked toolchain/examples files remained byte-identical.
+
+Lead final inventory proves 68 executions/34 workspaces cleaned, both parent
+task sets empty and five shared Mac Docker IDs/states unchanged. Raw commands,
+exits, resource data and limits are in `audit/evidence/2026-09-19/application/`.
+Worker panes closed; machine released to [[mo-workspace-recovery-v1]].
+That cleanup-only API precedes HTTP/Mo routing and scripted repair. No live
+provider, language-value, Darwin full-sync or Step39 acceptance follows here.
+
 ## Related
 
 - [[mo-workspace-foundation]]
 - [[mo-first-coding-harness]]
 - [[mo-coding-fixture-v1]]
 - [[mo-provider-bridge-v1]]
+- [[mo-workspace-recovery-v1]]

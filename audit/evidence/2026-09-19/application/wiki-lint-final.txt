@@ -1,0 +1,30 @@
+265 wiki pages checked, 25 issues
+
+[review] (15)
+  deep-dives/outside-review-2026-09-13-response.md: contested/low-confidence
+  deep-dives/outside-review-2026-09-13.md: contested/low-confidence
+  deep-dives/outside-review-2026-09-14-response.md: contested/low-confidence
+  deep-dives/outside-review-2026-09-14.md: contested/low-confidence
+  deep-dives/plang-decision-matrix.md: contested/low-confidence
+  deep-dives/plang-design-camps.md: contested/low-confidence
+  deep-dives/plang-implementation-menu.md: contested/low-confidence
+  deep-dives/plang-mo-synthesis.md: contested/low-confidence
+  deep-dives/research-agenda-2026-09-response.md: contested/low-confidence
+  directions/d32-proving-is-a-separate-tool.md: contested/low-confidence
+  directions/d33-bounded-mailboxes.md: contested/low-confidence
+  directions/d34-packages-are-recipes.md: contested/low-confidence
+  research/concepts/language-design-for-llms-evidence.md: contested/low-confidence
+  research/concepts/plang-landscape-2026.md: contested/low-confidence
+  research/concepts/safety-critical-coding-standards.md: contested/low-confidence
+
+[size] (10)
+  decisions/decision-log.md: 786 lines
+  deep-dives/bricks-and-the-cost-of-zero-dependencies.md: 256 lines
+  plans/erosion-round.md: 359 lines
+  plans/interpreter-step-36.md: 234 lines
+  plans/interpreter-step-37.md: 306 lines
+  plans/mo-first-coding-harness.md: 265 lines
+  plans/roadmap.md: 287 lines
+  research/concepts/agent-native-research-synthesis.md: 266 lines
+  research/prompts/agent-native-independent-review-prompt.md: 538 lines
+  state-of-the-project.md: 627 lines

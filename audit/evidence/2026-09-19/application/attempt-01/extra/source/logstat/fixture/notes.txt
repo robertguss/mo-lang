@@ -1,0 +1,1 @@
+not a log file; logstat skips any name that does not end in .log

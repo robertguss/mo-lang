@@ -1,0 +1,5 @@
+Started mo-executor-557ef22890d944b2be595ecd5582721c.service - /usr/bin/python3 /tmp/mo-executor-557ef22890d944b2be595ecd5582721c/remote.py supervise /tmp/mo-executor-557ef22890d944b2be595ecd5582721c.
+Stopping mo-executor-557ef22890d944b2be595ecd5582721c.service - /usr/bin/python3 /tmp/mo-executor-557ef22890d944b2be595ecd5582721c/remote.py supervise /tmp/mo-executor-557ef22890d944b2be595ecd5582721c...
+mo-executor-557ef22890d944b2be595ecd5582721c.service: Control process exited, code=exited, status=1/FAILURE
+mo-executor-557ef22890d944b2be595ecd5582721c.service: Failed with result 'exit-code'.
+Stopped mo-executor-557ef22890d944b2be595ecd5582721c.service - /usr/bin/python3 /tmp/mo-executor-557ef22890d944b2be595ecd5582721c/remote.py supervise /tmp/mo-executor-557ef22890d944b2be595ecd5582721c.

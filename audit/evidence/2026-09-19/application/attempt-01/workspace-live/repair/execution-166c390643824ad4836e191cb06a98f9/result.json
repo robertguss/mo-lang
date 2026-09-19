@@ -1,0 +1,75 @@
+{
+  "run_id": "e3e20391cff14176b90214d845450b2f",
+  "workspace_id": "123a14c645764505b75b64ad6a9413d8",
+  "call_id": "d6e24e3e4b57493fbbd004e0d17f3690",
+  "state": "refusal",
+  "execution": "unknown",
+  "exit_code": null,
+  "signal": null,
+  "stdout": "",
+  "stderr": "",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": null,
+  "execution_valid": false,
+  "manifest": {
+    "run_id": "94f87e28d3af4fa7a949171b96600f77",
+    "name": "mo-executor-94f87e28d3af4fa7a949171b96600f77",
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "policy": "mo-executor-workspace-v1",
+    "candidate_sha256": "3ab4a5cbb5ee69f2eeba03e6eb0cbdb9136ab1cdb49320f1b2ece55499c2bba4",
+    "script": "Y2F0IGFuc3dlci50eHQ=",
+    "checks": [
+      {
+        "id": "output",
+        "expected": "mutated",
+        "stream": "stdout",
+        "mode": "exact"
+      }
+    ],
+    "seconds": 10,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+    "supervisor_sha256": "a3a3c83955a6c326897d3c53d04c8d0f331ac5d2c9d9aa530ad5017c25e1e8c7",
+    "workspace": {
+      "workspace_id": "123a14c645764505b75b64ad6a9413d8",
+      "workspace_run_id": "e3e20391cff14176b90214d845450b2f",
+      "source": "/var/lib/mo-harness/mo-workspace-123a14c645764505b75b64ad6a9413d8/snapshot/data",
+      "readonly": true,
+      "snapshot": "ce8639affa038d4cfc16ea49050c57df77dcad9047ba1316fc503151dac9d5bf"
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+    "check_inventory_sha256": "7b8fb9d00383656f91267219ddc9b7e6b05d016b456581b893e632625e2aac7c",
+    "workspace_call_id": "d6e24e3e4b57493fbbd004e0d17f3690"
+  },
+  "observation": {
+    "status": "refusal",
+    "execution": "not_started",
+    "error": "workspace_authorization_refused",
+    "cleanup": {
+      "host_confirmed": true,
+      "host_cgroup": null,
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "execution_not_started": true,
+      "services_absent": true
+    }
+  },
+  "checks": [
+    {
+      "id": "output",
+      "expected": "mutated",
+      "stream": "stdout",
+      "mode": "exact",
+      "passed": false
+    }
+  ],
+  "passed": false
+}

@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "720",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/application/build_image.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/application/attempt-01/lead-package-attempt-01",
+    "/private/tmp/mo-linux-toolchain-bcqwt2vz/zig-aarch64-linux-0.16.0.tar.xz"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T03:00:11.754471-04:00",
+  "finished": "2026-09-19T03:00:24.266663-04:00",
+  "exit": 0,
+  "forced": false,
+  "cleanup_before": [],
+  "group_remaining": false
+}

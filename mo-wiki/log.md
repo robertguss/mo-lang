@@ -876,3 +876,17 @@
 - Retained intact remote wire review; focused encoding/Book-budget follow-up
   underway. No live OAuth/inference or real provider-driven application claim.
 - Wiki lint264 pages/25 inherited notices after condensing this session's checkpoint; diff check clean.
+
+## [2026-09-19] update | Application builds accepted; cleanup recovery begins, 3:16 AM ET
+- Integrated worker tip0b93d5df through aa7ec762; exact2316 files match. Original
+  two inherited committer identities preserved and disclosed; lead commits Astra.
+- Fresh package/export19544 files, application23, local27/policy8/package3,
+  workspace22/executor17/lifecycle1 and extra spaced-path Unicode cold snapshot
+  build pass. Own68 executions/34 workspaces cleaned, shared five containers unchanged.
+- Full-01 retained TLS echo TCP-count mismatch242/243; focused10/10 and full-02
+  243/243,5/5 pass. Client not identified; no root-cause/fix claim. All5799 tracked
+  toolchain/examples files unchanged. Read-only review report retained.
+- New recovery brief and fresh Astra/low worker at90858791; machine released
+  after positive cleanup, compiler gate released after full-02. No HTTP/provider
+  or Mo source scope. Ownership/recovery interruptions precede remote routing.
+- Wiki lint265 pages/25 inherited notices (15 review,10 size); no new issues.

@@ -1,0 +1,7 @@
+{
+  "binary_sha256": "3e8b303b27a4cfec9e2c059318ce96289f785e51c26b08d9ee9dccc879a68527",
+  "binary_bytes": 488920,
+  "removed": [
+    "audit/evidence/2026-09-19/application/tls-focus-01/zig-out"
+  ]
+}

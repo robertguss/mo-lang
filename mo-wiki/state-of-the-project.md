@@ -24,7 +24,7 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 2:34 AM ET, bridge accepted; application builds underway.
+**Last updated:** 19 Sep 2026, 3:16 AM ET, isolated application builds accepted; cleanup recovery underway.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
@@ -52,11 +52,20 @@ Full integrated suite 243/243 and 5/5 passed; source bytes and cleanup are check
 Each Mo run records and replays native provider history with Book observations;
 commands are still inert fixtures.
 
-[[mo-application-build-v1]] now owns the dedicated machine for pinned image and
-real compilation controls, with a separately verified resource parent. The next
-work is coherent remote six-tool routing and a scripted Logstat repair with
-protected verification. Language value and matched Pi comparison remain unmeasured.
-Published checkpoint 5e568227 and its wiki deployment passed.
+[[mo-application-build-v1]] independently passes actual image-content checks,
+23 runtime groups, old workspace/executor regressions and an extra cold snapshot
+build. Hello and Logstat execute within unchanged resource limits. Cleanup of
+68 executions and 34 workspaces is confirmed; shared Mac containers are unchanged.
+The first full suite retained a TLS echo TCP-count mismatch, 242/243; ten
+focused runs and the fresh full rerun pass, 243/243 and 5/5. The originating
+client is unknown; no fix is claimed. This bounded application slice is accepted.
+
+[[mo-workspace-recovery-v1]] starts the necessary cleanup-only API before HTTP
+exposure: a lost reservation response currently leaves no supported reopen path.
+The fresh worker owns the released dedicated machine; no provider/HTTP/Mo edits
+are part of that slice. Remote six-tool routing and scripted Logstat repair
+follow. Language value and matched Pi comparison remain unmeasured. Published
+checkpoint 5e39f568 and wiki deployment 35427175140 passed.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations

@@ -1,0 +1,10 @@
+{
+  "run_id": "e3e20391cff14176b90214d845450b2f",
+  "workspace_id": "123a14c645764505b75b64ad6a9413d8",
+  "call_id": "de8e945a37a048e09157e037288cf9d4",
+  "state": "refusal",
+  "execution": "completed",
+  "truncated": false,
+  "error": "closed",
+  "elapsed_seconds": 0.00038816899905214086
+}

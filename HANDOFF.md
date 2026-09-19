@@ -22,13 +22,14 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 2:34 AM ET
+### Active work, 19 Sep 2026, 3:16 AM ET
 
-Current local code is `191da144809a83ecadd1902aadd6507e898fa31b`. Published
-checkpoint 5e568227 and wiki run 35426384194 both passed. The bridge code and this
-next documentation checkpoint follow it; verify current git/CI on resume.
+Current application code is `aa7ec7623f634d5c05f6d602b894428c211b4869`;
+recovery brief base is `90858791f441d125f0187a6751beffec6ef2312b`. Published
+checkpoint 5e39f568 and wiki run 35427175140 both passed. Verify current git/CI
+on resume; the application checkpoint is now independently accepted.
 
-Seven bounded components have independent lead acceptance:
+Eight bounded components have independent lead acceptance:
 
 - Terminal-401 policy: final full suite 243/243 and 5/5; 18 interpreter/native
   cases plus six extra controls. Generic recipe unchanged.
@@ -70,33 +71,48 @@ Cross-built executable `/opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl`, SHA
 Zig 0.16 is `/opt/mo-harness/zig-aarch64-linux-0.16.0`. Native bootstrap OOM and
 900-second timeout remain failed attempts. Trusted smoke's reported 512KiB peak
 is not credible sizing evidence. Machine is now exclusively assigned to the
-application-build worker; do no competing machine commands until its release.
+workspace-recovery worker; do no competing machine commands until its release.
 
-Active worker: `mo-application-build-v1`, pane w4:p1V/run w4:p1W, branch
-harness/application-build-v1 at exact base5e568227. Separate application-build
-policy/image,1GiB candidate/120s commands, fresh executable/build, separate
-1536MiB parent; BusyBox defaults unchanged. Lead provisioned and read back
-mo-application.slice plus outer 2GiB/CPU 2/no-swap cgroup, then explicitly released
-the dedicated machine. Worker local27 and policy controls pass; full tests and
-offline pinned image assembly/live controls underway. It owns only new
-/opt/mo-harness/application-build-v1 staging plus named task resources; old
-compiler/Zig inputs are read-only. Exact original Zig archive path supplied.
+Application worker tip 0b93d5df at base 5e568227 is integrated through aa7ec762;
+its panes are closed, worktree preserved. First two worker commits retain
+inherited Robert committer; last two and all lead integrations are Astra.
+Lead exact 2316-file match, local27/policy8/package3, actual 19544 image files,
+application23, workspace22/executor17/lifecycle1 and extra cold spaced-path
+Unicode snapshot build pass. 5799 tracked source/evidence files unchanged,
+68 executions/34 workspaces cleaned, five shared Mac container IDs/states stable.
+The fresh package matches manifest d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb
+and image sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4.
+Machine manifest: /opt/mo-harness/application-build-v1/lead-package-attempt-01/package/manifest.json.
+Limits stay candidate 1GiB/CPU1/128PIDs/120s, parent1536MiB, outer2GiB/CPU2.
 
-Fresh read-only worker `mo-workspace-wire-review`, pane w4:p1Y, is finishing
-focused Mo base64/UTF8/Book-budget compatibility after mapping all six remote
-operations. Intact first report is workspace-wire-readiness/worker-report.md.
-Do not treat its proposals as accepted code. Existing application worker already
-owns120s execution-policy changes; do not duplicate that suggested slice. Next:
-finish application image acceptance, version Python six-tool HTTP bridge and Mo
-application profile, then scripted Logstat repair/protected checks. Existing
-provider bridge remains2s/30s; longer provider profile needs an explicit version.
+Full lead suite full-01 retained 242/243: unchanged effects/tls-echo.mo printed
+served1 interpreter versus served0 native, both exit0. Ten focused no-client
+runs (five each runtime) pass. Full-02 passes 243/243, 5/5 at 3:16 AM ET, exit0,
+5799 tracked files unchanged and groups absent. The extra TCP client is unknown;
+do not claim the first failure fixed. TLS source review is retained and its pane
+closed; no compiler/example changes were made.
+Raw results are audit/evidence/2026-09-19/application/.
 
-Rediscover Herdr IDs; lead w4:p1, application w4:p1V, wire review w4:p1Y;
-lead run panes w4:p1D/p1M are idle after bridge acceptance.
+Active implementation: `mo-workspace-recovery-v1`, w4:p21/run w4:p22,
+branch harness/workspace-recovery-v1, exact base90858791. Its committed brief
+requires persisted ownership and cleanup-only recovery before HTTP, including
+lost reserve responses, late bootstrap barriers and preserved unknown outcomes.
+Machine exclusively released after lead application runtime cleanup. No image,
+slice or installed-input changes; full Mo/Zig CPU gate was released at 3:16 AM ET.
+
+Wire/encoding and cleanup reviews are retained under workspace-wire-readiness;
+their review panes are closed. Next: finish application acceptance and cleanup
+recovery, then version Python six-tool HTTP bridge and Mo application profile,
+then scripted Logstat repair/protected checks. Existing provider bridge remains
+2s/30s; longer provider profile needs an explicit version. No unconditional
+synchronous wall bound exists across inherited blocking locks/local I/O.
+
+Rediscover Herdr IDs; lead w4:p1, recovery w4:p21/run w4:p22;
+lead runs w4:p1D/p1M are idle after positive application/full-suite cleanup.
 Preserve all worktrees. Lead owns docs/audit evidence and integration; workers
 write toolchain/examples. No oracle, nested workers, worker push or shared Mac
 candidate execution. Continue autonomously. Step 39 remains unaccepted, Darwin
-full-sync unmet, Program7 suspended; no live-provider or application acceptance.
+full-sync unmet, Program7 suspended; no live-provider or scripted-repair acceptance.
 
 ## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
 

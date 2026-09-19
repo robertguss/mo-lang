@@ -1,0 +1,2 @@
+zig-out/mo-build/hello/hello
+/bin/sh: can't create /workspace/hello.mo: Permission denied

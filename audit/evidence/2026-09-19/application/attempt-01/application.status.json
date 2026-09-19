@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "600",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/application/controls.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/application/attempt-01/lead-controls-attempt-01",
+    "--image",
+    "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "--toolchain",
+    "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started": "2026-09-19T03:00:24.269924-04:00",
+  "finished": "2026-09-19T03:02:56.999603-04:00",
+  "exit": 0,
+  "forced": false,
+  "cleanup_before": [],
+  "group_remaining": false
+}

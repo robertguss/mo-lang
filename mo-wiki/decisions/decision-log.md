@@ -770,6 +770,15 @@ direction separately from the lead's conservative execution interpretation.
 | Provision separate mo-application.slice at1536MiB/CPU1/192 tasks, no swap; verify outer2GiB/CPU2/no-swap cgroup. Guest free/df are shared VM totals. Release dedicated machine exclusively to application worker, preserving old512MiB slice and read-only compiler/Zig inputs. | Astra lead | decided and read back | application-preparation/inspect-01 and provision-01 |
 | Preserve once-per-production-process bridge provisioning as trusted operator responsibility; library enforces one run per listener. No singleton, crash durability or client-receipt guarantee is claimed. | Astra lead, worker limitation reviewed | decided, semantic | immutable bridge API/journal review and duplicate/restart controls |
 
+## Application runtime and cleanup ownership (19 Sep 2026, 3:10 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Application lead package/export and 23 runtime groups, old regressions and extra cold snapshot build pass; 68 executions/34 workspaces cleaned, shared five Docker IDs/states unchanged. Full-suite acceptance remains held on an unrelated-source TLS count mismatch, 242/243; ten focused unchanged runs pass, one full rerun underway. Preserve the red and do not label it harmless without evidence. | Astra lead; implementation GPT-6-Astra/low | measured, acceptance pending | application/attempt-01, full-01, tls-focus-01 |
+| Add [[mo-workspace-recovery-v1]] before HTTP: private ownership before effects, cleanup-only reopen, exact identity reconciliation and terminal barriers against delayed create/registration. A client deadline must not end cleanup ownership; unknown outcomes stay unknown, with no automatic retry/resume. | Astra lead, informed by GPT-6-Astra/low source review | decided, semantic | interrupted reservation and late-bootstrap controls; independent lead acceptance required |
+| Release the dedicated machine to recovery after positive application cleanup. Keep accepted image, resource ceilings and installed inputs unchanged. Full Mo/Zig runs remain gated while lead TLS/full-suite checks use the Mac; local Python and brief-owned remote controls may proceed. | Astra lead under overnight authority | released, bounded | exact release to worker at base 90858791; ownership inventories |
+| At 3:16 AM ET accept the bounded application-build slice at aa7ec762 after full-02 passes 243/243 and 5/5, with all 5799 tracked bytes unchanged. The earlier TCP-count mismatch stays unexplained; the fresh pass is non-reproduction, not a fix. Release recovery's compiler gate and continue its explicit cleanup-only scope. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | application/attempt-01, full-01, tls-focus-01, full-02 and retained source review |
+
 ## Related
 
 - [[session-05]]

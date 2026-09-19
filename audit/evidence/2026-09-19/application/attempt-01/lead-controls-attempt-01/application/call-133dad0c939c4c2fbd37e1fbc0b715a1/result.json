@@ -1,0 +1,83 @@
+{
+  "run_id": "33c8ad5ea98e4d478b4a2d4ade7fda1a",
+  "workspace_id": "5cc101b151cc4493a4b5d01130cec139",
+  "call_id": "133dad0c939c4c2fbd37e1fbc0b715a1",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "snapshot": "a5a4cd955763faeb94d221efcb39c31c9ee89c072b9175954ae517c842ae3e16",
+    "inventory": {
+      "items": [
+        {
+          "path": ".mo.ids",
+          "length": 16773,
+          "sha256": "057e92ee6d4f760de2dafb271d75740fad290c7b1682e3f93f2f41f5ee9b5552",
+          "mode": 420
+        },
+        {
+          "path": "hello.mo",
+          "length": 486,
+          "sha256": "9eeab0198b49451a8311de97caa9d2c1d0d18c080c27e4cc3589d8e8729d2dee",
+          "mode": 420
+        },
+        {
+          "path": "logstat/fixture/a.log",
+          "length": 320,
+          "sha256": "18aea083d2e44b173ba7ad7c6a0cf4682f3ab8c0ed74d4482e2ff9121cdbda7f",
+          "mode": 420
+        },
+        {
+          "path": "logstat/fixture/b.log",
+          "length": 260,
+          "sha256": "8c988b9362760a700791022f7f97567f647ee460a66bcee1f4458c10aa727fa7",
+          "mode": 420
+        },
+        {
+          "path": "logstat/fixture/c.log",
+          "length": 328,
+          "sha256": "b0108936bd8a9d3dc3f7f2a4beb66c0cb046a97953b994acbda6a3718066969b",
+          "mode": 420
+        },
+        {
+          "path": "logstat/fixture/notes.txt",
+          "length": 65,
+          "sha256": "beb914c782533ff2115db31d24339875166caee0b8554823f8ce22f6c8aba656",
+          "mode": 420
+        },
+        {
+          "path": "logstat/main.mo",
+          "length": 7092,
+          "sha256": "920aef38064420785f12a4b6dd8e64ad67d9ec0452214d7af2f80b626fb2987e",
+          "mode": 420
+        },
+        {
+          "path": "logstat/parse.mo",
+          "length": 5253,
+          "sha256": "9cb1a847ed01680595824e896c4569a94026b92f8b7e9723303289adecf14747",
+          "mode": 420
+        },
+        {
+          "path": "logstat/report.mo",
+          "length": 6046,
+          "sha256": "1e00d74654e602da559992d510baad764b20508d2d472c20e6aca5756e1e581d",
+          "mode": 420
+        },
+        {
+          "path": "logstat/stats.mo",
+          "length": 7100,
+          "sha256": "e6b65fdf9c3408f3f9004635ed1e18e254fcce617437febaebc7855fa609d1db",
+          "mode": 420
+        },
+        {
+          "path": "mo.root",
+          "length": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "mode": 420
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "elapsed_seconds": 0.008269959005701821
+}

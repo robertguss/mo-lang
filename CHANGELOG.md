@@ -2,6 +2,17 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Isolated application builds accepted — 19 Sep 2026, 3:16 AM ET
+
+- Pinned Mo/Zig image and explicit application policy compile and execute real
+  Hello/Logstat within unchanged 1 GiB/120-second candidate limits. Lead actual
+  image-content checks, 23 runtime groups, old regressions and extra snapshot
+  build pass; cleanup and shared Mac container identity are verified.
+- Full rerun passes 243/243 and 5/5. Retain the earlier TLS TCP-count mismatch
+  and ten passing focused runs; its originating client remains unidentified.
+- Cleanup-only recovery starts before HTTP exposure; lost reservation responses
+  and late dispatch must retain ownership without retrying work.
+
 ## Offline native-history bridge accepted — 19 Sep 2026, 2:34 AM ET
 
 - Added one-run loopback provider bridge with exact recorded continuation,
