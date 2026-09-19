@@ -1,0 +1,19 @@
+import sys, json, tempfile
+from pathlib import Path
+sys.path.insert(0,'examples/programs/agent/tests/application-workspace-v1')
+import common, fake_bridge as fb, matrix as m
+def trial(n, tool='write_file'):
+    with tempfile.TemporaryDirectory() as t:
+        t=Path(t); root=t/'root'; (root/'work').mkdir(parents=True)
+        b=fb.Bridge(); md=fb.Model([m.tool(tool, path='big.txt', text='y'*n) if tool=='write_file' else m.tool('command', command='y'*n), m.done()])
+        cfg=b.write_config(t/'p/c.json')
+        r=common.invoke(([str(m.NATIVE)] if NATIVE_MODE else [common.MO,'run',str(m.MAIN),'--'])+['application-workspace',str(root),'--model',f'127.0.0.1:{md.port}','--config',str(cfg),'g'],120)
+        b.close(); md.close()
+        log=root/'runs/r_1.log'
+        import shutil; (Path('/private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang-worktrees-harness-application-workspace-v2/5e24657f-c5d6-4341-8344-f4d3f9e7585a/scratchpad')/('log-%d'%n)).mkdir(exist_ok=True); shutil.copy(log, Path('/private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang-worktrees-harness-application-workspace-v2/5e24657f-c5d6-4341-8344-f4d3f9e7585a/scratchpad')/('log-%d'%n)/'r_1.log') if log.exists() else None
+        print('  log lines', [len(l) for l in log.read_text().splitlines()] if log.exists() else None)
+        print('  stderr head', r['stderr'][:200].replace('\n',' | '))
+        return r['exit_code'], len(b.requests), len(md.requests), (r['stdout'].splitlines() or [''])[-1][:150]
+NATIVE_MODE = sys.argv[1] == 'native'
+for n in [int(a) for a in sys.argv[2:]]:
+    print(n, trial(n), flush=True)

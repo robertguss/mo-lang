@@ -51,7 +51,7 @@
       "module": "Agent.Application",
       "declarations": [
         { "id": "9364997ca58e", "name": "module Agent.Application", "hash": "f5b9978efc7dad73" },
-        { "id": "4507b245ea40", "name": "expose", "hash": "9a114abc6cd0467e" },
+        { "id": "4507b245ea40", "name": "expose", "hash": "a6450db87051edcd" },
         { "id": "1040738b05e3", "name": "use Agent.Book", "hash": "056c6243f14fcc93" },
         { "id": "8ea49f293d95", "name": "use Agent.Model", "hash": "7bc0f6f097da8deb" },
         { "id": "a7fc34157e28", "name": "use Agent.Record", "hash": "a7e19024c9ce4663" },
@@ -66,8 +66,9 @@
         { "id": "308655d6acd9", "name": "fn reserve_ms", "hash": "19485eb7f1878361" },
         { "id": "53ef8f38f967", "name": "fn poll_ms", "hash": "14c9f57646af60a5" },
         { "id": "6326f3c4bcca", "name": "fn margin_ms", "hash": "3af72fc182790ee6" },
+        { "id": "5511f5946abb", "name": "fn report_cap", "hash": "dc719a6a77e7fd9a" },
         { "id": "f5f56cf09868", "name": "fn application_order", "hash": "8c8ee7754168b699" },
-        { "id": "577cf34e6d13", "name": "fn profile", "hash": "9d5da527e5ea1938" },
+        { "id": "577cf34e6d13", "name": "fn profile", "hash": "0975b39cefc4af8c" },
         { "id": "4b8721004134", "name": "fn failed", "hash": "c5719b4975a05a37" },
         { "id": "cea022ba0264", "name": "fn uncertain", "hash": "789d7a1d05e17b2e" },
         { "id": "b7c136971e59", "name": "process Application", "hash": "24a0e0a1009c789b" },
@@ -78,9 +79,9 @@
         { "id": "efddae6d4499", "name": "fn made", "hash": "b01811fac67ec6a3" },
         { "id": "35be85a92121", "name": "fn watched", "hash": "e325afb5ce482974" },
         { "id": "982dcb2f70a7", "name": "fn polled", "hash": "bd0aaa87bddb1768" },
-        { "id": "60eafe54c152", "name": "fn reported", "hash": "fc98d008b72db1cc" }
+        { "id": "60eafe54c152", "name": "fn reported", "hash": "8214be431c910314" }
       ],
-      "verified": { "hash": "f8bcd71959e486d5", "declarations": "93309e6a4e834485", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.CommandAdapter", "hash": "34d3f7622f9e160c" }, { "module": "Agent.ExactEdit", "hash": "ca97ff185bb356b3" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "6c002ec8678370b8" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
+      "verified": { "hash": "f8bcd71959e486d5", "declarations": "0749640952bab52b", "uses": [{ "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.CommandAdapter", "hash": "34d3f7622f9e160c" }, { "module": "Agent.ExactEdit", "hash": "ca97ff185bb356b3" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "6c002ec8678370b8" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
     },
     {
       "path": "agent/book.mo",
@@ -329,7 +330,7 @@
         { "id": "fa9d30df39ff", "name": "test \"application-workspace takes a loopback model, a configuration path and a goal, and no capability flag\"", "hash": "90f369417f3d0bd1" },
         { "id": "7da85410eeb5", "name": "test \"a step prints on one line, and a usage error exits 2 where a folder or port exits 1\"", "hash": "a99fc7d706278544" }
       ],
-      "verified": { "hash": "de657c2be21ef419", "declarations": "e318cf6999378ce3", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Application", "hash": "93309e6a4e834485" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Check", "hash": "c2418f0a69b164b2" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.CodingFixture", "hash": "dc3c1daadd65804e" }, { "module": "Agent.CommandAdapter", "hash": "34d3f7622f9e160c" }, { "module": "Agent.ExactEdit", "hash": "ca97ff185bb356b3" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Operator", "hash": "f64c9fe94827ee4d" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Registry", "hash": "75601a9cc0a02246" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "6c002ec8678370b8" }, { "module": "Agent.Server", "hash": "2bd1533b2c32a763" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
+      "verified": { "hash": "de657c2be21ef419", "declarations": "e318cf6999378ce3", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Application", "hash": "0749640952bab52b" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Check", "hash": "c2418f0a69b164b2" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.CodingFixture", "hash": "dc3c1daadd65804e" }, { "module": "Agent.CommandAdapter", "hash": "34d3f7622f9e160c" }, { "module": "Agent.ExactEdit", "hash": "ca97ff185bb356b3" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Mock", "hash": "dbff91f69595a96d" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Operator", "hash": "f64c9fe94827ee4d" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Registry", "hash": "75601a9cc0a02246" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "6c002ec8678370b8" }, { "module": "Agent.Server", "hash": "2bd1533b2c32a763" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
     },
     {
       "path": "agent/mock.mo",

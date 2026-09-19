@@ -50,8 +50,9 @@ class Bridge:
     """script(req, n) -> (status, body) where body is a dict, bytes, or None to close silently.
     A float 'delay' may be returned as a third element to hold the response."""
 
-    def __init__(self, script=None, run_id='r_1'):
+    def __init__(self, script=None, run_id='r_1', observe=None):
         self.script = script or (lambda req, n: success(req))
+        self.observe = observe or (lambda: None)
         self.run_id = run_id
         self.workspace_id = uuid.uuid4().hex
         self.token = secrets.token_hex(32)
@@ -125,7 +126,7 @@ class Bridge:
 
     def _serve(self, conn):
         arrived = time.monotonic()
-        row = dict(arrived=arrived)
+        row = dict(arrived=arrived, observed=self.observe())
         try:
             first, headers, raw = self._read(conn)
             row.update(first=first, host=headers.get('host'), content_type=headers.get('content-type'),
@@ -150,12 +151,86 @@ class Bridge:
                 row['answered'] = False
                 return
             raw_out = body if isinstance(body, bytes) else protocol.encode(body)
-            conn.sendall(f'HTTP/1.1 {status} Result\r\nContent-Type: application/json\r\n'
-                         f'Content-Length: {len(raw_out)}\r\nConnection: close\r\n\r\n'.encode('ascii') + raw_out)
-            row['answered'] = status
-        except Exception as exc:  # recorded, never raised into the test thread
+            try:
+                conn.sendall(f'HTTP/1.1 {status} Result\r\nContent-Type: application/json\r\n'
+                             f'Content-Length: {len(raw_out)}\r\nConnection: close\r\n\r\n'.encode('ascii') + raw_out)
+                row['answered'] = status
+            except OSError as exc:  # the client gave up first; not a request error
+                row['answered'] = f'unsent: {type(exc).__name__}'
+        except Exception as exc:  # an invalid request, recorded, never raised into the test thread
             row['error'] = f'{type(exc).__name__}: {exc}'
             self.errors.append(row)
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+
+class Model:
+    """Scripted model on loopback: POST /complete answered with the next reply in order. Each
+    request is recorded with its arrival time, run header, transcript length and raw body."""
+
+    def __init__(self, replies, delays=None, observe=None):
+        self.replies = list(replies)
+        self.delays = delays or {}
+        self.observe = observe or (lambda: None)
+        self.requests = []
+        self.listener = socket.socket()
+        self.listener.bind(('127.0.0.1', 0))
+        self.listener.listen(8)
+        self.listener.settimeout(.1)
+        self.port = self.listener.getsockname()[1]
+        self.closed = False
+        self.thread = threading.Thread(target=self._accept, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.closed = True
+        self.thread.join(5)
+        self.listener.close()
+
+    def _accept(self):
+        while not self.closed:
+            try:
+                conn, _ = self.listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            threading.Thread(target=self._serve, args=(conn,), daemon=True).start()
+
+    def _serve(self, conn):
+        row = dict(arrived=time.monotonic(), observed=self.observe())
+        try:
+            conn.settimeout(30)
+            data = bytearray()
+            while b'\r\n\r\n' not in data:
+                part = conn.recv(65536)
+                if not part:
+                    raise EOFError('headers')
+                data.extend(part)
+            head, _, rest = bytes(data).partition(b'\r\n\r\n')
+            lines = head.decode('latin-1').split('\r\n')
+            headers = {k.lower(): v.strip() for k, _, v in (l.partition(':') for l in lines[1:])}
+            body = bytearray(rest)
+            while len(body) < int(headers.get('content-length', '0')):
+                part = conn.recv(65536)
+                if not part:
+                    raise EOFError('body')
+                body.extend(part)
+            request = json.loads(bytes(body))
+            row.update(first=lines[0], run=headers.get('x-run'), raw=bytes(head) + b'\r\n\r\n' + bytes(body),
+                       transcript=len(request.get('transcript', [])), bytes=len(body))
+            self.requests.append(row)
+            n = len(self.requests)
+            reply = self.replies[n - 1] if n <= len(self.replies) else dict(done='no more replies', tokens=0)
+            time.sleep(self.delays.get(n, 0))
+            raw = json.dumps(reply).encode()
+            conn.sendall(b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: '
+                         + str(len(raw)).encode() + b'\r\nConnection: close\r\n\r\n' + raw)
+        except Exception as exc:
+            row['error'] = f'{type(exc).__name__}: {exc}'
         finally:
             try:
                 conn.close()

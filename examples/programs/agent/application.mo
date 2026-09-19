@@ -1,5 +1,5 @@
 module Agent.Application
-expose Application, Applications, Launch, Output, owner, reserve_ms, poll_ms, margin_ms, application_order, profile, loaded, preflight, made, failed
+expose Application, Applications, Launch, Output, owner, reserve_ms, poll_ms, margin_ms, report_cap, application_order, profile, loaded, preflight, made, failed
 
 use Agent.Book{Book}
 use Agent.Model{Model}
@@ -44,6 +44,14 @@ fn margin_ms() : Int64
   500
 end
 
+# The most transcript bytes a report renders; a larger transcript is a reporting error. Rendering
+# about 0.7 MB corrupted the native report and about 1.6 MB aborted the interpreter in this
+# profile (a toolchain defect retained in the slice's evidence), so the cap keeps a wide margin.
+# Legitimate transcripts stay far below it: the context bound is 64 KiB and core results are small.
+fn report_cap() : UInt64
+  262_144
+end
+
 fn application_order(goal: String) : Order
   Order(goal: goal, folder: "work", tools: fixture_tools(), hosts: [],
     budget: budget(16, 4_096, 900_000, 0, 2_000))
@@ -53,7 +61,7 @@ end
 fn profile() : String
   caps = "\"steps\": 16, \"tokens\": 4096, \"wall_ms\": 900000, \"retries\": 0, \"tool_ms\": 2000, \"grants\": #{Json.encode(fixture_tools())}"
   waits = "\"report_reserve_ms\": #{reserve_ms()}, \"model_wait_ms\": 2000, \"file_wait_ms\": #{file_ms()}, \"command_wait_ms\": #{command_ms()}, \"candidate_ms\": #{candidate_ms()}, \"candidate_floor_ms\": #{candidate_floor_ms()}"
-  bounds = "\"request_bytes\": #{request_cap()}, \"response_bytes\": #{response_cap()}, \"config_bytes\": #{config_cap()}, \"wire\": #{Json.encode(wire_version())}"
+  bounds = "\"request_bytes\": #{request_cap()}, \"response_bytes\": #{response_cap()}, \"config_bytes\": #{config_cap()}, \"report_bytes\": #{report_cap()}, \"wire\": #{Json.encode(wire_version())}"
   "{#{caps}, #{waits}, #{bounds}}"
 end
 
@@ -276,6 +284,9 @@ fn reported(book: Handle(Book), run: Handle(Run), id: String, outer: Deadline) :
     Ok(Transcribed(found)): found
     Ok(_) | Error(_):
       return uncertain(id, "transcript_unavailable")
+  end
+  if steps.reduce(0.to_u64, fn(n, step) n + step.byte_size end) > report_cap()
+    return failed(id, "transcript_too_large")
   end
   case application_report(record, steps, profile())
     Ok(text): Output(text: text, code: if record.status == Done: 0 else: 3)
