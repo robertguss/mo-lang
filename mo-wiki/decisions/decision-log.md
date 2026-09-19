@@ -879,6 +879,15 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Robert named the number: at most three Opus workers at once. This replaces the lead's working limit of two in the section above. | Robert | decided | the next launch |
 
+## 19 Sep 2026 — Step 43 accepted, 1:59 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Step 43 is accepted: every number the compiler reads from source goes through one exact reader, and a literal past its type is `MO0217` before either runtime sees it. This closes PR 15's F1 to F3. Darwin full suite 263 of 263; Linux build and focused tests green. `semantic` | Fable lead | accepted | the auditor's next reading of `number.zig` |
+| Ratified defaults of the worker (Claude Opus 5): `MO0217` is reused for every range, no new code; a mailbox bound is 1 to 4,294,967,295 and 0 is refused (every send would crash its sender); `max_restarts` is 0 to 4,294,967,294, because the lowering marks "none given" with 2^32 - 1; a float literal that would be infinity is refused; the lowerings panic with a named message if a refused literal ever reaches them. `semantic` | Fable lead | decided | step 43's tests |
+| `-128` written as an `Int8` expression stays refused (`128 does not fit in Int8`); only a pattern takes it, so a signed type's smallest is written `-127 - 1`. Conservative and never wrong, but unfriendly. **For Robert**: accepting `-<literal>` as one literal would be a small rule, not new syntax; say if you want it. | Fable lead | open | a corpus program that needs it |
+| Noticed by the worker, not fixed, queued as small toolchain items: a crash report's source span inside `"#{...}"` runs to the end of the line; `per 0.ms` (a window of nothing) checks and has no stated meaning. | Fable lead | recorded | the next toolchain step that touches them |
+
 ## Related
 
 - [[session-05]]

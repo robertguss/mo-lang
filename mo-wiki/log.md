@@ -978,3 +978,6 @@
 
 ## [2026-09-19] verify | the first x86_64 Linux full suite: 249 of 249
 - 1:38 PM ET: on the VM at 0ab217c9, exit 0, 35 minutes, MaxRSS 474M; log and exits in audit/evidence/2026-09-19/fable-lead-verification/. Informational for step 40 (already accepted); it is also the first completed full run on Linux since the move to the Mac. Robert set the maximum at three Opus workers.
+
+## [2026-09-19] accept | step 43, every number in source held to its range
+- 1:59 PM ET: merged to main through lead/verify-step43 (4ad89c1a). Darwin full suite 263 of 263 exit 0; Linux build and 15 of 15 focused tests; the Linux full suite still running. Four rows in decisions/decision-log.md; CHANGELOG entry; evidence in audit/evidence/2026-09-19/fable-lead-verification/step43/. This closes the auditor's PR 15 findings F1 to F3.

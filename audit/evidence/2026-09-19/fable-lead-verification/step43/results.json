@@ -1,0 +1,218 @@
+[
+ {
+  "probe": "arg-u16",
+  "cmd": "check",
+  "exit": 1,
+  "first": "arg-u16.mo:7:33: MO0217 65536 does not fit in UInt16"
+ },
+ {
+  "probe": "arg-u16",
+  "cmd": "run",
+  "exit": 1,
+  "first": "arg-u16.mo:7:33: MO0217 65536 does not fit in UInt16"
+ },
+ {
+  "probe": "arg-u16",
+  "cmd": "build",
+  "exit": 1,
+  "first": "arg-u16.mo:7:33: MO0217 65536 does not fit in UInt16"
+ },
+ {
+  "probe": "case-u8",
+  "cmd": "check",
+  "exit": 1,
+  "first": "case-u8.mo:5:5: MO0217 300 does not fit in UInt8"
+ },
+ {
+  "probe": "case-u8",
+  "cmd": "run",
+  "exit": 1,
+  "first": "case-u8.mo:5:5: MO0217 300 does not fit in UInt8"
+ },
+ {
+  "probe": "case-u8",
+  "cmd": "build",
+  "exit": 1,
+  "first": "case-u8.mo:5:5: MO0217 300 does not fit in UInt8"
+ },
+ {
+  "probe": "days-max",
+  "cmd": "check",
+  "exit": 0,
+  "first": ""
+ },
+ {
+  "probe": "days-max",
+  "cmd": "run",
+  "exit": 0,
+  "first": "9223372036828800000.ms"
+ },
+ {
+  "probe": "days-max",
+  "cmd": "build",
+  "exit": 0,
+  "first": "zig-out/mo-build/days-max/days-max"
+ },
+ {
+  "probe": "days-max",
+  "cmd": "native",
+  "exit": 0,
+  "first": "9223372036828800000.ms"
+ },
+ {
+  "probe": "days-one-past",
+  "cmd": "check",
+  "exit": 1,
+  "first": "days-one-past.mo:4:28: MO0217 106751991168.days does not fit in Duration"
+ },
+ {
+  "probe": "days-one-past",
+  "cmd": "run",
+  "exit": 1,
+  "first": "days-one-past.mo:4:28: MO0217 106751991168.days does not fit in Duration"
+ },
+ {
+  "probe": "days-one-past",
+  "cmd": "build",
+  "exit": 1,
+  "first": "days-one-past.mo:4:28: MO0217 106751991168.days does not fit in Duration"
+ },
+ {
+  "probe": "exp-float",
+  "cmd": "check",
+  "exit": 1,
+  "first": "exp-float.mo:4:29: MO0101 expected `}` to close the interpolation"
+ },
+ {
+  "probe": "exp-float",
+  "cmd": "run",
+  "exit": 1,
+  "first": "exp-float.mo:4:29: MO0101 expected `}` to close the interpolation"
+ },
+ {
+  "probe": "exp-float",
+  "cmd": "build",
+  "exit": 1,
+  "first": "exp-float.mo:4:29: MO0101 expected `}` to close the interpolation"
+ },
+ {
+  "probe": "hex",
+  "cmd": "check",
+  "exit": 1,
+  "first": "hex.mo:4:29: MO0101 expected `}` to close the interpolation"
+ },
+ {
+  "probe": "hex",
+  "cmd": "run",
+  "exit": 1,
+  "first": "hex.mo:4:29: MO0101 expected `}` to close the interpolation"
+ },
+ {
+  "probe": "hex",
+  "cmd": "build",
+  "exit": 1,
+  "first": "hex.mo:4:29: MO0101 expected `}` to close the interpolation"
+ },
+ {
+  "probe": "i64-max",
+  "cmd": "check",
+  "exit": 0,
+  "first": ""
+ },
+ {
+  "probe": "i64-max",
+  "cmd": "run",
+  "exit": 0,
+  "first": "9223372036854775807 -9223372036854775807"
+ },
+ {
+  "probe": "i64-max",
+  "cmd": "build",
+  "exit": 0,
+  "first": "zig-out/mo-build/i64-max/i64-max"
+ },
+ {
+  "probe": "i64-max",
+  "cmd": "native",
+  "exit": 0,
+  "first": "9223372036854775807 -9223372036854775807"
+ },
+ {
+  "probe": "i64-one-past",
+  "cmd": "check",
+  "exit": 1,
+  "first": "i64-one-past.mo:4:28: MO0217 9223372036854775808 does not fit in Int64"
+ },
+ {
+  "probe": "i64-one-past",
+  "cmd": "run",
+  "exit": 1,
+  "first": "i64-one-past.mo:4:28: MO0217 9223372036854775808 does not fit in Int64"
+ },
+ {
+  "probe": "i64-one-past",
+  "cmd": "build",
+  "exit": 1,
+  "first": "i64-one-past.mo:4:28: MO0217 9223372036854775808 does not fit in Int64"
+ },
+ {
+  "probe": "list-u8",
+  "cmd": "check",
+  "exit": 1,
+  "first": "list-u8.mo:4:6: MO0101 expected the end of the line"
+ },
+ {
+  "probe": "list-u8",
+  "cmd": "run",
+  "exit": 1,
+  "first": "list-u8.mo:4:6: MO0101 expected the end of the line"
+ },
+ {
+  "probe": "list-u8",
+  "cmd": "build",
+  "exit": 1,
+  "first": "list-u8.mo:4:6: MO0101 expected the end of the line"
+ },
+ {
+  "probe": "list-u8-ok",
+  "cmd": "check",
+  "exit": 1,
+  "first": "list-u8-ok.mo:4:6: MO0101 expected the end of the line"
+ },
+ {
+  "probe": "list-u8-ok",
+  "cmd": "run",
+  "exit": 1,
+  "first": "list-u8-ok.mo:4:6: MO0101 expected the end of the line"
+ },
+ {
+  "probe": "list-u8-ok",
+  "cmd": "build",
+  "exit": 1,
+  "first": "list-u8-ok.mo:4:6: MO0101 expected the end of the line"
+ },
+ {
+  "probe": "sum-u8",
+  "cmd": "check",
+  "exit": 0,
+  "first": ""
+ },
+ {
+  "probe": "sum-u8",
+  "cmd": "run",
+  "exit": 70,
+  "first": "main crashed: sum-u8.mo:4:3: overflow in a + b; left = 200, right = 100"
+ },
+ {
+  "probe": "sum-u8",
+  "cmd": "build",
+  "exit": 0,
+  "first": "zig-out/mo-build/sum-u8/sum-u8"
+ },
+ {
+  "probe": "sum-u8",
+  "cmd": "native",
+  "exit": 70,
+  "first": "main crashed: sum-u8.mo:4:3: overflow in a + b; left = 200, right = 10"
+ }
+]

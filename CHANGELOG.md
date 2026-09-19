@@ -2,6 +2,25 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Step 43: every number in source is held to its range — 19 Sep 2026, 1:59 PM ET
+
+- The auditor's PR 15 findings fixed. One reader of numbers
+  (`toolchain/src/number.zig`) replaces a 32-digit buffer in the checker and
+  two saturating parsers in the lowerings: a literal past its type is `MO0217`
+  in `mo check`, `mo run` and `mo build`, however many digits or leading zeros
+  it has. Before, `UInt64` took 18446744073709551616, `UInt8` took a
+  zero-padded 256, and a 54-digit literal silently became 2^127 - 1.
+- `mailbox:` is 1 to 4,294,967,295 and `max_restarts:` 0 to 4,294,967,294, else
+  `MO0217`; both used to panic the compiler past 32 bits, and
+  `max_restarts: 4294967295` was silently read as "no budget".
+- Found by the worker's sweep: float literals such as `1_.5` ran as `0`, and a
+  400-digit float read as infinity; `N.days` past a Duration is now a
+  diagnostic, not a run-time trap.
+- The fuzz driver refuses a budget that is not finite and positive (exit 2) and
+  a campaign that ran no input exits 1.
+- A Claude Opus 5 worker. Lead: Darwin full suite 263 of 263; Linux x86_64
+  build and the 15 focused tests green on Robert's VM.
+
 ## Step 40: a scope that holds, and `Fs.replace` — 19 Sep 2026, 1:08 PM ET
 
 - A narrowed `Fs` now walks its path one folder at a time from the scope's

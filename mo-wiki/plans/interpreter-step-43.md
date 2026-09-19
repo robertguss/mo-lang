@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [compiler, types, verification]
 sources: [plans/interpreter-step-42.md]
-status: in-progress
+status: done
 ---
 
 # Step 43: numbers from source
@@ -84,6 +84,19 @@ pass without saying so. **The unfiltered full suite and Linux are the lead's.**
 Small commits as yourself with a `Co-Authored-By` line naming your model.
 **Write your final report to `toolchain/STEP-43-REPORT.md` and commit it.**
 While anything runs, wait in the foreground.
+
+## Result
+
+Accepted 1:59 PM ET, 19 Sep 2026, merged to `main` through `lead/verify-step43`
+(`4ad89c1a`). Worker: Claude Opus 5, report `toolchain/STEP-43-REPORT.md`.
+Darwin full suite 263 of 263, exit 0, 11 minutes; Linux x86_64 build and 15 of
+15 focused tests. Every probe of the auditor and the lead is now `MO0217`. The
+sweep found three defects nobody had named (floats with stray underscores read
+as 0, a float past Float64 read as infinity, `max_restarts: 4294967295` read as
+no budget). Left open, on the decision log: `-128` as an `Int8` *expression*
+stays refused; `per 0.ms` has no stated meaning; a crash report's source span
+runs to the end of the line inside an interpolation. Evidence:
+`audit/evidence/2026-09-19/fable-lead-verification/step43/`.
 
 ## Related
 
