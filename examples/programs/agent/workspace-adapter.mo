@@ -1,5 +1,5 @@
 module Agent.WorkspaceAdapter
-expose Settings, Scan, wire_version, file_ms, command_ms, candidate_ms, candidate_floor_ms, request_cap, response_cap, config_cap, tools, strict, scanned, members, settings, local, sent, checked, stops?, refusal?
+expose Settings, Scan, wire_version, file_ms, command_ms, candidate_ms, candidate_floor_ms, request_cap, response_cap, config_cap, tools, strict, scanned, members, settings, local, sent, encoded, timed, checked, stops?, refusal?
 
 use Agent.Tools{Call}
 
@@ -209,18 +209,38 @@ fn sent(http: Http, settings: Settings, call: Call, id: String, by: Deadline) : 
   return local("refusal", "tool", "not_started") if !tools().contains?(call.tool)
   return local("refusal", "arguments", "not_started") if !fitting?(call.args, call.tool)
   return local("refusal", "call_id", "not_started") if !id?(id)
-  ms = min_of(candidate_ms(), by.remaining.ms)
-  if call.tool == "command" and ms < candidate_floor_ms()
-    return local("refusal", "deadline", "not_started")
+  head = case encoded(settings, call, id)
+    Ok(found): found
+    Error(why):
+      return local("refusal", why, "not_started")
   end
+  case timed(head, call.tool, by)
+    Some(body): posted(http, settings, call.tool, id, body, by)
+    None: local("refusal", "deadline", "not_started")
+  end
+end
+
+# The request as it goes on the wire, encoded before any time is taken: for a command, all of it
+# up to its timeout, leaving room for the largest one within the request cap.
+fn encoded(settings: Settings, call: Call, id: String) : Result(String, String)
   head = opening(settings, call.tool, id)
   body = if call.tool == "command"
-    "#{head}{\"command\": #{Json.encode(call.args.get("command") or "")}, \"timeout_ms\": #{ms}}}"
+    "#{head}{\"command\": #{Json.encode(call.args.get("command") or "")}, \"timeout_ms\": "
   else
     "#{head}#{Json.encode(call.args)}}"
   end
-  return local("refusal", "request_too_large", "not_started") if body.byte_size > request_cap()
-  posted(http, settings, call.tool, id, body, by)
+  room = if call.tool == "command": 8 else: 0
+  return Error("request_too_large") if body.byte_size + room > request_cap()
+  Ok(body)
+end
+
+# A command's timeout taken now, after encoding, from what the run has left and at most the
+# candidate's cap; below the bridge's minimum nothing is sent. Other bodies are whole already.
+fn timed(body: String, operation: String, by: Deadline) : Option(String)
+  return Some(body) if operation != "command"
+  ms = min_of(candidate_ms(), by.remaining.ms)
+  return None if ms < candidate_floor_ms()
+  Some("#{body}#{ms}}}")
 end
 
 fn posted(http: Http, settings: Settings, operation: String, id: String, body: String,
