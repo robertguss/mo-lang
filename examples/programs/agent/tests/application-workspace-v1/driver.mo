@@ -1,6 +1,6 @@
 module Agent.Tests.ApplicationWorkspaceV1.Driver
 
-use Agent.Application{Application, Launch, Output, application_order, loaded, made, owner}
+use Agent.Application{Application, Launch, Output, application_order, loaded, made, owner, report_cap}
 use Agent.Book{Book}
 use Agent.Client{Sleeper}
 use Agent.Model{Model}
@@ -8,9 +8,10 @@ use Agent.Record{fixture_tools}
 use Agent.Run{Run}
 use Agent.Steps{Setup}
 use Agent.Tools{Call}
+use Agent.Transcript{Step, step_json}
 use Agent.WorkspaceAdapter{Settings, sent, tools}
 
-intent "Real-socket probes of the application for both runtimes: one adapter call on a short deadline; a whole launch on a short outer deadline; the production watcher over an operator's Book and Run, cancelled during command collection or never begun; each prints one JSON line."
+intent "Real-socket probes of the application for both runtimes: one adapter call on a short deadline; a whole launch on a short outer deadline; the production watcher over an operator's Book and Run, cancelled during command collection, never begun, or over a Book holding a transcript at the report cap or one byte past it; each prints one JSON line."
 
 # A probe's words after its mode and configuration path.
 struct Words
@@ -66,6 +67,7 @@ fn probed(fs: Fs, http: Http, clock: Clock, args: List(String), by: Deadline) : 
     "launch": launched(fs, http, clock, path, words)
     "cancel": cancelled(fs, http, clock, bound, words, by)
     "unbegun": unbegun(fs, http, clock, bound, words, by)
+    "oversized": oversized(fs, http, clock, bound, words, by)
     _: "{\"error\": \"unknown_mode\"}"
   end
 end
@@ -159,6 +161,39 @@ fn unbegun(fs: Fs, http: Http, clock: Clock, bound: Settings, words: Words, by: 
     Error(_): Output(text: "", code: 255)
   end
   "{\"code\": #{output.code}, \"output\": #{Json.encode(output.text)}, #{settled(watcher, Sleeper.start(http))}}"
+end
+
+# A Book holding a transcript of exactly the report cap plus `words.ms` bytes (0 or 1): one step
+# the operator writes before the run begins, whose number the run's own first step then finds
+# already taken. The run answers from the model and ends; the production watcher reports. The
+# report is printed by its size and last line, since at the cap it is tens of megabytes.
+fn oversized(fs: Fs, http: Http, clock: Clock, bound: Settings, words: Words, by: Deadline) : String
+  root = fs.scoped(words.root)
+  book = Book.start(root, clock, "runs", clock.now)
+  run = case begun_run(book, root, http, clock, Bind(bound: bound, words: words), by)
+    Some(found): found
+    None:
+      return "{\"error\": \"setup\"}"
+  end
+  empty = Step(n: 1, kind: "tool", name: "read_file", args: Map.new(), output: "", tokens: 0,
+    took_ms: 0, refused: false)
+  filled = Step(n: 1, kind: "tool", name: "read_file", args: Map.new(),
+    output: "y".repeat(report_cap() + words.ms.to_u64 - step_json(empty).byte_size), tokens: 0,
+    took_ms: 0, refused: false)
+  if book.ask(Write(id: bound.run, step: filled), within: by.at_most(60_000.ms)) != Ok(Go)
+    return "{\"error\": \"write\"}"
+  end
+  if run.ask(Begin(me: run), within: by.at_most(45_000.ms)) is Error(_)
+    return "{\"error\": \"begin\"}"
+  end
+  watcher = Application.start(fs, http, clock)
+  output = case watcher.ask(Watched(book: book, run: run, id: bound.run, me: watcher),
+    within: by.at_most(120_000.ms))
+    Ok(found): found
+    Error(_): Output(text: "", code: 255)
+  end
+  lines = output.text.split("\n").filter(fn(line) line != "" end)
+  "{\"code\": #{output.code}, \"transcript_bytes\": #{step_json(filled).byte_size}, \"report_bytes\": #{output.text.byte_size}, \"lines\": #{lines.size}, \"last\": #{Json.encode(lines.last or "")}}"
 end
 
 # How many answers the watcher gave and whether it stopped polling: its poll count read twice,

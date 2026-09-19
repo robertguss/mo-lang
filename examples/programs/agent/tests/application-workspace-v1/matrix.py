@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 
@@ -64,7 +65,7 @@ def by_op(**answers):
 class Case:
     def __init__(self, replies, script=None, exit_code=0, seconds=120, config=None, raw_config=None,
                  goal='repair the workspace', setup=None, check=None, model_delays=None, bridge=True,
-                 run_id='r_1', on_model=None):
+                 run_id='r_1', on_model=None, keep=4 << 20):
         self.__dict__.update(locals())
 
 
@@ -133,19 +134,58 @@ case('arguments', replies=[tool('read_file', path='a.txt', extra='x'),
                           model_args_unchanged=c.tool_step(1).get('args') == {'command': 'make', 'timeout_ms': '900000'}))
 
 # 6. An encoded request over the cap is refused before HTTP; the next request then exceeds the
-# context bound, and a transcript over the report cap is a proved reporting error, not a report.
-case('request-bound', replies=[tool('write_file', path='big.txt', text='y' * 851968)], exit_code=3,
-     check=lambda c: dict(no_http=not c.bridge.requests, error=c.error() == 'transcript_too_large',
+# context bound, and the whole transcript, both copies of the text, is still reported.
+case('request-bound', replies=[tool('write_file', path='big.txt', text='y' * 851968)], exit_code=3, keep=64 << 20,
+     check=lambda c: dict(no_http=not c.bridge.requests, reported=c.error() is None, whole=c.whole(),
                           refusal=any('request_too_large' in json.loads(l).get('step', {}).get('result', '')
                                       for l in c.log_lines() if '"step":' in l),
-                          over_context='"context_bytes"' in c.log_lines()[-1]))
-# A transcript just under the report cap is still reported in full; one over it is an error.
-case('report-over', replies=[tool('write_file', path='big.txt', text='y' * 350000)], exit_code=3,
-     check=lambda c: dict(sent=len(c.bridge.requests) == 1, error=c.error() == 'transcript_too_large'))
-case('report-bound', replies=[tool('write_file', path='big.txt', text='y' * 100000)], exit_code=3,
-     check=lambda c: dict(sent=len(c.bridge.requests) == 1,
-                          over_context=c.terminal() == ('over_budget', None, 'context_bytes'),
-                          reported=len(c.events('tool')) == 1 and len(c.events('model')) == 1))
+                          over_context=c.terminal() == ('over_budget', None, 'context_bytes')))
+
+
+# Transcripts past the old 256 KiB cap, up to the largest one this profile lets a run make, are
+# reported whole: every step of the report is the Book's step byte for byte, and no reporting
+# error. The context bound ends a run at its first model request over 64 KiB, so a run holds
+# at most 64 KiB of steps before its last model reply and the one call that reply makes.
+def reported_whole(least):
+    return lambda c: dict(sent=len(c.bridge.requests) >= 1, reported=c.error() is None, whole=c.whole(),
+                          size=c.transcript_bytes() >= least,
+                          over_context=c.terminal() == ('over_budget', None, 'context_bytes'))
+
+
+case('report-300k', replies=[tool('write_file', path='big.txt', text='y' * 150000)], exit_code=3,
+     keep=64 << 20, check=reported_whole(300000))
+case('report-1m', replies=[tool('write_file', path='big.txt', text='y' * 500000)], exit_code=3,
+     keep=64 << 20, check=reported_whole(1000000))
+
+
+# The largest: a first read whose text fills the context to within a few bytes of 64 KiB, then a
+# read whose path of quotes is as long as the request cap admits, answered with a text of quotes
+# as long as the response cap admits (a command's streams are capped at 64 KiB, so a read carries
+# more). A quote is two bytes on the wire and four in a step: the model step keeps the model's raw
+# reply and the tool step the bridge's raw response.
+FILL = 64825
+
+
+def request_head(call_id, operation):
+    return ('{"version": "mo-workspace-http-v1", "run_id": "r_1", "workspace_id": "' + '0' * 32
+            + f'", "call_id": "{call_id}", "operation": "{operation}", "args": ')
+
+
+LARGEST_PATH = '"' * ((851968 - len(request_head('4', 'read_file')) - len('{"path": ""}}')) // 2)
+
+
+def largest_read(req):
+    if req['call_id'] == '2':
+        return reply(req, result=dict(text='q' * FILL, truncated=False))
+    base = len(fb.protocol.encode(fb.envelope(req, result=dict(text='', truncated=False))))
+    return reply(req, result=dict(text='"' * ((524288 - base) // 2), truncated=False))
+
+
+case('report-largest', replies=[tool('read_file', path='a.txt'), tool('read_file', path=LARGEST_PATH)],
+     exit_code=3, keep=64 << 20, script=lambda req, n: largest_read(req),
+     check=lambda c: dict(reported_whole(3500000)(c),
+                          full_request=[r['bytes'] for r in c.bridge.requests][1:] == [851968],
+                          full_response=c.tool_fields(1).get('execution') == 'completed'))
 
 
 def stops(name, answer, expect=None, replies=None):
@@ -239,13 +279,14 @@ case('lost-ack', replies=[tool('read_file', path='a.txt'), done()], exit_code=3,
 PROFILE = dict(steps=16, tokens=4096, wall_ms=900000, retries=0, tool_ms=2000,
                grants=['list_files', 'read_file', 'search', 'write_file', 'exact_edit', 'command'],
                report_reserve_ms=15000, model_wait_ms=2000, file_wait_ms=2000, command_wait_ms=300000,
-               candidate_ms=120000, candidate_floor_ms=500, request_bytes=851968, response_bytes=524288,
-               config_bytes=4096, report_bytes=262144, wire='mo-workspace-http-v1')
+               candidate_ms=120000, candidate_floor_ms=500, candidate_margin_ms=5000, request_bytes=851968, response_bytes=524288,
+               config_bytes=4096, report_bytes=16 * (851968 + 524288) + 1048576, wire='mo-workspace-http-v1')
 
 
 class Context:
     def __init__(self, root, bridge, model, row):
         self.root, self.bridge, self.model, self.row = root, bridge, model, row
+        self.facts = {}
         self.lines = []
         for line in row['stdout'].splitlines():
             try:
@@ -290,6 +331,29 @@ class Context:
 
     def stopped(self):
         return self.terminal() == ('failed', None, 'uncertain_or_terminal_tool')
+
+    def log_steps(self):
+        """Each step as the Book holds it: the text after "step": on each step line."""
+        marker = ', "step": '
+        return [l[l.index(marker) + len(marker):-1] for l in self.log_lines() if marker in l and l.endswith('}')]
+
+    def transcript_bytes(self):
+        found = sum(len(s.encode()) for s in self.log_steps())
+        self.facts['transcript_bytes'] = found
+        return found
+
+    def whole(self):
+        """The report holds every Book step, in order and byte for byte, then its terminal."""
+        marker = '"payload": {"step": '
+        rows = [l for l in self.row['stdout'].split('\n') if marker in l]
+        steps = self.log_steps()
+        same = len(rows) == len(steps) and all(
+            r[r.index(marker) + len(marker):].startswith(s + ', "result": ') for r, s in zip(rows, steps))
+        out = self.row['stdout']
+        masked = re.sub(r'\\?"took_ms\\?": [0-9]+', 'took_ms', out.replace(self.bridge.workspace_id, 'W' * 32))
+        self.facts.update(report_bytes=len(out.encode()), report_sha256=hashlib.sha256(out.encode()).hexdigest(),
+                          masked_sha256=hashlib.sha256(masked.encode()).hexdigest(), steps=len(steps))
+        return same and out.endswith('\n') and bool(self.events('terminal'))
 
 
 def tree(path):
@@ -337,7 +401,7 @@ def run_case(name, spec, runtime):
         prefix = [MO, 'run', str(MAIN), '--'] if runtime == 'interpreter' else [str(NATIVE)]
         args = prefix + ['application-workspace', str(root), '--model', f'127.0.0.1:{model.port}',
                          '--config', str(config)] + spec.goal.split()
-        row = invoke(args, spec.seconds, cwd=tmp)
+        row = invoke(args, spec.seconds, cwd=tmp, keep=spec.keep)
         bridge.close()
         model.close()
         c = Context(root, bridge, model, row)
@@ -359,7 +423,7 @@ def run_case(name, spec, runtime):
         except Exception as exc:
             checks['case_check'] = False
             row['check_error'] = repr(exc)
-        row = dict(row, case=name, runtime=runtime, checks=checks,
+        row = dict(row, case=name, runtime=runtime, checks=checks, facts=c.facts,
                    bridge_requests=[{k: r.get(k) for k in ('operation', 'call_id', 'args', 'bytes', 'observed', 'answered', 'header_names')} for r in bridge.requests],
                    bridge_errors=[r.get('error') for r in bridge.errors],
                    model_requests=[{k: r.get(k) for k in ('transcript', 'bytes', 'observed', 'run')} for r in model.requests])

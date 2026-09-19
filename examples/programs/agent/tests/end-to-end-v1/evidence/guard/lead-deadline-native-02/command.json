@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "negatives",
+    "native",
+    "lead-deadline-native-02",
+    "--only",
+    "outer-deadline"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-reportcap",
+  "seconds": 1300,
+  "head": "e3736f7d02caf22ce1a5c6ab027a838382ace11b",
+  "dirty": [
+    "?? .lead-build.log",
+    "?? .lead-deadline.log",
+    "?? .lead-full.log",
+    "?? .lead-run.sh"
+  ]
+}
