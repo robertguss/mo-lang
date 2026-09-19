@@ -73,9 +73,11 @@ audit rules; do not treat unavailable evidence as passed.
    the calling workspace/pane; never reuse historical IDs. Split a fresh pane
    to the right with explicit cwd and `--no-focus`; wait for its shell prompt.
    Start a uniquely named agent with `herdr agent start <name> --kind claude
-   --pane <id> -- --model opus`, adding the task-appropriate permission mode.
+   --pane <id> -- --model opus --dangerously-skip-permissions` (Robert, 19 Sep
+   2026, 8:05 AM ET: every worker runs with bypass permissions; the brief's
+   write scope and constraints are the boundary).
    Verify the startup output names Opus before sending the brief with
-   `herdr agent prompt`. Use `--permission-mode plan` for read-only reviews.
+   `herdr agent prompt`. A read-only review is bounded by its brief.
    For implementation, create a separate worktree from the exact local base
    under `~/Projects/startups/mo-lang-worktrees/`; a local branch may be ahead
    of origin. Name role, lead pane, base, write scope, constraints, checks and

@@ -17,7 +17,7 @@ publish/integrate audit records, or take over lead decisions.
 - Fable (Claude Code) is the lead on Robert's Mac since 19 Sep 2026, 7:35 AM ET,
   taking over from Astra. It directs, verifies, decides and records.
 - Robert's 19 Sep 2026 morning instruction: workers are fresh Claude Opus
-  sessions in Herdr panes. Follow `mo-lead` for launch, ownership and acceptance.
+  sessions in Herdr panes, started with bypass permissions. Follow `mo-lead` for launch, ownership and acceptance.
   Workers write code under `toolchain/` and `examples/`; implementation uses
   separate worktrees, while read-only review may share the lead checkout.
 - Stage and commit only named paths (`git add <paths>` and

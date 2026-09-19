@@ -44,8 +44,7 @@ shell allowed) on branch `harness/application-workspace-v2`, worktree
 `030290b8`. Brief revised at `10a9e1a8` (seven carried findings RED first,
 evidence under 2 MiB). Released for local work and focused both-runtime tests
 only; machine runs and the full suite stay lead-gated. Follow with
-`herdr agent get/read app-workspace-v2-opus`. Lead commits `d5cfc150` and
-`10a9e1a8` are local, not yet pushed.
+`herdr agent get/read app-workspace-v2-opus`. Workers from here on start with bypass permissions (Robert, 8:05 AM ET).
 
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
