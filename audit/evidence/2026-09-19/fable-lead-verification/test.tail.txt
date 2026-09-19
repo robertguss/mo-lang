@@ -1,0 +1,44 @@
+test
++- run test 242 pass, 1 fail (243 total)
+error: 'corpus.test.corpus: a fatal alert where a hello belongs is Handshake and a reset mid-hello is Closed, under mo run and in a binary, and the server takes the next connection' failed:
+       ====== expected this output: =========
+       Handshake
+       Closed
+       Handshake
+       Closed
+       Handshake
+       ␃
+       
+       ======== instead found this: =========
+       Handshake
+       Closed
+       Handshake
+       Handshake
+       Closed
+       ␃
+       
+       ======================================
+       First difference occurs on line 4:
+       expected:
+       Closed
+       ^ ('\x43')
+       found:
+       Handshake
+       ^ ('\x48')
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:682:9: 0x1027435bb in expectEqualStrings (test)
+               return error.TestExpectedEqual;
+               ^
+       /Users/robertguss/Projects/startups/mo-lang/toolchain/src/corpus.zig:1243:9: 0x102c6cebb in test.corpus: a fatal alert where a hello belongs is Handshake and a reset mid-hello is Closed, under mo run and in a binary, and the server takes the next connection (test)
+               try std.testing.expectEqualStrings("Handshake\nClosed\nHandshake\nClosed\nHandshake\n", said);
+               ^
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo ./.zig-cache/o/529747537466987b0e808840a49fa331/test --cache-dir=./.zig-cache --seed=0x126ee1b4 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 242/243 tests passed (1 failed)
+test transitive failure
++- run test 242 pass, 1 fail (243 total)
+   +- compile test Debug native cached 49ms MaxRSS:35M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 49ms MaxRSS:35M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0x126ee1b4 -Zd08184a1a27e313f test --summary all

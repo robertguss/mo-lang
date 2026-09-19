@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "controls": 1,
+  "collector_exit_code": -9,
+  "independent_cleanup": {
+    "absent": true,
+    "attempts": [
+      {
+        "absent": true,
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-b16ac2b62693e8a4511699e3445f46d51787197696f85f513209541e78f2584f.scope",
+        "cgroup_absent": true,
+        "removed_rc": 0
+      }
+    ],
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-b16ac2b62693e8a4511699e3445f46d51787197696f85f513209541e78f2584f.scope",
+    "cgroup_absent": true,
+    "containment": "confirmed",
+    "removed_rc": 0
+  },
+  "final_status": "infrastructure_failure"
+}
