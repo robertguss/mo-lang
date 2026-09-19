@@ -48,12 +48,18 @@ def response(request, **updates):
     return result
 
 
-CASES = ['repair', 'edit-missing', 'edit-duplicate', 'edit-overlap',
+CASES = ['repair', 'edit-missing', 'edit-duplicate', 'edit-overlap', 'edit-empty',
          'edit-original-size', 'edit-result-size', 'edit-path', 'edit-unicode',
-         'command-refusal', 'command-nonzero', 'command-timeout',
+         'command-refusal', 'command-failure', 'command-nonzero', 'command-timeout',
          'command-cancellation', 'command-malformed', 'command-identity', 'command-truncation',
          'command-output-size', 'command-type', 'command-transport', 'model-missing-usage',
          'tokens', 'steps', 'context']
+
+
+# Each exact_edit refusal and the reason the run records for it; the file stays as it was.
+REFUSALS = {'edit-missing': 'missing_match', 'edit-duplicate': 'multiple_matches',
+            'edit-overlap': 'multiple_matches', 'edit-empty': 'empty_match',
+            'edit-original-size': 'size', 'edit-path': 'invalid_path'}
 
 
 def case(name, mode):
@@ -169,6 +175,10 @@ def case(name, mode):
                 assert [r['path'] for r in requests] == ['/complete','/fixture/v1/command','/complete','/complete','/complete','/fixture/v1/command','/complete']
             elif name == 'edit-unicode': assert (root/'work/target.txt').read_text() == 'a! / café\n'
             elif name.startswith('edit-'): assert (root/'work/target.txt').read_text() == original
+            if name in REFUSALS:
+                assert events[1]['event'] == 'tool' and events[1]['payload']['step']['refused'] is True, events[1]
+                assert events[1]['payload']['result'] == dict(state='refusal', error_code=REFUSALS[name], execution='not_started'), events[1]
+                assert events[-1]['payload']['state'] == 'done' and len(models) == 2
             if name == 'model-missing-usage': assert events[0]['payload']['usage'] == 'unknown' and events[-1]['payload']['tokens'] is None
             else: assert events[0]['payload']['usage'] == 'reported_synthetic'
             if name == 'steps': assert len(events) == 17 and len(models) == 8
@@ -178,6 +188,10 @@ def case(name, mode):
                 assert events[1]['payload']['step']['refused'] is False
             if name == 'command-transport': assert events[1]['payload']['step']['took_ms'] >= 1000
             if name == 'command-nonzero': assert events[1]['payload']['result']['state'] == 'failure'
+            if name == 'command-failure':
+                result = events[1]['payload']['result']
+                assert (result['state'], result['exit_code'], result['error_code'], result['execution']) == ('failure', 2, 'command_failed', 'completed'), result
+                assert events[1]['payload']['step']['refused'] is False and len(models) == 2
             evidence.update(passed=True)
         except Exception as error:
             evidence.update(passed=False, assertion=repr(error))

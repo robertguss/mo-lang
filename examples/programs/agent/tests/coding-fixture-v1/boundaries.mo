@@ -170,18 +170,21 @@ fn boundary(mode: String, fs: Fs, logs: Fs, http: Http, clock: Clock,
   end
   listener.serve(into: fake, idle: 5000.ms)
   model = Model(host: "localhost", port: listener.port, tools: fixture_tools())
-  run = Run.start(book, fs.scoped("work").read_only, None, http, clock,
+  # The run holds a writer on its folder though its order grants no tool, so only the grant
+  # rule stands between the model's edit and the file.
+  writer = Writer.start(fs.scoped("work"))
+  run = Run.start(book, fs.scoped("work").read_only, Some(writer), http, clock,
     Setup(id: made.id, order: order, model: model))
   endpoint = Endpoint(host: "localhost", port: 1, workspace: "w")
   wait = if mode == "recording": 1.ms else: 1.minute
   if run.ask(ConfigureFixture(endpoint: endpoint), within: wait) != Ok(true)
-    return Error("configure unavailable")
+    return Error("configure refused")
   end
   began = run.ask(Begin(me: run), within: if mode == "deadline": 0.ms else: 30000.ms)
   if began is Error(_) and mode != "deadline"
-    return Error("begin unavailable")
+    return Error("begin unanswered")
   end
-  return Error("run unavailable") if !stopped?(run)
+  return Error("run never stopped") if !stopped?(run)
   observation(book, run, fake, fs, made.id)
 end
 
@@ -190,8 +193,50 @@ fn unknown_total?(record: Record, steps: List(String)) : Bool
   (text.lines.last or "").contains?("\"usage\": \"unknown\", \"tokens\": null")
 end
 
-fn call_limit(mode: String) : UInt64
-  if mode == "grant" or mode == "grace": 2 else: if mode == "deadline": 0 else: 1
+fn tool_step?(step: String) : Bool
+  step.contains?("\"kind\": \"tool\"")
+end
+
+fn grant_refusal?(step: String) : Bool
+  step.contains?("\"name\": \"exact_edit\"") and step.contains?("\\\"state\\\": \\\"refusal\\\", \\\"error_code\\\": \\\"grant\\\"")
+end
+
+# What each mode exists to show, held on the fixed schedule and under the simulator's faults,
+# which can fail any fixture call the run or the book makes. The file is never edited, since the
+# run holds a writer but no grant, and a run that completes took the whole scheduled path.
+fn held?(mode: String, seen: Observation) : Bool
+  kept = seen.kept
+  tools = seen.steps.filter(fn(step) tool_step?(step) end)
+  completed = kept.status == Done
+  case mode
+    "grant":
+      seen.calls <= 2 and tools.all?(fn(step)
+        grant_refusal?(step)
+      end) and (!completed or seen.steps.size == 3 and tools.size == 1 and seen.calls == 2)
+    "cancel":
+      kept.status == Cancelled and tools.size == 0 and seen.calls <= 1 and seen.steps.size <= 1 and unknown_total?(kept,
+        seen.steps)
+    "deadline":
+      seen.calls == 0 and seen.steps.size == 0 and (kept.status == Running or kept.status == OverBudget and kept.why == Some("wall_ms"))
+    "recording": kept.status == Running and seen.steps.size == 0 and seen.calls <= 1
+    "grace":
+      (seen.steps.size == 0 or seen.grace_ms < 15000) and seen.calls <= 2 and (!completed or seen.steps.size == 3 and seen.calls == 2)
+    _: false
+  end
+end
+
+# The errors a fault can give the test's own setup and observation; the run's own failures
+# (configure refused, begin unanswered, never stopped) are never among them.
+fn setup_fault?(why: String) : Bool
+  ["setup unavailable",
+    "create unavailable",
+    "cancel unavailable",
+    "listener unavailable",
+    "record unavailable",
+    "steps unavailable",
+    "count unavailable",
+    "file unavailable",
+    "grace unavailable"].contains?(why)
 end
 
 test "fixture value refusals and explicit reporting error"
@@ -219,21 +264,11 @@ test "fixture grant cancellation deadline and recording boundaries"
     logs = if mode == "recording" or mode == "grace": Fs.fixture(delay: 5.ms) else: fs
     found = boundary(mode, fs, logs, Http.fixture(), Clock.fixture(), Fs.fixture())
     case found
-      Ok(observed):
-        assert observed.unchanged and observed.grace_ms >= 0 and observed.grace_ms <= 15000
-        assert observed.calls <= call_limit(mode)
-        if mode == "cancel" and observed.kept.status == Cancelled
-          assert unknown_total?(observed.kept, observed.steps)
-        end
-        if mode == "grace" and observed.steps.size > 0
-          assert observed.grace_ms < 15000
-        end
-        if mode == "grant" and observed.kept.status == Done
-          assert observed.steps.size == 3 and (observed.steps.get(1) or "").contains?("grant")
-        end
+      Ok(seen):
+        assert seen.unchanged
+        assert held?(mode, seen)
       Error(why):
-        # Faults may prevent setup or observation; they never establish a successful run.
-        assert why.contains?("unavailable")
+        assert setup_fault?(why)
     end
   end
 end

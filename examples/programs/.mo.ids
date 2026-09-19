@@ -808,13 +808,16 @@
         { "id": "4d231a4473a6", "name": "struct Observation", "hash": "55806763a7ce0f1a" },
         { "id": "48490852a907", "name": "fn observation", "hash": "a1092c6dd84f40ad" },
         { "id": "a0a9fcb01eaa", "name": "fn stopped?", "hash": "645e8afd99f4f02b" },
-        { "id": "ab7150f757e7", "name": "fn boundary", "hash": "73f90fe162cea28e" },
+        { "id": "ab7150f757e7", "name": "fn boundary", "hash": "3d477e467ec73a6d" },
         { "id": "e402b2ea6500", "name": "fn unknown_total?", "hash": "14628e053a57bd57" },
-        { "id": "11e90572ce5b", "name": "fn call_limit", "hash": "18c2224a08d435c6" },
+        { "id": "4d9f684cffb5", "name": "fn tool_step?", "hash": "88907ef659a58429" },
+        { "id": "c51db5500efc", "name": "fn grant_refusal?", "hash": "99da8f70ec683402" },
+        { "id": "9e560a0255bf", "name": "fn held?", "hash": "4f9d3719e64013bf" },
+        { "id": "e54bd7147b0a", "name": "fn setup_fault?", "hash": "8a20dc51dbb3eb97" },
         { "id": "136db6c20045", "name": "test \"fixture value refusals and explicit reporting error\"", "hash": "b203a428adead806" },
-        { "id": "6b3a116e11ae", "name": "test \"fixture grant cancellation deadline and recording boundaries\"", "hash": "0ef76c7a00ac72da" }
+        { "id": "6b3a116e11ae", "name": "test \"fixture grant cancellation deadline and recording boundaries\"", "hash": "60cc7a907d6720c3" }
       ],
-      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "a72796ae23d7a9c0", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.CodingFixture", "hash": "dc3c1daadd65804e" }, { "module": "Agent.CommandAdapter", "hash": "34d3f7622f9e160c" }, { "module": "Agent.ExactEdit", "hash": "ca97ff185bb356b3" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Registry", "hash": "75601a9cc0a02246" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "6c002ec8678370b8" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "8e9e84923d703ba2", "uses": [{ "module": "Agent.Api", "hash": "8df035b884736d77" }, { "module": "Agent.Book", "hash": "d141247ef620554a" }, { "module": "Agent.Client", "hash": "13ce71572eed4399" }, { "module": "Agent.CodingFixture", "hash": "dc3c1daadd65804e" }, { "module": "Agent.CommandAdapter", "hash": "34d3f7622f9e160c" }, { "module": "Agent.ExactEdit", "hash": "ca97ff185bb356b3" }, { "module": "Agent.Filing", "hash": "2ac4ce47c382e826" }, { "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }, { "module": "Agent.Record", "hash": "1a6f85e956b6fae3" }, { "module": "Agent.Registry", "hash": "75601a9cc0a02246" }, { "module": "Agent.Report", "hash": "432bc3f7a1076ae4" }, { "module": "Agent.Run", "hash": "6c002ec8678370b8" }, { "module": "Agent.Shelf", "hash": "dc728ac0d9f88fc2" }, { "module": "Agent.Steps", "hash": "d9568b2e986e0d98" }, { "module": "Agent.Tools", "hash": "484ef2eaea6ad67e" }, { "module": "Agent.Transcript", "hash": "c600f4cb2a06a617" }, { "module": "Agent.WorkspaceAdapter", "hash": "679a87f534cf5f54" }] }
     },
     {
       "path": "agent/tests/terminal-auth/driver.mo",
