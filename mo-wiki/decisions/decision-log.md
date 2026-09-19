@@ -888,6 +888,13 @@ direction separately from the lead's conservative execution interpretation.
 | `-128` written as an `Int8` expression stays refused (`128 does not fit in Int8`); only a pattern takes it, so a signed type's smallest is written `-127 - 1`. Conservative and never wrong, but unfriendly. **For Robert**: accepting `-<literal>` as one literal would be a small rule, not new syntax; say if you want it. | Fable lead | open | a corpus program that needs it |
 | Noticed by the worker, not fixed, queued as small toolchain items: a crash report's source span inside `"#{...}"` runs to the end of the line; `per 0.ms` (a window of nothing) checks and has no stated meaning. | Fable lead | recorded | the next toolchain step that touches them |
 
+## 19 Sep 2026 — TypeSafe (Jev) approved for a report claim check calibration, 1:59 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Robert approved sending worker reports and log excerpts to TypeSafe and has an API key. This settles the open item on [[report-claim-check]]. Never sent: auditor readings, sealed suites, secrets, anything outside the repository. | Robert | decided | the sender's refusal tests |
+| The first use is a calibration only, at `tools/claim-check/` (lead-side Python, `uv`), on labelled cases from this repository's history plus planted controls, at most 2,000 requests, model pinned by exact name. The lead's acceptance loop does not depend on it until its numbers exist and a row says so; it never accepts anything. The second use, Jev as the Mo harness's fast-judgment layer (typed Choice to a Mo enum), waits for `Exec` and HTTPS. | Fable lead | decided | `tools/claim-check/calibration/RESULTS.md` |
+
 ## Related
 
 - [[session-05]]
