@@ -360,3 +360,68 @@ interpreter's `list` are unchanged; the binary's `list` is 17 times cheaper.
 - Optionally the numbers on Linux: `python3 toolchain/bench/step40/measure.py OUT
   before=<mo at 9304fc65> after=<mo at this branch>`, where the per-component cost of
   `openat` may differ a lot from Darwin's.
+
+## Linux follow-up
+
+The lead ran `-Dtest-filter="step 40"` on Linux x86_64 (Zig 0.16, test binary not linked
+with libc): 5 of 6 passed. The reader control aborted in the test harness with `index out of
+bounds: index 18446744073709551605, len 256` at `src/fs_scope.zig:515`.
+
+**Cause, checked against Zig 0.16's std, not taken on trust.** Without libc,
+`std.posix.system` is `std.os.linux`, whose `read` returns `usize` and puts a failure in the
+result as the negated errno. The loop set the pipe non-blocking and called
+`std.posix.system.read` raw, then tested `r > 0`: `-EAGAIN` is 2^64 - 11 =
+18446744073709551605, exactly the index in the panic, so `chunk[0..r]` ran off the buffer. On
+Darwin `std.posix.system` is `std.c`, whose `read` returns `isize` -1 with errno set, so
+`r > 0` was false and the test passed there. A test-harness defect, not a product one.
+
+**What changed.**
+
+- `src/fs_scope.zig`, the reader control: no `fcntl` and no raw `read`. Between reads of the
+  target, `std.posix.poll` with a zero timeout asks whether the pipe has data or has closed; only
+  then does `std.posix.read` run, so it never blocks, and the wrapper reads the error through
+  `posix.errno` on both platforms. `0` from it is the real end of the pipe. When nothing is
+  ready the loop sleeps 50 microseconds instead of spinning. The target is still read once per
+  pass, as before.
+- `src/blocking.zig`, the pool test: the folder name used `std.os.linux.getpid()`, a raw Linux
+  system call, which on Darwin issues a Linux syscall number through the Darwin trap; it only
+  worked there by accident. Now `posix.system.getpid()` (libc on Darwin, the syscall on
+  Linux). The line predates step 40 (step 30 part B); step 40 carried it into the rewritten
+  test. Test code only.
+
+**Audit of every system call step 40 added** in `src/fs_scope.zig`, `src/server.zig`,
+`src/blocking.zig` and `src/stdlib.zig`, for the return convention (error in the result on raw
+Linux versus -1 and errno in libc) and for flags passed as raw integers:
+
+- `server.zig` (product): `openScoped`'s `openat` and `ftruncate`, `openFolder`'s `openat`,
+  `readSome`'s `read`, and the `unlinkat`, `mkdirat` and `renameat` of remove, mkdir and
+  rename all go through `posix.errno(rc)` before the result is used, and only then
+  `@intCast(rc)`. `posix.errno` is correct for both conventions. The `close` results are
+  discarded. No finding.
+- `blocking.zig` (product): `writeAll`'s `write`, `syncFd`'s `fsync`, `replaceNow`'s `openat`
+  and `renameat`, and `openSignal`'s `eventfd` and `pipe` all check through `posix.errno`;
+  `unlinkat` on the failure path and the worker's signal `write` are discarded by design (8
+  bytes to a Linux eventfd, 1 to a Darwin pipe). No finding in product code; the `getpid` above
+  was in its test.
+- `stdlib.zig`: no system calls; step 40 added only the `Fs.replace` and `Fs.kind_of` rows and
+  the fixture behavior.
+- `fs_scope.zig`: the reader loop above was the only raw call.
+- Flags: every open uses the `posix.O` packed struct (`.NOFOLLOW`, `.DIRECTORY`, `.NONBLOCK`,
+  `.NOCTTY`, `.CLOEXEC`, `.EXCL`), whose bit positions std defines per target, and the one
+  `AT` flag is `posix.AT.REMOVEDIR` (test) and `posix.AT.FDCWD`. No `O_*` or
+  `AT_SYMLINK_NOFOLLOW` value is written as a raw integer anywhere in the four files. The only
+  raw integer flag was the removed `fcntl(F.SETFL, @bitCast(O{.NONBLOCK}))`, which was itself
+  platform-correct but is gone with the loop.
+
+**Verification, on this Mac (aarch64-macos), every run under `bench/step36/guard.py`.**
+
+- `zig build test -Dtest-filter="step 40" --summary all`: exit **0**, `Build Summary: 5/5
+  steps succeeded; 6/6 tests passed`. Reader control: `1000 replaced`, 602 reads under
+  `mo run` and 981 in the binary, 0 partial, 0 not there (937 and 1,278 before: the 50
+  microsecond wait costs some reads, still hundreds per 1,000 replaces). Kill control: 8 of 8
+  rounds killed under each, the target whole every time. Zig prints a `failed command:` line for
+  the test binary because the tests write to stderr; the summary and exit code are the result.
+- `zig build test -Dtest-filter="a write on the pool is on disk when it answers" --summary
+  all`: exit **0**, `Build Summary: 5/5 steps succeeded; 2/2 tests passed`.
+- No orphaned test binaries afterwards.
+- Linux is not run here: the lead reruns `-Dtest-filter="step 40"` on the Linux VM.

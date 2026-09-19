@@ -503,16 +503,24 @@ test "corpus: step 40, a reader looping through 1,000 replaces never sees a part
         var done = false;
         var said: std.ArrayList(u8) = .empty;
         const out = child.stdout.?;
-        _ = std.posix.system.fcntl(out.handle, std.posix.F.SETFL, @as(c_int, @bitCast(std.posix.O{ .NONBLOCK = true })));
+        // Between reads of the target, a poll that does not wait says whether the pipe has
+        // something (or has closed); only then does the read run, so it never blocks. Through the
+        // std.posix wrappers, which read the error the same way on every platform: the raw Linux
+        // system call returns it negated in the result, where libc returns -1 and sets errno.
         while (!done) {
             if (Io.Dir.cwd().readFileAlloc(io, target, arena, .limited(1 << 20))) |got| {
                 reads += 1;
                 if (!whole(got, n)) parts += 1;
                 arena.free(got);
             } else |_| gone += 1;
+            var fds = [_]std.posix.pollfd{.{ .fd = out.handle, .events = std.posix.POLL.IN, .revents = 0 }};
+            if (try std.posix.poll(&fds, 0) == 0) {
+                io.sleep(.fromMicroseconds(50), .awake) catch {};
+                continue;
+            }
             var chunk: [256]u8 = undefined;
-            const r = std.posix.system.read(out.handle, &chunk, chunk.len);
-            if (r == 0) done = true else if (r > 0) try said.appendSlice(arena, chunk[0..@intCast(r)]);
+            const r = try std.posix.read(out.handle, &chunk);
+            if (r == 0) done = true else try said.appendSlice(arena, chunk[0..r]);
         }
         const term = try child.wait(io);
         std.debug.print("---- {s}: {s}{d} reads, {d} partial, {d} not there, exit {any}\n", .{ argv[0], said.items, reads, parts, gone, term });
