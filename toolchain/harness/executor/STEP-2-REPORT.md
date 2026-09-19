@@ -309,4 +309,4 @@ under `guarded.py`, with the same command lines as before:
 `test_lifecycle_live.py` is untouched, but it imports the refactored `selftest`.
 The live owner (`live_owner.py`) now starts through
 `Bridge.start(owner_module=…)` instead of a `Popen` patch; `live.py`'s
-`start_failure` and `frontend-death` groups cover that path.
+`startup-failure` and `frontend-death` groups cover that path.
