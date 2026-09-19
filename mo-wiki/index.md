@@ -214,8 +214,8 @@ type: index
 ## Research
 
 - [[agent-native-research-synthesis]] — four reports reviewed with the oracle;
-  selective source checks, limitations and the proposed maintenance-workflow
-  trial; implementation paused
+  selective source checks, four additional strategic reviews and the agreed
+  calibration-to-useful-workload sequence; implementation paused
 - [[agent-native-independent-review-prompt]] — self-contained web-enabled review
   brief; challenge everything, including a new language/runtime; comparable
   independent responses

@@ -2,6 +2,19 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## External review agreement — 18 Sep 2026, 9:36 PM ET
+
+- Recorded Robert's agreement with the oracle-assisted review synthesis:
+  trustworthy instruments, workflow/onboarding calibration, then a useful
+  application against a well-equipped existing-language comparator. Application
+  choice and detailed scope remain open; the reviewer packet is unchanged.
+- The 401 proposal requires an approved versioned recipe-policy change, not an
+  implicit implementation fix. Requirements, conformance and verification are
+  separate obligations; later workload design should consider progress and
+  uncertain external effects.
+- Documentation only. No bounded start or lead-readiness confirmation recorded;
+  implementation stays paused. Program 7 and Step 39 dispositions are unchanged.
+
 ## Research synthesis and outside review brief — 18 Sep 2026
 
 - Four supplied reports preserved with hashes and reviewed with the oracle;

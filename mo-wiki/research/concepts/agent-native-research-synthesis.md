@@ -37,6 +37,74 @@ possibly without repo access. They may challenge everything, including the need
 for a new language/runtime. [[agent-native-independent-review-prompt]] supplies
 the same self-contained context; model agreement is not independent proof.
 
+## External strategic reviews: agreed direction, 18 Sep 2026 ET
+
+These are four additional reviews, not the four research reports above. Amp read
+them and compared their arguments with the oracle. Robert agreed to the revised
+direction and sequence. A fifth review was pending; this assessment can change
+if it brings consequential evidence. Shared-packet agreement is convergent
+reasoning, not independent experimental proof. Packet v1.0 remains unchanged so
+later reviews can use the same context.
+
+Review provenance (private attachments supplied by Robert; these links do not
+claim local raw ingestion or hash verification):
+
+- [Fable](https://ampcode.com/user-content/attachments/3334afe61b47f4b6fe55299824aab48479babd0c76e9f9682db7f3ca5140f985-fable-mo-review-2026-09-19.md):
+  strongest challenge to attribution through an equivalently equipped
+  existing-language comparator.
+- [Astra](https://ampcode.com/user-content/attachments/c5809107026b1001c0bae4773f38b780a9010c5f8cfa7ac76aa341cff72f535b-astra-ultra-MO-INDEPENDENT-REVIEW-2026-09-18.md):
+  strongest sequence of trustworthy instruments, small workflow pilot, then
+  useful transfer.
+- [Pro](https://ampcode.com/user-content/attachments/1da27cea9499c2869bb4754cb2177fd2678ead0c6ea7eac9fa3f08d671c9196b-gpt6-pro-mo-review.md):
+  separates requirements, implementation and acceptance; adds bounded progress
+  and uncertain external effects. Its opaque citation markers are not checkable
+  references.
+- [Kimi](https://ampcode.com/user-content/attachments/74fb15a187383705ba90cd5e9a809fcefd34db3be55f450fd9dd884ce05737b3-kimi-k3-mo-independent-review-2026-09-18.pplx.md):
+  keeps tooling extraction live, but its stronger abandonment inference exceeds
+  the evidence.
+
+**Agreed direction:** preserve Mo's ambition while narrowing the next
+investment. Validate acceptance instruments, then use the proposed 401 change as
+a workflow and onboarding calibration pilot, not proof that a new language is
+worthwhile. Choose a real application Robert would use and one well-equipped
+existing-language comparator before finalizing the workload-dependent roadmap or
+broad expansion. A whole-product comparison cannot alone isolate syntax, types,
+runtime, documentation and maturity. Extraction remains an option, not a chosen
+destination. No new language feature or TLS strategy is approved.
+
+Keep three correctness questions separate: are requirements appropriate, does
+implementation conform, and does verification actually establish the behavior?
+Protected tests can faithfully check the wrong policy. For the real workload,
+consider safety and required progress under stated assumptions, and remote
+actions whose outcomes become unknown after a timeout or crash: local rollback
+does not undo an external effect. These are workload-design considerations, not
+added 401 gates or newly promised runtime guarantees.
+
+**Policy prerequisite:** the intent in `examples/recipes/model-client.mo`
+explicitly retries model errors, including non-200 responses. Before the 401
+pilot, obtain approval for an explicitly versioned policy, resolving whether it
+changes the shared recipe or specializes the Agent contract. The implementer
+must not decide requirement scope or leave its recipe binding inconsistent.
+Following the present recipe is not itself a defect.
+
+**Disagreements:** Kimi's permanent unfamiliarity tax is not established; Qwen's
+no-edit outcomes across all three languages do not isolate Mo onboarding. Fresh
+sessions without retained artifacts or model updates do not measure retained
+learning. Compiler-enforced capabilities are more than optional lint, but not OS
+confinement; selective receive is not bounded admission. Fable's unqualified
+feedback-speed claim omits the historical Go 0.25-second warm row in
+[[state-of-the-project]]; this is not a new matched benchmark. Synthetic
+mutation results cannot substitute for the retained generation-ten
+contract-catch obligation without an explicit prospective amendment. No audit
+rule changes.
+
+**Execution boundary:** Robert approved the revised direction and sequence; the
+lead records that agreement without treating it as a ready-to-run spec. No
+bounded start decision or lead-readiness confirmation is recorded here. Workers,
+setup, experiments and implementation remain paused. Application and comparator
+identities, recipe scope, models, budgets, repetitions and acceptance criteria
+remain open. The next discussion is the real application choice.
+
 ## What the reports support, and what they do not
 
 ### Learning: test a small entry point and targeted lookup

@@ -24,7 +24,7 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, after Robert approved the agent-native reframe.
+**Last updated:** 18 Sep 2026, 9:36 PM ET, external review agreement recorded.
 
 ## Agent-native direction agreed; implementation remains paused
 
@@ -70,6 +70,18 @@ program-7 scope, TLS strategy and acceptance thresholds remain proposals. No
 workers, setup, experiments or implementation start until Robert explicitly
 approves and the lead confirms readiness. Documentation is not execution
 approval.
+
+Four additional external strategic reviews are now compared with the oracle in
+[[agent-native-research-synthesis]]. Robert agreed to narrower investment:
+trustworthy instruments, a 401 workflow/onboarding calibration pilot, then a
+useful application against one well-equipped existing-language comparator. The
+pilot does not establish language value. A versioned retry-policy approval is a
+prerequisite, with shared-recipe versus Agent scope unresolved. Choose the real
+application before finalizing workload-dependent roadmap details. Keep
+requirements, implementation and trustworthy acceptance distinct, and consider
+required progress and uncertain external effects in the later workload.
+Extraction remains an option, not the chosen destination. No bounded start or
+lead-readiness confirmation is recorded; the execution pause remains.
 
 Step 39 remains unaccepted and the known acceptance/durability obligations
 remain. New upstream TLS and benchmark edits were fetched, not verified in this

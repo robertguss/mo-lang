@@ -593,3 +593,21 @@
   raw-source-drift errors. No toolchain acceptance run; documentation only.
   Auditor pointer check found no new records. No research reviewers were
   launched on Robert's behalf.
+
+## [2026-09-18] decision | External strategic review agreement
+
+- 9:36 PM ET checkpoint: Robert agreed to the lead/oracle assessment of four
+  external strategic reviews. Recorded the comparison and private attachment
+  provenance in [[agent-native-research-synthesis]], keeping the original four
+  research reports distinct and the reviewer packet unchanged.
+- Updated handoff, roadmap, state, decision log, index and changelog. Sequence:
+  trustworthy instruments, proposed 401 workflow/onboarding calibration, then a
+  real application and well-equipped comparator. The recipe-policy approval,
+  application choice and bounded specification remain unresolved.
+- No workers, setup, implementation or experiments started. No bounded start or
+  lead-readiness confirmation recorded. Program 7 stays suspended, Step 39
+  unaccepted, and audit obligations unchanged. Auditor check: zero new records.
+- Validation: wiki lint checked 254 pages, with 24 review/size notices (15
+  existing review flags, nine sizes; the expanded synthesis adds one size
+  notice), no structural or raw-source-drift errors. `git diff --check` passed.
+  Removed automatic formatting churn with content-invariance checks.

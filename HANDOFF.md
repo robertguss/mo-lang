@@ -34,7 +34,19 @@ Robert requires oracle use for substantive lead evaluations and decisions. **No
 workers, setup, experiments or implementation until Robert explicitly approves
 starting and the lead confirms readiness.** Documentation maintenance is
 authorized; no implementation or security strategy is accepted. We remain in
-discussion and revision, awaiting the outside reviews and Robert's steering.
+discussion and revision.
+
+At the 18 Sep 2026, 9:36 PM ET checkpoint, four external strategic reviews have
+been compared with the oracle; a fifth was pending. Robert agreed to the revised
+sequence: trustworthy instruments, then the 401 workflow/onboarding pilot, then
+a useful application compared with a well-equipped existing-language option. The
+pilot is not proof of language value. Before it, obtain approval for a versioned
+recipe-policy change (shared recipe versus Agent specialization). The real
+application is the next discussion; scope and comparator are open. The lead
+records agreement with the direction, not a bounded execution start or readiness
+confirmation. See the external-review section of
+`mo-wiki/research/concepts/agent-native-research-synthesis.md`; the original
+review packet remains unchanged. No audit obligation is amended.
 
 Upstream changed TLS and benchmark scripts during this discussion. Those changes
 were fetched and preserved, not tested or accepted here. Older statements that

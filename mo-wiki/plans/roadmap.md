@@ -26,18 +26,24 @@ New upstream TLS/script edits are not acceptance evidence.
 
 ### Next discussion and documentation work
 
-1. Gather external model reviews using
-   [[agent-native-independent-review-prompt]]. Robert invites challenges to
-   everything, including a new language/runtime. Compare evidence and reasoning
-   rather than model votes.
-2. Revise the bounded maintenance-workflow proposal in
-   [[agent-native-research-synthesis]] and its independent acceptance evidence.
-   The Agent model-call policy change and onboarding comparison are candidates,
-   not a locked specification or authorized run.
+1. Choose a real application Robert would use and one well-equipped comparator
+   before finalizing workload-dependent scope. Four external strategic reviews
+   have been compared with the oracle in [[agent-native-research-synthesis]];
+   Robert agreed to the revised sequence. A fifth review was pending. Preserve
+   [[agent-native-independent-review-prompt]] v1.0 unchanged.
+2. Specify trustworthy instruments, then the proposed 401 workflow/onboarding
+   pilot, then representative application transfer. The pilot is calibration,
+   not proof of language value. Before it, obtain approval for a versioned
+   policy and resolve shared-recipe versus Agent-specific scope. Requirements,
+   implementation and verification are distinct correctness obligations.
+   Consider progress and uncertain external effects in the later workload; exact
+   task, models, budgets and acceptance criteria remain open.
 3. Agree and explicitly version program 7's replacement scope, metrics and
    relationship to retained audit obligations before any new sealing or build.
 4. Resume only after Robert explicitly approves starting and the lead confirms
-   readiness. No workers, setup, experiments or implementation before then.
+   readiness. Agreement to this sequence is recorded; a bounded start and
+   readiness confirmation are not. No workers, setup, experiments or
+   implementation before then.
 
 ### Four reports received and reviewed with the oracle
 
@@ -249,6 +255,7 @@ The Next table at the top is the order; the rows here are the phases' record.
 Robert: `spec/design-v0` is a folder of files, one per chapter. Kept.
 
 ## Related
+
 - [[program-menu]]
 - [[q14-first-real-program]]
 - [[q13-implementation-language]]
