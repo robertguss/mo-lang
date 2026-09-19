@@ -873,6 +873,12 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Robert: going forward, do not spin up too many Opus workers. The lead's working limit is two at a time until he names a number; briefs queue. Three were in flight when he said it (end to end, step 41, step 43); none is stopped, and nothing new launches until fewer than two remain. | Robert; the number is the Fable lead's | decided | the next launch |
 
+## 19 Sep 2026 — Three Opus workers is the maximum, 1:33 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Robert named the number: at most three Opus workers at once. This replaces the lead's working limit of two in the section above. | Robert | decided | the next launch |
+
 ## Related
 
 - [[session-05]]

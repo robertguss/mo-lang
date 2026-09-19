@@ -19,11 +19,8 @@ new records at 7:15 AM ET). Everything below this section is history.
   wait in the foreground while something runs. Robert may close a tab that
   looks idle; if so, preserve the worktree's uncommitted work as a WIP commit
   and start a fresh worker to finish it (this happened to step 40).
-- **Few workers at once** (Robert, 19 Sep, 1:33 PM ET): do not spin up many Opus
-  workers. The lead's working limit is two at a time until he names another
-  number; queue briefs rather than launching them, and prefer one worker
-  finishing over a new one starting. Three were running when he said it; they
-  finish, and nothing new launches until fewer than two remain.
+- **At most three Opus workers at once** (Robert, 19 Sep, 1:33 PM ET; he first said
+  "not too many", then named the number). Queue briefs rather than exceed it.
 - **Robert pushes `main` himself at any time.** So `main` holds accepted work
   and lead records only. Verify a worker's branch on a local
   `lead/verify-<unit>` branch; merge to `main` at acceptance.
