@@ -1,0 +1,7 @@
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+FAIL  test "a completed command response in hand is reported as completed though the deadline has just passed": agent/tests/coding-fixture-v1/boundaries.mo:286:5: assert output == body or output == failure("failure", "transport", failed
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run

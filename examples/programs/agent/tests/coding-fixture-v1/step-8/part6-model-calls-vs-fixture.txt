@@ -1,0 +1,8 @@
+steps variant=calls exit 0 passed False model_calls 10 AssertionError({'command': ['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent/toolchain/bench/step36/guard.py', '60', '--', '/Users/robertguss/Projects/startups/mo
+run exit=1
+tokens variant=calls exit 3 passed True model_calls 1 
+run exit=0
+context variant=calls exit 3 passed True model_calls 1 
+run exit=0
+repair variant=calls exit 0 passed True model_calls 5 
+run exit=0

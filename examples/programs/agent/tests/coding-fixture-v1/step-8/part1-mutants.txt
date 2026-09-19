@@ -1,0 +1,105 @@
+#### mutant=none test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+3 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run
+#### mutant=none test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+#### mutant=grant test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:268:9: assert seen.unchanged failed
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=grant test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+#### mutant=cancel test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:269:9: assert held?(mode, seen) failed
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=cancel test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:224:9: assert observed.calls <= call_limit(mode) failed; left = 2, right = 1
+1 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=deadline test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:269:9: assert held?(mode, seen) failed
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=deadline test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:224:9: assert observed.calls <= call_limit(mode) failed; left = 2, right = 0
+1 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=recording test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:269:9: assert held?(mode, seen) failed
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=recording test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:224:9: assert observed.calls <= call_limit(mode) failed; left = 2, right = 1
+1 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=grace test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:269:9: assert held?(mode, seen) failed
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=grace test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:229:11: assert observed.grace_ms < 15000 failed; left = 15000, right = 15000
+1 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=never-stops test=new-test
+== tests/coding-fixture-v1/boundaries.mo  exit=1
+pass  test "fixture value refusals and explicit reporting error"
+FAIL  test "fixture grant cancellation deadline and recording boundaries": agent/tests/coding-fixture-v1/boundaries.mo:271:9: assert setup_fault?(why) failed
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+2 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+#### mutant=never-stops test=old-test
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run

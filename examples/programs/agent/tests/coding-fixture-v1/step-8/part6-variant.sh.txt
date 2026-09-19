@@ -1,0 +1,33 @@
+#!/bin/bash
+# variant.sh NAME: temp program root with the agent's sources, verified lines stripped, budget variant NAME applied.
+W=/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent
+S=<scratch>
+R=$S/variant-$1; rm -rf $R; mkdir -p $R; touch $R/mo.root
+rsync -a --exclude tests --exclude measure $W/examples/programs/agent/ $R/agent/
+python3 - $R/agent $1 <<'PY'
+import sys, pathlib
+agent, name = pathlib.Path(sys.argv[1]), sys.argv[2]
+for p in agent.rglob('*.mo'):
+    s = p.read_text(); i = s.find('\nverified:')
+    if i >= 0: p.write_text(s[:i+1])
+steps = agent/'steps.mo'; run = agent/'run.mo'
+s, r = steps.read_text(), run.read_text()
+if name == 'recorded':   # one rule: the steps budget caps recorded steps, for every run
+    s = s.replace('run.taken < budget.steps', 'run.n < budget.steps')
+    s = s.replace('if run.taken >= setup.order.budget.steps', 'if run.n >= setup.order.budget.steps')
+    assert s != steps.read_text()
+if name == 'calls':      # one rule: the steps budget caps model calls, for every run
+    old1 = '''  if fixture and run.n >= setup.order.budget.steps
+    return closing(me, run, ending(OverBudget, None, Some("steps")))
+  end
+'''
+    old2 = '''  if profiled and (run.n >= setup.order.budget.steps or run.tokens >= setup.order.budget.tokens)
+    why = if run.n >= setup.order.budget.steps: "steps" else: "tokens"
+    return closing(me, run, ending(OverBudget, None, Some(why)))
+  end
+'''
+    assert old1 in r and old2 in r
+    r = r.replace(old1, '').replace(old2, '')
+steps.write_text(s); run.write_text(r)
+PY
+echo $R

@@ -1,0 +1,14 @@
+== tests/coding-fixture-v1/boundaries.mo  exit=0
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries"
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed"
+3 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run
+== tests/coding-fixture-v1/boundaries.mo --sim 100 exit=0
+pass  test "fixture value refusals and explicit reporting error"
+pass  test "fixture grant cancellation deadline and recording boundaries": 100 simulated runs
+pass  test "a completed command response in hand is reported as completed though the deadline has just passed": 100 simulated runs
+3 passed, 0 failed, 0 skipped; 2 tests under 100 seeds with 5% faults: 2 held under faults, 0 passed only without faults
+verified: types, contracts, tests (3), property (0 seeds), sim (100 runs)
+          proven: not run

@@ -4,7 +4,7 @@ import sys
 from run import ROOT, MO, invoke
 OWNED = ['exact-edit','command-adapter','report','record','tools','steps','run','registry','coding-fixture','main','tests/coding-fixture-v1/boundaries']
 ORDER = ['exact-edit','command-adapter','record','report','transcript','shelf','api','filing','book','tools','steps','run','registry','coding-fixture','server','check','main','runs','tests/coding-fixture-v1/boundaries']
-SIM = ['book','tools','run','server','runs']
+SIM = ['book','tools','run','coding-fixture','server','runs']
 failed = False
 
 def run(label, command, seconds=180):
