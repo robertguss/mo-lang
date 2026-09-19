@@ -2,7 +2,7 @@
 name: mo-lead
 description:
   The lead's role and loop for building Mo. Use when starting or resuming a Mo
-  session, briefing an Astra worker in Herdr, accepting a step, or recording a
+  session, briefing an Opus worker in Herdr, accepting a step, or recording a
   decision.
 ---
 
@@ -16,24 +16,24 @@ The onboarding/audit loop is lead-only. Worker threads identify themselves as
 workers, follow shared safety rules and their bounded brief, and do not run the
 lead's audit inbox, publication/integration or decision-recording workflow.
 
-**Mac workflow (Robert, 19 Sep 2026):** Astra remains the lead in this session
-on Robert's Mac. Spawn fresh Astra workers with low reasoning in Herdr panes.
-This supersedes the Amp orb/thread workflow and oracle requirement; no oracle
-is available or required here. OrbStack is the proposed Linux execution
+**Mac workflow (Robert, 19 Sep 2026, 7:35 AM ET):** Fable (Claude Code) is the
+lead on Robert's Mac, taking over from Astra. Spawn fresh Claude Opus workers in
+Herdr panes. This supersedes the overnight Astra-lead/Astra-low-worker workflow
+and the earlier Amp orb/thread workflow; no oracle is available or required. OrbStack is the proposed Linux execution
 environment, separate from where agents run. `HANDOFF.md` owns current readiness.
 Preserve existing Mac services, Docker contexts and historical worktrees.
 
-- **The lead (Astra, this same thread).** Writes briefs, verifies, decides,
+- **The lead (Fable, this same thread).** Writes briefs, verifies, decides,
   records. Owns substantive evaluations and decisions, using bounded worker
   reviews when useful. Never
   writes code or prose under `toolchain/` or `examples/` by hand. Owns the
   syntheses, the spec chapters (`mo-wiki/spec/design-v0/`), the program specs
   (`mo-wiki/spec/programs/`), and the concept pages. Do not create a replacement
   lead thread for a new phase.
-- **The worker (Astra, low reasoning, fresh Herdr pane).** Does every line of code and
+- **The worker (Claude Opus, fresh Herdr pane).** Does every line of code and
   prose in `toolchain/`, `examples/`, and the generated or table files a brief
-  names. Each worker/new work unit/phase gets a fresh Codex session with
-  `--model gpt-6-astra -c 'model_reasoning_effort="low"'`. It never writes under
+  names. Each worker/new work unit/phase gets a fresh Claude Code session with
+  `--model opus`. It never writes under
   `mo-wiki/` except the spec lines its brief lists. Read-only review workers
   may share the lead checkout; implementation workers use separate worktrees.
 - **Robert.** Reviews the decision log, not the queue. The lead's recommendation is the decision, made without waiting and recorded with who, status, and what first tests it. Overturning is cheap; nothing is a mistake at this stage. One question per message to him, code options first, a PL term defined in three lines before use, no phones. Every time given to him is US Eastern (Robert, 17 Sep 2026; the VM's clock is UTC: `TZ=America/New_York date`), labelled ET, in reports, wakeup reasons, and the rows and pages he reads. Frame every report: where the work sits in the whole against the "Where we are" table on `mo-wiki/plans/roadmap.md`, what was verified, the numbers, anything unmet, said plainly.
@@ -72,11 +72,10 @@ audit rules; do not treat unavailable evidence as passed.
 2. **Fresh worker.** Read `herdr --skill` and verify `HERDR_ENV=1`. Discover
    the calling workspace/pane; never reuse historical IDs. Split a fresh pane
    to the right with explicit cwd and `--no-focus`; wait for its shell prompt.
-   Start a uniquely named agent with `herdr agent start <name> --kind codex
-   --pane <id> -- --model gpt-6-astra -c 'model_reasoning_effort="low"'
-   --no-alt-screen`, adding the task-appropriate sandbox. Verify the startup
-   output names Astra and low before sending the brief with `herdr agent prompt`.
-   Use `--sandbox read-only --ask-for-approval never` for read-only reviews.
+   Start a uniquely named agent with `herdr agent start <name> --kind claude
+   --pane <id> -- --model opus`, adding the task-appropriate permission mode.
+   Verify the startup output names Opus before sending the brief with
+   `herdr agent prompt`. Use `--permission-mode plan` for read-only reviews.
    For implementation, create a separate worktree from the exact local base
    under `~/Projects/startups/mo-lang-worktrees/`; a local branch may be ahead
    of origin. Name role, lead pane, base, write scope, constraints, checks and

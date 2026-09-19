@@ -941,3 +941,6 @@
 
 - HTTP wiki publication35438223776 succeeded atd715f13f. Separate read-only
   Logstat preparation review retained; semantic RED and900s workflow remain unmeasured.
+
+## [2026-09-19] update | Lead change to Fable; Opus workers; application workspace restarts
+- Robert, 7:35 AM ET: Fable leads, workers are Opus. Astra's session ended about 7:12 AM ET with `mo-application-workspace-v1` unfinished; its worktree is preserved at WIP snapshot `0b1404b5` and the slice is rebuilt from `030290b8`. Three rows in decisions/decision-log.md. Files: CLAUDE.md, .claude/skills/mo-lead/SKILL.md, HANDOFF.md, plans/roadmap.md.

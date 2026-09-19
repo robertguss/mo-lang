@@ -1,6 +1,43 @@
-# Mo Lang — Astra lead and low-reasoning Herdr workers; overnight work authorized
+# Mo Lang — Fable lead and Opus Herdr workers
 
-## Current instruction: autonomous Mac work, 19 Sep 2026, 12:10 AM ET
+## Current instruction: Fable takes over, 19 Sep 2026, 7:35 AM ET
+
+Robert's instruction: **Fable (Claude Code, Herdr pane `w4:p1`) is the lead;
+workers are fresh Claude Opus sessions in Herdr panes.** This supersedes the
+overnight Astra-lead/Astra-low-worker workflow below. Ownership, verification,
+audit and evidence rules are unchanged. Launch details are in
+`.claude/skills/mo-lead/SKILL.md`.
+
+Astra's session ended about 7:12 AM ET with ten components accepted and the
+eleventh, `mo-application-workspace-v1`, unfinished. No Astra lead, worker or
+run pane remains; panes `p2E`/`p2F` named below are gone. Machine
+`mo-executor-r01` is running and lead-owned. `main` equals `origin/main` at
+`edb75165` before this takeover's records. Auditor check at 7:15 AM ET: zero
+new records.
+
+**Decided with Robert (decision-log, 19 Sep 7:40 AM ET):** the unfinished
+application workspace is scrapped and rebuilt from accepted base `030290b8` by
+a fresh Opus worker. The Astra worktree
+`~/Projects/startups/mo-lang-worktrees/harness-application-workspace-v1` is
+historical evidence, never merged: checkpoint `0a74a0fc` plus WIP snapshot
+`0b1404b5` on local branch `harness/application-workspace-v1`, not green. What
+carries forward is the findings, as required RED-first controls in a revised
+brief: null-ID preadmission refusal loses `not_started`; an unaccepted response
+can accept HTTP 500/busy; a success command accepts null output; mixed-null
+streams; success with exit 1; plus the four architecture findings and the JSON
+decoder notes recorded below and under
+`audit/evidence/2026-09-19/application-workspace/` and
+`workspace-wire-readiness/`. Evidence is kept proportionate from here (third
+row of the same section).
+
+**Next, in order:** revise `mo-wiki/plans/mo-application-workspace-v1.md` for
+the rebuild; fresh Opus worker in a new worktree (use a new branch name, the
+old one is taken); lead acceptance; then the scripted Logstat repair slice;
+then live provider integration, which needs Robert for the subscription login.
+Still open from before: Step 39 unaccepted, Darwin `F_FULLFSYNC` unmet,
+Program 7 suspended pending a versioned replacement scope.
+
+## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
 session; spawn fresh Astra workers at low reasoning in Herdr panes.** There

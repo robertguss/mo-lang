@@ -794,6 +794,14 @@ direction separately from the lead's conservative execution interpretation.
 | Keep delivery uncertainty separate from persisted execution and cleanup. Absolute fragmented-IPC deadlines now return504/unknown; completed-response drain cannot close later work. Preserve all reds, first cleanup deadline refusal and two owner-kill gzip streams lacking final footers. No client-receipt, crash-durability or unconditional synchronous bound claim. | Astra lead, informed by independent Astra/low reviews | decided, semantic | identical drain/IPC probes, actual pipeline extra, closeout-01 |
 | Release [[mo-application-workspace-v1]] locally in a fresh Astra/low worktree: remote all-six-tool routing, private config, fresh Book binding, separate command waits and terminal recording/reporting.4096/524288 are acceptance limits. Grammar decode plus raw-member counts and integer lexical validation must be proved in both runtimes; machine/full gates remain lead-controlled. | Astra lead, informed by four architecture and two JSON/API reviews | decided, semantic | exact-base worker brief and future versioned acceptance groups |
 
+## 19 Sep 2026 — Lead change to Fable, Opus workers, application workspace restart, 7:40 AM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Fable (Claude Fable 5.1, Claude Code in Herdr pane w4:p1) takes over as lead from Astra. Workers are fresh Claude Opus sessions in Herdr panes, one per work unit, in separate worktrees. Supersedes the 19 Sep Astra-lead/Astra-low-worker instruction; ownership, verification, audit and evidence rules are unchanged. **For Robert** (his instruction). | Robert | decided | first Opus worker launch, model confirmed in its startup output |
+| Scrap the unfinished `mo-application-workspace-v1` implementation and rebuild it from the accepted base `030290b8` with a fresh Opus worker. The Astra worktree is preserved as historical evidence, never merged: checkpoint `0a74a0fc` plus WIP snapshot `0b1404b5` on local branch `harness/application-workspace-v1` (not green: five wire REDs retained, native and final integration not done). The reviewers' findings carry into a revised brief as required controls. **For Robert.** | Robert proposed; Fable lead agrees | decided | revised brief and the new worker's RED-first controls for the five wire gaps |
+| Evidence is kept proportionate from here: a run retains its command, exit code, summary and failing output, not per-run process tables and full source-identity manifests (the stranded slice held 20 MB of evidence for about 1,000 lines of Mo; the night added 23,820 files). Existing bundles stay as they are. **For Robert**, overturn if the auditor needs the fuller form. | Fable lead | decided | the rebuilt slice's evidence bundle size and the auditor's next reading |
+
 ## Related
 
 - [[session-05]]
