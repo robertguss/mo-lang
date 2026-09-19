@@ -15,7 +15,8 @@ fn main(platform: Platform)
     platform.exit(2)
   else
     door = Door.start()
-    case serve_run(platform.fs.scoped(folder), platform.net, platform.clock, platform.random, false, door)
+    case serve_run(platform.fs.scoped(folder), platform.net, platform.clock, platform.random, false,
+      door)
       Ok(lease_ms):
         let_go = door.ask(Wait, within: (lease_ms + 120_000).ms) == Ok(true)
         platform.exit(if let_go: 0 else: 1)

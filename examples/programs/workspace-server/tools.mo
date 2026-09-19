@@ -194,7 +194,8 @@ fn search(fs: Fs, query: String, root: String, by: Deadline) : Result(Produced, 
   for row in rows
     text = try text_of(fs, row.path, by)
     if hits.size <= 200
-      hits = hits.concat(offsets(text, query, 201 - hits.size).map(fn(o) Hit(path: row.path, offset: o) end))
+      hits = hits.concat(offsets(text, query,
+        201 - hits.size).map(fn(o) Hit(path: row.path, offset: o) end))
     end
   end
   fit = bounded(hits.map(fn(h) hit_text(h) end), 200)
@@ -287,7 +288,10 @@ test "exact_edit changes nothing unless exactly one non-empty match"
   fs = Fs.fixture()
   by = Deadline.fixture(1.minute)
   assert made(fs, [("answer", "aaa\n")])
-  for pair in [("zzz", "missing_match"), ("a", "multiple_matches"), ("", "empty_old"), ("aa", "multiple_matches")]
+  for pair in [("zzz", "missing_match"),
+    ("a", "multiple_matches"),
+    ("", "empty_old"),
+    ("aa", "multiple_matches")]
     edit = Map.new().set("path", "answer").set("old_text", pair.0).set("new_text", "b")
     assert run(fs, a_call("exact_edit", edit), by) == refusal(pair.1)
   end
@@ -298,9 +302,11 @@ test "a file past 64 KiB is oversized, even for a write elsewhere in its tree, a
   fs = Fs.fixture()
   by = Deadline.fixture(1.minute)
   assert made(fs, [("large", "x".repeat(65_536)), ("huge", "x".repeat(65_537))])
-  assert run(fs, a_call("read_file", Map.new().set("path", "large")), by) == refusal("result_too_large")
+  assert run(fs, a_call("read_file", Map.new().set("path", "large")),
+    by) == refusal("result_too_large")
   assert run(fs, a_call("read_file", Map.new().set("path", "huge")), by) == refusal("oversized")
-  assert run(fs, a_call("read_file", Map.new().set("path", "gone")), by) == refusal("filesystem_refusal")
+  assert run(fs, a_call("read_file", Map.new().set("path", "gone")),
+    by) == refusal("filesystem_refusal")
   write = Map.new().set("path", "a").set("text", "x")
   assert run(fs, a_call("write_file", write), by) == refusal("oversized")
   clean = Fs.fixture()

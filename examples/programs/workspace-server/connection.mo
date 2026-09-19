@@ -57,7 +57,8 @@ fn fresh() : Reading
 end
 
 fn with_length(r: Reading, length: UInt64) : Reading
-  Reading(head: r.head, head_bytes: r.head_bytes, length: length, body: r.body, body_bytes: r.body_bytes)
+  Reading(head: r.head, head_bytes: r.head_bytes, length: length, body: r.body,
+    body_bytes: r.body_bytes)
 end
 
 # One more line. A body is whole when its bytes, newlines counted, reach its length; one byte
@@ -71,8 +72,8 @@ fn took(r: Reading, line: String) : (Reading, Next)
     return (grown, Wait)
   end
   bytes = r.body_bytes + line.byte_size + 1
-  grown = Reading(head: r.head, head_bytes: r.head_bytes, length: r.length, body: "#{r.body}#{line}\n",
-    body_bytes: bytes)
+  grown = Reading(head: r.head, head_bytes: r.head_bytes, length: r.length,
+    body: "#{r.body}#{line}\n", body_bytes: bytes)
   return (grown, Whole(body: grown.body)) if bytes == r.length
   return (grown, Refuse(refusal: malformed())) if bytes > r.length + 1
   (grown, Wait)
@@ -125,10 +126,12 @@ fn status_of(got: Result(Envelope, AskError), call: Call) : (UInt16, Envelope)
   case got
     Ok(envelope): (200, envelope)
     Error(Timeout):
-      (504, Envelope(ids: ids, accepted: true, state: "timeout", execution: "unknown",
+      (504,
+        Envelope(ids: ids, accepted: true, state: "timeout", execution: "unknown",
         error: Some("response_timeout"), result: None))
     Error(Down):
-      (200, Envelope(ids: ids, accepted: true, state: "failure", execution: "unknown",
+      (200,
+        Envelope(ids: ids, accepted: true, state: "failure", execution: "unknown",
         error: Some("owner_unknown"), result: None))
   end
 end
@@ -149,12 +152,15 @@ process Runner(admission: Handle(Admission), worker: Handle(Worker), journal: Ha
     case message
       Go(back: back, call: call, payload_sha256: sha):
         state.call_id = call.call_id
-        case admission.ask(Admit(call_id: call.call_id, payload_sha256: sha, operation: call.operation), within: 1_000.ms)
+        case admission.ask(Admit(call_id: call.call_id, payload_sha256: sha,
+          operation: call.operation),
+          within: 1_000.ms)
           Ok(Yes(core_id: core_id, wait_ms: wait_ms)):
             got = status_of(worker.ask(Do(call: call, core_id: core_id), within: wait_ms.ms), call)
             closes(admission, got.1, got.0)
             reply = "{\"status\": #{got.0}, \"state\": \"#{got.1.state}\", \"execution\": \"#{got.1.execution}\", \"error\": #{Json.encode(got.1.error or "")}}"
-            noted = journal.ask(Replied(call_id: call.call_id, reply: reply), within: 1_000.ms) == Ok(true)
+            noted = journal.ask(Replied(call_id: call.call_id, reply: reply),
+              within: 1_000.ms) == Ok(true)
             back.send(Reply(status: got.0, envelope: got.1, journaled: noted))
           Ok(No(error)): back.send(Refused(error: error))
           Error(_):
@@ -200,7 +206,11 @@ fn closes(admission: Handle(Admission), envelope: Envelope, status: UInt16)
     admission.send(Close(why: "response_timeout"))
   else
     if envelope.execution == "unknown"
-      admission.send(Close(why: if envelope.error == Some("owner_unknown"): "owner_unknown" else: "unknown_execution"))
+      admission.send(Close(why: if envelope.error == Some("owner_unknown")
+        "owner_unknown"
+      else
+        "unknown_execution"
+      end))
     end
   end
 end
@@ -379,8 +389,8 @@ process Acceptor(identity: Identity, gate: Handle(Gate), admission: Handle(Admis
     case message
       Accepted(conn):
         if gate.ask(Enter, within: 1_000.ms) == Ok(true)
-          handler = Connection.start(conn, identity, gate, Runner.start(admission, worker, journal,
-            door))
+          handler = Connection.start(conn, identity, gate,
+            Runner.start(admission, worker, journal, door))
           handler.send(Begin(me: handler))
           conn.lines(into: handler, idle: 310_000.ms)
           handler.send(Expire, delay: 2_000.ms)

@@ -99,7 +99,11 @@ process Journal(run: Fs, cap: UInt64)
         state.calls = delivered(state.calls, call_id, delivery)
         if unknown
           noted = "{\"delivery\": \"unknown\", \"call_id\": #{Json.encode(call_id)}, \"record\": #{delivery}}"
-          state.unwritten += if run.replace("delivery.json", noted, within: reply_by) is Ok(_): 0 else: 1
+          state.unwritten += if run.replace("delivery.json", noted, within: reply_by) is Ok(_)
+            0
+          else
+            1
+          end
         end
         written(run, document(state.binding, state.calls, state.cleanup, state.frozen), reply_by)
       Cleaned(cleanup):
@@ -122,10 +126,12 @@ fn written(run: Fs, text: String, by: Deadline) : Bool
   run.replace("owner.json", text, within: by) is Ok(_)
 end
 
-fn executed(calls: Map(String, Entry), call_id: String, execution: String, result: String) : Map(String, Entry)
+fn executed(calls: Map(String, Entry), call_id: String, execution: String,
+  result: String) : Map(String, Entry)
   case calls.get(call_id)
     Some(e):
-      calls.set(call_id, Entry(core_call_id: e.core_call_id, payload_sha256: e.payload_sha256,
+      calls.set(call_id,
+        Entry(core_call_id: e.core_call_id, payload_sha256: e.payload_sha256,
         operation: e.operation, execution: execution, result: Some(result), reply: e.reply,
         delivery: e.delivery))
     None: calls
@@ -135,7 +141,8 @@ end
 fn replied(calls: Map(String, Entry), call_id: String, reply: String) : Map(String, Entry)
   case calls.get(call_id)
     Some(e):
-      calls.set(call_id, Entry(core_call_id: e.core_call_id, payload_sha256: e.payload_sha256,
+      calls.set(call_id,
+        Entry(core_call_id: e.core_call_id, payload_sha256: e.payload_sha256,
         operation: e.operation, execution: e.execution, result: e.result, reply: Some(reply),
         delivery: e.delivery))
     None: calls
@@ -145,7 +152,8 @@ end
 fn delivered(calls: Map(String, Entry), call_id: String, delivery: String) : Map(String, Entry)
   case calls.get(call_id)
     Some(e):
-      calls.set(call_id, Entry(core_call_id: e.core_call_id, payload_sha256: e.payload_sha256,
+      calls.set(call_id,
+        Entry(core_call_id: e.core_call_id, payload_sha256: e.payload_sha256,
         operation: e.operation, execution: e.execution, result: e.result, reply: e.reply,
         delivery: Some(delivery)))
     None: calls
@@ -170,25 +178,40 @@ test "the binding is the first row, and each record rewrites the whole journal"
   fs = Fs.fixture()
   journal = Journal.start(fs, 4_194_304)
   assert journal.ask(Bind(binding: bound()), within: 1.minute) == Ok(true)
-  assert journal.ask(Intent(call_id: "c1", entry: entry_of("1".repeat(32), "f".repeat(64), "read_file")), within: 1.minute) == Ok(true)
-  assert journal.ask(Executed(call_id: "c1", execution: "completed", result: "{\"state\": \"success\"}"), within: 1.minute) == Ok(true)
-  assert journal.ask(Replied(call_id: "c1", reply: "{\"status\": 504}"), within: 1.minute) == Ok(true)
+  assert journal.ask(Intent(call_id: "c1",
+    entry: entry_of("1".repeat(32), "f".repeat(64), "read_file")),
+    within: 1.minute) == Ok(true)
+  assert journal.ask(Executed(call_id: "c1", execution: "completed",
+    result: "{\"state\": \"success\"}"),
+    within: 1.minute) == Ok(true)
+  assert journal.ask(Replied(call_id: "c1", reply: "{\"status\": 504}"),
+    within: 1.minute) == Ok(true)
+  assert journal.ask(Delivered(call_id: "c1", delivery: "{\"known\": true, \"written\": true}",
+    unknown: false),
+    within: 1.minute) == Ok(true)
   assert journal.ask(Cleaned(cleanup: "{\"cleanup\": \"confirmed\"}"), within: 1.minute) == Ok(true)
   assert fs.read("owner.json", within: 1.minute) is Ok(text)
   assert Json.decode(text) is Ok(Object(fields))
   assert fields.keys == ["version", "binding", "calls", "cleanup", "frozen"]
-  assert text.contains?("\"execution\": \"completed\", \"result\": {\"state\": \"success\"}, \"reply\": {\"status\": 504}")
+  assert text.contains?("\"admission\": \"admitted\", \"intent\": true")
+  assert text.contains?("\"execution\": \"completed\", \"result\": {\"state\": \"success\"}")
+  assert text.contains?("\"reply\": {\"status\": 504}")
+  assert text.contains?("\"delivery\": {\"known\": true, \"written\": true}")
+  assert text.contains?("\"cleanup\": \"confirmed\"")
 end
 
 test "an intent the journal could not hold with its largest reply is refused, and a repeat too"
   fs = Fs.fixture()
   small = Journal.start(fs, reserve() + 100)
   assert small.ask(Bind(binding: bound()), within: 1.minute) == Ok(true)
-  assert small.ask(Intent(call_id: "c1", entry: entry_of("1", "2", "list_files")), within: 1.minute) == Ok(false)
+  assert small.ask(Intent(call_id: "c1", entry: entry_of("1", "2", "list_files")),
+    within: 1.minute) == Ok(false)
   roomy = Journal.start(Fs.fixture(), 4_194_304)
   assert roomy.ask(Bind(binding: bound()), within: 1.minute) == Ok(true)
-  assert roomy.ask(Intent(call_id: "c1", entry: entry_of("1", "2", "list_files")), within: 1.minute) == Ok(true)
-  assert roomy.ask(Intent(call_id: "c1", entry: entry_of("3", "4", "list_files")), within: 1.minute) == Ok(false)
+  assert roomy.ask(Intent(call_id: "c1", entry: entry_of("1", "2", "list_files")),
+    within: 1.minute) == Ok(true)
+  assert roomy.ask(Intent(call_id: "c1", entry: entry_of("3", "4", "list_files")),
+    within: 1.minute) == Ok(false)
 end
 
 test "an execution with no intent before it is refused"
@@ -202,9 +225,11 @@ test "a delivery that is not known leaves delivery.json beside the journal"
   fs = Fs.fixture()
   journal = Journal.start(fs, 4_194_304)
   assert journal.ask(Bind(binding: bound()), within: 1.minute) == Ok(true)
-  assert journal.ask(Intent(call_id: "c1", entry: entry_of("1", "2", "read_file")), within: 1.minute) == Ok(true)
+  assert journal.ask(Intent(call_id: "c1", entry: entry_of("1", "2", "read_file")),
+    within: 1.minute) == Ok(true)
   delivery = "{\"known\": false, \"written\": false}"
-  assert journal.ask(Delivered(call_id: "c1", delivery: delivery, unknown: true), within: 1.minute) == Ok(true)
+  assert journal.ask(Delivered(call_id: "c1", delivery: delivery, unknown: true),
+    within: 1.minute) == Ok(true)
   assert journal.ask(Froze(frozen: "{\"sha256\": \"x\"}"), within: 1.minute) == Ok(true)
   assert fs.read("delivery.json", within: 1.minute) is Ok(text)
   assert text.starts_with?("{\"delivery\": \"unknown\"")

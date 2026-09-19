@@ -30,7 +30,9 @@ fn scripted_command(command: String) : (Outcome, UInt64)
     _: 0
   end
   if command == "binary"
-    return (Outcome(state: "failure", execution: "completed", error: Some("output_encoding"), produced: Undecodable(exit_code: 7, elapsed_ms: 123)), delay)
+    return (Outcome(state: "failure", execution: "completed", error: Some("output_encoding"),
+      produced: Undecodable(exit_code: 7, elapsed_ms: 123)),
+      delay)
   end
   ran = Ran(exit_code: 7, stdout: "hello 🌊", stderr: "", elapsed_ms: 123)
   if command == "timeout"
@@ -43,7 +45,9 @@ end
 fn digest_of(workspace: Fs, by: Deadline) : String
   case inventory(workspace, ".", by)
     Ok(rows):
-      Hash.hex(Hash.sha256(String.join(rows.map(fn(r) "#{r.path} #{r.sha256}\n" end), "").bytes))
+      Hash.hex(Hash.sha256(String.join(rows.map(fn(r)
+        "#{r.path} #{r.sha256}\n"
+      end), "").bytes))
     Error(_): "unreadable"
   end
 end
@@ -66,8 +70,8 @@ process Tap(fs: Fs)
   end
 end
 
-process Worker(workspace: Fs, journal: Handle(Journal), admission: Handle(Admission), script: Script,
-  tap: Option(Handle(Tap)))
+process Worker(workspace: Fs, journal: Handle(Journal), admission: Handle(Admission),
+  script: Script, tap: Option(Handle(Tap)))
   state
     me: Option(Handle(Worker))
     held: List(Reply(Envelope))
@@ -145,9 +149,11 @@ fn later(me: Option(Handle(Worker)), delay: UInt64)
 end
 
 # The execution is journaled by the one who ran it, then admission is told it is over.
-fn finish(journal: Handle(Journal), admission: Handle(Admission), call_id: String, envelope: Envelope,
-  by: Duration)
-  recorded = journal.ask(Executed(call_id: call_id, execution: envelope.execution, result: text(envelope)), within: by)
+fn finish(journal: Handle(Journal), admission: Handle(Admission), call_id: String,
+  envelope: Envelope, by: Duration)
+  recorded = journal.ask(Executed(call_id: call_id, execution: envelope.execution,
+    result: text(envelope)),
+    within: by)
   admission.send(Finished(call_id: call_id))
   if recorded != Ok(true)
     admission.send(Close(why: "execution_unjournaled"))
@@ -171,7 +177,8 @@ test "a file call runs, is journaled by the worker, and frees admission"
   worker = Worker.start(fs.scoped("data"), journal, admission, production(), None)
   call = Call(run_id: "r", workspace_id: "0".repeat(32), call_id: "c1", operation: "read_file",
     args: Map.new().set("path", "a"), timeout_ms: 0)
-  assert admission.ask(Admit(call_id: "c1", payload_sha256: "x", operation: "read_file"), within: 1.minute) is Ok(Yes(core_id: core, wait_ms: _))
+  assert admission.ask(Admit(call_id: "c1", payload_sha256: "x", operation: "read_file"),
+    within: 1.minute) is Ok(Yes(core_id: core, wait_ms: _))
   assert worker.ask(Do(call: call, core_id: core), within: 1.minute) is Ok(envelope)
   assert envelope.result == Some("{\"text\": \"héllo\", \"truncated\": false}")
   assert admission.ask(Status, within: 1.minute) is Ok(standing)
@@ -182,7 +189,9 @@ end
 
 test "the production worker serves no command"
   fs = Fs.fixture()
-  worked = worked(fs, production(), Call(run_id: "r", workspace_id: "w", call_id: "c",
-    operation: "command", args: Map.new(), timeout_ms: 500), Deadline.fixture(1.minute))
+  worked = worked(fs, production(),
+    Call(run_id: "r", workspace_id: "w", call_id: "c", operation: "command", args: Map.new(),
+    timeout_ms: 500),
+    Deadline.fixture(1.minute))
   assert worked.0.error == Some("request_refused")
 end

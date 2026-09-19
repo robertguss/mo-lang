@@ -95,7 +95,8 @@ end
 
 # The whole run, served. The door is let go by the operator's close, or by the desk itself
 # a minute after the lease ends.
-fn serve_run(run: Fs, net: Net, clock: Clock, random: Random, double: Bool, door: Handle(Door)) : Result(UInt64, String)
+fn serve_run(run: Fs, net: Net, clock: Clock, random: Random, double: Bool,
+  door: Handle(Door)) : Result(UInt64, String)
   settings = try settings_of(try read_in(run, "config.json"))
   secrets = try secrets_of(try read_in(run, "capability.json"))
   journal = Journal.start(run, settings.journal_cap)
@@ -107,7 +108,8 @@ fn serve_run(run: Fs, net: Net, clock: Clock, random: Random, double: Bool, door
   observed = hashed(worker)
   binding = binding_text(settings.run_id, settings.workspace_id, settings.source_sha256, observed,
     settings.verifier_sha256)
-  return Error("the journal could not be bound") if journal.ask(Bind(binding: binding), within: 5_000.ms) != Ok(true)
+  return Error("the journal could not be bound") if journal.ask(Bind(binding: binding),
+    within: 5_000.ms) != Ok(true)
   gate = Gate.start(4, secrets.0)
   desk = Desk.start(secrets.1, admission, journal, worker, gate, door)
   port = try case net.listen(0, within: 5_000.ms)

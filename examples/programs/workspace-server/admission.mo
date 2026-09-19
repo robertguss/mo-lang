@@ -58,7 +58,8 @@ process Admission(journal: Handle(Journal), clock: Clock, random: Random, lease_
           No(error: refusal)
         else
           core_id = Hash.hex(random.bytes(16))
-          if journal.ask(Intent(call_id: call_id, entry: entry_of(core_id, sha, operation)), within: reply_by) == Ok(true)
+          if journal.ask(Intent(call_id: call_id, entry: entry_of(core_id, sha, operation)),
+            within: reply_by) == Ok(true)
             state.active = Some(call_id)
             state.calls = state.calls.add(call_id)
             Yes(core_id: core_id, wait_ms: wait_for(operation, left))
@@ -119,14 +120,19 @@ supervisor Admissions(journal: Handle(Journal), clock: Clock, random: Random, le
 end
 
 test "one call at a time: a second is busy, and after the first finishes it is admitted"
-  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(), Random.fixture(), 900_000)
+  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(),
+    Random.fixture(), 900_000)
   assert admission.ask(Open, within: 1.minute) == Ok(true)
-  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "list_files"), within: 1.minute) is Ok(Yes(core_id: core, wait_ms: 2_000))
+  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "list_files"),
+    within: 1.minute) is Ok(Yes(core_id: core, wait_ms: 2_000))
   assert core.byte_size == 32
-  assert admission.ask(Admit(call_id: "b", payload_sha256: "x", operation: "list_files"), within: 1.minute) == Ok(No(error: "busy"))
+  assert admission.ask(Admit(call_id: "b", payload_sha256: "x", operation: "list_files"),
+    within: 1.minute) == Ok(No(error: "busy"))
   admission.send(Finished(call_id: "a"))
-  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "list_files"), within: 1.minute) == Ok(No(error: "conflict"))
-  assert admission.ask(Admit(call_id: "b", payload_sha256: "x", operation: "list_files"), within: 1.minute) is Ok(Yes(core_id: _, wait_ms: _))
+  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "list_files"),
+    within: 1.minute) == Ok(No(error: "conflict"))
+  assert admission.ask(Admit(call_id: "b", payload_sha256: "x", operation: "list_files"),
+    within: 1.minute) is Ok(Yes(core_id: _, wait_ms: _))
 end
 
 test "the refusals come in the bridge's order"
@@ -134,17 +140,23 @@ test "the refusals come in the bridge's order"
   assert refusal_of(None, Set.new().add("b"), true, 0, "b") == "conflict"
   assert refusal_of(None, Set.new(), false, 499, "b") == "admission_closed"
   full = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]
-  assert refusal_of(None, full.reduce(Set.new(), fn(s, id) s.add(id) end), false, 900_000, "b") == "call_limit"
-  assert refusal_of(None, full.reduce(Set.new(), fn(s, id) s.add(id) end), true, 900_000, "b") == "admission_closed"
+  assert refusal_of(None, full.reduce(Set.new(), fn(s, id) s.add(id) end), false, 900_000,
+    "b") == "call_limit"
+  assert refusal_of(None, full.reduce(Set.new(), fn(s, id) s.add(id) end), true, 900_000,
+    "b") == "admission_closed"
 end
 
 test "closed stays closed, and a lease not opened admits nothing"
-  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(), Random.fixture(), 900_000)
+  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(),
+    Random.fixture(), 900_000)
   assert admission.ask(Open, within: 1.minute) == Ok(true)
   admission.send(Close(why: "operator"))
-  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "read_file"), within: 1.minute) == Ok(No(error: "admission_closed"))
-  unopened = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(), Random.fixture(), 900_000)
-  assert unopened.ask(Admit(call_id: "a", payload_sha256: "x", operation: "read_file"), within: 1.minute) == Ok(No(error: "admission_closed"))
+  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "read_file"),
+    within: 1.minute) == Ok(No(error: "admission_closed"))
+  unopened = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(),
+    Random.fixture(), 900_000)
+  assert unopened.ask(Admit(call_id: "a", payload_sha256: "x", operation: "read_file"),
+    within: 1.minute) == Ok(No(error: "admission_closed"))
 end
 
 test "a journal that cannot hold the intent refuses the call, and nothing is active"
@@ -152,7 +164,8 @@ test "a journal that cannot hold the intent refuses the call, and nothing is act
   assert journal.ask(Bind(binding: "{}"), within: 1.minute) == Ok(true)
   admission = Admission.start(journal, Clock.fixture(), Random.fixture(), 900_000)
   assert admission.ask(Open, within: 1.minute) == Ok(true)
-  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "read_file"), within: 1.minute) == Ok(No(error: "journal_full"))
+  assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "read_file"),
+    within: 1.minute) == Ok(No(error: "journal_full"))
   assert admission.ask(Status, within: 1.minute) is Ok(standing)
   assert !standing.active and standing.calls == 0
 end
@@ -164,15 +177,19 @@ test "waits: two seconds for a file, 300 for a command, never past the lease"
 end
 
 test "sixteen sequential calls are admitted, a seventeenth is call_limit, and a duplicate id is once"
-  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(), Random.fixture(), 900_000)
+  admission = Admission.start(Journal.start(Fs.fixture(), 4_194_304), Clock.fixture(),
+    Random.fixture(), 900_000)
   assert admission.ask(Open, within: 1.minute) == Ok(true)
   ids = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"]
   for id in ids
-    assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"), within: 1.minute) is Ok(Yes(core_id: _, wait_ms: _))
+    assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"),
+      within: 1.minute) is Ok(Yes(core_id: _, wait_ms: _))
     admission.send(Finished(call_id: id))
-    assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"), within: 1.minute) == Ok(No(error: "conflict"))
+    assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"),
+      within: 1.minute) == Ok(No(error: "conflict"))
   end
-  assert admission.ask(Admit(call_id: "overflow", payload_sha256: "x", operation: "list_files"), within: 1.minute) == Ok(No(error: "call_limit"))
+  assert admission.ask(Admit(call_id: "overflow", payload_sha256: "x", operation: "list_files"),
+    within: 1.minute) == Ok(No(error: "call_limit"))
   assert admission.ask(Status, within: 1.minute) is Ok(standing)
   assert standing.calls == 16 and !standing.active
 end

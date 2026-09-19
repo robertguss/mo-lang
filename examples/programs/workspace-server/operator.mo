@@ -128,8 +128,7 @@ process OperatorLine(conn: Conn, desk: Handle(Desk))
           end
           conn.close
         end
-      LineTooLong | Closed | Idle:
-        conn.close
+      LineTooLong | Closed | Idle: conn.close
     end
   end
 end
