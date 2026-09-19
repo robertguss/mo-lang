@@ -99,7 +99,7 @@ Nothing is final until measured. Before the lead relies on the tool:
 
 ## Open before readiness
 
-- **For Robert:** a TypeSafe account and `TYPESAFE_API_KEY`, and whether raw
+- **For Robert:** Robert has an account and key (18 Sep 2026). Still open: whether raw
   logs may be sent to an external service. The repo's evidence is already
   public, but this is still an outward send.
 - The pinned model version (`jev-latest` moves; pin `jev-1.x` for calibration),

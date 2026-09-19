@@ -639,6 +639,7 @@ direction separately from the lead's conservative execution interpretation.
 | --- | --- | --- | --- |
 | Propose [[report-claim-check]]: TypeSafe (Jev) triage of worker report claims against raw outputs, citation-check shape; code-first exact checks; output orders the lead's attention and is never acceptance, raw evidence or a reading. Not in the Mo harness, so the Pi comparison stays matched. | Robert chose from lead's three options | recorded | calibration on step 36, Step 39 A/B and planted negative controls |
 | A TypeSafe account and API key, and sending raw logs to an external service, are Robert's call. Nothing is built or called before a bounded start and lead readiness. | lead | for Robert | Robert's answer |
+| Robert already has a TypeSafe account and API key (18 Sep 2026, 11:10 PM ET). Still open: sending raw logs out, and a bounded start. | Robert | recorded | bounded start approval |
 
 ## Related
 
