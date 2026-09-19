@@ -99,6 +99,27 @@ open until its acceptance. The lead meanwhile writes the capability design page
 (strict scope, `Fs.replace`, `platform.exec`). Local `main` is ahead of origin
 and holds the unaccepted merge `ddd81c06`; push after acceptance.
 
+**Step 1 worker done, 8:41 AM ET; lead verification in progress, 8:50 AM ET:**
+`harness/step-1-executor` at `cf5ed57b` (3 commits, 34 files, +575/-898) merged
+locally at `97202a81`. Lead reruns under the guard: executor unit tests 96 OK
+exit 0 (84 before), application 25 OK, `workspace_http/local.py` 22 OK exit 0.
+Python went from 6,688 to 6,326 counted lines, far less than the design map's
+estimate of about 1,000 removed: the estimates on `mo-harness-in-mo.md` are
+optimistic and stay unverified. Semantic change to review with Robert: the
+machine no longer powers off on an unconfirmed cleanup, only on proof that the
+candidate's cgroup is still populated; an unconfirmed cleanup leaves evidence
+and the armed reaper but **nothing yet refuses new runs on that machine**
+(follow-up for the Mo server step). The host's `orbctl stop` follows the same
+rule, reversing an accepted test. Worker gaps: three provider READMEs and
+`auth/attempt.sh` still name deleted runners (outside its `.py` scope);
+rewired provider scripts never ran; `recovery/readiness_probes.py` already
+failed to import before. It edited two strings in `recovery/live.py`, which the
+step 2 worker must know. Machine reruns owed, one at a time: `selftest.py`
+(running now), `test_lifecycle_live.py`, `test_workspace_live.py`,
+`recovery/live.py`, `workspace_http/live.py`, `application/controls.py`,
+`inventory.py`; plus two real-machine E1 checks (the reaper reads
+`cgroup.events`; a stalled daemon leaves `cleanup_unconfirmed` without power-off).
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
