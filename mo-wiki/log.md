@@ -969,3 +969,6 @@
 
 ## [2026-09-19] pause | handoff to a fresh lead session
 - 1:13 PM ET: HANDOFF.md has a START HERE section; state-of-the-project.md has the day's account. Two workers in flight (end to end with the Logstat repair; step 41 Exec) and the Linux full suite on the VM. Lint 26 notices of the inherited kinds.
+
+## [2026-09-19] brief | step 42, runtime memory safety; a fresh lead session onboarded
+- 1:16 PM ET: fresh Fable lead session onboarded (auditor check 0 new records; both Opus workers still working; the VM full suite still running). Brief written: plans/interpreter-step-42.md (stress mode for the whole corpus in both runtimes, poisoned freed regions with an ASan step, the audit of what outlives a frame, a parcel type, guard.py killing the process group; compaction points as a simulator dimension left out and named). Launches after step 41 lands. Roadmap board rewritten. Lint 26 notices of the inherited kinds, none new.

@@ -28,9 +28,9 @@ regressions and two new extras pass. Full243/243,5/5;17339 unchanged files,
 
 | board | current work |
 |---|---|
-| Now | [[mo-harness-in-mo]]: steps 1 and 8 accepted 9:03 AM ET; next step 2 (live suites as tables), the capabilities toolchain step ([[mo-capabilities-for-the-harness]]), and a toolchain brief for the raw-memory report defect |
-| Done today | [[mo-application-workspace-v1]], Mo routing to all six remote tools: **restarting from scratch** (19 Sep, 7:20 AM ET). Fable leads, Opus workers; Astra's unfinished attempt is preserved, not merged |
-| Next | [[mo-harness-in-mo]]: fix the overnight review's findings and move the harness into Mo (Robert, 19 Sep); scripted Logstat repair; then provider integration |
+| Now | (19 Sep, 1:16 PM ET) In flight, Opus workers: [[mo-harness-end-to-end-v1]] (the Mo agent against the real service on the machine, then the scripted Logstat repair) and [[interpreter-step-41]] (`Exec`). The first x86_64 Linux full suite on step 40's tree is running on the VM, informational |
+| Done today | Accepted on `main`: the rebuilt [[mo-application-workspace-v1]]; [[mo-harness-in-mo]] steps 1, 8 and 2; the raw-memory runtime fix ([[toolchain-raw-memory-report]]); [[interpreter-step-40]] (a scope that holds against links, `Fs.replace`). Darwin full suite 249 of 249 |
+| Next | In order: accept the two workers; [[interpreter-step-42]] (runtime memory safety, briefed, launches after step 41 lands); lift the agent's 256 KiB report cap; the Mo six-tool server ([[mo-harness-in-mo]] step 4) on `Exec`; plan steps 5 to 7; provider live blockers with Robert's login; the first model-driven task; the Pi comparison |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
 | Recently done | [[mo-workspace-http-v1]], [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |
 

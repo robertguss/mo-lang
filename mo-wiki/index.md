@@ -138,6 +138,7 @@ type: index
 - [[report-claim-check]] — proposed TypeSafe triage of worker report claims
   against raw evidence; never acceptance; not built (18 Sep 2026)
 - [[interpreter-step-41]] — brief: `Exec`, a child process narrowed in `main` to fixed commands, both runtimes and the simulator
+- [[interpreter-step-42]] — brief: runtime memory safety: the corpus under compaction at every safe point in both runtimes, poisoned freed regions, the audit of what outlives a frame, a parcel type, a guard that kills the group
 - [[mo-harness-end-to-end-v1]] — brief: the Mo agent against the real service on the machine, then the scripted Logstat repair
 - [[interpreter-step-40]] — brief: `Fs.scoped` made to hold against symlinks in both runtimes, and `Fs.replace`
 - [[mo-harness-step-2-live-tables]] — brief: six live suites as case tables, recovery's tests made able to fail
