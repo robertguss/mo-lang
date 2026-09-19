@@ -1,0 +1,2 @@
+zig-out/mo-build/hello/hello
+/bin/sh: /build/zig-out/mo-build/hello/hello: Permission denied

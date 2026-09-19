@@ -1,0 +1,2 @@
+zig-out/mo-build/logstat/logstat
+/bin/sh: /build/zig-out/mo-build/logstat/logstat: Permission denied

@@ -1,0 +1,12 @@
+test_application_deadline_and_fixed_identity (__main__.Policy.test_application_deadline_and_fixed_identity) ... ok
+test_build_mount_explicitly_overrides_docker_noexec_default (__main__.Policy.test_build_mount_explicitly_overrides_docker_noexec_default) ... ok
+test_default_stays_busybox_and_requires_explicit_application_identity (__main__.Policy.test_default_stays_busybox_and_requires_explicit_application_identity) ... ok
+test_effective_policy_rejects_every_application_limit_mutation (__main__.Policy.test_effective_policy_rejects_every_application_limit_mutation) ... ok
+test_application_registration_rejects_manifest_widening (__main__.Registration.test_application_registration_rejects_manifest_widening) ... ok
+test_registered_selection_cannot_be_changed_during_reservation (__main__.Registration.test_registered_selection_cannot_be_changed_during_reservation) ... ok
+test_empty_application_snapshot_refused (__main__.Registration.test_empty_application_snapshot_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.006s
+
+OK

@@ -1,0 +1,346 @@
+{
+  "run_id": "6f3e64b6924043699a5c50efe7fa1d79",
+  "workspace_id": "e591e1532e2d47a2a740a56f42f4d01c",
+  "call_id": "07434f34a13f4f33b8f50ab1bf5b09d7",
+  "state": "failure",
+  "execution": "completed",
+  "exit_code": 126,
+  "signal": null,
+  "stdout": "",
+  "stderr": "emlnLW91dC9tby1idWlsZC9sb2dzdGF0L2xvZ3N0YXQKL2Jpbi9zaDogL2J1aWxkL3ppZy1vdXQvbW8tYnVpbGQvbG9nc3RhdC9sb2dzdGF0OiBQZXJtaXNzaW9uIGRlbmllZAo=",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": 37.17279627300013,
+  "execution_valid": true,
+  "manifest": {
+    "run_id": "00ecdc6563074a47ac17479af276bce8",
+    "name": "mo-executor-00ecdc6563074a47ac17479af276bce8",
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "candidate_sha256": "78f2ce5b2c7dfaf8193cb0eeed776580095f1a2ec5730233cf51c69d3b2e9b23",
+    "script": "c2V0IC1ldTsgdGVzdCAteiAiJChscyAtQSAvYnVpbGQpIjsgY2QgL2J1aWxkOyBtbyBidWlsZCAvd29ya3NwYWNlL2xvZ3N0YXQvbWFpbi5tbyA+L2J1aWxkL2NvbXBpbGVyLmxvZyAyPiYxIHx8IHsgcmM9JD87IGNhdCAvYnVpbGQvY29tcGlsZXIubG9nID4mMjsgZXhpdCAiJHJjIjsgfTsgY2F0IC9idWlsZC9jb21waWxlci5sb2cgPiYyOyBjZCAvd29ya3NwYWNlL2xvZ3N0YXQ7IC9idWlsZC96aWctb3V0L21vLWJ1aWxkL2xvZ3N0YXQvbG9nc3RhdCBmaXh0dXJlOyBwcmludGYgIkZJTFRFUkVEXG4iOyAvYnVpbGQvemlnLW91dC9tby1idWlsZC9sb2dzdGF0L2xvZ3N0YXQgZml4dHVyZSAtLXRvcCAzIC0tc2luY2UgMjAyNi0wOS0xMlQxMDowMDoxMFogLS1qc29uOyBkZiAtayAvYnVpbGQgL3RtcCA+JjI7IGRmIC1pIC9idWlsZCAvdG1wID4mMg==",
+    "checks": [
+      {
+        "id": "output",
+        "expected": "requests    16\nerrors       3  (18.8%)\nmalformed    4\nper minute 4.6\n\nslowest\n  1_204 ms  POST /api/orders                         2026-09-12T10:00:21Z\n    610 ms  GET /api/cards/****************/charge   2026-09-12T10:01:30Z\n    340 ms  POST /api/orders                         2026-09-12T10:00:02Z\n    340 ms  DELETE /api/orders/17                    2026-09-12T10:00:15Z\n    340 ms  POST /api/orders                         2026-09-12T10:02:30Z\n\nbusiest\n  7  GET /api/users\n  4  POST /api/orders\n  2  GET /api/cards/****************/charge\n  2  GET /health\n  1  DELETE /api/orders/17\nFILTERED\n{\"requests\": 12, \"errors\": 2, \"error_rate\": 0.167, \"malformed\": 4, \"per_minute\": 3.6, \"slowest\": [{\"ms\": 1204, \"method\": \"POST\", \"path\": \"/api/orders\", \"at\": \"2026-09-12T10:00:21Z\"}, {\"ms\": 610, \"method\": \"GET\", \"path\": \"/api/cards/****************/charge\", \"at\": \"2026-09-12T10:01:30Z\"}, {\"ms\": 340, \"method\": \"DELETE\", \"path\": \"/api/orders/17\", \"at\": \"2026-09-12T10:00:15Z\"}], \"busiest\": [{\"count\": 5, \"method\": \"GET\", \"path\": \"/api/users\"}, {\"count\": 3, \"method\": \"POST\", \"path\": \"/api/orders\"}, {\"count\": 2, \"method\": \"GET\", \"path\": \"/health\"}]}\n",
+        "stream": "stdout",
+        "mode": "exact"
+      }
+    ],
+    "seconds": 120,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+    "supervisor_sha256": "a704caa37c315f2234c870a7f9bd221f1159761193885e5169703615c69f62ef",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace": {
+      "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "policy": "application-build-v1",
+      "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+      "workspace_id": "e591e1532e2d47a2a740a56f42f4d01c",
+      "workspace_run_id": "6f3e64b6924043699a5c50efe7fa1d79",
+      "source": "/var/lib/mo-harness/mo-workspace-e591e1532e2d47a2a740a56f42f4d01c/snapshot/data",
+      "readonly": true,
+      "snapshot": "a5a4cd955763faeb94d221efcb39c31c9ee89c072b9175954ae517c842ae3e16"
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+    "check_inventory_sha256": "23c51f12a520fde61b40dfa16a7d5523e192021de2fef110437f21542cd20959",
+    "workspace_call_id": "07434f34a13f4f33b8f50ab1bf5b09d7",
+    "deadline": 1789800360.0595515
+  },
+  "observation": {
+    "attach_exit_code": 126,
+    "cancelled": false,
+    "candidate_sha256": "78f2ce5b2c7dfaf8193cb0eeed776580095f1a2ec5730233cf51c69d3b2e9b23",
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-dfe60ba4c1d680d5e9560fcc1a13e6f10fa69a505cf2d7099ceeba560cc9e266.scope",
+    "cleanup": {
+      "absent": true,
+      "cgroup_absent": true,
+      "removed_rc": 0,
+      "host_confirmed": true,
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-dfe60ba4c1d680d5e9560fcc1a13e6f10fa69a505cf2d7099ceeba560cc9e266.scope",
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    },
+    "container_id": "dfe60ba4c1d680d5e9560fcc1a13e6f10fa69a505cf2d7099ceeba560cc9e266",
+    "counters": {
+      "cpu.stat:burst_usec": 0,
+      "cpu.stat:nice_usec": 0,
+      "cpu.stat:nr_bursts": 0,
+      "cpu.stat:nr_periods": 368,
+      "cpu.stat:nr_throttled": 288,
+      "cpu.stat:system_usec": 8195589,
+      "cpu.stat:throttled_usec": 56812659,
+      "cpu.stat:usage_usec": 36707618,
+      "cpu.stat:user_usec": 28512029,
+      "memory.events:high": 0,
+      "memory.events:low": 0,
+      "memory.events:max": 0,
+      "memory.events:oom": 0,
+      "memory.events:oom_group_kill": 0,
+      "memory.events:oom_kill": 0,
+      "memory.events:sock_throttled": 0,
+      "memory.peak": 665878528,
+      "pids.events:max": 0
+    },
+    "effective": {
+      "AppArmorProfile": "",
+      "Args": [
+        "-c",
+        "set -eu; test -z \"$(ls -A /build)\"; cd /build; mo build /workspace/logstat/main.mo >/build/compiler.log 2>&1 || { rc=$?; cat /build/compiler.log >&2; exit \"$rc\"; }; cat /build/compiler.log >&2; cd /workspace/logstat; /build/zig-out/mo-build/logstat/logstat fixture; printf \"FILTERED\\n\"; /build/zig-out/mo-build/logstat/logstat fixture --top 3 --since 2026-09-12T10:00:10Z --json; df -k /build /tmp >&2; df -i /build /tmp >&2"
+      ],
+      "Config": {
+        "AttachStderr": true,
+        "AttachStdin": false,
+        "AttachStdout": true,
+        "Cmd": [
+          "/bin/sh",
+          "-c",
+          "set -eu; test -z \"$(ls -A /build)\"; cd /build; mo build /workspace/logstat/main.mo >/build/compiler.log 2>&1 || { rc=$?; cat /build/compiler.log >&2; exit \"$rc\"; }; cat /build/compiler.log >&2; cd /workspace/logstat; /build/zig-out/mo-build/logstat/logstat fixture; printf \"FILTERED\\n\"; /build/zig-out/mo-build/logstat/logstat fixture --top 3 --since 2026-09-12T10:00:10Z --json; df -k /build /tmp >&2; df -i /build /tmp >&2"
+        ],
+        "Domainname": "",
+        "Entrypoint": null,
+        "Env": [
+          "TMPDIR=/tmp",
+          "ZIG_GLOBAL_CACHE_DIR=/build/zig-global",
+          "ZIG_LOCAL_CACHE_DIR=/build/zig-local",
+          "PATH=/opt/mo:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "HOME=/build"
+        ],
+        "Hostname": "dfe60ba4c1d6",
+        "Image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+        "Labels": {},
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Tty": false,
+        "User": "65534:65534",
+        "Volumes": null,
+        "WorkingDir": "/workspace"
+      },
+      "Created": "2026-09-19T06:44:00.098631091Z",
+      "Driver": "overlayfs",
+      "ExecIDs": null,
+      "HostConfig": {
+        "AutoRemove": false,
+        "Binds": [
+          "/var/lib/mo-harness/mo-workspace-e591e1532e2d47a2a740a56f42f4d01c/snapshot/data:/workspace:ro"
+        ],
+        "BlkioDeviceReadBps": [],
+        "BlkioDeviceReadIOps": [],
+        "BlkioDeviceWriteBps": [],
+        "BlkioDeviceWriteIOps": [],
+        "BlkioWeight": 0,
+        "BlkioWeightDevice": [],
+        "CapAdd": null,
+        "CapDrop": [
+          "ALL"
+        ],
+        "Cgroup": "",
+        "CgroupParent": "mo-application.slice",
+        "CgroupnsMode": "private",
+        "ConsoleSize": [
+          0,
+          0
+        ],
+        "ContainerIDFile": "",
+        "CpuCount": 0,
+        "CpuPercent": 0,
+        "CpuPeriod": 0,
+        "CpuQuota": 0,
+        "CpuRealtimePeriod": 0,
+        "CpuRealtimeRuntime": 0,
+        "CpuShares": 0,
+        "CpusetCpus": "",
+        "CpusetMems": "",
+        "DeviceCgroupRules": null,
+        "DeviceRequests": null,
+        "Devices": [],
+        "Dns": null,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "ExtraHosts": null,
+        "GroupAdd": null,
+        "IOMaximumBandwidth": 0,
+        "IOMaximumIOps": 0,
+        "IpcMode": "private",
+        "Isolation": "",
+        "Links": null,
+        "LogConfig": {
+          "Config": {},
+          "Type": "none"
+        },
+        "MaskedPaths": [
+          "/proc/acpi",
+          "/proc/asound",
+          "/proc/interrupts",
+          "/proc/kcore",
+          "/proc/keys",
+          "/proc/latency_stats",
+          "/proc/sched_debug",
+          "/proc/scsi",
+          "/proc/timer_list",
+          "/proc/timer_stats",
+          "/sys/devices/virtual/powercap",
+          "/sys/firmware"
+        ],
+        "Memory": 1073741824,
+        "MemoryReservation": 0,
+        "MemorySwap": 1073741824,
+        "MemorySwappiness": null,
+        "NanoCpus": 1000000000,
+        "NetworkMode": "none",
+        "OomKillDisable": false,
+        "OomScoreAdj": 0,
+        "PidMode": "",
+        "PidsLimit": 128,
+        "PortBindings": {},
+        "Privileged": false,
+        "PublishAllPorts": false,
+        "ReadonlyPaths": [
+          "/proc/bus",
+          "/proc/fs",
+          "/proc/irq",
+          "/proc/sys",
+          "/proc/sysrq-trigger"
+        ],
+        "ReadonlyRootfs": true,
+        "RestartPolicy": {
+          "MaximumRetryCount": 0,
+          "Name": "no"
+        },
+        "Runtime": "runc",
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "ShmSize": 67108864,
+        "Tmpfs": {
+          "/build": "rw,nosuid,nodev,size=536870912,nr_inodes=16384,mode=1777",
+          "/tmp": "rw,noexec,nosuid,nodev,size=16777216,mode=1777"
+        },
+        "UTSMode": "",
+        "Ulimits": [],
+        "UsernsMode": "",
+        "VolumeDriver": "",
+        "VolumesFrom": null
+      },
+      "HostnamePath": "",
+      "HostsPath": "",
+      "Id": "dfe60ba4c1d680d5e9560fcc1a13e6f10fa69a505cf2d7099ceeba560cc9e266",
+      "Image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "ImageManifestDescriptor": {
+        "digest": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        "size": 969
+      },
+      "LogPath": "",
+      "MountLabel": "",
+      "Mounts": [
+        {
+          "Destination": "/workspace",
+          "Mode": "ro",
+          "Propagation": "rprivate",
+          "RW": false,
+          "Source": "/var/lib/mo-harness/mo-workspace-e591e1532e2d47a2a740a56f42f4d01c/snapshot/data",
+          "Type": "bind"
+        }
+      ],
+      "Name": "/mo-executor-00ecdc6563074a47ac17479af276bce8",
+      "NetworkSettings": {
+        "Networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": ""
+          }
+        },
+        "Ports": {},
+        "SandboxID": "",
+        "SandboxKey": ""
+      },
+      "Path": "/bin/sh",
+      "Platform": "linux",
+      "ProcessLabel": "",
+      "ResolvConfPath": "",
+      "RestartCount": 0,
+      "State": {
+        "Dead": false,
+        "Error": "",
+        "ExitCode": 0,
+        "FinishedAt": "0001-01-01T00:00:00Z",
+        "OOMKilled": false,
+        "Paused": false,
+        "Pid": 0,
+        "Restarting": false,
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "Status": "created"
+      },
+      "Storage": {
+        "RootFS": {
+          "Snapshot": {
+            "Name": "overlayfs"
+          }
+        }
+      }
+    },
+    "elapsed_seconds": 37.17279627300013,
+    "exit_code": 126,
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "name": "mo-executor-00ecdc6563074a47ac17479af276bce8",
+    "oom_killed": false,
+    "policy": "application-build-v1",
+    "policy_errors": [],
+    "run_id": "00ecdc6563074a47ac17479af276bce8",
+    "signal": null,
+    "signal_hint": null,
+    "status": "completed",
+    "stderr": "emlnLW91dC9tby1idWlsZC9sb2dzdGF0L2xvZ3N0YXQKL2Jpbi9zaDogL2J1aWxkL3ppZy1vdXQvbW8tYnVpbGQvbG9nc3RhdC9sb2dzdGF0OiBQZXJtaXNzaW9uIGRlbmllZAo=",
+    "stdout": "",
+    "timed_out": false,
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "truncated": false,
+    "workspace": {
+      "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+      "policy": "application-build-v1",
+      "readonly": true,
+      "snapshot": "a5a4cd955763faeb94d221efcb39c31c9ee89c072b9175954ae517c842ae3e16",
+      "source": "/var/lib/mo-harness/mo-workspace-e591e1532e2d47a2a740a56f42f4d01c/snapshot/data",
+      "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+      "workspace_id": "e591e1532e2d47a2a740a56f42f4d01c",
+      "workspace_run_id": "6f3e64b6924043699a5c50efe7fa1d79"
+    }
+  },
+  "checks": [
+    {
+      "id": "output",
+      "expected": "requests    16\nerrors       3  (18.8%)\nmalformed    4\nper minute 4.6\n\nslowest\n  1_204 ms  POST /api/orders                         2026-09-12T10:00:21Z\n    610 ms  GET /api/cards/****************/charge   2026-09-12T10:01:30Z\n    340 ms  POST /api/orders                         2026-09-12T10:00:02Z\n    340 ms  DELETE /api/orders/17                    2026-09-12T10:00:15Z\n    340 ms  POST /api/orders                         2026-09-12T10:02:30Z\n\nbusiest\n  7  GET /api/users\n  4  POST /api/orders\n  2  GET /api/cards/****************/charge\n  2  GET /health\n  1  DELETE /api/orders/17\nFILTERED\n{\"requests\": 12, \"errors\": 2, \"error_rate\": 0.167, \"malformed\": 4, \"per_minute\": 3.6, \"slowest\": [{\"ms\": 1204, \"method\": \"POST\", \"path\": \"/api/orders\", \"at\": \"2026-09-12T10:00:21Z\"}, {\"ms\": 610, \"method\": \"GET\", \"path\": \"/api/cards/****************/charge\", \"at\": \"2026-09-12T10:01:30Z\"}, {\"ms\": 340, \"method\": \"DELETE\", \"path\": \"/api/orders/17\", \"at\": \"2026-09-12T10:00:15Z\"}], \"busiest\": [{\"count\": 5, \"method\": \"GET\", \"path\": \"/api/users\"}, {\"count\": 3, \"method\": \"POST\", \"path\": \"/api/orders\"}, {\"count\": 2, \"method\": \"GET\", \"path\": \"/health\"}]}\n",
+      "stream": "stdout",
+      "mode": "exact",
+      "passed": false
+    }
+  ],
+  "passed": false
+}
