@@ -990,3 +990,6 @@
 
 ## [2026-09-19] accept | end to end v1: the Mo agent on the machine, the scripted Logstat repair
 - 2:20 PM ET: merged to main through lead/verify-e2e (5403d370). Lead rerun on the machine all exit 0, inventory clean, no token in the evidence. Three rows in decisions/decision-log.md; CHANGELOG entry. Defects D1 (to the report-cap brief) and D2 (to the six-tool server). Step 41's agent showed done while its corpus run continued: not finished.
+
+## [2026-09-19] accept | the claim check's calibration (TypeSafe, Jev)
+- 2:22 PM ET: merged tools/claim-check (9431e12b). Lead reran pytest (55 passed), ruff, mypy; key in no tracked or sent file. 73 requests, $0.0033. Acceptance does not depend on the tool; briefs now ask for a filed log and exit file per quoted run. Two rows in decisions/decision-log.md.

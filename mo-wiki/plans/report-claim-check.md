@@ -6,7 +6,7 @@ updated: 2026-09-19
 type: plan
 tags: [verification, tooling, agents]
 sources: [plans/mo-first-coding-harness.md]
-status: in-progress
+status: done
 ---
 
 # Report claim check: TypeSafe triage of worker claims against raw evidence
@@ -165,6 +165,31 @@ their absence stated. **Write your final report to
 `tools/claim-check/REPORT.md` and commit it last, with a clean worktree.** Small
 commits as yourself with a `Co-Authored-By` line naming your model. While
 anything runs, wait in the foreground.
+
+## Calibration result (2:22 PM ET, 19 Sep 2026)
+
+Accepted as a calibration and merged (`tools/claim-check`, worker Claude Opus
+5, report `tools/claim-check/REPORT.md`, numbers
+`tools/claim-check/calibration/RESULTS.md`). Lead checks: `uv run pytest` 55
+passed, exit 0; `ruff` and strict `mypy` clean; `sent/` is git-ignored, holds
+73 states, none naming an auditor file or sealed suite; the key occurs in no
+tracked file and no sent file (counted inside `fnox exec`, never printed).
+
+What it measured, on 14 cases (6 historical defects, 3 accurate reports, 5
+planted): 73 requests of the 2,000, $0.0033, median 0.175 s, model
+`jev-1.13.0`. Planted failures caught 5 of 5, four of them by code and one by
+Jev (a timeout followed by success). Historical defects caught 2 of 6, both by
+code; the four misses are tests that cannot fail and a regression that was
+never a claim, which reading output cannot catch. True claims flagged 12 of
+62, ten of them because no raw log is filed for the run the report quotes; Jev
+itself wrongly flagged 1 of 34.
+
+The lead's reading: the value so far is the code half (required parts, exact
+facts), not the model. **Acceptance does not depend on the tool.** It is kept
+as a first pass the lead may run on a report. The measurement that would
+change this needs false claims code cannot settle; the set has almost none.
+The one cheap change it points to is in the briefs, not the tool: a worker
+tees every run it quotes into a filed log with an exit file beside it.
 
 ## Related
 

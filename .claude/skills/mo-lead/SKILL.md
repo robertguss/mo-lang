@@ -68,7 +68,7 @@ work around prerequisites that inherently need Robert's presence, such as an
 interactive login. Retain scope, source ownership, independent acceptance and
 audit rules; do not treat unavailable evidence as passed.
 
-1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A toolchain step's write scope always includes the corpus's `.mo.ids` sidecars and `toolchain/PRELUDE.md` when the corpus or the prelude changes (step 35, 17 Sep 2026). A step is one brief; a program has a spec page (the lead's) and a brief.
+1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A toolchain step's write scope always includes the corpus's `.mo.ids` sidecars and `toolchain/PRELUDE.md` when the corpus or the prelude changes (step 35, 17 Sep 2026). A step is one brief; a program has a spec page (the lead's) and a brief. Every Done-when asks the worker to tee each run its report quotes into a filed log with an exit file beside it (19 Sep 2026: the claim check's calibration found most unverifiable claims were runs with no raw output filed); `tools/claim-check/` may be run on a report as a first pass, and never accepts anything.
 2. **Fresh worker.** Read `herdr --skill` and verify `HERDR_ENV=1`. Discover
    the calling workspace/pane; never reuse historical IDs. At most three
    Opus workers run at once (Robert, 19 Sep 2026, 1:33 PM ET): queue briefs instead. Never split the lead's tab (Robert, 19 Sep 2026: stacked worker panes made

@@ -909,6 +909,13 @@ direction separately from the lead's conservative execution interpretation.
 | Defect D1 (the agent gives a late command all the time that is left and waits no longer than that, so the last clamped command is always "unknown" though it completed) is fixed in Mo with a named collection margin, in [[mo-agent-report-cap]]. `semantic` | Fable lead | decided | that brief's RED test |
 | Defect D2 (the frontend closes the operator's channel when the client disconnects, so a run that ends on a timed-out call can never be frozen or verified) is not patched in Python: the Mo six-tool server must keep the operator's path independent of any candidate connection, as a required control beside H1 to H7. **For Robert**: until that server exists, a real run that ends on a timeout loses its verdict; say if you want the Python patched first. `semantic` | Fable lead | decided | the six-tool server's controls |
 
+## 19 Sep 2026 — The claim check's calibration read, 2:22 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| The TypeSafe claim check is accepted as a calibration and merged at `tools/claim-check/`: 73 requests, $0.0033, 0.175 s median. It caught 5 of 5 planted failures (4 by code, 1 by Jev) and 2 of 6 historical defects (both by code); Jev wrongly flagged 1 of 34 true claims. **Acceptance does not depend on it**: the lead may run it as a first pass on a report, and still runs every suite itself. On this evidence the model adds little over the code checks; that may change with false claims code cannot settle, which the history barely contains. | Fable lead | decided | the next report it is run on |
+| From now on every brief's Done-when asks the worker to tee each run its report quotes into a filed log with an exit file beside it (ten of the twelve true claims the tool flagged were runs with no raw output in the repository). The lead skill's step 1 carries the rule. | Fable lead | decided | the next brief |
+
 ## Related
 
 - [[session-05]]
