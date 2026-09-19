@@ -1,6 +1,116 @@
-# Mo Lang — Fable lead and Opus Herdr workers
+# Mo Lang — Fable lead and Opus Herdr workers (read START HERE)
 
-## Current instruction: Fable takes over, 19 Sep 2026, 7:18 AM ET
+## START HERE: handoff to a fresh Fable lead session, 19 Sep 2026, 1:15 PM ET
+
+Robert is starting a fresh lead session because the previous one's context was
+full. You are the lead (Fable, Claude Code). Load the `mo-lead` skill, read this
+section, then `mo-wiki/SCHEMA.md`, then run the auditor check
+(`git fetch origin && python3 audit/automation/fable_poll.py check`; it was 0
+new records at 7:15 AM ET). Everything below this section is history.
+
+### How Robert works with the lead (learned today)
+
+- Workers are **Claude Opus, bypass permissions**, each in **its own Herdr tab**
+  (`herdr tab create --workspace <id> --cwd <worktree> --label <name>
+  --no-focus`), never a split of the lead's tab: he talks to the lead often and
+  must be able to read it. Rediscover pane and tab IDs; do not reuse the ones here.
+- An idle-looking worker tab is not a finished worker. Finished means its
+  report file is committed and its worktree is clean. Briefs tell workers to
+  wait in the foreground while something runs. Robert may close a tab that
+  looks idle; if so, preserve the worktree's uncommitted work as a WIP commit
+  and start a fresh worker to finish it (this happened to step 40).
+- **Robert pushes `main` himself at any time.** So `main` holds accepted work
+  and lead records only. Verify a worker's branch on a local
+  `lead/verify-<unit>` branch; merge to `main` at acceptance.
+- **Linux toolchain runs go on his Linux VM**, not the Mac: `ssh -o
+  IdentitiesOnly=yes -i ~/.ssh/id_exe robertguss@aurora-but-gold.exe.xyz`
+  (x86_64, 4 cores, Zig 0.16 via `mise`; the `dev-box` alias is broken). Use
+  only the clone `~/Projects/mo-lang-lead-verify`, fetched from a pushed
+  `lead/verify-<unit>` branch; never touch the VM's historical checkouts. The
+  OrbStack machine `mo-executor-r01` is only for the harness's live suites.
+- Run the full suite **detached** (`nohup`) under `guard.py 1500` or more and
+  poll for an exit file: it now takes longer than the tool's 10-minute cap.
+  `guard.py` kills only its direct child; after any kill, look for orphaned
+  test binaries (`ps` for `.zig-cache/o/*/test`): an orphan's cleanup deletes
+  the shared `zig-out` and breaks the next run (it happened).
+- Read the clock (`TZ=America/New_York date`) in the same command that writes
+  a time. Report sizes only as measured. One question per message.
+- Every brief ends by naming a report file the worker must commit.
+
+### Accepted today, all on `main` and pushed (full suite 249 of 249 on Darwin)
+
+The rebuilt application workspace; harness steps 1 (executor defects), 8 (Mo
+agent findings) and 2 (live suites as tables); a use-after-free in both
+runtimes (an `answer` to a kept ask); step 40 (a narrowed `Fs` refuses links,
+`Fs.replace`, `fs.kind_of`); research PR 14. Decisions are rows in
+`mo-wiki/decisions/decision-log.md` (sections dated 19 Sep); evidence in
+`audit/evidence/2026-09-19/fable-lead-verification/` and
+`fable-overnight-review/`; `CHANGELOG.md` has three entries for today.
+
+### In flight right now (both launched about 1:00 to 1:10 PM ET, base `853a27df`)
+
+| worker | tab / pane then | branch, worktree | brief | report it must commit |
+|---|---|---|---|---|
+| `e2e-logstat-opus` | `w4:tY` / `w4:p2Y` | `harness/end-to-end-v1`, `~/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1` | `mo-wiki/plans/mo-harness-end-to-end-v1.md` | `examples/programs/agent/tests/end-to-end-v1/REPORT.md` |
+| `step41-exec-opus` | `w4:tZ` / `w4:p2Z` | `toolchain/step-41-exec`, `.../toolchain-step-41-exec` | `mo-wiki/plans/interpreter-step-41.md` (design: `mo-capabilities-for-the-harness.md` section 3) | `toolchain/STEP-41-REPORT.md` |
+
+The end-to-end worker **owns the OrbStack machine exclusively**; do not run live
+suites until it is done. The step 41 worker was told to stop and ask if keeping
+`Exec` and `Program` inside `main` cannot be expressed in the checker without
+new syntax: a grammar change is Robert's call, asked with code options.
+
+Also running: the **Linux full suite** on the VM at `0ab217c9` (detached;
+`~/Projects/mo-lang-lead-verify/.lead-exits` gains a `full-exit` line and
+`.lead-done` appears; log `.lead-full.log`). At 1:12 PM ET it had not finished.
+It is informational: step 40 was accepted on Darwin's full suite plus Linux's
+step 40 tests. Read failures carefully; this is the first x86_64 Linux full run
+since the move to the Mac.
+
+### When a worker finishes
+
+Read its report, inspect the diff, merge onto `lead/verify-<unit>`, build, run
+its focused tests and the full suite detached, run one probe the brief did not
+name, run Linux on the VM for toolchain work, rerun the live suites on the
+machine for harness work (commands and expected summary lines are in
+`audit/evidence/2026-09-19/fable-lead-verification/README.md`; application
+controls need `--image sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4
+--toolchain d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb`),
+then record per the skill's step 5 and merge to `main`.
+
+### Next, in order
+
+1. Accept the two workers above.
+2. Write and launch the **runtime memory-safety** toolchain step (scope is the
+   "Queued toolchain step" paragraph further down: the corpus with compaction at
+   every safe point in both runtimes, poisoned freed regions, an audit of what
+   the runtimes hold across a frame return, a region-value versus parcel type
+   split, `guard.py` killing the process group). It edits `toolchain/src`, so
+   launch it after step 41 lands or accept merge work.
+3. Lift the agent's 256 KiB report cap (small; the runtime bug it worked around
+   is fixed).
+4. The Mo six-tool server (plan step 4 of `mo-wiki/plans/mo-harness-in-mo.md`),
+   after `Exec`, so it runs `docker` itself. Its brief must: report admission,
+   execution, reply (produced versus received) and cleanup as four separate
+   observations (research PR 14); close review findings H1 to H7 by design;
+   pass the same behaviour tests as the Python service before cutover; and
+   record the like-for-like size table ("The size question" on the plan page).
+5. Then plan steps 5 to 7, provider live blockers P1 to P5 with Robert's OpenAI
+   login, the first real model-driven task, and the Pi comparison.
+
+### Owed and unmet, said plainly
+
+The Mo agent has never run end to end on the machine (the in-flight worker is
+doing it). Two fault-injected power-off checks on the machine. Nothing refuses
+new runs after an unconfirmed cleanup. The TLS corpus test "a fatal alert where
+a hello belongs…" fails about 1 in 5 alone, unexplained. Step 39 unaccepted;
+Darwin `F_FULLFSYNC` unmet; Program 7 suspended. Python has not shrunk (6,688,
+then 6,326, then 6,643 counted lines): the reduction, if any, comes from moving
+modules to Mo, and is to be measured, not claimed. Step 40 costs: a path 16
+folders deep is 3.5 times dearer; `list_kinds` 3.3 times dearer in the
+interpreter (accepted for now; decision-log row).
+
+## Earlier on 19 Sep (the morning's running notes, newest first; superseded by the section above)
+
 
 Robert's instruction: **Fable (Claude Code, Herdr pane `w4:p1`) is the lead;
 workers are fresh Claude Opus sessions in Herdr panes.** This supersedes the
