@@ -166,3 +166,45 @@ worker tip. The original `generated-ids.diff` is unchanged. The extended
 unchanged dependent behavior, and verifies all 32 earlier evidence files against
 that prior tip. Its passing result is `evidence/verification-v2-1.json`.
 No additional dependency or write-scope expansion was needed.
+
+## Formatter correction v3
+
+Lead's second full-suite attempt reached 242/243, with only formatting failures
+in the three owned Mo files. From worker tip
+`9f4b43385329b103cc0a1df198552ebb21d60eb2`, actual guarded `mo fmt --stdout`
+captured each expected output, then actual guarded `mo fmt` wrote exactly those
+bytes to model.mo, driver.mo, and agent-model-client-v1.mo. The three source
+changes are solely formatter output: 30 added / 14 removed lines in total.
+No behavior or dependent source body was manually edited.
+
+The formatter condensed the driver's multi-line deadline `if` into its inline
+form, invalidating its Caller declaration identity. The first targeted check
+correctly failed MO0317; `format-checks-v3-1.jsonl` and `.exit` retain that failure.
+Only the driver then ran `mo test --write --sim 100`. Its verified/proven source
+lines remained identical, and the aggregate sidecar changed exactly one record,
+in two fields: Caller declaration hash and verified declarations hash. All other
+records, including the four sim100 dependencies, stayed byte-identical to v2.
+
+With `MO_BIN` explicitly set to the verified compiler, the commands were:
+
+```sh
+python3 toolchain/bench/step36/guard.py 600 -- python3 examples/programs/agent/tests/terminal-auth/format-checks-v3.py
+python3 toolchain/bench/step36/guard.py 600 -- python3 examples/programs/agent/tests/terminal-auth/format-recheck-v3.py
+python3 toolchain/bench/step36/guard.py 60 -- python3 examples/programs/agent/tests/terminal-auth/verify.py
+```
+
+The second command passed 18/18 operations: driver regeneration; formatting and
+module checks for all three files; model tests 3/3; versioned conformance 16/16
+and generic regression 9/9; Agent check/build and current driver build; and
+immediate-401, exhausted, and delayed HTTP cases in each runtime (6/6). These
+cases exercise both paths of the formatted deadline conditional. Every nested
+operation had a numeric timeout. No full compiler suite or 18-case matrix rerun.
+
+`formatter-manifest-v3.json` records before/after source hashes. The extended
+verifier requires each current source to equal the captured formatter output
+exactly, validates the baseline hashes, permits only the two observed driver-ID
+hash fields, checks `generated-ids-v3.diff`, and retains the v1/v2 exact scope
+checks. `verification-v3-1.json` confirms all 39 earlier evidence files unchanged,
+generic recipe bytes and inherited tests preserved, and unchanged dependency
+sources and sim100 metadata. The scripts/evidence/verifier documentation are
+verification support; only the three Mo source deltas claim formatter provenance.

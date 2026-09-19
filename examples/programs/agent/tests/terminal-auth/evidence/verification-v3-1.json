@@ -1,0 +1,23 @@
+{
+  "base": "ff669fd52e93ccf6aa970b05082d842c471cb1c9",
+  "generic_recipe_sha256": "14056b093f35f04128893850c66b2ed2c128d9989311dc4cd3d0523e2092f7dd",
+  "generic_recipe_byte_identical": true,
+  "generic_tests_preserved_verbatim": true,
+  "generated_ids_exact_diff": true,
+  "generated_ids_v2_exact_diff": true,
+  "generated_ids_v3_exact_diff": true,
+  "exact_formatter_output_files": 3,
+  "regenerated_driver_records": 1,
+  "targeted_http_cases": 6,
+  "dependency_records_changed": 8,
+  "driver_record_added": true,
+  "dependency_behavior_unchanged": true,
+  "preserved_sim100_modules": 4,
+  "prior_evidence_files_unchanged": 39,
+  "unrelated_id_records_unchanged": true,
+  "red_reproduced": true,
+  "interpreter_passed": 9,
+  "compiled_passed": 9,
+  "fixture_servers_closed": 18,
+  "source_allowlist": true
+}

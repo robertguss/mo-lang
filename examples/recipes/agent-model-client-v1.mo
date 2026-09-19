@@ -90,9 +90,11 @@ process StatusFake(replies: List(Response))
     served: UInt64
     answered: Bool
   end
+
   message Accepted(exchange: Exchange)
   message Idle
   message Served : UInt64
+
   fn update(state, message)
     case message
       Accepted(exchange):
@@ -224,7 +226,8 @@ recipe ModelClient
   test "401 is terminal before a valid reply"
     http = Http.fixture()
     assert http.listen(0, within: 1.minute) is Ok(listener)
-    fake = StatusFake.start([Response(status: 401, body: "garbage"), Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
+    fake = StatusFake.start([Response(status: 401, body: "garbage"),
+      Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
@@ -234,7 +237,9 @@ recipe ModelClient
   test "503 then 401 is terminal"
     http = Http.fixture()
     assert http.listen(0, within: 1.minute) is Ok(listener)
-    fake = StatusFake.start([Response(status: 503, body: "garbage"), Response(status: 401, body: "garbage"), Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
+    fake = StatusFake.start([Response(status: 503, body: "garbage"),
+      Response(status: 401, body: "garbage"),
+      Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
@@ -244,7 +249,9 @@ recipe ModelClient
   test "malformed 200 then 401 is terminal"
     http = Http.fixture()
     assert http.listen(0, within: 1.minute) is Ok(listener)
-    fake = StatusFake.start([Response(status: 200, body: "garbage"), Response(status: 401, body: "garbage"), Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
+    fake = StatusFake.start([Response(status: 200, body: "garbage"),
+      Response(status: 401, body: "garbage"),
+      Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
@@ -254,17 +261,22 @@ recipe ModelClient
   test "503 still retries to success"
     http = Http.fixture()
     assert http.listen(0, within: 1.minute) is Ok(listener)
-    fake = StatusFake.start([Response(status: 503, body: "garbage"), Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
+    fake = StatusFake.start([Response(status: 503, body: "garbage"),
+      Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
-    assert complete(http, model, asked, 2, Deadline.fixture(1.minute)) == Ok(Answer(text: "7", tokens: 5))
+    assert complete(http, model, asked, 2,
+      Deadline.fixture(1.minute)) == Ok(Answer(text: "7", tokens: 5))
     assert fake.ask(Served, within: 1.minute) == Ok(2)
   end
   test "three 503 responses exhaust two retries"
     http = Http.fixture()
     assert http.listen(0, within: 1.minute) is Ok(listener)
-    fake = StatusFake.start([Response(status: 503, body: "garbage"), Response(status: 503, body: "garbage"), Response(status: 503, body: "garbage"), Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
+    fake = StatusFake.start([Response(status: 503, body: "garbage"),
+      Response(status: 503, body: "garbage"),
+      Response(status: 503, body: "garbage"),
+      Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
@@ -278,13 +290,15 @@ recipe ModelClient
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
-    assert complete(http, model, asked, 2, Deadline.fixture(1.minute)) == Ok(Answer(text: "7", tokens: 5))
+    assert complete(http, model, asked, 2,
+      Deadline.fixture(1.minute)) == Ok(Answer(text: "7", tokens: 5))
     assert fake.ask(Served, within: 1.minute) == Ok(1)
   end
   test "401 with no retries makes one request"
     http = Http.fixture()
     assert http.listen(0, within: 1.minute) is Ok(listener)
-    fake = StatusFake.start([Response(status: 401, body: "garbage"), Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
+    fake = StatusFake.start([Response(status: 401, body: "garbage"),
+      Response(status: 200, body: "{\"done\": \"7\", \"tokens\": 5}")])
     listener.serve(into: fake, idle: 5_000.ms)
     model = Model(host: "localhost", port: listener.port, tools: ["now"])
     asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])

@@ -1,0 +1,18 @@
+diff --git a/examples/programs/.mo.ids b/examples/programs/.mo.ids
+index cf2623d..4e3b3e6 100644
+--- a/examples/programs/.mo.ids
++++ b/examples/programs/.mo.ids
+@@ -596,11 +596,11 @@
+       "declarations": [
+         { "id": "10b0e49dd00f", "name": "module Agent.TerminalAuth.Driver", "hash": "2cb7386fac165a09" },
+         { "id": "38c040c1da30", "name": "use Agent.Model", "hash": "a24ab7d5ffad2d24" },
+-        { "id": "5e91510c7c18", "name": "process Caller", "hash": "f822542dfa59344c" },
++        { "id": "5e91510c7c18", "name": "process Caller", "hash": "5bebc8e9a188b001" },
+         { "id": "066f901850fd", "name": "supervisor Callers", "hash": "41f6e14ec4ee0a33" },
+         { "id": "1396787a394e", "name": "fn main", "hash": "0a7a231d7e11f305" }
+       ],
+-      "verified": { "hash": "f8bcd71959e486d5", "declarations": "a7f1696f418e2099", "uses": [{ "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }] }
++      "verified": { "hash": "f8bcd71959e486d5", "declarations": "8277871e5ef81a5c", "uses": [{ "module": "Agent.Model", "hash": "5e1ab20e1802dbba" }] }
+     },
+     {
+       "path": "agent/tools.mo",

@@ -103,9 +103,11 @@ process StatusFake(replies: List(Response))
     served: UInt64
     answered: Bool
   end
+
   message Accepted(exchange: Exchange)
   message Idle
   message Served : UInt64
+
   fn update(state, message)
     case message
       Accepted(exchange):

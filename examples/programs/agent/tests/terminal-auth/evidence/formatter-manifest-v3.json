@@ -1,0 +1,17 @@
+[
+  {
+    "path": "examples/programs/agent/model.mo",
+    "before_sha256": "583d7cb0c8a95be504c5847a658c98f5c99e43bcde87128fedb718333cc7ec38",
+    "after_sha256": "99b69ad73747ab8b32e39707ab156a08d4a507de742df9af56781df9fcaf718c"
+  },
+  {
+    "path": "examples/programs/agent/tests/terminal-auth/driver.mo",
+    "before_sha256": "111eda1910aafb0071be92598a3cc9136fcd66096c30e71fd818da27bf4a755e",
+    "after_sha256": "553c7b445192267e0049eb9af01861ac225b22aeb088c392e0934cb8438d6f72"
+  },
+  {
+    "path": "examples/recipes/agent-model-client-v1.mo",
+    "before_sha256": "5dfcb6c69d26ddbfde5821a30bdce6eb999d2c101d052bddb410853cf893a34d",
+    "after_sha256": "a3799f3aee1a9f52fdad30ea4389aa34181b6e513bd95aa86fd7307b71e31f10"
+  }
+]
