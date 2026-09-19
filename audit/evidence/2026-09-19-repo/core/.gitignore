@@ -1,0 +1,8 @@
+# Local build products, not audit evidence for publication.
+/cache-global/
+/cache-local/
+/install/
+/zig-out/
+/suite-generated/
+/suite-toolchain-cache/
+/__pycache__/
