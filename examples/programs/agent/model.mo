@@ -1,8 +1,8 @@
-# recipe: Recipes.ModelClient.ModelClient
+# recipe: Recipes.AgentModelClientV1.ModelClient
 module Agent.Model
-expose Model, Request, Reply, ModelError, Attempts, Taken, Fake, Fakes, body, parsed, complete, spent?, tokens_of
+expose Model, Request, Reply, ModelError, Attempts, Taken, Fake, Fakes, StatusFake, StatusFakes, body, parsed, complete, spent?, tokens_of
 
-intent "The model client recipe (examples/recipes/model-client.mo) implemented for agent over Http: the request as JSON posted to /complete, the reply read into a tool to use or an answer, every attempt on the caller's deadline, retried at once on a model error while attempts and the deadline last, and a reply read after the deadline refused as Late."
+intent "The model client recipe (examples/recipes/agent-model-client-v1.mo) implemented for agent over Http: the request as JSON posted to /complete, the reply read into a tool to use or an answer, every attempt on the caller's deadline, returning HTTP 401 immediately without login or credential refresh, otherwise retried at once on a model error while attempts and the deadline last, and a reply read after the deadline refused as Late."
 
 never "a call is made more than retries + 1 times"
   for a in Attempts.all
@@ -97,6 +97,33 @@ supervisor Fakes(replies: List(String), slow: Fs)
   child Fake(replies, slow), restart: :always
 end
 
+# Actual HTTP response statuses, separate from reply JSON, with a received-request counter.
+process StatusFake(replies: List(Response))
+  state
+    served: UInt64
+    answered: Bool
+  end
+  message Accepted(exchange: Exchange)
+  message Idle
+  message Served : UInt64
+  fn update(state, message)
+    case message
+      Accepted(exchange):
+        response = replies.get(state.served) or Response(status: 200,
+          body: "{\"done\": \"unexpected request\", \"tokens\": 0}")
+        state.served += 1
+        state.answered = exchange.reply(response, within: 1.minute) is Ok(_)
+      Idle:
+        state.answered = false
+      Served: state.served
+    end
+  end
+end
+
+supervisor StatusFakes(replies: List(Response))
+  child StatusFake(replies), restart: :always
+end
+
 # The JSON a call posts: the goal, the granted tools, and the transcript's steps as they are.
 fn body(request: Request) : String
   goal = Json.encode(request.goal)
@@ -136,7 +163,7 @@ end
 fn tried(http: Http, model: Model, request: Request, attempts: Attempts,
   by: Deadline) : Result(Reply, ModelError)
   outcome = once(http, model, request, by)
-  return outcome if outcome is Ok(_) or attempts.made >= attempts.allowed or spent?(by)
+  return outcome if outcome is Ok(_) or outcome is Error(Status(401)) or attempts.made >= attempts.allowed or spent?(by)
   tried(http, model, request, Attempts(made: attempts.made + 1, allowed: attempts.allowed), by)
 end
 

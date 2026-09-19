@@ -1,0 +1,4 @@
+examples/programs/agent/model.mo:277:1: MO0317 expose, intent, process StatusFake, and 2 more changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+  verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+  ^
+  why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.

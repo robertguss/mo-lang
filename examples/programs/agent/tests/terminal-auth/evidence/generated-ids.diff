@@ -1,0 +1,72 @@
+diff --git a/examples/programs/.mo.ids b/examples/programs/.mo.ids
+index 33ec067..927685e 100644
+--- a/examples/programs/.mo.ids
++++ b/examples/programs/.mo.ids
+@@ -262,8 +262,8 @@
+       "module": "Agent.Model",
+       "declarations": [
+         { "id": "c13d9377fad4", "name": "module Agent.Model", "hash": "12401cbcbf675cd4" },
+-        { "id": "f76865dc41df", "name": "expose", "hash": "7e543f96b49f2c22" },
+-        { "id": "5213a3d2e529", "name": "intent", "hash": "d208248308d7c3ff" },
++        { "id": "f76865dc41df", "name": "expose", "hash": "6fadb88361ce3d0a" },
++        { "id": "5213a3d2e529", "name": "intent", "hash": "ad8dd0dd9b6b7037" },
+         { "id": "d767b53a7f36", "name": "never \"a call is made more than retries + 1 times\"", "hash": "b35408de4500dd46" },
+         { "id": "d2cb97f5a87d", "name": "never \"a reply is used after its call's deadline\"", "hash": "340395cceb54ed4b" },
+         { "id": "191df1ed4e8d", "name": "struct Model", "hash": "0af0f222320d5e93" },
+@@ -274,12 +274,14 @@
+         { "id": "8b0219691c86", "name": "struct Taken", "hash": "85523b884aab867c" },
+         { "id": "35fba2c58af5", "name": "process Fake", "hash": "73ad65dd25d633d0" },
+         { "id": "7325d81e2ddb", "name": "supervisor Fakes", "hash": "695c5e45ab7ee9fc" },
++        { "id": "6ee75681cf5d", "name": "process StatusFake", "hash": "81a0ffdba5c340a6" },
++        { "id": "a4a1c028a8d5", "name": "supervisor StatusFakes", "hash": "e21126e34d7eb7c2" },
+         { "id": "eec3a3e0b6a0", "name": "fn body", "hash": "2ac058d6c9242cc7" },
+         { "id": "57909f711c37", "name": "fn parsed", "hash": "bc5ad92481de2866" },
+         { "id": "471ba91d0d28", "name": "fn complete", "hash": "b993e3f3450cfb4a" },
+         { "id": "736b9d33cc10", "name": "fn spent?", "hash": "109b333ecb8820f8" },
+         { "id": "7bd8b86e5c94", "name": "fn tokens_of", "hash": "03315dbc8a211382" },
+-        { "id": "0d59f2019e87", "name": "fn tried", "hash": "7bdf3dd6d0889de6" },
++        { "id": "0d59f2019e87", "name": "fn tried", "hash": "586f2544e439900e" },
+         { "id": "596caf06333b", "name": "fn once", "hash": "8d83b38936ac8540" },
+         { "id": "2156b50dd1fc", "name": "fn kept", "hash": "15463d6a08c55bc6" },
+         { "id": "5f4c2bbd7c93", "name": "fn handed", "hash": "1e411911b573cc3e" },
+@@ -294,7 +296,7 @@
+         { "id": "a8c99c0a0d05", "name": "test \"a deadline with time left is not spent, and one with none is\"", "hash": "8c396158971894a1" },
+         { "id": "861a4273f4bc", "name": "test rejects \"a call retried more than ten times\"", "hash": "11448aeac8fcafa0" }
+       ],
+-      "verified": { "hash": "d077f8946b30c29c", "declarations": "525da8559001d3f4" }
++      "verified": { "hash": "d077f8946b30c29c", "declarations": "c7b9e6bdff24b8c8" }
+     },
+     {
+       "path": "agent/operator.mo",
+diff --git a/examples/recipes/.mo.ids b/examples/recipes/.mo.ids
+index 173b7b4..587f92b 100644
+--- a/examples/recipes/.mo.ids
++++ b/examples/recipes/.mo.ids
+@@ -1,6 +1,27 @@
+ {
+   "version": 1,
+   "files": [
++    {
++      "path": "agent-model-client-v1.mo",
++      "module": "Recipes.AgentModelClientV1",
++      "declarations": [
++        { "id": "d6ba2e625ae9", "name": "module Recipes.AgentModelClientV1", "hash": "c763fe2215fd78c6" },
++        { "id": "3a5c27b0ccdf", "name": "expose", "hash": "2a880b818b1f849a" },
++        { "id": "de5c1e25091e", "name": "intent", "hash": "708452f4023f49a2" },
++        { "id": "9ee9a756becc", "name": "struct Model", "hash": "0af0f222320d5e93" },
++        { "id": "ec253e2b0217", "name": "struct Request", "hash": "447b66dd18d72769" },
++        { "id": "95975698c822", "name": "enum Reply", "hash": "7b766d7041fdfd0b" },
++        { "id": "21b152f2c97d", "name": "enum ModelError", "hash": "19df574d27bfaf7d" },
++        { "id": "26c1c7eac1c4", "name": "struct Attempts", "hash": "205f115abc4f3482" },
++        { "id": "a6f11b0b67fd", "name": "struct Taken", "hash": "85523b884aab867c" },
++        { "id": "cc5e881eaba0", "name": "process Fake", "hash": "73ad65dd25d633d0" },
++        { "id": "8395e68dc45a", "name": "supervisor Fakes", "hash": "695c5e45ab7ee9fc" },
++        { "id": "357c93973530", "name": "process StatusFake", "hash": "81a0ffdba5c340a6" },
++        { "id": "e45f1bf6153f", "name": "supervisor StatusFakes", "hash": "e21126e34d7eb7c2" },
++        { "id": "cff0e387f415", "name": "recipe ModelClient", "hash": "c368dbe2c65de162" }
++      ],
++      "verified": { "hash": "5f546a8156bbec0d", "declarations": "53e58459636e449c" }
++    },
+     {
+       "path": "model-client.mo",
+       "module": "Recipes.ModelClient",

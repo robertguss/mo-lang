@@ -1,0 +1,8 @@
+{
+  "base": "ff669fd52e93ccf6aa970b05082d842c471cb1c9",
+  "generic_recipe_sha256": "14056b093f35f04128893850c66b2ed2c128d9989311dc4cd3d0523e2092f7dd",
+  "generic_recipe_byte_identical": true,
+  "examples/programs/.mo.ids": "only agent/model.mo record changed",
+  "examples/recipes/.mo.ids": "only agent-model-client-v1.mo record changed",
+  "generic_test_blocks_preserved_verbatim": true
+}

@@ -1,0 +1,1 @@
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":15960,"foreground_processes":[{"argv":["-zsh"],"argv0":"zsh","cmdline":"-zsh","cwd":"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-agent-terminal-auth-v1","name":"zsh","pid":15960}],"pane_id":"w4:pS","shell_pid":15960},"type":"pane_process_info"}}
