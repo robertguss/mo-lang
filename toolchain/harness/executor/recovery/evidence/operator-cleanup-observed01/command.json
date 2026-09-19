@@ -1,0 +1,1 @@
+["python3", "-B", "toolchain/harness/executor/recovery/operator_cleanup.py", "toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls", "toolchain/harness/executor/recovery/evidence/operator-cleanup-observed01/results"]

@@ -1,0 +1,72 @@
+{
+  "local-final-02": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 43276,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 1.5617011249996722,
+    "total_bytes": 273099,
+    "budget_bytes": 16777216
+  },
+  "recovery-final-04": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 43391,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 11.890450958002475,
+    "total_bytes": 432232,
+    "budget_bytes": 16777216
+  },
+  "workspace-observed-02": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 54046,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 37.55256591700163,
+    "total_bytes": 3579280,
+    "budget_bytes": 16777216
+  },
+  "executor-observed-01": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 54822,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 33.15063233300316,
+    "total_bytes": 996037,
+    "budget_bytes": 16777216
+  },
+  "lifecycle-observed-01": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 55268,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 9.736121250003634,
+    "total_bytes": 351070,
+    "budget_bytes": 16777216
+  },
+  "application-observed-01": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 55442,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 152.932531749997,
+    "total_bytes": 3470296,
+    "budget_bytes": 16777216
+  },
+  "full-build-01": {
+    "exit": 0,
+    "child_exit": 0,
+    "group": 43732,
+    "group_absent": true,
+    "remaining": [],
+    "elapsed": 38.185454124999524,
+    "total_bytes": 266920,
+    "budget_bytes": 16777216
+  }
+}

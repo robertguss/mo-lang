@@ -1,0 +1,31 @@
+{
+  "directories": [
+    "/var/lib/mo-harness/mo-workspace-3ed3e4df6bf34620b5a6c7dfd9210fd0",
+    "/var/lib/mo-harness/mo-workspace-4a41714ae6d2404e8f9c0d7573e522a4",
+    "/var/lib/mo-harness/mo-workspace-00740554cd304a9daf371059d3179036",
+    "/var/lib/mo-harness/mo-workspace-a770dd62b10b40f89a27c846ac1ba329",
+    "/var/lib/mo-harness/mo-workspace-70225c0dd94e408498280c7e40a9b8e3",
+    "/var/lib/mo-harness/mo-workspace-f4f88de11678465ba431f172fe9d2d9f",
+    "/var/lib/mo-harness/mo-workspace-a77ac37e74594e47a1eca0dfb7c8692c",
+    "/var/lib/mo-harness/mo-workspace-30c5084bbd0f46ad839b1040bd12c133",
+    "/var/lib/mo-harness/mo-workspace-5cb464d3a7e04d9bb92136943360a85f",
+    "/var/lib/mo-harness/mo-workspace-e443c774e0ad4c51880690ba56315222",
+    "/var/lib/mo-harness/mo-workspace-46e41c80a8ef4e4089b9628fcc5d5975",
+    "/var/lib/mo-harness/mo-workspace-e0365240f144425fa6e00a22498d1b83",
+    "/var/lib/mo-harness/mo-workspace-7b5d2fda710041afbe59b5f6aa09f900",
+    "/var/lib/mo-harness/mo-workspace-83ec95ff1b304557bb67b7e1753a3034",
+    "/var/lib/mo-harness/mo-workspace-a9afb9ffc8e547e38952ffd3b420239d"
+  ],
+  "containers": {
+    "rc": 0,
+    "stdout": ""
+  },
+  "units": {
+    "rc": 0,
+    "stdout": ""
+  },
+  "mounts": {
+    "rc": 0,
+    "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/\",\n         \"children\": [\n            {\n               \"target\": \"/run\",\n               \"children\": [\n                  {\n                     \"target\": \"/run/lock\"\n                  },{\n                     \"target\": \"/run/user/0\"\n                  },{\n                     \"target\": \"/run/user/501\"\n                  }\n               ]\n            },{\n               \"target\": \"/dev\",\n               \"children\": [\n                  {\n                     \"target\": \"/dev/shm\"\n                  },{\n                     \"target\": \"/dev/fuse\"\n                  },{\n                     \"target\": \"/dev/net/tun\"\n                  },{\n                     \"target\": \"/dev/vhost-net\"\n                  },{\n                     \"target\": \"/dev/ntsync\"\n                  },{\n                     \"target\": \"/dev/vdb1\",\n                     \"children\": [\n                        {\n                           \"target\": \"/dev/vdb1\"\n                        }\n                     ]\n                  },{\n                     \"target\": \"/dev/loop0\"\n                  },{\n                     \"target\": \"/dev/loop1\"\n                  },{\n                     \"target\": \"/dev/loop2\"\n                  },{\n                     \"target\": \"/dev/loop3\"\n                  },{\n                     \"target\": \"/dev/nbd0\"\n                  },{\n                     \"target\": \"/dev/nbd1\"\n                  },{\n                     \"target\": \"/dev/nbd2\"\n                  },{\n                     \"target\": \"/dev/nbd3\"\n                  },{\n                     \"target\": \"/dev/vda\"\n                  },{\n                     \"target\": \"/dev/vdb\"\n                  },{\n                     \"target\": \"/dev/vdc\"\n                  },{\n                     \"target\": \"/dev/zram0\"\n                  },{\n                     \"target\": \"/dev/mqueue\"\n                  },{\n                     \"target\": \"/dev/.lxc/proc\"\n                  },{\n                     \"target\": \"/dev/.lxc/sys\"\n                  },{\n                     \"target\": \"/dev/full\"\n                  },{\n                     \"target\": \"/dev/null\"\n                  },{\n                     \"target\": \"/dev/random\"\n                  },{\n                     \"target\": \"/dev/tty\"\n                  },{\n                     \"target\": \"/dev/urandom\"\n                  },{\n                     \"target\": \"/dev/zero\"\n                  },{\n                     \"target\": \"/dev/pts\"\n                  },{\n                     \"target\": \"/dev/ptmx\"\n                  },{\n                     \"target\": \"/dev/console\"\n                  }\n               ]\n            },{\n               \"target\": \"/proc\",\n               \"children\": [\n                  {\n                     \"target\": \"/proc/sys/kernel/random/boot_id\"\n                  }\n               ]\n            },{\n               \"target\": \"/sys\",\n               \"children\": [\n                  {\n                     \"target\": \"/sys/devices/virtual/net\"\n                  },{\n                     \"target\": \"/sys/fs/fuse/connections\"\n                  },{\n                     \"target\": \"/sys/kernel/security\"\n                  },{\n                     \"target\": \"/sys/kernel/tracing\"\n                  },{\n                     \"target\": \"/sys/fs/cgroup\"\n                  }\n               ]\n            },{\n               \"target\": \"/usr/lib/modules/7.0.14-orbstack-00380-ga7e0a2dc9535\"\n            },{\n               \"target\": \"/tmp\"\n            },{\n               \"target\": \"/opt/orbstack-guest\"\n            }\n         ]\n      }\n   ]\n}\n"
+  }
+}

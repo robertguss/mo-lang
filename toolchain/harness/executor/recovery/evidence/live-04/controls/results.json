@@ -1,0 +1,23 @@
+[
+  {
+    "group": "active-owner-death",
+    "ok": true
+  },
+  {
+    "group": "finalize-gap",
+    "ok": true
+  },
+  {
+    "group": "complete-gap",
+    "ok": true
+  },
+  {
+    "group": "dispose-gap",
+    "ok": true
+  },
+  {
+    "group": "repeated-cleanup",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/live.py\", line 240, in main\n    action(name)\n    ~~~~~~^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/live.py\", line 179, in action\n    cleanup(ws)\n    ~~~~~~~^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/live.py\", line 75, in cleanup\n    require(result['cleanup'] == 'confirmed', result)\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/live.py\", line 30, in require\n    raise AssertionError(detail)\nAssertionError: {'run_id': '31f64658715d456ab9a555458c06c519', 'workspace_id': '8771dad70168455d96f17d91d78bf4d6', 'cleanup': 'unresolved', 'execution': 'unknown', 'completed': ['terminal_barrier'], 'unresolved': ['1541c058e56a4f3594c7337315d5802f'], 'error': 'cleanup_unknown'}\n"
+  }
+]

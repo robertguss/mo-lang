@@ -1,0 +1,1 @@
+Initial pane command had an unterminated shell quote and never launched the wrapper or compiler. Cancelled shell continuation with ctrl-c and dispatched properly shell-quoted argv; full-test-02 is the only actual fresh compiler attempt.

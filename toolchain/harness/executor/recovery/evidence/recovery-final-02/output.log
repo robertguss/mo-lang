@@ -1,0 +1,4 @@
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/live.py", line 104
+    ('before-state', '    state_write(root, state)\n    with lock(root, request['deadline']):')]:
+                                                                                 ^^^^^^^^
+SyntaxError: invalid syntax. Is this intended to be part of the string?

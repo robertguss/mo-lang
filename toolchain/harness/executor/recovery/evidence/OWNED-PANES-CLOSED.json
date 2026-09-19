@@ -1,0 +1,29 @@
+{
+  "p22": "closed after verified shell-only foreground; subsequent pane_not_found confirmed. The initial two-pane close loop then refused p26 because its instantaneous foreground was not shell-only. No close forced.",
+  "p26_before": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 47014,
+        "foreground_processes": [
+          {
+            "argv": [
+              "-zsh"
+            ],
+            "argv0": "zsh",
+            "cmdline": "-zsh",
+            "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1",
+            "name": "zsh",
+            "pid": 47014
+          }
+        ],
+        "pane_id": "w4:p26",
+        "shell_pid": 47014
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "p26_close": "{\"id\":\"cli:pane:close\",\"result\":{\"type\":\"ok\"}}\n",
+  "stderr": "",
+  "exit": 0
+}

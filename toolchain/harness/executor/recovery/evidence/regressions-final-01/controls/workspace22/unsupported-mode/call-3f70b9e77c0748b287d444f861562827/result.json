@@ -1,0 +1,10 @@
+{
+  "run_id": "36504999a3b646a7bd8b1ef64a9ff938",
+  "workspace_id": "a5c4ca6dbc03410480c483c8ee8dbc42",
+  "call_id": "3f70b9e77c0748b287d444f861562827",
+  "state": "failure",
+  "execution": "unknown",
+  "truncated": false,
+  "error": "controller_failure",
+  "elapsed_seconds": 0.001035158995364327
+}

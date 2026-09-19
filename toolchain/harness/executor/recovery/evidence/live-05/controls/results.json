@@ -1,0 +1,34 @@
+[
+  {
+    "group": "repeated-cleanup",
+    "ok": true
+  },
+  {
+    "group": "foreign-identity",
+    "ok": true
+  },
+  {
+    "group": "malformed-linked",
+    "ok": true
+  },
+  {
+    "group": "lock-contention",
+    "ok": true
+  },
+  {
+    "group": "unknown-transport",
+    "ok": true
+  },
+  {
+    "group": "late-bootstrap",
+    "ok": true
+  },
+  {
+    "group": "application-active",
+    "ok": true
+  },
+  {
+    "group": "application-snapshot",
+    "ok": true
+  }
+]

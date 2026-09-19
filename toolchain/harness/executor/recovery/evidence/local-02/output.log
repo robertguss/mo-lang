@@ -1,0 +1,43 @@
+test_absent_fault_stimulus_and_prior_success_do_not_pass (test_executor.ExecutorTests.test_absent_fault_stimulus_and_prior_success_do_not_pass) ... ok
+test_caller_check_mutation_does_not_change_registered_inventory (test_executor.ExecutorTests.test_caller_check_mutation_does_not_change_registered_inventory) ... ok
+test_cgroup_path_uses_systemd_hierarchy (test_executor.ExecutorTests.test_cgroup_path_uses_systemd_hierarchy) ... ok
+test_collect_after_confirmed_disposal_rejects_locally_without_machine_shutdown (test_executor.ExecutorTests.test_collect_after_confirmed_disposal_rejects_locally_without_machine_shutdown) ... ok
+test_collect_and_dispose_serialize_with_start_and_close_future_start (test_executor.ExecutorTests.test_collect_and_dispose_serialize_with_start_and_close_future_start) ... ok
+test_collector_never_unconditionally_stops_deadline_before_proof (test_executor.ExecutorTests.test_collector_never_unconditionally_stops_deadline_before_proof) ... ok
+test_external_verifier_rejects_missing_observations_stale_forged_and_wrong_results (test_executor.ExecutorTests.test_external_verifier_rejects_missing_observations_stale_forged_and_wrong_results) ... ok
+test_finalizer_keeps_reaper_armed_when_removal_is_uncertain (test_executor.ExecutorTests.test_finalizer_keeps_reaper_armed_when_removal_is_uncertain) ... ok
+test_finalizer_proves_cgroup_absence_before_disarming (test_executor.ExecutorTests.test_finalizer_proves_cgroup_absence_before_disarming) ... ok
+test_host_cleanup_failure_stops_only_named_machine_and_fails_closed (test_executor.ExecutorTests.test_host_cleanup_failure_stops_only_named_machine_and_fails_closed) ... ok
+test_independent_reaper_requests_dedicated_machine_poweroff_if_cleanup_unknown (test_executor.ExecutorTests.test_independent_reaper_requests_dedicated_machine_poweroff_if_cleanup_unknown) ... ok
+test_policy_rejects_effective_security_drift (test_executor.ExecutorTests.test_policy_rejects_effective_security_drift) ... ok
+test_rejects_bad_fixtures_and_deadlines (test_executor.ExecutorTests.test_rejects_bad_fixtures_and_deadlines) ... ok
+test_rejects_empty_missing_duplicate_and_vacuous_checks (test_executor.ExecutorTests.test_rejects_empty_missing_duplicate_and_vacuous_checks) ... ok
+test_start_claim_is_one_shot_even_when_dispatch_reply_is_lost (test_executor.ExecutorTests.test_start_claim_is_one_shot_even_when_dispatch_reply_is_lost) ... ok
+test_claim_foreign_and_active_exclusion (test_workspace.Controller.test_claim_foreign_and_active_exclusion) ... ok
+test_json_result_limit_and_timeout_quarantine (test_workspace.Controller.test_json_result_limit_and_timeout_quarantine) ... ok
+test_snapshot_copies_modes_and_closes_dispatch (test_workspace.Controller.test_snapshot_copies_modes_and_closes_dispatch) ... ok
+test_command_refusal_is_structured_without_dispatch (test_workspace.Feedback.test_command_refusal_is_structured_without_dispatch) ... ok
+test_exact_mount_policy (test_workspace.Feedback.test_exact_mount_policy) ... ok
+test_feedback_has_no_fake_checks_and_run_stays_strict (test_workspace.Feedback.test_feedback_has_no_fake_checks_and_run_stays_strict) ... ok
+test_edit_refusals_preserve_bytes (test_workspace.Files.test_edit_refusals_preserve_bytes) ... ok
+test_hostile_entries (test_workspace.Files.test_hostile_entries) ... ok
+test_import_and_result_bounds (test_workspace.Files.test_import_and_result_bounds) ... ok
+test_paths (test_workspace.Files.test_paths) ... ok
+test_repair_and_inventory (test_workspace.Files.test_repair_and_inventory) ... ok
+test_utf8_and_modes (test_workspace.Files.test_utf8_and_modes) ... ok
+test_before_create_retired_and_late_create (test_recovery.Machine.test_before_create_retired_and_late_create) ... ok
+test_dispatched_missing_storage_requires_proof (test_recovery.Machine.test_dispatched_missing_storage_requires_proof) ... ok
+test_foreign_state_retained (test_recovery.Machine.test_foreign_state_retained) ... ok
+test_late_bootstrap_barrier_before_storage (test_recovery.Machine.test_late_bootstrap_barrier_before_storage) ... ok
+test_missing_root_is_not_runtime_absence (test_recovery.Machine.test_missing_root_is_not_runtime_absence) ... ok
+test_lost_reserve_retains_unbound_identity (test_recovery.Ownership.test_lost_reserve_retains_unbound_identity) ... ok
+test_receipt_precedes_create (test_recovery.Ownership.test_receipt_precedes_create) ... ok
+test_invalid_receipts_before_transport (test_recovery.Validation.test_invalid_receipts_before_transport) ... ok
+test_owner_contention_never_steals (test_recovery.Validation.test_owner_contention_never_steals) ... ok
+test_symlink_hardlink_and_nonprivate (test_recovery.Validation.test_symlink_hardlink_and_nonprivate) ... ok
+test_transport_unknown_closes_original_owner (test_recovery.Validation.test_transport_unknown_closes_original_owner) ... ok
+
+----------------------------------------------------------------------
+Ran 38 tests in 0.672s
+
+OK

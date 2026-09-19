@@ -1,0 +1,25 @@
+{
+  "cause": "inactive parent slices; cleanup readiness incorrectly accepted as execution readiness",
+  "first_matching_transport": {
+    "sequence": 6,
+    "rc": 0,
+    "stdout": {
+      "length": 1006,
+      "sha256": "84125739785198bf8645ab7463f988eeaf2065d707d81eb27413467e8c31aa83",
+      "base64": "eyJjYW5jZWxsZWQiOiBmYWxzZSwgImNhbmRpZGF0ZV9zaGEyNTYiOiAiYjg4MGYyOTJjMDIzOTExZWYxOGU2OWU4NTc2M2VkYzFkY2M2OTJiOWNiNWQzNzUyZmQ3NGMwODVlNjk3MGZiOSIsICJjZ3JvdXAiOiBudWxsLCAiY2xlYW51cCI6IHsiYWJzZW50IjogdHJ1ZSwgImNncm91cF9hYnNlbnQiOiBmYWxzZSwgInJlbW92ZWRfcmMiOiAwfSwgImNvbnRhaW5lcl9pZCI6ICIzMzZhOTM1ZTI1YmIwMWIwNWU5MDUxODhmN2ZmMWUyYTFjMTdmOTJlMmY1NWI5OTY0NmE5OWQzNWRiNDQ2ZGY0IiwgImNvdW50ZXJzIjoge30sICJlbGFwc2VkX3NlY29uZHMiOiAwLjExNDczOTUwNzAwMDE5NDg2LCAiZXJyb3IiOiAiUnVudGltZUVycm9yKCdtaXNzaW5nIHNsaWNlIGNvbnRyb2wgZ3JvdXAnKSIsICJleGl0X2NvZGUiOiBudWxsLCAiaW1hZ2UiOiAic2hhMjU2OmRlYmRiYTk5NTRiMTA2NWFiMWNlNzIzYzZjMWYyZjIyZTUyYTc4YzE2NGY4NjNiOTM4ZDU4Y2MyYzlmMGQzMzciLCAibmFtZSI6ICJtby1leGVjdXRvci1lYmQ5MDZhODg2M2E0NTM5OGUyM2JiNDZjYWU3NDQ5OSIsICJwb2xpY3kiOiAibW8tZXhlY3V0b3Itd29ya3NwYWNlLXYxIiwgInJ1bl9pZCI6ICJlYmQ5MDZhODg2M2E0NTM5OGUyM2JiNDZjYWU3NDQ5OSIsICJzaWduYWwiOiBudWxsLCAic3RhdHVzIjogImluZnJhc3RydWN0dXJlX2ZhaWx1cmUiLCAic3RkZXJyIjogIiIsICJzdGRvdXQiOiAiIiwgInRpbWVkX291dCI6IGZhbHNlLCAidHJ1bmNhdGVkIjogZmFsc2UsICJ3b3Jrc3BhY2UiOiB7InJlYWRvbmx5IjogZmFsc2UsICJzbmFwc2hvdCI6IG51bGwsICJzb3VyY2UiOiAiL3Zhci9saWIvbW8taGFybmVzcy9tby13b3Jrc3BhY2UtNGE0MTcxNGFlNmQyNDA0ZThmOWMwZDc1NzNlNTIyYTQvc3RvcmFnZS9kYXRhIiwgIndvcmtzcGFjZV9pZCI6ICI0YTQxNzE0YWU2ZDI0MDRlOGY5YzBkNzU3M2U1MjJhNCIsICJ3b3Jrc3BhY2VfcnVuX2lkIjogIjJmZGI0OTkwZWVhMjQxMzY5YzY5OTlmNmRmMTUwNDYxIn19Cg==",
+      "truncated": false
+    },
+    "stderr": {
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "base64": "",
+      "truncated": false
+    },
+    "start": 1789803871.033671,
+    "finish": 1789803871.062305
+  },
+  "transport_matches": 13,
+  "earlier_malformed_snapshot": "unexplained; distinct first event",
+  "operator_cleanup": "operator-cleanup-observed01",
+  "restored_readiness": "readiness-probes-03"
+}

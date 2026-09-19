@@ -1,0 +1,18 @@
+{
+  "run_id": "10ca40a9bc8c46f0ae3e0a6d73375a20",
+  "workspace_id": "a8acaac344954c01a4cc58fa45e4ad2e",
+  "cleanup": "confirmed",
+  "execution": "unknown",
+  "completed": [
+    "terminal_barrier",
+    "a57a3fe45a0148b8b43ac36f84b9092d",
+    "fbb57288cf72460c8c18552582751366",
+    "e6cfe8d7b234439fbeb15c74bb39a53f",
+    "08cc1438896b42d2806e4edb368aa532",
+    "5d3729516ae14781bdc1018706d4e353",
+    "f9a468cb3fda4e1aa18355fa8ad53617",
+    "87cecf0d9dca46529bac2a638f5f0fa8",
+    "workspace_deleted"
+  ],
+  "unresolved": []
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "workspace_id": "6ad7c4955c0647f8b4f8f1872d2b464d",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "0a6f046a0ace4c0b852f586148fca110",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-c1982f8b240ae012d6e948ce180f8f416f41dd0dfd5b69046ce473b6d023d445.scope",
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "e2f3cbd6546442ff8e57006984dd16cf",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "607de6fa81b44075a3d8d10282dfe7c8",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-d4250ecbb9b13bc23e06ff32f449a99f46ce58a6cf57ac7c6537333f678b5dc9.scope",
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "3328bac24e83489ca6cdb6a5b6f72b05",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "033c70efdf514c42a8613133eae546e7",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": null,
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "8771dad70168455d96f17d91d78bf4d6",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "1541c058e56a4f3594c7337315d5802f",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": null,
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "40db2685adcc4281ad76fa7eb27eb216",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "737f10a6c3c24271bb093da7c0a6fe9c",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-5ca5d5bdc4c87c5a58bedcb5be320a9189612711a34b6b62cc3c8d0ca4549b02.scope",
+        "cgroup_exists": false
+      }
+    ]
+  }
+]

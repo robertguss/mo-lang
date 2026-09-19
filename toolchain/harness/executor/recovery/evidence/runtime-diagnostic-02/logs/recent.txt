@@ -1,0 +1,601 @@
+Sep 19 03:36:27 mo-executor-r01 dbus-daemon[187]: [system] Activating systemd to hand-off: service name='org.freedesktop.login1' unit='dbus-org.freedesktop.login1.service' requested by ':1.1' (uid=0 pid=193 comm="loginctl enable-linger root")
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting containerd.service - containerd container runtime...
+Sep 19 03:36:27 mo-executor-r01 dbus-daemon[187]: [system] Successfully activated service 'org.freedesktop.systemd1'
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Finished systemd-user-sessions.service - Permit User Sessions.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started console-getty.service - Console Getty.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting modprobe@drm.service - Load Kernel Module drm...
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: setvtrgb.service - Set console scheme was skipped because of an unmet condition check (ConditionPathExists=/dev/tty0).
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Created slice system-getty.slice - Slice /system/getty.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: getty@tty1.service - Getty on tty1 was skipped because of an unmet condition check (ConditionPathExists=/dev/tty0).
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Reached target getty.target - Login Prompts.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting systemd-hostnamed.service - Hostname Service...
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: modprobe@drm.service: Deactivated successfully.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Finished modprobe@drm.service - Load Kernel Module drm.
+Sep 19 03:36:27 mo-executor-r01 systemd-logind[191]: New seat seat0.
+Sep 19 03:36:27 mo-executor-r01 dbus-daemon[187]: [system] Successfully activated service 'org.freedesktop.login1'
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Created slice user-501.slice - User Slice of UID 501.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting user-runtime-dir@501.service - User Runtime Directory /run/user/501...
+Sep 19 03:36:27 mo-executor-r01 dbus-daemon[187]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started systemd-hostnamed.service - Hostname Service.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Created slice user-0.slice - User Slice of UID 0.
+Sep 19 03:36:27 mo-executor-r01 systemd-networkd[171]: Could not set hostname: Access denied
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting user-runtime-dir@0.service - User Runtime Directory /run/user/0...
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started systemd-logind.service - User Login Management.
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.093389788-04:00" level=info msg="starting containerd" revision= version=2.2.1
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: imuxsock: Acquired UNIX socket '/run/systemd/journal/syslog' (fd 3) from systemd.  [v8.2312.0]
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Finished user-runtime-dir@501.service - User Runtime Directory /run/user/501.
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: rsyslogd: imklog: cannot open kernel log (/proc/kmsg): Operation not permitted.
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: rsyslogd: activation of module imklog failed [v8.2312.0 try https://www.rsyslog.com/e/2145 ]
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: imklog: cannot open kernel log (/proc/kmsg): Operation not permitted.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Finished user-runtime-dir@0.service - User Runtime Directory /run/user/0.
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: activation of module imklog failed [v8.2312.0 try https://www.rsyslog.com/e/2145 ]
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: rsyslogd's groupid changed to 102
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: rsyslogd's userid changed to 102
+Sep 19 03:36:27 mo-executor-r01 rsyslogd[205]: [origin software="rsyslogd" swVersion="8.2312.0" x-pid="205" x-info="https://www.rsyslog.com"] start
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting user@0.service - User Manager for UID 0...
+Sep 19 03:36:27 mo-executor-r01 (systemd)[222]: pam_unix(systemd-user:session): session opened for user root(uid=0) by (uid=0)
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Starting user@501.service - User Manager for UID 501...
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started rsyslog.service - System Logging Service.
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099091960-04:00" level=info msg="loading plugin" id=io.containerd.content.v1.content type=io.containerd.content.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099187584-04:00" level=info msg="loading plugin" id=io.containerd.image-verifier.v1.bindir type=io.containerd.image-verifier.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099195459-04:00" level=info msg="loading plugin" id=io.containerd.internal.v1.opt type=io.containerd.internal.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099213001-04:00" level=info msg="loading plugin" id=io.containerd.warning.v1.deprecations type=io.containerd.warning.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099218709-04:00" level=info msg="loading plugin" id=io.containerd.mount-handler.v1.erofs type=io.containerd.mount-handler.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099223126-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.blockfile type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099231667-04:00" level=info msg="skip loading plugin" error="no scratch file generator: skip plugin" id=io.containerd.snapshotter.v1.blockfile type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099234875-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.btrfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099347750-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.devmapper type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099352458-04:00" level=info msg="skip loading plugin" error="devmapper not configured: skip plugin" id=io.containerd.snapshotter.v1.devmapper type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099355708-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.erofs type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099378750-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.native type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099385416-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.overlayfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 (systemd)[226]: pam_unix(systemd-user:session): session opened for user mo(uid=501) by (uid=0)
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099414749-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.zfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099422166-04:00" level=info msg="skip loading plugin" error="lstat /var/lib/containerd/io.containerd.snapshotter.v1.zfs: no such file or directory: skip plugin" id=io.containerd.snapshotter.v1.zfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099425791-04:00" level=info msg="loading plugin" id=io.containerd.event.v1.exchange type=io.containerd.event.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099438916-04:00" level=info msg="loading plugin" id=io.containerd.monitor.task.v1.cgroups type=io.containerd.monitor.task.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099519874-04:00" level=info msg="loading plugin" id=io.containerd.metadata.v1.bolt type=io.containerd.metadata.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099528999-04:00" level=info msg="metadata content store policy set" policy=shared
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099622165-04:00" level=info msg="loading plugin" id=io.containerd.gc.v1.scheduler type=io.containerd.gc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099631873-04:00" level=info msg="loading plugin" id=io.containerd.nri.v1.nri type=io.containerd.nri.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099641956-04:00" level=info msg="built-in NRI default validator is disabled"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099644456-04:00" level=info msg="runtime interface created"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099646081-04:00" level=info msg="created NRI interface"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099649039-04:00" level=info msg="loading plugin" id=io.containerd.differ.v1.erofs type=io.containerd.differ.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099660664-04:00" level=info msg="skip loading plugin" error="failed to check mkfs.erofs availability: failed to run mkfs.erofs --help: exec: \"mkfs.erofs\": executable file not found in $PATH: skip plugin" id=io.containerd.differ.v1.erofs type=io.containerd.differ.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099664164-04:00" level=info msg="loading plugin" id=io.containerd.differ.v1.walking type=io.containerd.differ.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099668039-04:00" level=info msg="loading plugin" id=io.containerd.lease.v1.manager type=io.containerd.lease.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099671956-04:00" level=info msg="loading plugin" id=io.containerd.mount-manager.v1.bolt type=io.containerd.mount-manager.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099702956-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.containers-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099708122-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.content-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099711872-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.diff-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099715872-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.images-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099720081-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.introspection-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099723747-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.namespaces-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099727372-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.snapshots-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099730497-04:00" level=info msg="loading plugin" id=io.containerd.shim.v1.manager type=io.containerd.shim.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099735039-04:00" level=info msg="loading plugin" id=io.containerd.runtime.v2.task type=io.containerd.runtime.v2
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099749372-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.tasks-service type=io.containerd.service.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099754789-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.containers type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099758455-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.content type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099763830-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.diff type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099767122-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.events type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099770580-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.images type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099775539-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.introspection type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099779039-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.leases type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099783289-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.mounts type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099786455-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.namespaces type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099790372-04:00" level=info msg="loading plugin" id=io.containerd.sandbox.store.v1.local type=io.containerd.sandbox.store.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099793622-04:00" level=info msg="loading plugin" id=io.containerd.transfer.v1.local type=io.containerd.transfer.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099804330-04:00" level=info msg="loading plugin" id=io.containerd.cri.v1.images type=io.containerd.cri.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099820288-04:00" level=info msg="Get image filesystem path \"/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs\" for snapshotter \"overlayfs\""
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099825747-04:00" level=info msg="Start snapshots syncer"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099833705-04:00" level=info msg="loading plugin" id=io.containerd.cri.v1.runtime type=io.containerd.cri.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099913288-04:00" level=info msg="starting cri plugin" config="{\"containerd\":{\"defaultRuntimeName\":\"runc\",\"runtimes\":{\"runc\":{\"runtimeType\":\"io.containerd.runc.v2\",\"runtimePath\":\"\",\"PodAnnotations\":null,\"ContainerAnnotations\":null,\"options\":{\"BinaryName\":\"\",\"CriuImagePath\":\"\",\"CriuWorkPath\":\"\",\"IoGid\":0,\"IoUid\":0,\"NoNewKeyring\":false,\"Root\":\"\",\"ShimCgroup\":\"\",\"SystemdCgroup\":false},\"privileged_without_host_devices\":false,\"privileged_without_host_devices_all_devices_allowed\":false,\"cgroupWritable\":false,\"baseRuntimeSpec\":\"\",\"cniConfDir\":\"\",\"cniMaxConfNum\":0,\"snapshotter\":\"\",\"sandboxer\":\"podsandbox\",\"io_type\":\"\"}},\"ignoreBlockIONotEnabledErrors\":false,\"ignoreRdtNotEnabledErrors\":false},\"cni\":{\"binDir\":\"\",\"binDirs\":[\"/opt/cni/bin\"],\"confDir\":\"/etc/cni/net.d\",\"maxConfNum\":1,\"setupSerially\":false,\"confTemplate\":\"\",\"ipPref\":\"\",\"useInternalLoopback\":false},\"enableSelinux\":false,\"selinuxCategoryRange\":1024,\"maxContainerLogLineSize\":16384,\"disableApparmor\":false,\"restrictOOMScoreAdj\":false,\"disableProcMount\":false,\"unsetSeccompProfile\":\"\",\"tolerateMissingHugetlbController\":true,\"disableHugetlbController\":true,\"device_ownership_from_security_context\":false,\"ignoreImageDefinedVolumes\":false,\"netnsMountsUnderStateDir\":false,\"enableUnprivilegedPorts\":true,\"enableUnprivilegedICMP\":true,\"enableCDI\":true,\"cdiSpecDirs\":[\"/etc/cdi\",\"/var/run/cdi\"],\"drainExecSyncIOTimeout\":\"0s\",\"ignoreDeprecationWarnings\":null,\"containerdRootDir\":\"/var/lib/containerd\",\"containerdEndpoint\":\"/run/containerd/containerd.sock\",\"rootDir\":\"/var/lib/containerd/io.containerd.grpc.v1.cri\",\"stateDir\":\"/run/containerd/io.containerd.grpc.v1.cri\"}"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099932621-04:00" level=info msg="loading plugin" id=io.containerd.podsandbox.controller.v1.podsandbox type=io.containerd.podsandbox.controller.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099951621-04:00" level=info msg="loading plugin" id=io.containerd.sandbox.controller.v1.shim type=io.containerd.sandbox.controller.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099965371-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.sandbox-controllers type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099971121-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.sandboxes type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099974704-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.snapshots type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099978121-04:00" level=info msg="loading plugin" id=io.containerd.streaming.v1.manager type=io.containerd.streaming.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099981829-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.streaming type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099985329-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.tasks type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099988996-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.transfer type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099993204-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.version type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.099996287-04:00" level=info msg="loading plugin" id=io.containerd.monitor.container.v1.restart type=io.containerd.monitor.container.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100007579-04:00" level=info msg="loading plugin" id=io.containerd.tracing.processor.v1.otlp type=io.containerd.tracing.processor.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100012120-04:00" level=info msg="skip loading plugin" error="skip plugin: tracing endpoint not configured" id=io.containerd.tracing.processor.v1.otlp type=io.containerd.tracing.processor.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100014995-04:00" level=info msg="loading plugin" id=io.containerd.internal.v1.tracing type=io.containerd.internal.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100018495-04:00" level=info msg="skip loading plugin" error="skip plugin: tracing endpoint not configured" id=io.containerd.internal.v1.tracing type=io.containerd.internal.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100021079-04:00" level=info msg="loading plugin" id=io.containerd.ttrpc.v1.otelttrpc type=io.containerd.ttrpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100024037-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.healthcheck type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100027620-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.cri type=io.containerd.grpc.v1
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100030579-04:00" level=info msg="Connect containerd service"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100039037-04:00" level=info msg="using experimental NRI integration - disable nri plugin to prevent this"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.100208036-04:00" level=error msg="failed to load cni during init, please check CRI plugin status before setting up network for pods" error="cni config load failed: no network config found in /etc/cni/net.d: cni plugin not initialized: failed to load cni config"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103510556-04:00" level=info msg="Start subscribing containerd event"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103545806-04:00" level=info msg="Start recovering state"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103576514-04:00" level=info msg="Start event monitor"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103581014-04:00" level=info msg="Start cni network conf syncer for default"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103583764-04:00" level=info msg="Start streaming server"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103587931-04:00" level=info msg="Registered namespace \"k8s.io\" with NRI"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103591181-04:00" level=info msg="runtime interface starting up..."
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103593556-04:00" level=info msg="starting plugins..."
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103597847-04:00" level=info msg="Synchronizing NRI (plugin) with current runtime state"
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103786138-04:00" level=info msg=serving... address=/run/containerd/containerd.sock.ttrpc
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.103838637-04:00" level=info msg=serving... address=/run/containerd/containerd.sock
+Sep 19 03:36:27 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:27.106515787-04:00" level=info msg="containerd successfully booted in 0.013305s"
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started containerd.service - containerd container runtime.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Queued start job for default target default.target.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Created slice app.slice - User Application Slice.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Reached target paths.target - Paths.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Reached target timers.target - Timers.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Starting dbus.socket - D-Bus User Message Bus Socket...
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Queued start job for default target default.target.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Created slice app.slice - User Application Slice.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Reached target paths.target - Paths.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Reached target timers.target - Timers.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Starting dbus.socket - D-Bus User Message Bus Socket...
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Listening on dbus.socket - D-Bus User Message Bus Socket.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Reached target sockets.target - Sockets.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Reached target basic.target - Basic System.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Reached target default.target - Main User Target.
+Sep 19 03:36:27 mo-executor-r01 systemd[222]: Startup finished in 13ms.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started user@0.service - User Manager for UID 0.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Listening on dbus.socket - D-Bus User Message Bus Socket.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Reached target sockets.target - Sockets.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Reached target basic.target - Basic System.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Reached target default.target - Main User Target.
+Sep 19 03:36:27 mo-executor-r01 systemd[1]: Started user@501.service - User Manager for UID 501.
+Sep 19 03:36:27 mo-executor-r01 systemd[226]: Startup finished in 13ms.
+Sep 19 03:36:28 mo-executor-r01 systemd-networkd[171]: eth0: Gained IPv6LL
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Finished systemd-networkd-wait-online.service - Wait for Network to be Configured.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Reached target network-online.target - Network is Online.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Starting docker.service - Docker Application Container Engine...
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: ubuntu-advantage.service - Ubuntu Pro Background Auto Attach was skipped because no trigger condition checks were met.
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.908640556-04:00" level=info msg="Starting up"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.908959846-04:00" level=info msg="OTEL tracing is not configured, using no-op tracer provider"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.909011887-04:00" level=info msg="CDI directory does not exist, skipping: failed to monitor for changes: no such file or directory" dir=/etc/cdi
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.909019887-04:00" level=info msg="CDI directory does not exist, skipping: failed to monitor for changes: no such file or directory" dir=/var/run/cdi
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.912127617-04:00" level=info msg="Creating a containerd client" address=/run/containerd/containerd.sock timeout=1m0s
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.928193387-04:00" level=info msg="Loading containers: start."
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.928250012-04:00" level=info msg="Starting daemon with containerd snapshotter integration enabled"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.928985341-04:00" level=info msg="Restoring containers: start."
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.929214923-04:00" level=info msg="Loading containers: done."
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.932019779-04:00" level=info msg="Docker daemon" commit="29.1.3-0ubuntu3~24.04.2" containerd-snapshotter=true storage-driver=overlayfs version=29.1.3
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.932094487-04:00" level=info msg="Initializing buildkit"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.932734108-04:00" level=warning msg="git source cannot be enabled: failed to find git binary: exec: \"git\": executable file not found in $PATH"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.933040148-04:00" level=info msg="Completed buildkit initialization"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.935940337-04:00" level=info msg="Daemon has completed initialization"
+Sep 19 03:36:28 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:28.936006045-04:00" level=info msg="API listen on /run/docker.sock"
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Started docker.service - Docker Application Container Engine.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Reached target multi-user.target - Multi-User System.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Reached target graphical.target - Graphical Interface.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Starting systemd-update-utmp-runlevel.service - Record Runlevel Change in UTMP...
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: systemd-update-utmp-runlevel.service: Deactivated successfully.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Finished systemd-update-utmp-runlevel.service - Record Runlevel Change in UTMP.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: Startup finished in 1.969s.
+Sep 19 03:36:28 mo-executor-r01 systemd[1]: dmesg.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Received SIGRTMIN+4.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Activating special unit poweroff.target...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Removed slice system-getty.slice - Slice /system/getty.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Removed slice system-modprobe.slice - Slice /system/modprobe.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target graphical.target - Graphical Interface.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target multi-user.target - Multi-User System.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target getty.target - Login Prompts.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target remote-cryptsetup.target - Remote Encrypted Volumes.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target remote-veritysetup.target - Remote Verity Protected Volumes.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target timers.target - Timer Units.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: apt-daily-upgrade.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped apt-daily-upgrade.timer - Daily apt upgrade and clean activities.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: apt-daily.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped apt-daily.timer - Daily apt download activities.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: dpkg-db-backup.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped dpkg-db-backup.timer - Daily dpkg database backup timer.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: e2scrub_all.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped e2scrub_all.timer - Periodic ext4 Online Metadata Check for All Filesystems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: logrotate.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped logrotate.timer - Daily rotation of log files.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: motd-news.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped motd-news.timer - Message of the Day.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-tmpfiles-clean.timer: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-tmpfiles-clean.timer - Daily Cleanup of Temporary Directories.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target time-set.target - System Time Set.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping console-getty.service - Console Getty...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping cron.service - Regular background program processing daemon...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping docker.service - Docker Application Container Engine...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping rsyslog.service - System Logging Service...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping systemd-hostnamed.service - Hostname Service...
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[205]: [origin software="rsyslogd" swVersion="8.2312.0" x-pid="205" x-info="https://www.rsyslog.com"] exiting on signal 15.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping systemd-logind.service - User Login Management...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping user@0.service - User Manager for UID 0...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping user@501.service - User Manager for UID 501...
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Activating special unit exit.target...
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Activating special unit exit.target...
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Stopped target default.target - Main User Target.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Stopped target default.target - Main User Target.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Stopped target basic.target - Basic System.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Stopped target basic.target - Basic System.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Stopped target paths.target - Paths.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Stopped target paths.target - Paths.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Stopped target sockets.target - Sockets.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Stopped target sockets.target - Sockets.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Stopped target timers.target - Timers.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Stopped target timers.target - Timers.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: cron.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Closed dbus.socket - D-Bus User Message Bus Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped cron.service - Regular background program processing daemon.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Removed slice app.slice - User Application Slice.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target shutdown.target - Shutdown.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Finished systemd-exit.service - Exit the Session.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target exit.target - Exit the Session.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: console-getty.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped console-getty.service - Console Getty.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Closed dbus.socket - D-Bus User Message Bus Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: rsyslog.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped rsyslog.service - System Logging Service.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Removed slice app.slice - User Application Slice.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Reached target shutdown.target - Shutdown.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Finished systemd-exit.service - Exit the Session.
+Sep 19 03:36:41 mo-executor-r01 systemd[222]: Reached target exit.target - Exit the Session.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-hostnamed.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-hostnamed.service - Hostname Service.
+Sep 19 03:36:41 mo-executor-r01 (sd-pam)[230]: pam_unix(systemd-user:session): session closed for user mo
+Sep 19 03:36:41 mo-executor-r01 (sd-pam)[227]: pam_unix(systemd-user:session): session closed for user root
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: user@501.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped user@501.service - User Manager for UID 501.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: user@0.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped user@0.service - User Manager for UID 0.
+Sep 19 03:36:41 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:41.209475854-04:00" level=info msg="Processing signal 'terminated'"
+Sep 19 03:36:41 mo-executor-r01 dockerd[309]: time="2026-09-19T03:36:41.212238544-04:00" level=info msg="Daemon shutdown complete"
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-logind.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-logind.service - User Login Management.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: docker.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped docker.service - Docker Application Container Engine.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target network-online.target - Network is Online.
+Sep 19 03:36:41 mo-executor-r01 containerd[201]: time="2026-09-19T03:36:41.233451615-04:00" level=info msg="Stop CRI service"
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping containerd.service - containerd container runtime...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-networkd-wait-online.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-networkd-wait-online.service - Wait for Network to be Configured.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping systemd-user-sessions.service - Permit User Sessions...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping user-runtime-dir@0.service - User Runtime Directory /run/user/0...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping user-runtime-dir@501.service - User Runtime Directory /run/user/501...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: containerd.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped containerd.service - containerd container runtime.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: run-user-0.mount: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounted run-user-0.mount - /run/user/0.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: run-user-501.mount: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounted run-user-501.mount - /run/user/501.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-user-sessions.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-user-sessions.service - Permit User Sessions.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: user-runtime-dir@0.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped user-runtime-dir@0.service - User Runtime Directory /run/user/0.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: user-runtime-dir@501.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped user-runtime-dir@501.service - User Runtime Directory /run/user/501.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Removed slice user-0.slice - User Slice of UID 0.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Removed slice user-501.slice - User Slice of UID 501.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target basic.target - Basic System.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target network.target - Network.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target paths.target - Path Units.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target remote-fs.target - Remote File Systems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target slices.target - Slice Units.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Removed slice user.slice - User and Session Slice.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target sockets.target - Socket Units.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: docker.socket: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Closed docker.socket - Docker Socket for the API.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target sysinit.target - System Initialization.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target cryptsetup.target - Local Encrypted Volumes.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-ask-password-console.path: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-ask-password-console.path - Dispatch Password Requests to Console Directory Watch.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-ask-password-wall.path: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-ask-password-wall.path - Forward Password Requests to Wall Directory Watch.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target integritysetup.target - Local Integrity Protected Volumes.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target veritysetup.target - Local Verity Protected Volumes.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: syslog.socket: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Closed syslog.socket - Syslog Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[171]: eth0: DHCP lease lost
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[171]: eth0: DHCPv6 lease lost
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping systemd-networkd.service - Network Configuration...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopping systemd-update-utmp.service - Record System Boot/Shutdown in UTMP...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-networkd.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-networkd.service - Network Configuration.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target network-pre.target - Preparation for Network.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-networkd.socket: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Closed systemd-networkd.socket - Network Service Netlink Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-network-generator.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-network-generator.service - Generate network units from Kernel command line.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-sysctl.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-sysctl.service - Apply Kernel Variables.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-update-utmp.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-update-utmp.service - Record System Boot/Shutdown in UTMP.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-tmpfiles-setup.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-tmpfiles-setup.service - Create Volatile Files and Directories.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target local-fs.target - Local File Systems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounting opt-orbstack\x2dguest.mount - /opt/orbstack-guest...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounting tmp.mount...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounting usr-lib-modules-7.0.14\x2dorbstack\x2d00380\x2dga7e0a2dc9535.mount - /usr/lib/modules/7.0.14-orbstack-00380-ga7e0a2dc9535...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: opt-orbstack\x2dguest.mount: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounted opt-orbstack\x2dguest.mount - /opt/orbstack-guest.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: tmp.mount: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounted tmp.mount.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: usr-lib-modules-7.0.14\x2dorbstack\x2d00380\x2dga7e0a2dc9535.mount: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Unmounted usr-lib-modules-7.0.14\x2dorbstack\x2d00380\x2dga7e0a2dc9535.mount - /usr/lib/modules/7.0.14-orbstack-00380-ga7e0a2dc9535.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target local-fs-pre.target - Preparation for Local File Systems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped target swap.target - Swaps.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target umount.target - Unmount All Filesystems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-remount-fs.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-remount-fs.service - Remount Root and Kernel File Systems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-tmpfiles-setup-dev.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-tmpfiles-setup-dev.service - Create Static Device Nodes in /dev.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-tmpfiles-setup-dev-early.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Stopped systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target shutdown.target - System Shutdown.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target final.target - Late Shutdown Services.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-poweroff.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-poweroff.service - System Power Off.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target poweroff.target - System Power Off.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Shutting down.
+Sep 19 03:36:41 mo-executor-r01 systemd-journald[122]: Journal stopped
+-- Boot e9ff5112fb1548c6920eb2d21673cabb --
+Sep 19 03:36:41 mo-executor-r01 systemd-journald[122]: Journal started
+Sep 19 03:36:41 mo-executor-r01 systemd-journald[122]: Runtime Journal (/run/log/journal/b8939f7d90524b88a39d5085e01874e4) is 8.0M, max 320.7M, 312.7M free.
+Sep 19 03:36:41 mo-executor-r01 mount[121]: mount: /sys/kernel/debug: permission denied.
+Sep 19 03:36:41 mo-executor-r01 mount[121]:        dmesg(1) may have more information after failed mount system call.
+Sep 19 03:36:41 mo-executor-r01 keyboard-setup.sh[130]: Couldn't get a file descriptor referring to the console.
+Sep 19 03:36:41 mo-executor-r01 keyboard-setup.sh[132]: Couldn't get a file descriptor referring to the console
+Sep 19 03:36:41 mo-executor-r01 keyboard-setup.sh[135]: setupcon: We are not on the console, the console is left unconfigured.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished keyboard-setup.service - Set the console keyboard layout.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-tmpfiles-setup-dev-early.service - Create Static Device Nodes in /dev gracefully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-journal-flush.service - Flush Journal to Persistent Storage...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-sysusers.service - Create System Users was skipped because no trigger condition checks were met.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-timesyncd.service - Network Time Synchronization was skipped because of an unmet condition check (ConditionVirtualization=!container).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target time-set.target - System Time Set.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-tmpfiles-setup-dev.service - Create Static Device Nodes in /dev...
+Sep 19 03:36:41 mo-executor-r01 systemd-journald[122]: Time spent on flushing to /var/log/journal/b8939f7d90524b88a39d5085e01874e4 is 10.469ms for 14 entries.
+Sep 19 03:36:41 mo-executor-r01 systemd-journald[122]: System Journal (/var/log/journal/b8939f7d90524b88a39d5085e01874e4) is 30.4M, max 4.0G, 3.9G free.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-tmpfiles-setup-dev.service - Create Static Device Nodes in /dev.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target local-fs-pre.target - Preparation for Local File Systems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target local-fs.target - Local File Systems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Listening on systemd-sysext.socket - System Extension Image Management (Varlink).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting console-setup.service - Set console font and keymap...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: ldconfig.service - Rebuild Dynamic Linker Cache was skipped because no trigger condition checks were met.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-confext.service - Merge System Configuration Images into /etc/ was skipped because no trigger condition checks were met.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-machine-id-commit.service - Commit a transient machine-id on disk was skipped because of an unmet condition check (ConditionPathIsMountPoint=/etc/machine-id).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-sysext.service - Merge System Extension Images into /usr/ and /opt/ was skipped because no trigger condition checks were met.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-udevd.service - Rule-based Manager for Device Events and Files was skipped because of an unmet condition check (ConditionPathIsReadWrite=/sys).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-networkd.service - Network Configuration...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished console-setup.service - Set console font and keymap.
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: Failed to increase receive buffer size for general netlink socket, ignoring: Operation not permitted
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: lo: Link UP
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: lo: Gained carrier
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: eth0: Link UP
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: eth0: Gained carrier
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: eth0: Configuring with /run/systemd/network/10-netplan-eth0.network.
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: Enumeration completed
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started systemd-networkd.service - Network Configuration.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target network.target - Network.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-networkd-wait-online.service - Wait for Network to be Configured...
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: eth0: DHCPv4 address 192.168.139.52/24, gateway 192.168.139.1 acquired from 192.168.139.1
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-journal-flush.service - Flush Journal to Persistent Storage.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-tmpfiles-setup.service - Create Volatile Files and Directories...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-tmpfiles-setup.service - Create Volatile Files and Directories.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-journal-catalog-update.service - Rebuild Journal Catalog was skipped because of an unmet condition check (ConditionNeedsUpdate=/var).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-update-done.service - Update is Completed was skipped because no trigger condition checks were met.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-update-utmp.service - Record System Boot/Shutdown in UTMP...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-update-utmp.service - Record System Boot/Shutdown in UTMP.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target sysinit.target - System Initialization.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started apt-daily.timer - Daily apt download activities.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started apt-daily-upgrade.timer - Daily apt upgrade and clean activities.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started dpkg-db-backup.timer - Daily dpkg database backup timer.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started e2scrub_all.timer - Periodic ext4 Online Metadata Check for All Filesystems.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: fstrim.timer - Discard unused filesystem blocks once a week was skipped because of an unmet condition check (ConditionVirtualization=!container).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started logrotate.timer - Daily rotation of log files.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started motd-news.timer - Message of the Day.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-sysupdate-reboot.timer - Reboot Automatically After System Update was skipped because of an unmet condition check (ConditionVirtualization=!container).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-sysupdate.timer - Automatic System Update was skipped because of an unmet condition check (ConditionVirtualization=!container).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started systemd-tmpfiles-clean.timer - Daily Cleanup of Temporary Directories.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: ua-timer.timer - Ubuntu Pro Timer for running repeated jobs was skipped because of an unmet condition check (ConditionPathExists=/var/lib/ubuntu-advantage/private/machine-token.json).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target timers.target - Timer Units.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Listening on dbus.socket - D-Bus System Message Bus Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting docker.socket - Docker Socket for the API...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-pcrphase-sysinit.service - TPM2 PCR Barrier (Initialization) was skipped because of an unmet condition check (ConditionSecurity=measured-uki).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Listening on docker.socket - Docker Socket for the API.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target sockets.target - Socket Units.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target basic.target - Basic System.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started cron.service - Regular background program processing daemon.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting dbus.service - D-Bus System Message Bus...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started dmesg.service - Save initial kernel messages after boot.
+Sep 19 03:36:41 mo-executor-r01 (cron)[187]: cron.service: Referenced but unset environment variable evaluates to an empty string: EXTRA_OPTS
+Sep 19 03:36:41 mo-executor-r01 cron[187]: (CRON) INFO (pidfile fd = 3)
+Sep 19 03:36:41 mo-executor-r01 cron[187]: (CRON) INFO (Running @reboot jobs)
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting e2scrub_reap.service - Remove Stale Online ext4 Metadata Check Snapshots...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: getty-static.service - getty on tty2-tty6 if dbus and logind are not available was skipped because of an unmet condition check (ConditionPathExists=!/usr/bin/dbus-daemon).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: networkd-dispatcher.service - Dispatcher daemon for systemd-networkd was skipped because no trigger condition checks were met.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting rsyslog.service - System Logging Service...
+Sep 19 03:36:41 mo-executor-r01 dbus-daemon[188]: [system] Activating systemd to hand-off: service name='org.freedesktop.hostname1' unit='dbus-org.freedesktop.hostname1.service' requested by ':1.0' (uid=998 pid=173 comm="/usr/lib/systemd/systemd-networkd")
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-logind.service - User Login Management...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: systemd-pcrphase.service - TPM2 PCR Barrier (User) was skipped because of an unmet condition check (ConditionSecurity=measured-uki).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-user-sessions.service - Permit User Sessions...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: ua-reboot-cmds.service - Ubuntu Pro reboot cmds was skipped because of an unmet condition check (ConditionPathExists=/var/lib/ubuntu-advantage/private/machine-token.json).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started dbus.service - D-Bus System Message Bus.
+Sep 19 03:36:41 mo-executor-r01 dbus-daemon[188]: [system] Activating systemd to hand-off: service name='org.freedesktop.login1' unit='dbus-org.freedesktop.login1.service' requested by ':1.1' (uid=0 pid=194 comm="loginctl enable-linger root")
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: e2scrub_reap.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished e2scrub_reap.service - Remove Stale Online ext4 Metadata Check Snapshots.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting containerd.service - containerd container runtime...
+Sep 19 03:36:41 mo-executor-r01 dbus-daemon[188]: [system] Successfully activated service 'org.freedesktop.systemd1'
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished systemd-user-sessions.service - Permit User Sessions.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started console-getty.service - Console Getty.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting modprobe@drm.service - Load Kernel Module drm...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: setvtrgb.service - Set console scheme was skipped because of an unmet condition check (ConditionPathExists=/dev/tty0).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Created slice system-getty.slice - Slice /system/getty.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: getty@tty1.service - Getty on tty1 was skipped because of an unmet condition check (ConditionPathExists=/dev/tty0).
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Reached target getty.target - Login Prompts.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting systemd-hostnamed.service - Hostname Service...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: modprobe@drm.service: Deactivated successfully.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished modprobe@drm.service - Load Kernel Module drm.
+Sep 19 03:36:41 mo-executor-r01 systemd-logind[193]: New seat seat0.
+Sep 19 03:36:41 mo-executor-r01 dbus-daemon[188]: [system] Successfully activated service 'org.freedesktop.login1'
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Created slice user-0.slice - User Slice of UID 0.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting user-runtime-dir@0.service - User Runtime Directory /run/user/0...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started systemd-logind.service - User Login Management.
+Sep 19 03:36:41 mo-executor-r01 dbus-daemon[188]: [system] Successfully activated service 'org.freedesktop.hostname1'
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Created slice user-501.slice - User Slice of UID 501.
+Sep 19 03:36:41 mo-executor-r01 systemd-networkd[173]: Could not set hostname: Access denied
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting user-runtime-dir@501.service - User Runtime Directory /run/user/501...
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started systemd-hostnamed.service - Hostname Service.
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.455555549-04:00" level=info msg="starting containerd" revision= version=2.2.1
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: rsyslogd: imklog: cannot open kernel log (/proc/kmsg): Operation not permitted.
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: rsyslogd: activation of module imklog failed [v8.2312.0 try https://www.rsyslog.com/e/2145 ]
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started rsyslog.service - System Logging Service.
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: imuxsock: Acquired UNIX socket '/run/systemd/journal/syslog' (fd 3) from systemd.  [v8.2312.0]
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: imklog: cannot open kernel log (/proc/kmsg): Operation not permitted.
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: activation of module imklog failed [v8.2312.0 try https://www.rsyslog.com/e/2145 ]
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: rsyslogd's groupid changed to 102
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: rsyslogd's userid changed to 102
+Sep 19 03:36:41 mo-executor-r01 rsyslogd[206]: [origin software="rsyslogd" swVersion="8.2312.0" x-pid="206" x-info="https://www.rsyslog.com"] start
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished user-runtime-dir@0.service - User Runtime Directory /run/user/0.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Finished user-runtime-dir@501.service - User Runtime Directory /run/user/501.
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461344637-04:00" level=info msg="loading plugin" id=io.containerd.content.v1.content type=io.containerd.content.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461462636-04:00" level=info msg="loading plugin" id=io.containerd.image-verifier.v1.bindir type=io.containerd.image-verifier.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461472636-04:00" level=info msg="loading plugin" id=io.containerd.internal.v1.opt type=io.containerd.internal.v1
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting user@0.service - User Manager for UID 0...
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461488469-04:00" level=info msg="loading plugin" id=io.containerd.warning.v1.deprecations type=io.containerd.warning.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461577760-04:00" level=info msg="loading plugin" id=io.containerd.mount-handler.v1.erofs type=io.containerd.mount-handler.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461597719-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.blockfile type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461610260-04:00" level=info msg="skip loading plugin" error="no scratch file generator: skip plugin" id=io.containerd.snapshotter.v1.blockfile type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461614218-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.btrfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461703260-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.devmapper type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461711593-04:00" level=info msg="skip loading plugin" error="devmapper not configured: skip plugin" id=io.containerd.snapshotter.v1.devmapper type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461714884-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.erofs type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461747926-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.native type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461755634-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.overlayfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461791634-04:00" level=info msg="loading plugin" id=io.containerd.snapshotter.v1.zfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461800426-04:00" level=info msg="skip loading plugin" error="lstat /var/lib/containerd/io.containerd.snapshotter.v1.zfs: no such file or directory: skip plugin" id=io.containerd.snapshotter.v1.zfs type=io.containerd.snapshotter.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461803842-04:00" level=info msg="loading plugin" id=io.containerd.event.v1.exchange type=io.containerd.event.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461817592-04:00" level=info msg="loading plugin" id=io.containerd.monitor.task.v1.cgroups type=io.containerd.monitor.task.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461905425-04:00" level=info msg="loading plugin" id=io.containerd.metadata.v1.bolt type=io.containerd.metadata.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.461916175-04:00" level=info msg="metadata content store policy set" policy=shared
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Starting user@501.service - User Manager for UID 501...
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462225214-04:00" level=info msg="loading plugin" id=io.containerd.gc.v1.scheduler type=io.containerd.gc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462236173-04:00" level=info msg="loading plugin" id=io.containerd.nri.v1.nri type=io.containerd.nri.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462279047-04:00" level=info msg="built-in NRI default validator is disabled"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462348005-04:00" level=info msg="runtime interface created"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462368589-04:00" level=info msg="created NRI interface"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462385672-04:00" level=info msg="loading plugin" id=io.containerd.differ.v1.erofs type=io.containerd.differ.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462416130-04:00" level=info msg="skip loading plugin" error="failed to check mkfs.erofs availability: failed to run mkfs.erofs --help: exec: \"mkfs.erofs\": executable file not found in $PATH: skip plugin" id=io.containerd.differ.v1.erofs type=io.containerd.differ.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462420047-04:00" level=info msg="loading plugin" id=io.containerd.differ.v1.walking type=io.containerd.differ.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462424255-04:00" level=info msg="loading plugin" id=io.containerd.lease.v1.manager type=io.containerd.lease.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462429005-04:00" level=info msg="loading plugin" id=io.containerd.mount-manager.v1.bolt type=io.containerd.mount-manager.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462466255-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.containers-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462474005-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.content-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462477796-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.diff-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462482796-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.images-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462486879-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.introspection-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462499963-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.namespaces-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462504629-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.snapshots-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462508296-04:00" level=info msg="loading plugin" id=io.containerd.shim.v1.manager type=io.containerd.shim.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462512421-04:00" level=info msg="loading plugin" id=io.containerd.runtime.v2.task type=io.containerd.runtime.v2
+Sep 19 03:36:41 mo-executor-r01 (systemd)[226]: pam_unix(systemd-user:session): session opened for user root(uid=0) by (uid=0)
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462527879-04:00" level=info msg="loading plugin" id=io.containerd.service.v1.tasks-service type=io.containerd.service.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462533754-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.containers type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462543546-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.content type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462554212-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.diff type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462558462-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.events type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462562504-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.images type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462566129-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.introspection type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462569837-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.leases type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462576837-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.mounts type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462580212-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.namespaces type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462584295-04:00" level=info msg="loading plugin" id=io.containerd.sandbox.store.v1.local type=io.containerd.sandbox.store.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462589712-04:00" level=info msg="loading plugin" id=io.containerd.transfer.v1.local type=io.containerd.transfer.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462601212-04:00" level=info msg="loading plugin" id=io.containerd.cri.v1.images type=io.containerd.cri.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462625045-04:00" level=info msg="Get image filesystem path \"/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs\" for snapshotter \"overlayfs\""
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462630545-04:00" level=info msg="Start snapshots syncer"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462639670-04:00" level=info msg="loading plugin" id=io.containerd.cri.v1.runtime type=io.containerd.cri.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462723461-04:00" level=info msg="starting cri plugin" config="{\"containerd\":{\"defaultRuntimeName\":\"runc\",\"runtimes\":{\"runc\":{\"runtimeType\":\"io.containerd.runc.v2\",\"runtimePath\":\"\",\"PodAnnotations\":null,\"ContainerAnnotations\":null,\"options\":{\"BinaryName\":\"\",\"CriuImagePath\":\"\",\"CriuWorkPath\":\"\",\"IoGid\":0,\"IoUid\":0,\"NoNewKeyring\":false,\"Root\":\"\",\"ShimCgroup\":\"\",\"SystemdCgroup\":false},\"privileged_without_host_devices\":false,\"privileged_without_host_devices_all_devices_allowed\":false,\"cgroupWritable\":false,\"baseRuntimeSpec\":\"\",\"cniConfDir\":\"\",\"cniMaxConfNum\":0,\"snapshotter\":\"\",\"sandboxer\":\"podsandbox\",\"io_type\":\"\"}},\"ignoreBlockIONotEnabledErrors\":false,\"ignoreRdtNotEnabledErrors\":false},\"cni\":{\"binDir\":\"\",\"binDirs\":[\"/opt/cni/bin\"],\"confDir\":\"/etc/cni/net.d\",\"maxConfNum\":1,\"setupSerially\":false,\"confTemplate\":\"\",\"ipPref\":\"\",\"useInternalLoopback\":false},\"enableSelinux\":false,\"selinuxCategoryRange\":1024,\"maxContainerLogLineSize\":16384,\"disableApparmor\":false,\"restrictOOMScoreAdj\":false,\"disableProcMount\":false,\"unsetSeccompProfile\":\"\",\"tolerateMissingHugetlbController\":true,\"disableHugetlbController\":true,\"device_ownership_from_security_context\":false,\"ignoreImageDefinedVolumes\":false,\"netnsMountsUnderStateDir\":false,\"enableUnprivilegedPorts\":true,\"enableUnprivilegedICMP\":true,\"enableCDI\":true,\"cdiSpecDirs\":[\"/etc/cdi\",\"/var/run/cdi\"],\"drainExecSyncIOTimeout\":\"0s\",\"ignoreDeprecationWarnings\":null,\"containerdRootDir\":\"/var/lib/containerd\",\"containerdEndpoint\":\"/run/containerd/containerd.sock\",\"rootDir\":\"/var/lib/containerd/io.containerd.grpc.v1.cri\",\"stateDir\":\"/run/containerd/io.containerd.grpc.v1.cri\"}"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462741419-04:00" level=info msg="loading plugin" id=io.containerd.podsandbox.controller.v1.podsandbox type=io.containerd.podsandbox.controller.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462759169-04:00" level=info msg="loading plugin" id=io.containerd.sandbox.controller.v1.shim type=io.containerd.sandbox.controller.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462773753-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.sandbox-controllers type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462780086-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.sandboxes type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462783461-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.snapshots type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462789794-04:00" level=info msg="loading plugin" id=io.containerd.streaming.v1.manager type=io.containerd.streaming.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462794044-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.streaming type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462797586-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.tasks type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462801752-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.transfer type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462806419-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.version type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462811669-04:00" level=info msg="loading plugin" id=io.containerd.monitor.container.v1.restart type=io.containerd.monitor.container.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462824794-04:00" level=info msg="loading plugin" id=io.containerd.tracing.processor.v1.otlp type=io.containerd.tracing.processor.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462829836-04:00" level=info msg="skip loading plugin" error="skip plugin: tracing endpoint not configured" id=io.containerd.tracing.processor.v1.otlp type=io.containerd.tracing.processor.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462833336-04:00" level=info msg="loading plugin" id=io.containerd.internal.v1.tracing type=io.containerd.internal.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462837085-04:00" level=info msg="skip loading plugin" error="skip plugin: tracing endpoint not configured" id=io.containerd.internal.v1.tracing type=io.containerd.internal.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462840294-04:00" level=info msg="loading plugin" id=io.containerd.ttrpc.v1.otelttrpc type=io.containerd.ttrpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462843919-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.healthcheck type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462851460-04:00" level=info msg="loading plugin" id=io.containerd.grpc.v1.cri type=io.containerd.grpc.v1
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462854210-04:00" level=info msg="Connect containerd service"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.462862210-04:00" level=info msg="using experimental NRI integration - disable nri plugin to prevent this"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.463019709-04:00" level=error msg="failed to load cni during init, please check CRI plugin status before setting up network for pods" error="cni config load failed: no network config found in /etc/cni/net.d: cni plugin not initialized: failed to load cni config"
+Sep 19 03:36:41 mo-executor-r01 (systemd)[227]: pam_unix(systemd-user:session): session opened for user mo(uid=501) by (uid=0)
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.466983017-04:00" level=info msg="Start subscribing containerd event"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467010683-04:00" level=info msg="Start recovering state"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467039058-04:00" level=info msg="Start event monitor"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467043308-04:00" level=info msg="Start cni network conf syncer for default"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467046475-04:00" level=info msg="Start streaming server"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467049975-04:00" level=info msg="Registered namespace \"k8s.io\" with NRI"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467052933-04:00" level=info msg="runtime interface starting up..."
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467055225-04:00" level=info msg="starting plugins..."
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467059183-04:00" level=info msg="Synchronizing NRI (plugin) with current runtime state"
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467296682-04:00" level=info msg=serving... address=/run/containerd/containerd.sock.ttrpc
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.467351015-04:00" level=info msg=serving... address=/run/containerd/containerd.sock
+Sep 19 03:36:41 mo-executor-r01 containerd[202]: time="2026-09-19T03:36:41.468004427-04:00" level=info msg="containerd successfully booted in 0.012651s"
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started containerd.service - containerd container runtime.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Queued start job for default target default.target.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Queued start job for default target default.target.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Created slice app.slice - User Application Slice.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target paths.target - Paths.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target timers.target - Timers.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Created slice app.slice - User Application Slice.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Reached target paths.target - Paths.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Reached target timers.target - Timers.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Starting dbus.socket - D-Bus User Message Bus Socket...
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Starting dbus.socket - D-Bus User Message Bus Socket...
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Listening on dbus.socket - D-Bus User Message Bus Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target sockets.target - Sockets.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target basic.target - Basic System.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Reached target default.target - Main User Target.
+Sep 19 03:36:41 mo-executor-r01 systemd[226]: Startup finished in 19ms.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started user@0.service - User Manager for UID 0.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Listening on dbus.socket - D-Bus User Message Bus Socket.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Reached target sockets.target - Sockets.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Reached target basic.target - Basic System.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Reached target default.target - Main User Target.
+Sep 19 03:36:41 mo-executor-r01 systemd[227]: Startup finished in 17ms.
+Sep 19 03:36:41 mo-executor-r01 systemd[1]: Started user@501.service - User Manager for UID 501.
+Sep 19 03:36:43 mo-executor-r01 systemd-networkd[173]: eth0: Gained IPv6LL
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Finished systemd-networkd-wait-online.service - Wait for Network to be Configured.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Reached target network-online.target - Network is Online.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Starting docker.service - Docker Application Container Engine...
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: ubuntu-advantage.service - Ubuntu Pro Background Auto Attach was skipped because no trigger condition checks were met.
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.188045312-04:00" level=info msg="Starting up"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.188871140-04:00" level=info msg="OTEL tracing is not configured, using no-op tracer provider"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.188925848-04:00" level=info msg="CDI directory does not exist, skipping: failed to monitor for changes: no such file or directory" dir=/etc/cdi
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.188930390-04:00" level=info msg="CDI directory does not exist, skipping: failed to monitor for changes: no such file or directory" dir=/var/run/cdi
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.192542825-04:00" level=info msg="Creating a containerd client" address=/run/containerd/containerd.sock timeout=1m0s
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.210022253-04:00" level=info msg="Loading containers: start."
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.210048711-04:00" level=info msg="Starting daemon with containerd snapshotter integration enabled"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.211005788-04:00" level=info msg="Restoring containers: start."
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.211450827-04:00" level=info msg="Loading containers: done."
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.214620723-04:00" level=info msg="Docker daemon" commit="29.1.3-0ubuntu3~24.04.2" containerd-snapshotter=true storage-driver=overlayfs version=29.1.3
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.214656223-04:00" level=info msg="Initializing buildkit"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.215537800-04:00" level=warning msg="git source cannot be enabled: failed to find git binary: exec: \"git\": executable file not found in $PATH"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.215839340-04:00" level=info msg="Completed buildkit initialization"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.221485304-04:00" level=info msg="Daemon has completed initialization"
+Sep 19 03:36:43 mo-executor-r01 dockerd[268]: time="2026-09-19T03:36:43.221542137-04:00" level=info msg="API listen on /run/docker.sock"
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Started docker.service - Docker Application Container Engine.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Reached target multi-user.target - Multi-User System.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Reached target graphical.target - Graphical Interface.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Starting systemd-update-utmp-runlevel.service - Record Runlevel Change in UTMP...
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: systemd-update-utmp-runlevel.service: Deactivated successfully.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Finished systemd-update-utmp-runlevel.service - Record Runlevel Change in UTMP.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: Startup finished in 1.897s.
+Sep 19 03:36:43 mo-executor-r01 systemd[1]: dmesg.service: Deactivated successfully.
+Sep 19 03:37:11 mo-executor-r01 systemd[1]: systemd-hostnamed.service: Deactivated successfully.

@@ -1,0 +1,24 @@
+{"case": "invalid-import-never-ready", "ok": true}
+{"case": "real-failure-inspection-repair-success", "ok": true}
+{"case": "duplicate-foreign-calls", "ok": true}
+{"case": "invalid-paths-utf8-overlap", "ok": true}
+{"case": "freeze-independent-positive", "ok": true}
+{"case": "closed-dispatch-and-empty-checks", "ok": true}
+{"case": "missing-stimulus-and-result-overwrite", "ok": true}
+{"case": "wrong-candidate-forged-success", "ok": true}
+{"case": "final-symlink", "ok": true}
+{"case": "intermediate-symlink", "ok": true}
+{"case": "hardlink", "ok": true}
+{"case": "fifo", "ok": true}
+{"case": "unsupported-mode", "ok": true}
+{"case": "tmpfs-byte-quota", "ok": true}
+{"case": "tmpfs-inode-quota", "ok": true}
+{"case": "timeout-descendants", "ok": true}
+{"case": "cancel-descendants", "ok": true}
+{"case": "exit-descendants", "ok": true}
+{"case": "supervisor-death-mounted", "ok": true}
+{"case": "controller-death-mounted", "ok": true}
+{"case": "stale-mutated-snapshot", "ok": true}
+{"case": "snapshot-permission-drift", "ok": true}
+{"controls": 22, "passed": 22, "cleanup_errors": []}
+{"suite": "workspace22", "transport_calls": 361, "no_retries": true}

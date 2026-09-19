@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py", line 298, in <module>
+    run.start()
+    ~~~~~~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py", line 116, in start
+    return self._start()
+           ~~~~~~~~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py", line 157, in _start
+    self.manifest = json.loads(py(bootstrap, self.root, data=payload))
+                               ~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py", line 28, in py
+    return remote(['python3', '-c', source, *args], data=data)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py", line 23, in remote
+    raise RuntimeError(f'remote rc={p.returncode}: {p.stderr[:2048]!r}')
+RuntimeError: remote rc=1: b'Traceback (most recent call last):\n  File "<string>", line 12, in <module>\nRuntimeError: another candidate is registered\n'

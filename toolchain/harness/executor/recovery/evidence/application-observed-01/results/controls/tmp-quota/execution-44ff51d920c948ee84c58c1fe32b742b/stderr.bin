@@ -1,0 +1,5 @@
+dd: error writing '/tmp/full': No space left on device
+17+0 records in
+16+0 records out
+Filesystem           1K-blocks      Used Available Use% Mounted on
+tmpfs                    16384     16384         0 100% /tmp

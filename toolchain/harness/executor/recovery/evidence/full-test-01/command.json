@@ -1,0 +1,1 @@
+["python3", "-B", "-c", "import subprocess,sys; sys.exit(subprocess.call([\"zig\",\"build\",\"test\",\"--summary\",\"all\"],cwd=\"toolchain\"))"]

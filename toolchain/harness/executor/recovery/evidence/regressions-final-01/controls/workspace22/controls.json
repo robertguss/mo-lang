@@ -1,0 +1,93 @@
+[
+  {
+    "case": "invalid-import-never-ready",
+    "ok": true
+  },
+  {
+    "case": "real-failure-inspection-repair-success",
+    "ok": true
+  },
+  {
+    "case": "duplicate-foreign-calls",
+    "ok": true
+  },
+  {
+    "case": "invalid-paths-utf8-overlap",
+    "ok": true
+  },
+  {
+    "case": "freeze-independent-positive",
+    "ok": true
+  },
+  {
+    "case": "closed-dispatch-and-empty-checks",
+    "ok": true
+  },
+  {
+    "case": "missing-stimulus-and-result-overwrite",
+    "ok": true
+  },
+  {
+    "case": "wrong-candidate-forged-success",
+    "ok": true
+  },
+  {
+    "case": "final-symlink",
+    "ok": true
+  },
+  {
+    "case": "intermediate-symlink",
+    "ok": true
+  },
+  {
+    "case": "hardlink",
+    "ok": true
+  },
+  {
+    "case": "fifo",
+    "ok": true
+  },
+  {
+    "case": "unsupported-mode",
+    "ok": true
+  },
+  {
+    "case": "tmpfs-byte-quota",
+    "ok": true
+  },
+  {
+    "case": "tmpfs-inode-quota",
+    "ok": true
+  },
+  {
+    "case": "timeout-descendants",
+    "ok": true
+  },
+  {
+    "case": "cancel-descendants",
+    "ok": true
+  },
+  {
+    "case": "exit-descendants",
+    "ok": true
+  },
+  {
+    "case": "supervisor-death-mounted",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 41, in case\n    action()\n    ~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 92, in <lambda>\n    case('supervisor-death-mounted', lambda: lifecycle(workspace('supervisor'), 'supervisor'))\n                                             ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 221, in lifecycle\n    wait_running(run)\n    ~~~~~~~~~~~~^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/selftest.py\", line 44, in wait_running\n    snap = snapshot(run)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/selftest.py\", line 38, in snapshot\n    return json.loads(py(source, run.name))\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py\", line 352, in loads\n    return _default_decoder.decode(s)\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 345, in decode\n    obj, end = self.raw_decode(s, idx=_w(s, 0).end())\n               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py\", line 363, in raw_decode\n    raise JSONDecodeError(\"Expecting value\", s, err.value) from None\njson.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n"
+  },
+  {
+    "case": "controller-death-mounted",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 41, in case\n    action()\n    ~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 93, in <lambda>\n    case('controller-death-mounted', lambda: controller_death(workspace('controller')))\n                                             ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 276, in controller_death\n    require(child.poll() is None, 'controller exited before stimulus')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 21, in require\n    raise AssertionError(detail)\nAssertionError: controller exited before stimulus\n"
+  },
+  {
+    "case": "stale-mutated-snapshot",
+    "ok": true
+  },
+  {
+    "case": "snapshot-permission-drift",
+    "ok": false,
+    "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 41, in case\n    action()\n    ~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 95, in <lambda>\n    case('snapshot-permission-drift', lambda: mode_drift(w))\n                                              ~~~~~~~~~~^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 249, in mode_drift\n    py('import pathlib,sys; p=pathlib.Path(sys.argv[1]); p.write_bytes(b\"right\\\\n\"); p.chmod(0o600)', source)\n    ~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py\", line 28, in py\n    return remote(['python3', '-c', source, *args], data=data)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py\", line 23, in remote\n    raise RuntimeError(f'remote rc={p.returncode}: {p.stderr[:2048]!r}')\nRuntimeError: remote rc=1: b'Traceback (most recent call last):\\n  File \"<string>\", line 1, in <module>\\n  File \"/usr/lib/python3.12/pathlib.py\", line 1038, in write_bytes\\n    with self.open(mode=\\'wb\\') as f:\\n         ^^^^^^^^^^^^^^^^^^^^\\n  File \"/usr/lib/python3.12/pathlib.py\", line 1015, in open\\n    return io.open(self, mode, buffering, encoding, errors, newline)\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nFileNotFoundError: [Errno 2] No such file or directory: \\'/var/lib/mo-harness/mo-workspace-a8acaac344954c01a4cc58fa45e4ad2e/snapshot/data/answer.txt\\'\\n'\n"
+  }
+]

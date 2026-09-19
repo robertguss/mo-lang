@@ -1,0 +1,2 @@
+/bin/sh: can't create /opt/mo/mo: Read-only file system
+/bin/sh: can't create /result.json: Read-only file system

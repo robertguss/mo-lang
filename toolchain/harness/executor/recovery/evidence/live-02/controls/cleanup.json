@@ -1,0 +1,24 @@
+[
+  {
+    "run_id": "eb0717c370db48998d21a90455d3f3d2",
+    "workspace_id": "e042eb4c0a7e4a39ac3efb52296e7e57",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "6152b0d727b544c1b562778b370cb6b0",
+    "workspace_id": "86b25d7256564aa58d2be30372c7a635",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  }
+]

@@ -1,0 +1,329 @@
+[
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/byte-quota",
+    "executions": [
+      {
+        "call_id": "c69d446e12a34b7bba0c59e5b6d93fdd",
+        "directory": "execution-a460a839ff974a899b4546bf2d775ce4",
+        "dispatch_requested": true,
+        "execution_id": "a460a839ff974a899b4546bf2d775ce4",
+        "readonly": false
+      }
+    ],
+    "run_id": "b8b7a8b769e84d9697e36f66c6e1cd66",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "5cb464d3a7e04d9bb92136943360a85f"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/cancel",
+    "executions": [
+      {
+        "call_id": "f735f619ad814c9b81e39006145694fb",
+        "directory": "execution-4ecd1defaa47480cb0b83c21701a876a",
+        "dispatch_requested": true,
+        "execution_id": "4ecd1defaa47480cb0b83c21701a876a",
+        "readonly": false
+      }
+    ],
+    "run_id": "82e0744c5e5a42ecb721cadce5e69519",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "e0365240f144425fa6e00a22498d1b83"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/controller",
+    "executions": [
+      {
+        "call_id": "ec5ee3504dfe49599d006abb1babd036",
+        "directory": "execution-a61f6dbf39264ef6a082a0110137da50",
+        "dispatch_requested": false,
+        "execution_id": "a61f6dbf39264ef6a082a0110137da50",
+        "readonly": false
+      }
+    ],
+    "run_id": "b9d2ee42067c466da4afbd56fb449289",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "a9afb9ffc8e547e38952ffd3b420239d"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/exit",
+    "executions": [
+      {
+        "call_id": "d7809b78bf8e427e858dd7c26fd65b10",
+        "directory": "execution-48f113211a4e42f49876eccb09ea5525",
+        "dispatch_requested": true,
+        "execution_id": "48f113211a4e42f49876eccb09ea5525",
+        "readonly": false
+      }
+    ],
+    "run_id": "63b7da3b0cf84df28bca98b326ac8e15",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "7b5d2fda710041afbe59b5f6aa09f900"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/fifo",
+    "executions": [
+      {
+        "call_id": "0563d1609c8d42b3bfdcff4f1d9fc90f",
+        "directory": "execution-f3d7d7367c4a4393812785c9e6243897",
+        "dispatch_requested": true,
+        "execution_id": "f3d7d7367c4a4393812785c9e6243897",
+        "readonly": false
+      }
+    ],
+    "run_id": "2b059dab60b044258ade502184e187e3",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "a77ac37e74594e47a1eca0dfb7c8692c"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/final-symlink",
+    "executions": [
+      {
+        "call_id": "a1c545a5fcf44315885e4cefdadd2c56",
+        "directory": "execution-e1f7285ab2a44808b62c9548c67a08b4",
+        "dispatch_requested": true,
+        "execution_id": "e1f7285ab2a44808b62c9548c67a08b4",
+        "readonly": false
+      }
+    ],
+    "run_id": "1a60c3f8c6f94d6ea85d0277b6997c1e",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "a770dd62b10b40f89a27c846ac1ba329"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/hardlink",
+    "executions": [
+      {
+        "call_id": "2913d71aa1e14210a5fb996f30db228c",
+        "directory": "execution-4ae986398e5a484a9a470fbf182c224e",
+        "dispatch_requested": true,
+        "execution_id": "4ae986398e5a484a9a470fbf182c224e",
+        "readonly": false
+      }
+    ],
+    "run_id": "c4b1b7b9d2d54b6299e7bf28afbd4138",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "f4f88de11678465ba431f172fe9d2d9f"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/inode-quota",
+    "executions": [
+      {
+        "call_id": "5edaefddda1d458586a2168aa183f9c0",
+        "directory": "execution-924717e11f804de4bc8423ecf5a3c903",
+        "dispatch_requested": true,
+        "execution_id": "924717e11f804de4bc8423ecf5a3c903",
+        "readonly": false
+      }
+    ],
+    "run_id": "70f169a6f4b64a9081db66c04816c619",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "e443c774e0ad4c51880690ba56315222"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/intermediate-symlink",
+    "executions": [
+      {
+        "call_id": "e598e901a235489ea1a7c7614a4c3c90",
+        "directory": "execution-59c876b2d24b48799898bbed104075f7",
+        "dispatch_requested": true,
+        "execution_id": "59c876b2d24b48799898bbed104075f7",
+        "readonly": false
+      }
+    ],
+    "run_id": "0cc6aad46c47482ea0aedb6d85878c05",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "70225c0dd94e408498280c7e40a9b8e3"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/invalid-import",
+    "executions": [],
+    "run_id": "6e7f5bd41d314473842ac16c9f697edd",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "3ed3e4df6bf34620b5a6c7dfd9210fd0"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/repair",
+    "executions": [
+      {
+        "call_id": "6e8dbfbc85e04aaead3250bdfde3c2af",
+        "directory": "execution-ebd906a8863a45398e23bb46cae74499",
+        "dispatch_requested": true,
+        "execution_id": "ebd906a8863a45398e23bb46cae74499",
+        "readonly": false
+      },
+      {
+        "call_id": "ea6214ac04f9415f9b5ceb40c618d06b",
+        "directory": "execution-4266fabe500d4741874d9c8177440e03",
+        "dispatch_requested": true,
+        "execution_id": "4266fabe500d4741874d9c8177440e03",
+        "readonly": false
+      },
+      {
+        "call_id": "1667a4e4e2a34ab5b161983c7992fcbe",
+        "directory": "execution-ca6c278a62ae42af9b2f744fc04d3ae3",
+        "dispatch_requested": true,
+        "execution_id": "ca6c278a62ae42af9b2f744fc04d3ae3",
+        "readonly": true
+      },
+      {
+        "call_id": "416f7b1302ff4c729b610c85c75b39a0",
+        "directory": "execution-b544380a4185427ca828532b5b07b3d3",
+        "dispatch_requested": true,
+        "execution_id": "b544380a4185427ca828532b5b07b3d3",
+        "readonly": true
+      },
+      {
+        "call_id": "14422a729c2b40878e1190b5a38135cb",
+        "directory": "execution-31cc634604ca435c8ffce1ad7a2ef3dc",
+        "dispatch_requested": true,
+        "execution_id": "31cc634604ca435c8ffce1ad7a2ef3dc",
+        "readonly": true
+      },
+      {
+        "call_id": "75d4653bea1a4c369b3b85e955646f3a",
+        "directory": "execution-06c200ba1eec4785b4b168bf861b5f08",
+        "dispatch_requested": true,
+        "execution_id": "06c200ba1eec4785b4b168bf861b5f08",
+        "readonly": true
+      }
+    ],
+    "run_id": "2fdb4990eea241369c6999f6df150461",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "4a41714ae6d2404e8f9c0d7573e522a4"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/supervisor",
+    "executions": [
+      {
+        "call_id": "b875f2368d4a49c59ab2cb470cac828a",
+        "directory": "execution-e0caa0cd441b4e6ea49e8bea1241bcba",
+        "dispatch_requested": true,
+        "execution_id": "e0caa0cd441b4e6ea49e8bea1241bcba",
+        "readonly": false
+      }
+    ],
+    "run_id": "58f5d70c5c9c4ed6974aaa3dedaad378",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "83ec95ff1b304557bb67b7e1753a3034"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/timeout",
+    "executions": [
+      {
+        "call_id": "ad2258370c9d4fc1a16ab4602cbd7be2",
+        "directory": "execution-d9fb2178a6da42bcaff924f958d030ef",
+        "dispatch_requested": true,
+        "execution_id": "d9fb2178a6da42bcaff924f958d030ef",
+        "readonly": false
+      }
+    ],
+    "run_id": "88a4e3b34c2e40d68e7a12bff4b6fe61",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "46e41c80a8ef4e4089b9628fcc5d5975"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/unsupported-mode",
+    "executions": [
+      {
+        "call_id": "bea469ade8cb4020ad05e13e25b75250",
+        "directory": "execution-5677b64672e04dfbb686cc17e9b86650",
+        "dispatch_requested": true,
+        "execution_id": "5677b64672e04dfbb686cc17e9b86650",
+        "readonly": false
+      }
+    ],
+    "run_id": "0f90fa7708f04db7926b2ffa13e02d36",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "30c5084bbd0f46ad839b1040bd12c133"
+  },
+  {
+    "directory": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/evidence/workspace-observed-01/results/controls/wrong",
+    "executions": [
+      {
+        "call_id": "c08dbe40bee8459c89d6292f8d88c6ac",
+        "directory": "execution-6e4dc71d458d4c1d8e619b499de20296",
+        "dispatch_requested": true,
+        "execution_id": "6e4dc71d458d4c1d8e619b499de20296",
+        "readonly": false
+      }
+    ],
+    "run_id": "5f623b0768ec4acb9eff0a8b92731fcb",
+    "selection": {
+      "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "policy": "mo-executor-workspace-v1",
+      "toolchain": null
+    },
+    "version": "mo-workspace-ownership-v1",
+    "workspace_id": "00740554cd304a9daf371059d3179036"
+  }
+]

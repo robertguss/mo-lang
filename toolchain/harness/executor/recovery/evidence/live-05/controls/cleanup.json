@@ -1,0 +1,95 @@
+[
+  {
+    "run_id": "5aecf0e8aa8d4c58b08be63281d8f917",
+    "workspace_id": "1e0f876fe7ed4170b4447dcdbf642839",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "9e04f327ab34441aa2e1ef7cb03e8f93",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "47a19086070649639b7ab1ec5d604df1",
+    "workspace_id": "a708c0bbb68e44448e893f03523bf885",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "2e03b6599f144a038c8fa7f4dbbd8743",
+    "workspace_id": "cd664c1ad6c7423b86346ad4220f4f4d",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "ec5620d0742b4849984690cadf8cc784",
+    "workspace_id": "a5c031756a5144fd98663ae8f3c8c1b5",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "76a066b978a247a28bba4de9bfd908eb",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "7d9463415c2344a2944075f46c4a31d5",
+    "workspace_id": "139054b01dae428289f5aff85d3573da",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "7758a50de4b049838af3cb746f02e50a",
+    "workspace_id": "20708f7e5242438ba162ac7186534c7f",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "c65438cffd1b49368a5670334654fc5e",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "dc0c2a00222841b2af9d864c1e5fd9ea",
+    "workspace_id": "fa86fd9ef56a4f30afe221129b803111",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "d7eb837b05384684aed2c68de0e2af0f",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "57ba4d69d7b84bd38b137ab2ab627717",
+    "workspace_id": "abb48a599c4e418790262992c7dfab04",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "5a73770492cf426da8b2ee2274620190",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  }
+]

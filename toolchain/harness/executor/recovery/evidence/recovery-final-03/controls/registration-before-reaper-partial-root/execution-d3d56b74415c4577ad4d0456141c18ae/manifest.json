@@ -1,0 +1,24 @@
+{
+  "run_id": "d3d56b74415c4577ad4d0456141c18ae",
+  "name": "mo-executor-d3d56b74415c4577ad4d0456141c18ae",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-workspace-v1",
+  "candidate_sha256": "496f4bd895bb8a8d64f77ca7cf61f620531c9833887198675f0824e032a1dece",
+  "script": "ZWNobyBORVZFUg==",
+  "checks": null,
+  "seconds": 10,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "workspace": {
+    "workspace_id": "9c18437ecb3a49108aa701fec9d98713",
+    "workspace_run_id": "3d85e45a80b8474193da7c2f00610920",
+    "source": "/var/lib/mo-harness/mo-workspace-9c18437ecb3a49108aa701fec9d98713/storage/data",
+    "readonly": false,
+    "snapshot": null
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+  "check_inventory_sha256": null,
+  "workspace_call_id": "6b9ad401e1f44be6bde4950c2ba4bdf6"
+}

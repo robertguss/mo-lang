@@ -1,0 +1,12 @@
+[
+  {
+    "name": "workspace22",
+    "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "-B",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py",
+      "toolchain/harness/executor/recovery/evidence/regressions-final-01/controls/workspace22"
+    ],
+    "exit": 1
+  }
+]

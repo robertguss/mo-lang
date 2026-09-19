@@ -1,0 +1,70 @@
+test_reserved_partial_bootstrap_without_manifest (__main__.Edges.test_reserved_partial_bootstrap_without_manifest) ... FAIL
+test_create_partial_root_uses_precreated_ownership (__main__.Edges.test_create_partial_root_uses_precreated_ownership) ... FAIL
+test_omitted_completed_execution_is_conflict (__main__.Edges.test_omitted_completed_execution_is_conflict) ... FAIL
+test_healthy_delete_retains_completed_proof (__main__.Edges.test_healthy_delete_retains_completed_proof) ... FAIL
+test_dispatched_before_bootstrap_has_reserved_authority (__main__.Edges.test_dispatched_before_bootstrap_has_reserved_authority) ... FAIL
+
+======================================================================
+FAIL: test_reserved_partial_bootstrap_without_manifest (__main__.Edges.test_reserved_partial_bootstrap_without_manifest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_edges.py", line 26, in test_reserved_partial_bootstrap_without_manifest
+    self.assertEqual(result['cleanup'],'confirmed',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+ : {'run_id': '36732231e632483b9533edad766e4581', 'workspace_id': 'bd4175a2a33245989142e5dad33e5b43', 'cleanup': 'unresolved', 'execution': 'unknown', 'completed': [], 'unresolved': ['d9794bdc5fed4353bd31713a740dba52'], 'error': 'cleanup_unknown'}
+
+======================================================================
+FAIL: test_create_partial_root_uses_precreated_ownership (__main__.Edges.test_create_partial_root_uses_precreated_ownership)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_edges.py", line 35, in test_create_partial_root_uses_precreated_ownership
+    self.assertEqual(result['cleanup'],'confirmed',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+ : {'run_id': 'cb8fec8ac2d14265942a37f0b689323d', 'workspace_id': '52ab9691dbe94d1c894393a9df5d3dfc', 'cleanup': 'unresolved', 'execution': 'unknown', 'completed': [], 'unresolved': [], 'error': 'cleanup_unknown'}
+
+======================================================================
+FAIL: test_omitted_completed_execution_is_conflict (__main__.Edges.test_omitted_completed_execution_is_conflict)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_edges.py", line 44, in test_omitted_completed_execution_is_conflict
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': 'd497c0d8e64c4f6d80d4b9e443e23c70', 'workspace_id': '06ac78047e3c4a63bed1fb617c49a05f', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_healthy_delete_retains_completed_proof (__main__.Edges.test_healthy_delete_retains_completed_proof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_edges.py", line 62, in test_healthy_delete_retains_completed_proof
+    self.assertEqual(result['cleanup'],'confirmed',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+ : {'run_id': '6df5dabde3184ee2b22ce8172ce81799', 'workspace_id': 'bbc82f97827c4f2cb8e6da3356c43a4c', 'cleanup': 'unresolved', 'execution': 'unknown', 'completed': ['terminal_barrier'], 'unresolved': ['923d3a9d3cc24b1f8c4bc7cf81a09bbb'], 'error': 'cleanup_unknown'}
+
+======================================================================
+FAIL: test_dispatched_before_bootstrap_has_reserved_authority (__main__.Edges.test_dispatched_before_bootstrap_has_reserved_authority)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_edges.py", line 74, in test_dispatched_before_bootstrap_has_reserved_authority
+    self.assertEqual(result['cleanup'],'confirmed',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+ : {'run_id': '6ae8c635ebd74c2eaa610b96925b5da7', 'workspace_id': '3077d5f85c0c4bbc9fcba3b1f980d3db', 'cleanup': 'unresolved', 'execution': 'unknown', 'completed': ['terminal_barrier'], 'unresolved': ['c532782a1dc1497bb1e08b66fcf405bc'], 'error': 'cleanup_unknown'}
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.012s
+
+FAILED (failures=5)

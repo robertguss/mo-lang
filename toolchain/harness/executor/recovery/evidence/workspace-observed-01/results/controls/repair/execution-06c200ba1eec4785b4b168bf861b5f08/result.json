@@ -1,0 +1,62 @@
+{
+  "run_id": "2fdb4990eea241369c6999f6df150461",
+  "workspace_id": "4a41714ae6d2404e8f9c0d7573e522a4",
+  "call_id": "75d4653bea1a4c369b3b85e955646f3a",
+  "state": "failure",
+  "execution": "unknown",
+  "exit_code": null,
+  "signal": null,
+  "stdout": "",
+  "stderr": "",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": null,
+  "execution_valid": false,
+  "manifest": {
+    "run_id": "06c200ba1eec4785b4b168bf861b5f08",
+    "name": "mo-executor-06c200ba1eec4785b4b168bf861b5f08",
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "policy": "mo-executor-workspace-v1",
+    "candidate_sha256": "3ab4a5cbb5ee69f2eeba03e6eb0cbdb9136ab1cdb49320f1b2ece55499c2bba4",
+    "script": "Y2F0IGFuc3dlci50eHQ=",
+    "checks": [
+      {
+        "id": "output",
+        "expected": "mutated",
+        "stream": "stdout",
+        "mode": "exact"
+      }
+    ],
+    "seconds": 10,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+    "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+    "workspace": {
+      "workspace_id": "4a41714ae6d2404e8f9c0d7573e522a4",
+      "workspace_run_id": "2fdb4990eea241369c6999f6df150461",
+      "source": "/var/lib/mo-harness/mo-workspace-4a41714ae6d2404e8f9c0d7573e522a4/snapshot/data",
+      "readonly": true,
+      "snapshot": "92a76b9124daeb20b3e079559a346c3b68827e96f54da7a2ea29251b821d6a73"
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+    "check_inventory_sha256": "7b8fb9d00383656f91267219ddc9b7e6b05d016b456581b893e632625e2aac7c",
+    "workspace_call_id": "75d4653bea1a4c369b3b85e955646f3a"
+  },
+  "observation": {
+    "status": "infrastructure_failure",
+    "error": "supervisor observation missing",
+    "cleanup_error": "RuntimeError('remote rc=1: b\\'Traceback (most recent call last):\\\\n  File \"<string>\", line 1, in <module>\\\\nModuleNotFoundError: No module named \\\\\\'remote\\\\\\'\\\\n\\'')",
+    "machine_stop_rc": 0
+  },
+  "checks": [
+    {
+      "id": "output",
+      "expected": "mutated",
+      "stream": "stdout",
+      "mode": "exact",
+      "passed": false
+    }
+  ],
+  "passed": false
+}

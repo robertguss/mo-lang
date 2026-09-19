@@ -1,0 +1,37 @@
+{
+  "workspace-observed-01": {
+    "calls": 921,
+    "gzip_bytes": 1761064,
+    "nonzero_rc": 12,
+    "exceptions": 0,
+    "truncated_streams": 0
+  },
+  "workspace-observed-02": {
+    "calls": 361,
+    "gzip_bytes": 2758357,
+    "nonzero_rc": 2,
+    "exceptions": 0,
+    "truncated_streams": 0
+  },
+  "executor-observed-01": {
+    "calls": 227,
+    "gzip_bytes": 270690,
+    "nonzero_rc": 1,
+    "exceptions": 0,
+    "truncated_streams": 0
+  },
+  "lifecycle-observed-01": {
+    "calls": 12,
+    "gzip_bytes": 6593,
+    "nonzero_rc": 0,
+    "exceptions": 0,
+    "truncated_streams": 0
+  },
+  "application-observed-01": {
+    "calls": 1147,
+    "gzip_bytes": 2263057,
+    "nonzero_rc": 0,
+    "exceptions": 0,
+    "truncated_streams": 0
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "absent": true,
+  "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-eea27a5b04f85d22e5ee2a92a73dfef5da547ae4dabff10a46a495d8a6f00863.scope",
+  "cgroup_absent": true,
+  "removed_rc": 0
+}

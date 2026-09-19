@@ -1,0 +1,25 @@
+{
+  "run_id": "70f169a6f4b64a9081db66c04816c619",
+  "workspace_id": "e443c774e0ad4c51880690ba56315222",
+  "call_id": "3de0a4f3c2b840738d5f88b41590f60a",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "cleanup": {
+      "execution_not_started": true,
+      "host_cgroup": null,
+      "host_cgroup_absent": true,
+      "host_confirmed": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    }
+  },
+  "elapsed_seconds": 0.0003178309998475015
+}

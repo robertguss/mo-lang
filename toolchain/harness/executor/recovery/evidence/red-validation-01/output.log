@@ -1,0 +1,409 @@
+test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) ... 
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value='missing') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value=False) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value=1) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value='true') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value=None) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value='missing') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value=False) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value=1) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value='true') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value=None) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value='missing') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value=False) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value=1) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value='true') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value=None) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value='missing') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value=False) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value=1) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value='true') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value=None) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value='missing') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value=False) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value=1) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value='true') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value=None) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value='missing') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value=False) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value=1) ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value='true') ... FAIL
+  test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value=None) ... FAIL
+test_matching_ids_do_not_authorize_malformed_response (__main__.Responses.test_matching_ids_do_not_authorize_malformed_response) ... FAIL
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value='true')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_confirmed', value=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value='true')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='host_cgroup_absent', value=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value='true')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='terminal', key='services_absent', value=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value='true')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_confirmed', value=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value='true')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='host_cgroup_absent', value=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value='missing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value='true')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_incomplete_nonboolean_proofs_never_confirm (__main__.Proofs.test_incomplete_nonboolean_proofs_never_confirm) (source='completed', key='services_absent', value=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 36, in test_incomplete_nonboolean_proofs_never_confirm
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '43116e829b6e4e888e5a481981cee754', 'workspace_id': 'f403b90f02df476381f50754907b0f29', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', '15a76ec8e61141b8b98a43490d39ffe8', 'workspace_deleted'], 'unresolved': []}
+
+======================================================================
+FAIL: test_matching_ids_do_not_authorize_malformed_response (__main__.Responses.test_matching_ids_do_not_authorize_malformed_response)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_validation.py", line 50, in test_matching_ids_do_not_authorize_malformed_response
+    self.assertEqual(result['cleanup'],'unresolved',result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'confirmed' != 'unresolved'
+- confirmed
++ unresolved
+ : {'run_id': '75d737f909d941f6ab2b3a21412e2c23', 'workspace_id': 'd2ef8e607bb84f9eaf506a12082cd030', 'cleanup': 'confirmed', 'execution': 'unknown', 'completed': ['terminal_barrier', 'workspace_deleted'], 'unresolved': [], 'passed': True}
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.052s
+
+FAILED (failures=31)

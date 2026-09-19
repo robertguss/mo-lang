@@ -1,0 +1,95 @@
+[
+  {
+    "workspace_id": "1e0f876fe7ed4170b4447dcdbf642839",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "9e04f327ab34441aa2e1ef7cb03e8f93",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-478c0b43391cebedd0067d9290d8a5fa26c8e817bf7f109918174e638f811e2c.scope",
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "a708c0bbb68e44448e893f03523bf885",
+    "root_exists": false,
+    "mounts": [],
+    "executions": []
+  },
+  {
+    "workspace_id": "cd664c1ad6c7423b86346ad4220f4f4d",
+    "root_exists": false,
+    "mounts": [],
+    "executions": []
+  },
+  {
+    "workspace_id": "a5c031756a5144fd98663ae8f3c8c1b5",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "76a066b978a247a28bba4de9bfd908eb",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-c7d98c826ca159f8b5da6e3781a9a83559a407295383af42c917b7fab7300b82.scope",
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "139054b01dae428289f5aff85d3573da",
+    "root_exists": false,
+    "mounts": [],
+    "executions": []
+  },
+  {
+    "workspace_id": "20708f7e5242438ba162ac7186534c7f",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "c65438cffd1b49368a5670334654fc5e",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": null,
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "fa86fd9ef56a4f30afe221129b803111",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "d7eb837b05384684aed2c68de0e2af0f",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-64185f677d3c9757b62a9a7c1cba80579c743928e582ec77b842d485f8a0ab82.scope",
+        "cgroup_exists": false
+      }
+    ]
+  },
+  {
+    "workspace_id": "abb48a599c4e418790262992c7dfab04",
+    "root_exists": false,
+    "mounts": [],
+    "executions": [
+      {
+        "id": "5a73770492cf426da8b2ee2274620190",
+        "root_exists": false,
+        "containers": "",
+        "units": "",
+        "cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice/docker-8ac8dca6ca917eed858f09c465a42c7fda5981e74daff56e85b82217d911be4f.scope",
+        "cgroup_exists": false
+      }
+    ]
+  }
+]

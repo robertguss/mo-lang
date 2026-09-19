@@ -1,0 +1,66 @@
+{
+  "controls": 22,
+  "passed": 4,
+  "cleanup_errors": [
+    {
+      "workspace_id": "3ed3e4df6bf34620b5a6c7dfd9210fd0",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "4a41714ae6d2404e8f9c0d7573e522a4",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 101, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 215, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: filesystem_refusal\n"
+    },
+    {
+      "workspace_id": "00740554cd304a9daf371059d3179036",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "a770dd62b10b40f89a27c846ac1ba329",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "70225c0dd94e408498280c7e40a9b8e3",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "f4f88de11678465ba431f172fe9d2d9f",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "a77ac37e74594e47a1eca0dfb7c8692c",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "30c5084bbd0f46ad839b1040bd12c133",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "5cb464d3a7e04d9bb92136943360a85f",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "e443c774e0ad4c51880690ba56315222",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 102, in main\n    ws.delete()\n    ~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 259, in delete\n    result = self.require('delete', **kwargs)\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: controller_failure\n"
+    },
+    {
+      "workspace_id": "46e41c80a8ef4e4089b9628fcc5d5975",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 101, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 215, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: filesystem_refusal\n"
+    },
+    {
+      "workspace_id": "e0365240f144425fa6e00a22498d1b83",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 101, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 215, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: filesystem_refusal\n"
+    },
+    {
+      "workspace_id": "7b5d2fda710041afbe59b5f6aa09f900",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 101, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 215, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: filesystem_refusal\n"
+    },
+    {
+      "workspace_id": "83ec95ff1b304557bb67b7e1753a3034",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 101, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 215, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: filesystem_refusal\n"
+    },
+    {
+      "workspace_id": "a9afb9ffc8e547e38952ffd3b420239d",
+      "error": "Traceback (most recent call last):\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/test_workspace_live.py\", line 101, in main\n    ws.collect()\n    ~~~~~~~~~~^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 215, in collect\n    self.require('complete', {'execution_id': run.manifest['run_id']})\n    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/workspace.py\", line 152, in require\n    raise files.Refusal(result.get('error', result['state']))\nworkspace_files.Refusal: filesystem_refusal\n"
+    }
+  ]
+}

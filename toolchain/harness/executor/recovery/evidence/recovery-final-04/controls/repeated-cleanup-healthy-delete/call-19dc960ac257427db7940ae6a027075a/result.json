@@ -1,0 +1,12 @@
+{
+  "run_id": "25d98d8f3e4c479f9fb84cb23572908f",
+  "workspace_id": "8a1c132434f6439a831e9b66818a72cc",
+  "call_id": "19dc960ac257427db7940ae6a027075a",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "deleted": true
+  },
+  "elapsed_seconds": 0.006407875000149943
+}

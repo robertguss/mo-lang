@@ -1,0 +1,36 @@
+{
+  "run_id": "2847c4c0bed3432f928bde4407c6ce14",
+  "name": "mo-executor-2847c4c0bed3432f928bde4407c6ce14",
+  "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+  "policy": "application-build-v1",
+  "candidate_sha256": "27341653d41c6b3128096bae97542073719fc3740e15ac887573f205708da20e",
+  "script": "ZWNobyBSRUFEWTsgc2xlZXAgMTAwICYgd2FpdA==",
+  "checks": [
+    {
+      "id": "answer",
+      "stream": "stdout",
+      "mode": "contains",
+      "expected": "READY"
+    }
+  ],
+  "seconds": 30,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+  "workspace": {
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace_id": "9b4770c22a3340318a35c9558dfef14b",
+    "workspace_run_id": "0f4b146178c2495bbd2c32b077a126b8",
+    "source": "/var/lib/mo-harness/mo-workspace-9b4770c22a3340318a35c9558dfef14b/snapshot/data",
+    "readonly": true,
+    "snapshot": "c5092abc4ec7a83cdae4189ba7e4db87550d177ae5055be03677da13f44811a4"
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+  "check_inventory_sha256": "c617ccd6b275e3d813dbd2650df44a209fe9de9fb2f5c2f003d4a5d760f064d7",
+  "workspace_call_id": "62a6d8ef6e894b258483d99c46a6fa0e",
+  "deadline": 1789803005.051152
+}

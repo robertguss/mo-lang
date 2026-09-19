@@ -1,0 +1,72 @@
+{
+  "source": "e6f04ce6358c85f22a86f26be0b5b388495fcc6e",
+  "original_ids_sha256": "ad1b47db5e508e6de5879db00d8a6e6ec58be8df4f937bcf4db7a5521b6abad1",
+  "id_scope": [
+    "hello.mo",
+    "logstat/main.mo",
+    "logstat/parse.mo",
+    "logstat/report.mo",
+    "logstat/stats.mo"
+  ],
+  "files": [
+    {
+      "path": ".mo.ids",
+      "bytes": 16773,
+      "sha256": "057e92ee6d4f760de2dafb271d75740fad290c7b1682e3f93f2f41f5ee9b5552"
+    },
+    {
+      "path": "hello.mo",
+      "bytes": 486,
+      "sha256": "9eeab0198b49451a8311de97caa9d2c1d0d18c080c27e4cc3589d8e8729d2dee"
+    },
+    {
+      "path": "logstat/fixture/a.log",
+      "bytes": 320,
+      "sha256": "18aea083d2e44b173ba7ad7c6a0cf4682f3ab8c0ed74d4482e2ff9121cdbda7f"
+    },
+    {
+      "path": "logstat/fixture/b.log",
+      "bytes": 260,
+      "sha256": "8c988b9362760a700791022f7f97567f647ee460a66bcee1f4458c10aa727fa7"
+    },
+    {
+      "path": "logstat/fixture/c.log",
+      "bytes": 328,
+      "sha256": "b0108936bd8a9d3dc3f7f2a4beb66c0cb046a97953b994acbda6a3718066969b"
+    },
+    {
+      "path": "logstat/fixture/notes.txt",
+      "bytes": 65,
+      "sha256": "beb914c782533ff2115db31d24339875166caee0b8554823f8ce22f6c8aba656"
+    },
+    {
+      "path": "logstat/main.mo",
+      "bytes": 7092,
+      "sha256": "920aef38064420785f12a4b6dd8e64ad67d9ec0452214d7af2f80b626fb2987e"
+    },
+    {
+      "path": "logstat/parse.mo",
+      "bytes": 5253,
+      "sha256": "9cb1a847ed01680595824e896c4569a94026b92f8b7e9723303289adecf14747"
+    },
+    {
+      "path": "logstat/report.mo",
+      "bytes": 6046,
+      "sha256": "1e00d74654e602da559992d510baad764b20508d2d472c20e6aca5756e1e581d"
+    },
+    {
+      "path": "logstat/stats.mo",
+      "bytes": 7100,
+      "sha256": "e6b65fdf9c3408f3f9004635ed1e18e254fcce617437febaebc7855fa609d1db"
+    },
+    {
+      "path": "mo.root",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "goldens": {
+    "logstat.expected": "baaf6aec3007cef0a446e693ba89232b3468a5282cc67a53bf9f24080263a715",
+    "logstat-2.expected": "2efafa54d8d9bf552cde175706fcc5fe175880a41ba0ff196e5038bc5765ac5f"
+  }
+}

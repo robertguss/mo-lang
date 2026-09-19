@@ -1,0 +1,5 @@
+dd: error writing '/build/full': No space left on device
+513+0 records in
+512+0 records out
+Filesystem           1K-blocks      Used Available Use% Mounted on
+tmpfs                   524288    524288         0 100% /build

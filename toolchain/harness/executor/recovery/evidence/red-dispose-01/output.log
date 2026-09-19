@@ -1,0 +1,18 @@
+test_interrupted_dispose_reuses_retained_proof (__main__.Machine.test_interrupted_dispose_reuses_retained_proof) ... FAIL
+
+======================================================================
+FAIL: test_interrupted_dispose_reuses_retained_proof (__main__.Machine.test_interrupted_dispose_reuses_retained_proof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/test_recovery.py", line 189, in test_interrupted_dispose_reuses_retained_proof
+    self.assertEqual(second['cleanup'],'confirmed',second)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'unresolved' != 'confirmed'
+- unresolved
++ confirmed
+ : {'run_id': '96470502f099478aa75052ad4230d740', 'workspace_id': '9f6a60b8fa7e4e59b78b9960fe161ad0', 'cleanup': 'unresolved', 'execution': 'unknown', 'completed': [], 'unresolved': ['0ec242e4c228497191c140f3eb82d244'], 'error': 'cleanup_unknown'}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.006s
+
+FAILED (failures=1)

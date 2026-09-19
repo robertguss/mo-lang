@@ -1,0 +1,189 @@
+[
+  {
+    "run_id": "eb1f549f78044114968d8a862ac0214b",
+    "workspace_id": "983d4f69d69c4e1babbedcd0239a75bc",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "20bdb3132bd147b38f06fe7a0d82ce1b",
+    "workspace_id": "7f391a5ed1114996b03e9efd91f04169",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "daa139180d4943789b4738c954167615",
+    "workspace_id": "4d491bd3ab984249872a194e88d76949",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "36dc5cf832f649eca4d1bce76c5cc987",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "900e65f3396b46afa7b78f6afd2b0720",
+    "workspace_id": "43bbda924c4046c1bbc41459f37400d4",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "19c7af65f3a54eb6b863b53b0e66a6e3",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "992cc368353640989f1270c3bea67ad9",
+    "workspace_id": "68156ce3f3854fa8a17aad2492c69ee0",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "c146550912f94f0aa612ea6df842f45f",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "a402083e69ba4664a2a1924f0e15a42a",
+    "workspace_id": "b9dde4688497414e912f3aa351700ebc",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "7f41a12ec8d44633b96c9d78c31ecd30",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "16f95ae7f7054c41802477bb52b3077c",
+    "workspace_id": "2f36b9804b4446f7a63437ad34016820",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "8e430529bd8d478787dc5f808c2e3aa8",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "e14c28a808c8402885e72753b4671f00",
+    "workspace_id": "ad1951f9fad54826bc85c26b09b51dac",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "568b7a5d134b4eae841d25584dfbd426",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "96fd090d2294469c898764a8e205f437",
+    "workspace_id": "62ef197f8b4b4b91880a7608d236aeb2",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "8cef9e4b044b497594fffc67bb09df54",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "9fbe7e213c5744c69063ed8d7da09ce8",
+    "workspace_id": "54b6dafb03234f819893ffc535c373c0",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "a550074b5fe24b4c8890ab067515cd9a",
+    "workspace_id": "88cd1c335dd4448b855a443c4607aa83",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "5d008e2ed010453586125ff74e9013e1",
+    "workspace_id": "745a092ae1744bb393c46d4ef6b64b8a",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "c463c5eb84af4a419ffd9a858ca56c66",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "831bd11c3ca74f0593b39f1ff80c4422",
+    "workspace_id": "530fcac88e6d4b17aedaddd777b75a0b",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "6fed232738cf4dc5a34274e77a9fd9de",
+    "workspace_id": "986da821b09e4db19523c5ec3aa72b3b",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "4c70a7a890d9481280d3b19de643e0ad",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "eaf48b27d0934a9995c2749f0a981415",
+    "workspace_id": "947bbc9028554d04b719dc17ce6991f1",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "1e10d8b00d764c55a5fa6efc246d023e",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  },
+  {
+    "run_id": "8462f796ba024da2b3eb280dcd2ecd07",
+    "workspace_id": "8077a27f17d94733b695782369018939",
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "completed": [
+      "terminal_barrier",
+      "1e8cb59a05bc4d36b231200ece1e51d1",
+      "workspace_deleted"
+    ],
+    "unresolved": []
+  }
+]

@@ -1,0 +1,25 @@
+toolchain/harness/executor/recovery/evidence/local-01 exit 0
+
+harness-workspace-recovery-v1 harness/workspace-recovery-v1* ≡
+❯ python3 -B toolchain/harness/executor/recovery/run_guarded.py 120 toolchain/harness/executor/r
+ecovery/evidence/local-02 python3 -B toolchain/harness/executor/recovery/local_suite.py
+toolchain/harness/executor/recovery/evidence/local-02 exit 0
+
+harness-workspace-recovery-v1 harness/workspace-recovery-v1* ≡
+❯ python3 -B toolchain/harness/executor/recovery/run_guarded.py 180 toolchain/harness/executor/r
+ecovery/evidence/live-01 python3 -B toolchain/harness/executor/recovery/live.py toolchain/harnes
+s/executor/recovery/evidence/live-01/controls --groups create-before create-response reserve-res
+ponse registration-before-reaper
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/tool
+chain/harness/executor/recovery/run_guarded.py", line 21, in <module>
+    relative = path.relative_to(sources)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/py
+thon3.14/pathlib/__init__.py", line 490, in relative_to
+    raise ValueError(f"{str(self)!r} is not in the subpath of {str(other)!r}")
+ValueError: '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1
+/toolchain/harness/executor/recovery/run_guarded.py' is not in the subpath of 'toolchain/harness
+/executor'
+
+harness-workspace-recovery-v1 harness/workspace-recovery-v1* ≡
+❯

@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/recovery/operator_cleanup.py", line 75, in <module>
+    raw=remote(['python3','-c',script],data=json.dumps(receipts).encode(),timeout=60)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-recovery-v1/toolchain/harness/executor/adapter.py", line 23, in remote
+    raise RuntimeError(f'remote rc={p.returncode}: {p.stderr[:2048]!r}')
+RuntimeError: remote rc=1: b'Traceback (most recent call last):\n  File "<string>", line 11, in <module>\nRuntimeError: parent identity\n'
