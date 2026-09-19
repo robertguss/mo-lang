@@ -148,7 +148,9 @@ pub const Proc = struct {
 };
 
 /// An `answer` the running update made, delivered when it commits (step 31).
-pub const PendingAnswer = struct { seq: u64, value: Value };
+/// `parcel`: the answer packed when `answer` ran, as a send is, so a compaction later in the
+/// update cannot move what it holds from under it.
+pub const PendingAnswer = struct { seq: u64, value: Value, parcel: ?*Parcel = null };
 /// A reply that reached an inline ask before it woke: the value, packed when the run packs.
 pub const Answered = struct { value: Value, parcel: ?*Parcel = null };
 
@@ -453,7 +455,12 @@ pub const Sim = struct {
         const own = p.deferring and p.reply_seq == seq;
         if (!own and std.mem.indexOfScalar(u64, p.kept.items, seq) == null) return;
         for (p.answers.items) |a| if (a.seq == seq) return;
-        try p.answers.append(sim.gpa, .{ .seq = seq, .value = value });
+        // Packed now, as a send is: the value lives in the update's region, which a loop's or a
+        // walk's compaction may move before the update commits (the answer's copy would then read
+        // freed memory).
+        const parcel = try sim.outgoing(value);
+        errdefer if (parcel) |x| x.free();
+        try p.answers.append(sim.gpa, .{ .seq = seq, .value = if (parcel) |x| x.value else value, .parcel = parcel });
     }
 
     /// An answer on its way to the asker of message `seq`: null is Down. Nothing waiting for it
@@ -469,6 +476,17 @@ pub const Sim = struct {
         const packed_ = if (value) |v| try sim.outgoing(v) else null;
         const got: ?Answered = if (value) |v| .{ .value = if (packed_) |x| x.value else v, .parcel = packed_ } else null;
         try sim.answered.put(sim.gpa, seq, got);
+    }
+
+    /// An answer `answerReply` already packed: routed as routeAnswer routes one, and its parcel
+    /// freed when nothing waits for it.
+    fn routePacked(sim: *Sim, a: PendingAnswer) Error!void {
+        if (sim.turns) |t| return t.answer(a.seq, a.value, a.parcel);
+        if (!sim.waiting.contains(a.seq)) {
+            if (a.parcel) |x| x.free();
+            return;
+        }
+        try sim.answered.put(sim.gpa, a.seq, .{ .value = a.value, .parcel = a.parcel });
     }
 
     /// Every ask `id` holds goes Down: its process crashed, restarted, or ended (step 31).
@@ -1107,6 +1125,7 @@ pub const Sim = struct {
                 p.wait = null;
                 p.asking = none;
                 p.doomed = null;
+                for (p.answers.items) |a| if (a.parcel) |x| x.free();
                 p.answers.clearRetainingCapacity();
                 if (sim.gave_up) return error.Crash;
                 try sim.crashed(id, before);
@@ -1146,7 +1165,7 @@ pub const Sim = struct {
             if (a.seq == entry.seq) answered_own = true;
             const at = std.mem.indexOfScalar(u64, p.kept.items, a.seq);
             if (at) |k| _ = p.kept.orderedRemove(k);
-            try sim.routeAnswer(a.seq, a.value);
+            try sim.routePacked(a);
         }
         p.answers.clearRetainingCapacity();
         // The arm kept its asker instead of answering: the process holds the ask until it

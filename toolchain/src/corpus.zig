@@ -987,6 +987,53 @@ test "corpus: a process whose state is megabytes restarts twenty times and its r
     try std.testing.expect(std.mem.endsWith(u8, compiled.stdout, "kept: 1\n"));
 }
 
+test "corpus: an answer of megabytes an arm made to an ask it kept arrives whole, under mo run, in a binary, and in one compacting at every safe point" {
+    // An `answer` waited for its update's commit as the value itself, in the update's region, and a
+    // returning frame's compaction past frame_budget freed it first: a report of about 0.35 MB
+    // printed raw memory from a binary and one of 0.8 MB panicked the interpreter (programs/agent,
+    // 19 Sep 2026). The answer is packed when `answer` runs now, as a send is. A binary built from
+    // C with -DMO_STRESS compacts at every safe point, so it finds the class at any size.
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    const root = "../examples";
+    const rel = "programs/deferred-large.mo";
+    var dir = Io.Dir.cwd().openDir(io, root, .{}) catch |err| switch (err) {
+        error.FileNotFound => return,
+        else => return err,
+    };
+    dir.close(io);
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    try std.testing.expect(try checkProgram(gpa, io, mo_exe, root, rel));
+    var built: Built = .{};
+    try checkBuiltProgram(gpa, io, mo_exe, root, rel, &built);
+    try std.testing.expectEqual(@as(u32, 0), built.wrong);
+    try std.testing.expectEqual(@as(u32, 2), built.same);
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    // The copy has no .mo.ids beside it, so it goes without its verified: line.
+    const source = try Io.Dir.cwd().readFileAlloc(io, root ++ "/" ++ rel, arena, .limited(1 << 20));
+    const body = source[0 .. std.mem.indexOf(u8, source, "\nverified:") orelse source.len];
+    try tmp.dir.writeFile(io, .{ .sub_path = "deferred.mo", .data = body });
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+    const made = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "deferred.mo", "-o", "deferred" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(made.term == .exited and made.term.exited == 0);
+    const stress = "zig cc -std=c11 -Wall -Werror -O2 -DMO_STRESS -o stressed zig-out/mo-build/deferred/deferred.c zig-out/mo-build/deferred/mo_rt.c zig-out/mo-build/.bricks/*/*.o";
+    const compiled = try std.process.run(arena, io, .{ .argv = &.{ "/bin/sh", "-c", stress }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(compiled.term == .exited and compiled.term.exited == 0);
+    for ([_][]const u8{ "10", "1000" }) |n| {
+        const ran = try std.process.run(arena, io, .{ .argv = &.{ "./stressed", n }, .cwd = .{ .path = cwd } });
+        try std.testing.expect(ran.term == .exited and ran.term.exited == 0);
+        try std.testing.expect(std.mem.endsWith(u8, ran.stdout, "and code 3, whole: true\n"));
+    }
+}
+
 test "corpus: a process an update starts runs on its starter's scheduler up to twice its share, under mo run and in a binary, and an arm answers the ask it keeps" {
     // Step 34: placement with the starter, and MO_PLACE=spread for step 30's rule. The program reads
     // where its processes run from the runtime; the last line is step 31's deferred reply answered in
