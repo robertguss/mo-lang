@@ -42,3 +42,17 @@ reading a populated `cgroup.events`; a stalled Docker daemon leaving
 `cleanup_unconfirmed` without a power-off). Both need a fault injected on the
 machine and are owed. Not run and not existing: the Mo agent against the real
 workspace service on the machine, end to end.
+
+## The first x86_64 Linux full suite (1:38 PM ET, fresh lead session)
+
+On Robert's Linux VM (`aurora-but-gold`, x86_64, 4 cores, Zig 0.16), clone
+`~/Projects/mo-lang-lead-verify` at `0ab217c9` (`lead/verify-step40`), detached
+under `guard.py 3000`: `zig build test --summary all` printed
+`Build Summary: 5/5 steps succeeded; 249/249 tests passed` and
+`run test 249 pass (249 total) 35m MaxRSS:474M`, exit 0 (`step40-linux-exits.txt`:
+build 0, step 40 tests 0, full 0). Raw log: `step40-linux-full-suite.log`. The
+sixteen `guard: killed` lines in it are step 40's own test killing `Fs.replace`
+between write and rename, and the `failed command:` line is Zig's label on a
+test run that wrote to stderr; neither is a failure. No orphaned test binary
+remained. The suite takes 35 minutes on this machine against about 12 on the
+Mac: the corpus builds one program at a time (load average 1.0 on 4 cores).

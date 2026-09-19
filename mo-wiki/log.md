@@ -975,3 +975,6 @@
 
 ## [2026-09-19] audit | PR 15 (repository audit) read after the lead's own reading; all conceded
 - 1:22 PM ET: lead reading filed first at f0b99fe4 with probes under audit/evidence/2026-09-19/fable-repo-reading/; comparison audit/fable-comparison-2026-09-19-repo.md; three rows in decisions/decision-log.md; brief plans/interpreter-step-43.md. PR 15 merged unchanged. Lint 26 notices of the inherited kinds, none new.
+
+## [2026-09-19] verify | the first x86_64 Linux full suite: 249 of 249
+- 1:38 PM ET: on the VM at 0ab217c9, exit 0, 35 minutes, MaxRSS 474M; log and exits in audit/evidence/2026-09-19/fable-lead-verification/. Informational for step 40 (already accepted); it is also the first completed full run on Linux since the move to the Mac. Robert set the maximum at three Opus workers.
