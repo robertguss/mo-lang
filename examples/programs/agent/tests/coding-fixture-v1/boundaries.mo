@@ -3,7 +3,7 @@ module Agent.Tests.CodingFixtureV1.Boundaries
 use Agent.Book{Book}
 use Agent.Client{Sleeper}
 use Agent.CodingFixture{watched}
-use Agent.CommandAdapter{Endpoint}
+use Agent.CommandAdapter{Endpoint, dispatched, failure}
 use Agent.ExactEdit{edited}
 use Agent.Model{Model, Fake}
 use Agent.Record{Order, Budget, Record, record, fixture_tools}
@@ -273,5 +273,20 @@ test "fixture grant cancellation deadline and recording boundaries"
   end
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+test "a completed command response in hand is reported as completed though the deadline has just passed"
+  http = Http.fixture()
+  body = "{\"version\": 1, \"run_id\": \"r_1\", \"call_id\": \"1\", \"workspace_id\": \"w\", \"state\": \"success\", \"exit_code\": 0, \"stdout\": \"\", \"stderr\": \"\", \"stdout_truncated\": false, \"stderr_truncated\": false, \"elapsed_ms\": 0, \"error_code\": \"none\", \"execution\": \"completed\"}"
+  # The scripted endpoint answers 5 ms on, as the 5 ms deadline runs out. A fault on the listen
+  # leaves nothing to send to, and a fault on the send is the transport failure it reports.
+  fake = Fake.start([body], Fs.fixture(delay: 5.ms))
+  if http.listen(0, within: 1.minute) is Ok(listener)
+    listener.serve(into: fake, idle: 5000.ms)
+    output = dispatched(http, Endpoint(host: "localhost", port: listener.port, workspace: "w"),
+      "r_1", "1", "test-key", Deadline.fixture(5.ms))
+    assert output == body or output == failure("failure", "transport",
+      "unknown") or output == failure("timeout", "transport", "unknown")
+  end
+end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (100 runs)
           proven: not run
