@@ -1,0 +1,24 @@
+{
+  "run_id": "6e67eaa3cd1a4e2f89b7811b8c32cf1e",
+  "workspace_id": "226e6a57cf1c49f1adf4b4803c56dba5",
+  "call_id": "8b7ef5677aab473d924ff155539eb339",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "cleanup": {
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-45f1bc2a6edc7edeeb6b10f4fc271a60e5cccb0f3c274b618faf73bf7f98b90f.scope",
+      "host_cgroup_absent": true,
+      "host_confirmed": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    }
+  },
+  "elapsed_seconds": 0.0007918800038169138
+}

@@ -1,0 +1,8 @@
+{"check": "verify", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "600", "--", "python3", "/Users/robertguss/Projects/startups/mo-lang/examples/programs/agent/tests/coding-fixture-v1/verify.py"], "exit_code": 1, "started": "2026-09-19T01:48:26.591556-04:00", "finished": "2026-09-19T01:48:52.998900-04:00", "remaining_group": []}
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/coding-fixture/accept.py", line 71, in <module>
+    run(name, 600, args)
+    ~~~^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/coding-fixture/accept.py", line 64, in run
+    raise RuntimeError(name + ' failed; evidence retained')
+RuntimeError: verify failed; evidence retained

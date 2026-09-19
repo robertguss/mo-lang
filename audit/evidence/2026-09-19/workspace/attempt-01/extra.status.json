@@ -1,0 +1,19 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "90",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace/lead-controls.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace/attempt-01/extra"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started_et": "2026-09-19T01:53:26.818799-04:00",
+  "finished_et": "2026-09-19T01:53:30.458403-04:00",
+  "exit_code": 1,
+  "forced": false,
+  "cleanup_before": [],
+  "cleanup_after": []
+}

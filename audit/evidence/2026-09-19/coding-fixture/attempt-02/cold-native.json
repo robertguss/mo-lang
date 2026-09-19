@@ -1,0 +1,7 @@
+{
+  "executable": "/Users/robertguss/Projects/startups/mo-lang/zig-out/mo-build/coding-fixture/coding-fixture",
+  "existed": true,
+  "prior_sha256": "cda88ca2b5fe73e99bc873134cd2524ab974b401814de22af26086c3fec25b9a",
+  "preserved_path": "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-lead-native-before-cold-euw45ios/coding-fixture",
+  "absent_before_verify": true
+}

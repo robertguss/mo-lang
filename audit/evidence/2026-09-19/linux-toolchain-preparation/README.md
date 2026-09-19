@@ -37,3 +37,26 @@ Commands and actual stdout/stderr/exits are retained per attempt. These are
 trusted compiler preparation results, not candidate or application acceptance.
 No compiler sources were edited. Linux execution is the next distinct check
 once the workspace worker releases the machine with positive cleanup.
+
+## Trusted Linux runtime verification, 19 Sep 2026, 1:47 AM ET
+
+After workspace worker release, `runtime-smoke.py` transferred the cross-built
+ELF, checked its full SHA-256 again, and installed it at
+`/opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl`. Exact e3a01bb guard.py was
+transferred separately with a recorded hash; no hand-written compiler source.
+The source tree remains the same archived e3a01bb baseline.
+
+`runtime-smoke-01/` passed all seven commands: Model's 3 tests, versioned and
+generic conformance checks, driver check, native driver build, and nine HTTP
+auth cases in each runtime. Both matrices have counts 1,2,2,2,3,1,0,1,1 and all
+18 listeners close. All 248 scanned Mo/IDs/Zig source files remain byte-identical.
+Service runtime 47.639 seconds, native driver build 37.54 seconds. The service's
+reported 512 KiB memory peak is not credible compiler-sizing evidence; no new
+candidate resource policy is inferred from it.
+
+The independent systemd service used private network, 600-second RuntimeMaxSec,
+1536M memory, 150% CPU, 128 tasks and control-group cleanup. Unit/cgroup and owned
+host process groups are confirmed absent. Transfer, identity, runtime and cleanup
+exit 0. This establishes trusted Linux interpreter/native execution for these
+checks. It does not turn the two failed native bootstrap builds into successes,
+or establish candidate Mo application execution under the BusyBox policy.

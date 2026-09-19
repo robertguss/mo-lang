@@ -1,0 +1,22 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "python3",
+    "-c",
+    "import json,pathlib,subprocess,sys\nunit=sys.argv[1]\nloaded=subprocess.check_output(['systemctl','list-units','--all','--no-legend',unit+'*'],text=True).strip()\nif loaded:subprocess.run(['systemctl','stop',unit+'.service'],check=True,timeout=15)\nunits=subprocess.check_output(['systemctl','list-units','--all','--no-legend',unit+'*'],text=True).strip()\ncg=pathlib.Path('/sys/fs/cgroup/system.slice')/(unit+'.service')\nprint(json.dumps({'units_before_cleanup':loaded,'units_after_cleanup':units,'cgroup_exists':cg.exists()}))\nassert not units and not cg.exists()\n",
+    "mo-linux-runtime-r01"
+  ],
+  "started": "2026-09-19T01:46:59.707174-04:00",
+  "finished": "2026-09-19T01:46:59.824750-04:00",
+  "exit_code": 0,
+  "remaining_group": []
+}

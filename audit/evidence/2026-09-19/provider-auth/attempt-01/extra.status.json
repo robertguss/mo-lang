@@ -1,0 +1,21 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "60",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz/auth/run.py",
+    "lead-extra",
+    "node",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/provider-auth/lead-controls.mjs",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz/auth/auth.mjs"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started_et": "2026-09-19T02:08:35.953384-04:00",
+  "finished_et": "2026-09-19T02:08:36.228908-04:00",
+  "exit_code": 0,
+  "forced": false,
+  "cleanup_before": [],
+  "cleanup_after": []
+}

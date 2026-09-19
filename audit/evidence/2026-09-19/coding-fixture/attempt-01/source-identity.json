@@ -1,0 +1,29 @@
+{
+  "worker": "84d442e2fa019d8f69e8ca0e0b746b9a7a5a892f",
+  "integrated": "9bae7797df0b30154dbf443da73948c5d0b83da8",
+  "changed_files": 100,
+  "exact_worker_files": 99,
+  "worker_id_records": [
+    "agent/api.mo",
+    "agent/book.mo",
+    "agent/check.mo",
+    "agent/coding-fixture.mo",
+    "agent/command-adapter.mo",
+    "agent/exact-edit.mo",
+    "agent/filing.mo",
+    "agent/main.mo",
+    "agent/record.mo",
+    "agent/registry.mo",
+    "agent/report.mo",
+    "agent/run.mo",
+    "agent/runs.mo",
+    "agent/server.mo",
+    "agent/shelf.mo",
+    "agent/steps.mo",
+    "agent/tests/coding-fixture-v1/boundaries.mo",
+    "agent/tools.mo",
+    "agent/transcript.mo"
+  ],
+  "preserved_main_records": 64,
+  "passed": true
+}

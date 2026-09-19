@@ -747,6 +747,21 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Start [[mo-provider-bridge-v1]] only in new provider/bridge files. Preserve native messages and validate exact two-step Mo continuations; distinguish offered replies from independently proved Book writes. Unknown usage fails before actionable output; existing/uncertain journals never resume or replay. Actual Mo control waits for lead coding-fixture acceptance. | Astra lead, informed by bounded Astra/low source review | decided | pinned-parser offline protocol/journal controls; later Mo end-to-end release |
 
+## Workspace and trusted Linux runtime results (19 Sep 2026, 2:02 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept [[mo-workspace-foundation]] after exact 1586-file comparison, 27 unit/22 workspace/17 executor/lifecycle/two extra controls, empty owned cleanup and unchanged shared Docker IDs/states. Retain the lead's missing-wait probe failure separately. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | workspace/attempt-01 and extra-02 at f4fe3ea/e6f04ce |
+| Trusted cross-built Linux compiler passes seven commands including native driver build and 18 real HTTP auth cases, with 248 source files unchanged and positive service/cgroup cleanup. This is runtime readiness for tested trusted code; candidate Mo image/resource policy still needs separate proof. | Astra lead | measured, bounded readiness | linux-toolchain-preparation/runtime-smoke-01 |
+
+## Coding/auth acceptance and application build scope (19 Sep 2026, 2:18 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept coding fixture after cold-runner correction and 243/243 full suite. Require exact stderr and an existing current executable for legacy tests; retain cancellation usage/race reds. Release actual bridge Mo control against exact e6f04ce. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | coding-fixture/attempt-02, 49 checks, both22 HTTP matrices, seven cancellation and six extras |
+| Accept private auth offline after independent late-body cleanup red/green, fresh preparation, 28 auth/28 foundation/two extras and unchanged 186 original files. Live OAuth support remains unverified. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | provider-auth/attempt-01; auth-readiness/late-response-02 and -03 |
+| Start separate [[mo-application-build-v1]] with immutable pinned toolchain and new 1GiB/120s candidate policy plus separately capped 1536MiB parent. Preserve old BusyBox policy; require actual cold-build/resource/cleanup evidence before acceptance. Package unchanged Logstat first; repair and HTTP/Mo routing follow separately. | Astra lead, informed by fresh GPT-6-Astra/low source review | decided, semantic | fixed local policy controls, later explicitly released isolated machine controls |
+
 ## Related
 
 - [[session-05]]

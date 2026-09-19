@@ -1,0 +1,18 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "90",
+    "--",
+    "orbctl",
+    "push",
+    "-m",
+    "mo-executor-r01",
+    "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-trusted-cross-e2a7hp23/toolchain/zig-out/bin/mo",
+    "mo-linux-prep/"
+  ],
+  "started": "2026-09-19T01:46:11.455150-04:00",
+  "finished": "2026-09-19T01:46:11.739294-04:00",
+  "exit_code": 0,
+  "remaining_group": []
+}

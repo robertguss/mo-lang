@@ -842,3 +842,26 @@
 - Briefed provider bridge native history, two-step continuation, bounded journal,
   no replay and fail-closed unknown usage. Auth remains separate; actual Mo
   end-to-end work waits for lead fixture acceptance while protocol work proceeds.
+
+## [2026-09-19] update | Workspace accepted; cold runner and auth race, 2:02 AM ET
+- Workspace integrated acceptance complete: 27/22/17/lifecycle/two extras,
+  positive cleanup, exact source identity and unchanged shared Docker inventory.
+- Trusted Linux runtime seven-command/18-HTTP verification passed; bootstrap
+  OOM/timeout remains distinct. No candidate application-build policy accepted.
+- Coding fixture cold-run correction integrated e6f04ce; lead 49 verification,
+  seven cancellation, both22-case matrices and six extras pass. Full suite runs.
+- Auth late-response body cleanup red reproduced independently and assigned;
+  native-history bridge implements independently while awaiting Mo release.
+- Fresh Astra/low read-only worker scopes application-build dependencies and a
+  coherent remote workspace/tool path; no machine commands or implementation.
+
+## [2026-09-19] update | Six foundations and application-build brief, 2:18 AM ET
+- Coding fixture lead full suite243/243,5/5 plus focused matrices/extras passed;
+  cold-runner false-pass and cancellation/race reds preserved.
+- Private auth independent28/28 plus foundation28/28 and two body-cleanup extras
+  passed with synthetic credentials; all186 original provider files unchanged.
+- Closed idle accepted coding/auth worker panes; worktrees preserved.
+- Bridge real Mo group reports both runtimes passed; final receipt/review pending.
+- Briefed separate immutable application image/policy; machine work needs explicit
+  lead release. Updated handoff/state/roadmap/results/session and evidence indexes.
+- Wiki lint:264 pages,25 inherited notices (15 review,10 size), no new issues; git diff --check clean.

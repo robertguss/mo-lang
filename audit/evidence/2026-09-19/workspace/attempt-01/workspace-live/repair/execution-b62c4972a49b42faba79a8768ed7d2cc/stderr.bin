@@ -1,0 +1,2 @@
+/bin/sh: can't create answer.txt: Read-only file system
+/bin/sh: can't create /result.json: Read-only file system

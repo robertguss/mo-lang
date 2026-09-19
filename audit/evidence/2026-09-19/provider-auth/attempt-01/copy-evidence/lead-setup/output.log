@@ -1,0 +1,27 @@
+runtime files 220 patch sha256 3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+{
+  "differences": {
+    "compat": {
+      "artifact": {
+        "supportsOpenAIGrammarTools": true,
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true
+      },
+      "pinnedGenerator": {
+        "supportsOpenAIGrammarTools": true,
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsMidConvoSystemMessages": true
+      }
+    }
+  },
+  "selected_sha256": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744"
+}
+owned-command-exit=0
+source/artifact integrity verified; runtime file hashes verified; dependencies 92
+source license MIT
+catalog sha256 3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744
+{"copy": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz/auth/.cache/prepared", "records_identical": ["pin.json", "catalog.json", "upstream.patch", "evidence/runtime-hashes.json", "evidence/dependencies.json"], "network_requests": 0}

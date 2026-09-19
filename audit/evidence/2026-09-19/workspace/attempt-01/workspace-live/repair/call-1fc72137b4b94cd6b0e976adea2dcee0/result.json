@@ -1,0 +1,23 @@
+{
+  "run_id": "be5878f1c52d49d48a4d587401fa84fe",
+  "workspace_id": "861d6b969ade47cb94a14583d33c349a",
+  "call_id": "1fc72137b4b94cd6b0e976adea2dcee0",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "snapshot": "ce8639affa038d4cfc16ea49050c57df77dcad9047ba1316fc503151dac9d5bf",
+    "inventory": {
+      "items": [
+        {
+          "path": "answer.txt",
+          "length": 6,
+          "sha256": "55c97802b397ef4da0d8e2ecf4a8fa33c1f4755da0eacec54c62cacbbcfd9713",
+          "mode": 420
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "elapsed_seconds": 0.007337629001995083
+}

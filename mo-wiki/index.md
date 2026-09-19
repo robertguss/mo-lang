@@ -144,6 +144,7 @@ type: index
 - [[mo-coding-fixture-v1]] — trusted headless Mo repair orchestration, exact edits
   and JSONL before isolated workspace/provider integration.
 - [[mo-workspace-foundation]] — bounded persistent Linux workspace, real feedback
+- [[mo-application-build-v1]] — Pinned Linux application image and separately bounded build policy.
   commands and protected snapshot identity; next executor slice
 - [[mo-provider-bridge-v1]] — native Pi history, strict recorded continuation
   and bounded offline Mo HTTP compatibility before live inference

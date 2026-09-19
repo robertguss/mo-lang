@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, contracts]
 sources: [plans/mo-first-coding-harness.md, plans/mo-provider-foundation.md]
-status: in-progress
+status: complete
 ---
 
 # Mo coding fixture v1: headless repair orchestration
@@ -160,6 +160,27 @@ paths, with matching owned IDs. This follows the existing resolver convention;
 module names remain Agent.ExactEdit, Agent.CommandAdapter and Agent.CodingFixture.
 No compiler change or behavioral scope expansion. Failed checks remain in worker
 evidence. The active write scope above reflects this correction.
+
+## Result — 19 Sep 2026, 2:05 AM ET
+
+Accepted integrated `e6f04ce6358c85f22a86f26be0b5b388495fcc6e`: worker
+84d442e plus cold-runner correction 3964f1f. Lead verification passed 49/49
+commands, seven cancellation controls, 22 HTTP cases per runtime plus two
+boundary groups, all 12 exact legacy CLI goldens and six extra malformed-command
+controls. Full integrated build/test passed 243/243 tests, 5/5 steps, exit 0.
+All 3307 tracked toolchain/examples files stayed unchanged; owned groups closed.
+
+Retained reds include the worker's own faults0 simulation tally failure, real
+positive-17-token cancellation and native post-report append race. Final reports
+wait for Run.Stopped and preserve per-call 17 while cancelled totals are unknown.
+Lead cold verification found native fixtures ran before build and three missing
+executable failures falsely passed. The correction builds first, requires an
+executable and compares exact stderr, stdout and exit status. Lead attempt 02
+started with the native executable absent. Historical evidence is unchanged.
+
+Raw lead evidence/scripts: `audit/evidence/2026-09-19/coding-fixture/`.
+Acceptance is trusted inert-command orchestration, not real candidate execution.
+The actual provider-bridge Mo control is now released against exact e6f04ce.
 
 ## Related
 

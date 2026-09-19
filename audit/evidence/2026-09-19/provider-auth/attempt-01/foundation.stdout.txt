@@ -1,0 +1,1 @@
+attempt lead-foundation exit 0 process_group_absent True

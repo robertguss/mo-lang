@@ -1,0 +1,15 @@
+{
+  "command": [
+    "node",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/provider-auth/lead-controls.mjs",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz/auth/auth.mjs"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz/auth",
+  "node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node",
+  "deadline_seconds": 550,
+  "environment_keys": [
+    "HOME",
+    "NO_COLOR",
+    "PATH"
+  ]
+}

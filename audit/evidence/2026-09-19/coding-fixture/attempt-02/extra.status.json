@@ -1,0 +1,14 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "600",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/coding-fixture/lead-controls.py"
+  ],
+  "exit_code": 0,
+  "started": "2026-09-19T01:57:32.702469-04:00",
+  "finished": "2026-09-19T01:57:36.330547-04:00",
+  "remaining_group": []
+}

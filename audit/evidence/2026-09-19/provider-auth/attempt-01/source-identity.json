@@ -1,0 +1,8 @@
+{
+  "worker": "2a6360c1f17feb1132ff6c77127d4057d71969dd",
+  "integrated": "29f0dd240c2b4af6d3a27f95acacf15b2e3a1295",
+  "exact_worker_files": 90,
+  "copy": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz",
+  "prior_prepared_source": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/clean-setup-8f3xpo0r",
+  "passed": true
+}

@@ -1,0 +1,18 @@
+{
+  "command": [
+    "python3",
+    ".cache/prepared/run.py",
+    "500",
+    "node",
+    "test.mjs",
+    "evidence/lead-auth.outbound.json"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-auth-gs50calz/auth",
+  "node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node",
+  "deadline_seconds": 550,
+  "environment_keys": [
+    "HOME",
+    "NO_COLOR",
+    "PATH"
+  ]
+}

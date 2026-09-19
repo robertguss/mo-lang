@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-provider-foundation.md, plans/mo-coding-fixture-v1.md]
-status: ready
+status: in-progress
 ---
 
 # Mo provider bridge v1: native history and recorded continuation

@@ -2,6 +2,20 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Coding, workspace and private auth accepted — 19 Sep 2026, 2:18 AM ET
+
+- Coding fixture adds recorded inert-command repair orchestration and exact edit.
+  Independent full suite 243/243,5/5 and both runtime matrices pass; cancellation
+  report race and cold-native false-pass failures are retained with corrections.
+- Persistent isolated workspace adds safe file operations, real command feedback
+  and protected snapshot verification. Lead27 unit/22 workspace/17 executor,
+  lifecycle and two extras pass with positive cleanup and unchanged shared Docker.
+- Private auth adds pinned device OAuth and explicit private-store handling.
+  Offline28 auth/28 provider/two lead controls pass after late-body cleanup fix;
+  no real login or inference is claimed.
+- Trusted Linux compiler execution/native build pass. Application image policy
+  and provider bridge independent acceptance continue as separate slices.
+
 ## Versioned terminal-401 policy accepted — 19 Sep 2026, 1:19 AM ET
 
 - Agent.Model stops immediately after HTTP 401 through a separately versioned

@@ -1,0 +1,14 @@
+{
+  "containers": {
+    "rc": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "units": {
+    "rc": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "temporary_run_directories": [],
+  "host_task_processes": []
+}

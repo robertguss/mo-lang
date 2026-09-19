@@ -1,0 +1,23 @@
+{
+  "run_id": "dcfe155376614c7ca642cfa87e817dbd",
+  "workspace_id": "6c644561ac204e3fa19c3f85e19ebad1",
+  "call_id": "7e85858e5cb54058bfce519895361816",
+  "state": "success",
+  "execution": "completed",
+  "truncated": false,
+  "result": {
+    "snapshot": "453db1e3e7854a936291080363c49b61eb330d69061b8eb5e64d4493e5da44ac",
+    "inventory": {
+      "items": [
+        {
+          "path": "bin/task",
+          "length": 8,
+          "sha256": "f9efec1313b699f30d5e5c91f797e2ae5b7f165bedf0a7e701707f0f0e313b3a",
+          "mode": 493
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "elapsed_seconds": 0.007328683001105674
+}

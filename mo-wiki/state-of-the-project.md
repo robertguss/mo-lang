@@ -24,39 +24,35 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 1:45 AM ET, published foundations; integration continues.
+**Last updated:** 19 Sep 2026, 2:18 AM ET, six bounded foundations accepted.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
-with separate implementation worktrees. The lead reviews, integrates and
-independently verifies their results.
+with separate implementation worktrees. The lead independently verifies results.
 
-The isolated executor passed 15 unit tests, 17 live fixture controls, a
-collector-death regression and an extra signal-accounting control. Cleanup was
-observed and shared Mac Docker IDs/states stayed unchanged across the lead run.
-The offline provider passed clean setup, 28 actual-parser cases and two extra
-controls; source/artifact differences and unknown usage remain explicit.
+The terminal-401 policy, offline provider and BusyBox executor were published
+at 2fc1235 with successful wiki deployment. Workspace acceptance now adds 27
+unit tests, 22 live workspace controls, 17 executor controls, lifecycle and two
+lead extras. Owned cleanup is empty; shared Mac Docker IDs/states stayed unchanged.
 
-Terminal-401 policy passed 18 interpreter/native cases and six extra lead
-controls. Its final integrated full suite passed 243/243 tests and 5/5 steps
-after correcting generated dependency records and formatter output. The earlier
-241/243 and 242/243 failures remain in evidence. These acceptances cover local
-foundations, not a full candidate application repair or live provider session.
+[[mo-coding-fixture-v1]] passed the full integrated suite at e6f04ce: 243/243
+tests and 5/5 steps. Both runtime matrices, exact legacy CLI goldens, cancellation
+controls and six lead extras pass. Real cancellation/native report-race failures
+and a cold-runner false-pass defect were reproduced, corrected and retained.
+Cancelled totals are unknown while recorded per-call usage is preserved.
 
-The coding fixture now has corrected interpreter/native matrices after a real
-cancellation report race: Book could record a delayed model step after the
-report. The worker waits for Run.Stopped and makes cancelled totals unknown,
-while preserving recorded per-call usage. Final integration remains pending.
-Workspace file/command/snapshot controls and executor regressions pass; its
-last correction is still under test. [[mo-provider-auth-v1]] starts separately
-with synthetic credentials and actual pinned device OAuth, before live login.
+[[mo-provider-auth-v1]] passed 28 offline auth controls, 28 provider regressions
+and two lead cleanup probes. A real late-response-body cleanup defect was found
+and fixed. All credentials are synthetic; live subscription login, registration,
+account/model entitlement and inference remain unverified.
 
-Trusted native Linux compiler builds hit the fixed memory/deadline bounds;
-cleanup was confirmed before releasing the machine to workspace tests. An
-exact-source Mac cross-build for aarch64-linux-musl passed in 43 seconds but
-has not yet run in Linux. Published main checkpoint 2fc1235 and its wiki CI
-passed. No real credentials were read or live inference performed. Language
-value and the Pi comparison remain unmeasured.
+The bridge worker reports its first real Mo runs passing in interpreter and
+compiled execution, checking Book before dispatch. Independent lead acceptance
+is next. Trusted Linux compiler execution and native compilation passed, but
+candidate application packaging/resource policy remains separate. The next
+bounded slice, [[mo-application-build-v1]], packages pinned tools and compiles
+unchanged Logstat inside isolation before a scripted repair and coherent remote
+six-tool profile. Language value and matched Pi comparison remain unmeasured.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations
@@ -110,10 +106,8 @@ authentication-error change, onboarding comparison and small model pilot remain
 open. [[agent-native-independent-review-prompt]] equips outside models with web
 access to challenge everything, including whether a new language/runtime is
 justified. Review evidence and reasons, not vote counts. Specific law changes,
-program-7 scope, TLS strategy and acceptance thresholds remain proposals. No
-workers, setup, experiments or implementation start until Robert explicitly
-approves and the lead confirms readiness. Documentation is not execution
-approval.
+program-7 scope, TLS strategy and acceptance thresholds remain proposals. That historical implementation pause is superseded by Robert's overnight
+authority above; bounded readiness and independent acceptance still apply.
 
 At the preceding review checkpoint, four external strategic reviews were
 compared with the oracle in [[agent-native-research-synthesis]]. Robert agreed

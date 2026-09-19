@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-first-coding-harness.md, plans/mo-executor-foundation.md]
-status: in-progress
+status: complete
 ---
 
 # Mo workspace foundation: persistent files and protected snapshots
@@ -34,7 +34,6 @@ tests start only after the lead reports that build stopped. This resource
 dependency is not permission to change build services or machine limits.
 
 ## Write scope
-
 One fresh Astra/low worker, separate exact-base worktree; no nested agents.
 Own new workspace controller/helper/tests and documentation/evidence under
 `toolchain/harness/executor/`, preferably `workspace.py`,
@@ -152,7 +151,6 @@ the pinned BusyBox image. No arbitrary candidate-built executable, Mo build,
 application verdict, HTTP service or transport integration claim.
 
 ## Numbers and done when
-
 At most 30 named workspace controls per attempt; 600-second test guards and
 16 MiB retained evidence per attempt. Keep every failed attempt. Existing
 15-unit/17-live executor controls and collector-loss regression must still pass.
@@ -171,6 +169,27 @@ container/service/mount/directory inventory is empty. Lead repeats integrated
 tests plus an additional control and read-only shared Mac Docker comparison.
 Report unimplemented requirements explicitly; green helper tests alone do not
 close acceptance. No full compiler suite is required for Python-only changes.
+
+## Result — independently accepted 19 Sep 2026, 2:02 AM ET
+
+Worker 50f8a9d/d9444f0 integrated as bcdf7c1/f4fe3ea. Lead compared all 1586
+changed files exactly and passed 27 unit tests, 22 workspace controls, 17 fixture
+controls, collector-loss regression and two extra controls. The extras prove
+active-command preservation on a refused second call and executable-mode/byte
+identity through exact edit and frozen verification. All 2530 tracked executor
+files stayed unchanged; shared Mac Docker retained the same five full IDs and
+exited states. Final owned containers/units/cgroups/mounts/directories are absent.
+Retired workspace-ID records remain intentionally, outside candidate storage.
+
+Evidence: `audit/evidence/2026-09-19/workspace/attempt-01` and `extra-02`.
+The first lead extra probe failed to observe descendants because its parent
+shell exited; the corrected explicit-wait probe passed. Retain both. Worker
+quota, duplicate-transport and stale-snapshot cleanup failures remain in its
+immutable evidence. No historical failed result is relabeled green.
+
+This scope is complete. Snapshot content omits empty directories and normalizes
+file modes to 0755/0644. Real Mo application builds need a separately verified
+image/resource policy; HTTP/Mo/provider integration remains the next slice.
 
 ## Related
 

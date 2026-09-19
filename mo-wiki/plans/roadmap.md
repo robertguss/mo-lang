@@ -21,19 +21,18 @@ decide and drive bounded harness setup, implementation and verification while
 he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
 The prior implementation pause and Amp/oracle workflow are superseded.
 
-**Current checkpoint, 19 Sep 2026, 1:45 AM ET:** three accepted foundations are
-published at 2fc1235; wiki deployment passed. Coding fixture final matrices pass
-after cancellation/race corrections and awaits lead integration/full suite.
-Workspace live controls and regressions pass with a final correction underway.
-Trusted Mac cross-build of the Linux compiler passed after bounded native Linux
-OOM/timeout failures; Linux execution is still unverified.
+**Current checkpoint, 19 Sep 2026, 2:18 AM ET:** six bounded foundations have
+independent acceptance. Coding-fixture full suite at e6f04ce passed 243/243, 5/5;
+workspace local/live/regressions and private-auth offline controls pass. Trusted
+Linux compiler execution passed. Bridge worker real Mo runs pass; lead acceptance
+and candidate application-build readiness remain next.
 
 | board | current work |
 |---|---|
-| Now | [[mo-coding-fixture-v1]] integration review; [[mo-workspace-foundation]] final verification; [[mo-provider-auth-v1]] offline implementation |
-| Next | Linux runtime verification; provider/command bridge and protected application checks |
-| Waiting on Robert's presence | Interactive subscription login when the adapter is ready; offline work continues |
-| Recently done | [[mo-executor-foundation]], [[mo-provider-foundation]], [[mo-agent-terminal-auth]] independently accepted and published |
+| Now | [[mo-provider-bridge-v1]] final receipt and lead acceptance; [[mo-application-build-v1]] local implementation and isolated image readiness |
+| Next | Scripted Logstat repair; coherent remote six-tool HTTP/Mo workspace profile; protected application checks |
+| Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
+| Recently done | [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three published foundations |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none

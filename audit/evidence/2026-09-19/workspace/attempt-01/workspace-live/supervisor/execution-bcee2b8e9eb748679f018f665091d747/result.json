@@ -1,0 +1,57 @@
+{
+  "run_id": "9b3a48043db648c8bd56d4f3fef5ddc1",
+  "workspace_id": "368f6767158641f8bc47030a542d600d",
+  "call_id": "9fdd664cb5864bc3aac3f50e4267cd7f",
+  "state": "failure",
+  "execution": "unknown",
+  "exit_code": null,
+  "signal": null,
+  "stdout": "",
+  "stderr": "",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": null,
+  "execution_valid": false,
+  "manifest": {
+    "run_id": "f9a01967a27747c2a950d6be4de99d70",
+    "name": "mo-executor-f9a01967a27747c2a950d6be4de99d70",
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "policy": "mo-executor-workspace-v1",
+    "candidate_sha256": "43a397073cd55db9993f9fdd9f48c26e3b8cc6b9d780a85bbb7c51c6b311cc1b",
+    "script": "ZWNobyBwYXJlbnQKL2Jpbi9zaCAtYyAnZWNobyBjaGlsZDsgL2Jpbi9zaCAtYyAiZWNobyBncmFuZGNoaWxkOyBzbGVlcCAzMCIgJiB3YWl0JyAmCnNldHNpZCAvYmluL3NoIC1jICdlY2hvIHNlc3Npb247IHNsZWVwIDMwJyAmCndhaXQ=",
+    "checks": null,
+    "seconds": 5,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "f2ee1692c0624157ccdac7805277e6fffed753d320972a254fd0dbd740fe21c1",
+    "supervisor_sha256": "81d3c2c9c89058837ae054ee7974228b91677f128c4280947ca3dfa8061e093a",
+    "workspace": {
+      "workspace_id": "368f6767158641f8bc47030a542d600d",
+      "workspace_run_id": "9b3a48043db648c8bd56d4f3fef5ddc1",
+      "source": "/var/lib/mo-harness/mo-workspace-368f6767158641f8bc47030a542d600d/storage/data",
+      "readonly": false,
+      "snapshot": null
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "5ffb652f021c0e2fc664c1a6b7b9b2001839adaa2a6d546bff6d397468c1362c",
+    "check_inventory_sha256": null,
+    "workspace_call_id": "9fdd664cb5864bc3aac3f50e4267cd7f",
+    "deadline": 1789797151.5351171
+  },
+  "observation": {
+    "status": "infrastructure_failure",
+    "error": "supervisor observation missing",
+    "cleanup": {
+      "host_confirmed": true,
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-1cbf047cb8c5bb1f2c90cfdd46a0b67c71130db00d8dc6f0b778d2656b685a34.scope",
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"binary": "/opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl", "bytes": 15923616, "sha256": "4d14520aaf25403396e14501efbab2f5cd3d7f29bba4ad7c124155c06c806c72", "guard_sha256": "eb756b1d3507fa8fa1c79e4b562322c5627a8c85d1de7ec4ead3fa1312e78216"}

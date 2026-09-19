@@ -1,0 +1,15 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "600",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/examples/programs/agent/tests/coding-fixture-v1/run.py",
+    "interpreter"
+  ],
+  "exit_code": 0,
+  "started": "2026-09-19T01:57:02.697931-04:00",
+  "finished": "2026-09-19T01:57:17.945331-04:00",
+  "remaining_group": []
+}

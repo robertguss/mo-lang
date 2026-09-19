@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-first-coding-harness.md, plans/mo-provider-foundation.md]
-status: ready
+status: complete
 ---
 
 # Mo provider auth v1: private store and device login
@@ -137,6 +137,26 @@ compare tracked foundation files before/after. Prove source pin/runtime identity
 and retain actual network request counts, operation ordering and cleanup. Lead
 reviews the immutable patch and independently repeats tests plus an extra
 control before acceptance. Green fixtures do not establish live OAuth support.
+
+## Result — 19 Sep 2026, 2:10 AM ET
+
+Accepted offline scope at integrated `29f0dd240c2b4af6d3a27f95acacf15b2e3a1295`,
+worker c1d4fe16 plus 2a6360c1 correction. Lead fresh offline preparation passed;
+all 28 auth controls (43 synthetic requests, four denied egress probes), all 28
+foundation regressions and two independent cleanup controls passed. No listeners
+or remaining child groups; 186 original tracked provider files stayed unchanged.
+Exact 90-file worker comparison and prepared dependency identities are retained.
+
+The lead reproduced a late Response body surviving cancellation. The correction
+observes and cancels late transport bodies; lead late-abort and redirected-body
+controls each verify cancellation, with exactly two synthetic requests total.
+Both original red and corrected green are immutable. No real credentials, live
+OAuth registration, account entitlement or inference have been tested.
+
+Raw lead evidence/scripts: `audit/evidence/2026-09-19/provider-auth/` and
+`auth-readiness/`. Last integrated compiler suite is 243/243 at e6f04ce; these
+auth commits add only provider/auth files. Next bridge checkpoint repeats the
+full suite. The worker is idle and its owned panes are closed.
 
 ## Related
 

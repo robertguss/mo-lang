@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace/lead-controls.py", line 21, in <module>
+    before = wait_running(run)
+  File "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/executor/selftest.py", line 57, in wait_running
+    raise AssertionError('descendant stimulus never observed')
+AssertionError: descendant stimulus never observed

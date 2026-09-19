@@ -1,0 +1,5 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+{"calls":1,"lateBodyCancelled":false,"sourceSha256":"48922bfbe03190569978870e5f113b52c047456b367c1fe0f5398d9c8ae60fd3","sourceUnchanged":true}
+owned-command-exit=1
