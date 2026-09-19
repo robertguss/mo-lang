@@ -1,0 +1,8 @@
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+groups=deadlines
+test_deadlines (__main__.Controls.test_deadlines) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 11.511s
+
+OK

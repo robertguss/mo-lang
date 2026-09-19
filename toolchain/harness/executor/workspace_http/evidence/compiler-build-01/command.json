@@ -1,0 +1,1 @@
+["sh", "-c", "cd toolchain && zig build"]

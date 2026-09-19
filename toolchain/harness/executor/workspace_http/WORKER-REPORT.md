@@ -1,4 +1,4 @@
-# Workspace HTTP v1 worker report — verification in progress
+# Workspace HTTP v1 worker report — local correction frozen
 
 Worker: GPT-6-Astra, low reasoning. Lead: w4:p1. Owned run pane: w4:p29,
 created right/no-focus from worker w4:p28. No nested agents, push or rebase.
@@ -6,7 +6,7 @@ created right/no-focus from worker w4:p28. No nested agents, push or rebase.
 Exact base: `3023a01a744d1580ca9814e595ddf990a12e456d`.
 Branch: `harness/workspace-http-v1`.
 Worktree: `/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1`.
-Production source freeze: `83a72dd4ed55dd8728745af720a818399de4c81c`.
+Prior machine/compiler production source freeze: `83a72dd4ed55dd8728745af720a818399de4c81c`.
 All changes are new files under `toolchain/harness/executor/workspace_http/`.
 Core/provider/Mo/compiler/wiki/installed inputs remain unchanged. Every worker
 commit explicitly sets GPT-6-Astra as author and committer.
@@ -118,7 +118,25 @@ This bridge is not a Mo application profile, live-provider integration, full
 machine-crash recovery, old-state adoption, or actual Mo E2E claim. No unconditional
 900s execution/cleanup wall guarantee or full120s sustained command claim is made.
 
-Machine work is complete and released. Separately gated full compiler build/test,
-final evidence manifest and clean final commit remain. SOURCE.json binds exact
-production/contract bytes to83a72dd4 and core dependency bytes to the exact base.
+Machine work is complete and released. The authorized sequential compiler build
+and test on the prior83 product both exited0: build38.125s/group89738 absent;
+test415.260s/group90041 absent, 5/5 steps and243/243 tests passed. No machine or
+compiler command was run for the subsequent IPC correction.
+
+The retained ipc-fragment-red-01 reproduces the lead probe on prior83: HTTP200
+completed at2.4104535s for a2s wait, admission open, exit1. The narrow correction
+uses one monotonic deadline across IPC header/body reads and JSON completion,
+and checks frontend completion before returning a result. Startup, owner lease,
+tool wait and operator receives explicitly pass their existing deadlines. Owner
+outcome persistence is unchanged. The identical probe in ipc-fragment-green-01
+returns504/response_timeout/unknown at2.004961s with admission closed; exit0,
+group95856 absent. Focused deadlines pass (group95720 absent), including valid
+and incomplete fragmented frames, completed owner outcomes and confirmed cleanup.
+The full corrected local matrix passes22/22, exit0,26.138s,group95992 absent.
+All three new guards are bounded30/120s and evidence is below16MiB per attempt.
+These are local subprocess/socketpair controls, not new real Workspace evidence.
+
+SOURCE.json retains the prior83 identities and separately binds corrected bytes.
+ATTEMPTS.json and EVIDENCE.json retain completed attempts and artifact hashes.
+The correction is a separate commit; scope remains the owned bridge directory.
 Independent lead verification and acceptance are not delegated to this report.

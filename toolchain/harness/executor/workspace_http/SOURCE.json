@@ -1,24 +1,5 @@
 {
   "base": "3023a01a744d1580ca9814e595ddf990a12e456d",
-  "production_freeze": "83a72dd4ed55dd8728745af720a818399de4c81c",
-  "production": {
-    "toolchain/harness/executor/workspace_http/__init__.py": {
-      "bytes": 125,
-      "sha256": "868cc62dc94fedf6f8cc562db1cf6396393db96ef5bc7227c955702877e1e9f2"
-    },
-    "toolchain/harness/executor/workspace_http/bridge.py": {
-      "bytes": 14188,
-      "sha256": "e2dae3d7e9bbad6f91cb8a908ec6a102a5b70e579e4b9bc2bc9f9ca9dbdc7677"
-    },
-    "toolchain/harness/executor/workspace_http/owner.py": {
-      "bytes": 7972,
-      "sha256": "feca063cf90e01ef045b560c08b28c861baec03d16b9eb43cf4d8b56f260ebc1"
-    },
-    "toolchain/harness/executor/workspace_http/protocol.py": {
-      "bytes": 6255,
-      "sha256": "3f99f45fbc2b8e7f154a4ba174ebddc1c20596652d847cdeb6c2e9db52b56fec"
-    }
-  },
   "contract": {
     "toolchain/harness/executor/workspace_http/CONTRACT.md": {
       "bytes": 7928,
@@ -61,6 +42,44 @@
     "toolchain/harness/executor/recovery/machine.py": {
       "bytes": 11694,
       "sha256": "dfec9a8cdc219d242854f4f92a3991564a4f512069e74ea8c6bbf2d4a322de47"
+    }
+  },
+  "prior_production": {
+    "toolchain/harness/executor/workspace_http/__init__.py": {
+      "bytes": 125,
+      "sha256": "868cc62dc94fedf6f8cc562db1cf6396393db96ef5bc7227c955702877e1e9f2"
+    },
+    "toolchain/harness/executor/workspace_http/bridge.py": {
+      "bytes": 14188,
+      "sha256": "e2dae3d7e9bbad6f91cb8a908ec6a102a5b70e579e4b9bc2bc9f9ca9dbdc7677"
+    },
+    "toolchain/harness/executor/workspace_http/owner.py": {
+      "bytes": 7972,
+      "sha256": "feca063cf90e01ef045b560c08b28c861baec03d16b9eb43cf4d8b56f260ebc1"
+    },
+    "toolchain/harness/executor/workspace_http/protocol.py": {
+      "bytes": 6255,
+      "sha256": "3f99f45fbc2b8e7f154a4ba174ebddc1c20596652d847cdeb6c2e9db52b56fec"
+    }
+  },
+  "prior_production_freeze": "83a72dd4ed55dd8728745af720a818399de4c81c",
+  "production_freeze": "containing correction commit; exact bytes below",
+  "production": {
+    "toolchain/harness/executor/workspace_http/__init__.py": {
+      "bytes": 125,
+      "sha256": "868cc62dc94fedf6f8cc562db1cf6396393db96ef5bc7227c955702877e1e9f2"
+    },
+    "toolchain/harness/executor/workspace_http/bridge.py": {
+      "bytes": 14460,
+      "sha256": "739c17c2cc9fe1bde13668cd5f988a2b07359b14c9249d6af28fa16be1f6c06b"
+    },
+    "toolchain/harness/executor/workspace_http/owner.py": {
+      "bytes": 8447,
+      "sha256": "19c98c9cb578b53d686c87ed1dbcd853e5765c96a7ba9e7ad60c348e19aa3285"
+    },
+    "toolchain/harness/executor/workspace_http/protocol.py": {
+      "bytes": 6255,
+      "sha256": "3f99f45fbc2b8e7f154a4ba174ebddc1c20596652d847cdeb6c2e9db52b56fec"
     }
   }
 }

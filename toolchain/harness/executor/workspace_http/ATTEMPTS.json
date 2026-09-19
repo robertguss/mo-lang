@@ -74,6 +74,32 @@
     ]
   },
   {
+    "attempt": "compiler-build-01",
+    "exit": 0,
+    "seconds": 38.12507008299872,
+    "actual_bytes": 312156,
+    "group": 89738,
+    "group_absent": true,
+    "command": [
+      "sh",
+      "-c",
+      "cd toolchain && zig build"
+    ]
+  },
+  {
+    "attempt": "compiler-test-01",
+    "exit": 0,
+    "seconds": 415.2600564589957,
+    "actual_bytes": 308965,
+    "group": 90041,
+    "group_absent": true,
+    "command": [
+      "sh",
+      "-c",
+      "cd toolchain && zig build test --summary all"
+    ]
+  },
+  {
     "attempt": "final-machine-inventory-01",
     "exit": 0,
     "seconds": 0.46413379099976737,
@@ -99,6 +125,64 @@
       "python3",
       "-B",
       "toolchain/harness/executor/recovery/local_suite.py"
+    ]
+  },
+  {
+    "attempt": "ipc-fragment-green-01",
+    "exit": 0,
+    "seconds": 2.6786363330029417,
+    "actual_bytes": 317780,
+    "group": 95856,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/ipc_deadline_probe.py",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1",
+      "toolchain/harness/executor/workspace_http/evidence/ipc-fragment-green-01/probe"
+    ]
+  },
+  {
+    "attempt": "ipc-fragment-red-01",
+    "exit": 1,
+    "seconds": 2.6832087079965277,
+    "actual_bytes": 316030,
+    "group": 93915,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/ipc_deadline_probe.py",
+      "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-http-v1",
+      "toolchain/harness/executor/workspace_http/evidence/ipc-fragment-red-01/probe"
+    ]
+  },
+  {
+    "attempt": "ipc-local-final-01",
+    "exit": 0,
+    "seconds": 26.137541458010674,
+    "actual_bytes": 318369,
+    "group": 95992,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py"
+    ]
+  },
+  {
+    "attempt": "ipc-local-green-01",
+    "exit": 0,
+    "seconds": 11.727589166999678,
+    "actual_bytes": 316515,
+    "group": 95720,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/local.py",
+      "--groups",
+      "deadlines"
     ]
   },
   {

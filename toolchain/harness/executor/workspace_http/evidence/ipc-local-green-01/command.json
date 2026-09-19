@@ -1,0 +1,1 @@
+["python3", "-B", "toolchain/harness/executor/workspace_http/local.py", "--groups", "deadlines"]
