@@ -64,7 +64,7 @@ def by_op(**answers):
 class Case:
     def __init__(self, replies, script=None, exit_code=0, seconds=120, config=None, raw_config=None,
                  goal='repair the workspace', setup=None, check=None, model_delays=None, bridge=True,
-                 run_id='r_1'):
+                 run_id='r_1', on_model=None):
         self.__dict__.update(locals())
 
 
@@ -223,6 +223,19 @@ for kind, why in {'empty-log': 'root_not_fresh', 'unrecognized': 'root_not_fresh
     case('fresh-' + kind, replies=[done()], exit_code=3, setup=fresh_setup(kind),
          check=lambda c, why=why: dict(no_requests=not c.bridge.requests and not c.model.requests, error=c.error() == why))
 
+# 13. A lost write acknowledgement: the log turns read-only as the first model call arrives, so the
+# model step and the end are both unrecorded; Run stops, the Book stays running, and the report
+# is an uncertain reporting error with nothing dispatched to the bridge.
+def read_only_log(root):
+    (root / 'runs/r_1.log').chmod(0o444)
+
+
+case('lost-ack', replies=[tool('read_file', path='a.txt'), done()], exit_code=3, on_model=read_only_log,
+     check=lambda c: dict(no_http=not c.bridge.requests, model_once=len(c.model.requests) == 1,
+                          unsettled=c.error() == 'book_unsettled',
+                          uncertain=c.events('reporting_error')[0]['payload'].get('persistence') == 'uncertain',
+                          log_unchanged=len(c.log_lines()) == 1))
+
 PROFILE = dict(steps=16, tokens=4096, wall_ms=900000, retries=0, tool_ms=2000,
                grants=['list_files', 'read_file', 'search', 'write_file', 'exact_edit', 'command'],
                report_reserve_ms=15000, model_wait_ms=2000, file_wait_ms=2000, command_wait_ms=300000,
@@ -308,7 +321,12 @@ def run_case(name, spec, runtime):
         runs_before = tree(root / 'runs')
         log = root / 'runs/r_1.log'
         bridge = fb.Bridge(spec.script, run_id=spec.run_id, observe=lambda: steps_in(log))
-        model = fb.Model(spec.replies, spec.model_delays, observe=lambda: steps_in(log))
+        def observe_model():
+            seen = steps_in(log)
+            if spec.on_model:
+                spec.on_model(root)
+            return seen
+        model = fb.Model(spec.replies, spec.model_delays, observe=observe_model)
         config = tmp / 'private/bridge.json'
         if spec.raw_config is None and name != 'config-missing':
             bridge.write_config(config)
