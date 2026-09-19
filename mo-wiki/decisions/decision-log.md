@@ -762,6 +762,14 @@ direction separately from the lead's conservative execution interpretation.
 | Accept private auth offline after independent late-body cleanup red/green, fresh preparation, 28 auth/28 foundation/two extras and unchanged 186 original files. Live OAuth support remains unverified. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | provider-auth/attempt-01; auth-readiness/late-response-02 and -03 |
 | Start separate [[mo-application-build-v1]] with immutable pinned toolchain and new 1GiB/120s candidate policy plus separately capped 1536MiB parent. Preserve old BusyBox policy; require actual cold-build/resource/cleanup evidence before acceptance. Package unchanged Logstat first; repair and HTTP/Mo routing follow separately. | Astra lead, informed by fresh GPT-6-Astra/low source review | decided, semantic | fixed local policy controls, later explicitly released isolated machine controls |
 
+## Bridge acceptance and application machine release (19 Sep 2026, 2:34 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept [[mo-provider-bridge-v1]] at191da144 after exact92-file match,27 protocol groups, real Mo both runtimes,28 foundation/two lead extras and full243/243,5/5. Retain missing framing and mixed-selection preparation reds. | Astra lead; implementation GPT-6-Astra/low | accepted, semantic | provider-bridge/attempt-01 and full-01;278 provider/3489 toolchain-example files unchanged |
+| Provision separate mo-application.slice at1536MiB/CPU1/192 tasks, no swap; verify outer2GiB/CPU2/no-swap cgroup. Guest free/df are shared VM totals. Release dedicated machine exclusively to application worker, preserving old512MiB slice and read-only compiler/Zig inputs. | Astra lead | decided and read back | application-preparation/inspect-01 and provision-01 |
+| Preserve once-per-production-process bridge provisioning as trusted operator responsibility; library enforces one run per listener. No singleton, crash durability or client-receipt guarantee is claimed. | Astra lead, worker limitation reviewed | decided, semantic | immutable bridge API/journal review and duplicate/restart controls |
+
 ## Related
 
 - [[session-05]]

@@ -1,0 +1,20 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "60",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-bridge-ahg0l4ro/toolchain/harness/provider/bridge/.cache/lead-independent/run.py",
+    "50",
+    "node",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/provider-bridge/lead-controls.mjs",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-bridge-ahg0l4ro/toolchain/harness/provider/bridge/.cache/lead-independent",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/provider-bridge/attempt-01/extra-observations.json"
+  ],
+  "exit": 0,
+  "expected": 0,
+  "started": "2026-09-19T02:30:08.646871-04:00",
+  "finished": "2026-09-19T02:30:09.187390-04:00",
+  "remaining_group": false
+}

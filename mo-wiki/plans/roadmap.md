@@ -21,18 +21,17 @@ decide and drive bounded harness setup, implementation and verification while
 he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
 The prior implementation pause and Amp/oracle workflow are superseded.
 
-**Current checkpoint, 19 Sep 2026, 2:18 AM ET:** six bounded foundations have
-independent acceptance. Coding-fixture full suite at e6f04ce passed 243/243, 5/5;
-workspace local/live/regressions and private-auth offline controls pass. Trusted
-Linux compiler execution passed. Bridge worker real Mo runs pass; lead acceptance
-and candidate application-build readiness remain next.
+**Current checkpoint, 19 Sep 2026, 2:34 AM ET:** seven bounded components have
+independent acceptance. Provider bridge real Mo and fresh-copy controls pass;
+full integrated suite243/243,5/5 at191da144. Application worker owns the dedicated
+machine for pinned image/resource verification. Remote wire review is retained.
 
 | board | current work |
 |---|---|
-| Now | [[mo-provider-bridge-v1]] final receipt and lead acceptance; [[mo-application-build-v1]] local implementation and isolated image readiness |
-| Next | Scripted Logstat repair; coherent remote six-tool HTTP/Mo workspace profile; protected application checks |
+| Now | [[mo-application-build-v1]] packaging and live controls; exact remote six-tool HTTP/Mo profile design |
+| Next | Python workspace HTTP bridge; Mo application profile; scripted Logstat repair and protected checks |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
-| Recently done | [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three published foundations |
+| Recently done | [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none

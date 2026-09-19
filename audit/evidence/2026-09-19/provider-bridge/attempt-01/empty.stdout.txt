@@ -1,0 +1,1 @@
+BRIDGE selection rejected; cases=0 provider_calls=0 exit=2

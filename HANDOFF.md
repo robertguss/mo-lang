@@ -22,13 +22,13 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 2:18 AM ET
+### Active work, 19 Sep 2026, 2:34 AM ET
 
-Current local code is `29f0dd240c2b4af6d3a27f95acacf15b2e3a1295`. Prior
-published checkpoint is 2fc1235; wiki run 35423902551 passed. This documentation
-checkpoint publishes the accepted work below; verify current git/CI on resume.
+Current local code is `191da144809a83ecadd1902aadd6507e898fa31b`. Published
+checkpoint 5e568227 and wiki run 35426384194 both passed. The bridge code and this
+next documentation checkpoint follow it; verify current git/CI on resume.
 
-Six bounded foundations have independent lead acceptance:
+Seven bounded components have independent lead acceptance:
 
 - Terminal-401 policy: final full suite 243/243 and 5/5; 18 interpreter/native
   cases plus six extra controls. Generic recipe unchanged.
@@ -50,37 +50,52 @@ Six bounded foundations have independent lead acceptance:
   fresh offline preparation, auth 28/28 (43 synthetic requests), foundation
   28/28 and two extra body-cleanup controls pass; 186 original provider files
   unchanged. Late-response body cleanup red retained. No live login/inference.
-  Worker/run panes closed. Compiler full suite last ran at e6f04ce and will be
-  repeated with the bridge checkpoint.
+  Worker/run panes closed. Full integrated suite repeated successfully at the
+  bridge checkpoint ending191da144.
 
-Active worker `mo-provider-bridge-v1`, branch harness/provider-bridge-v1, exact
-base 5494e8fe, worker pane w4:p1P. Only new provider/bridge files. Worker reports
-27 independent groups and real Mo group passing in both runtimes against an
-exact archived e6f04ce and copied compiler. Each real run used two pinned-parser
-provider calls plus one inert command and checked Book before dispatch. Missing
-Content-Length failure retained. Final selection checks/report/commit remain;
-lead patch review, integration, independent rerun/extra/full suite are pending.
+Provider bridge is now independently accepted: worker c17d65a/9e2feb8e,
+integrated9e777e5c/191da144. Lead fresh-copy 27 protocol groups, real Mo in both
+runtimes, mixed-selection correction,28 foundation and two extra HTTP controls
+pass. Each Mo run:2 provider calls,1 inert command,3 Book steps; actual on-disk
+prefix checks/native signatures. Full integrated suite 243/243,5/5; 3489 tracked
+toolchain/examples files unchanged. All 278 provider files unchanged, cleanup
+empty. Missing Content-Length and mixed-selection preparation reds retained.
+Worker/run panes closed; worktree preserved. Once-per-process provisioning is
+trusted operator responsibility, not a library singleton. No live acceptance.
 
 Trusted Linux compiler execution passed seven commands including native driver
 build and 18 HTTP auth cases, source identity and positive service cleanup.
 Cross-built executable `/opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl`, SHA
 `4d14520aaf25403396e14501efbab2f5cd3d7f29bba4ad7c124155c06c806c72`.
-Zig0.16 is `/opt/mo-harness/zig-aarch64-linux-0.16.0`. Native bootstrap OOM and
+Zig 0.16 is `/opt/mo-harness/zig-aarch64-linux-0.16.0`. Native bootstrap OOM and
 900-second timeout remain failed attempts. Trusted smoke's reported 512KiB peak
-is not credible sizing evidence. Machine mo-executor-r01 is idle/released.
+is not credible sizing evidence. Machine is now exclusively assigned to the
+application-build worker; do no competing machine commands until its release.
 
-Next fresh worker: `mo-application-build-v1`, matching committed brief. Separate
-application-build policy/image, 1GiB candidate/120s commands, fresh executable
-/build, separate 1536MiB parent; existing BusyBox policy unchanged. Local work
-can start; machine/image work requires explicit lead release after provisioning.
-This slice compiles unchanged Logstat and independently rebuilds a snapshot;
-scripted repair and coherent remote six-tool HTTP/Mo profile follow separately.
-Application source review is retained under application-readiness/.
+Active worker: `mo-application-build-v1`, pane w4:p1V/run w4:p1W, branch
+harness/application-build-v1 at exact base5e568227. Separate application-build
+policy/image,1GiB candidate/120s commands, fresh executable/build, separate
+1536MiB parent; BusyBox defaults unchanged. Lead provisioned and read back
+mo-application.slice plus outer 2GiB/CPU 2/no-swap cgroup, then explicitly released
+the dedicated machine. Worker local27 and policy controls pass; full tests and
+offline pinned image assembly/live controls underway. It owns only new
+/opt/mo-harness/application-build-v1 staging plus named task resources; old
+compiler/Zig inputs are read-only. Exact original Zig archive path supplied.
 
-Rediscover Herdr IDs; lead w4:p1, bridge w4:p1P, idle lead run panes w4:p1D/p1M.
+Fresh read-only worker `mo-workspace-wire-review`, pane w4:p1Y, is finishing
+focused Mo base64/UTF8/Book-budget compatibility after mapping all six remote
+operations. Intact first report is workspace-wire-readiness/worker-report.md.
+Do not treat its proposals as accepted code. Existing application worker already
+owns120s execution-policy changes; do not duplicate that suggested slice. Next:
+finish application image acceptance, version Python six-tool HTTP bridge and Mo
+application profile, then scripted Logstat repair/protected checks. Existing
+provider bridge remains2s/30s; longer provider profile needs an explicit version.
+
+Rediscover Herdr IDs; lead w4:p1, application w4:p1V, wire review w4:p1Y;
+lead run panes w4:p1D/p1M are idle after bridge acceptance.
 Preserve all worktrees. Lead owns docs/audit evidence and integration; workers
 write toolchain/examples. No oracle, nested workers, worker push or shared Mac
-candidate execution. Continue autonomously. Step39 remains unaccepted, Darwin
+candidate execution. Continue autonomously. Step 39 remains unaccepted, Darwin
 full-sync unmet, Program7 suspended; no live-provider or application acceptance.
 
 ## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET

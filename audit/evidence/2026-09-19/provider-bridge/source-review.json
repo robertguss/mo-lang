@@ -1,0 +1,18 @@
+{
+  "worker_base": "5494e8fe5bf9c646f50d3a45fa6f485f2333a597",
+  "worker_tip": "9e2feb8e67d51bae8db3037bd4344b4d336b95d4",
+  "integrated": "191da144809a83ecadd1902aadd6507e898fa31b",
+  "reviewed": [
+    "protocol.mjs",
+    "journal.mjs",
+    "server.mjs",
+    "run.py",
+    "execute.py",
+    "mo.mjs",
+    "test.mjs",
+    "README.md",
+    "controls.json"
+  ],
+  "finding": "Mixed selection including mo lacked released preparation; retained worker red corrected membership gating.",
+  "provisioning_decision": "One run per listener with trusted operator enforcing once per production process; no process-global singleton is claimed."
+}

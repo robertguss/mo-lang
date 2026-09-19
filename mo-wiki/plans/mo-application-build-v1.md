@@ -145,6 +145,21 @@ control, then accepts or corrects. This establishes isolated application builds
 only. Scripted repair, remote HTTP/Mo six-tool routing, live subscription login,
 provider-driven coding, matched Pi and language-value claims remain separate.
 
+## Machine release — 19 Sep 2026, 2:28 AM ET
+
+Lead read back outer cgroup limits: 2147483648 memory bytes, no swap and
+200000/100000 CPU quota. Guest free/df report shared VM totals and do not prove
+machine headroom. New `mo-application.slice` has effective 1610612736 memory
+bytes, no swap, 100000/100000 CPU quota and 192 tasks. The old executor slice
+file and 512MiB cap stayed unchanged; both parents were empty at release.
+
+Worker exclusively owns bounded machine packaging/tests until positive cleanup
+and release. It may create only owned application-build-v1 staging and task
+packaging services/images; fresh task-owned existing lifecycle UUID resources
+are also authorized. Existing pinned Mo/Zig inputs are read-only. Exact original
+Zig archive path and SHA were supplied. Raw inspection/provision commands and
+results are under `audit/evidence/2026-09-19/application-preparation/`.
+
 ## Related
 
 - [[mo-workspace-foundation]]

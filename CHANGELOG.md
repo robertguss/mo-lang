@@ -2,6 +2,15 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Offline native-history bridge accepted — 19 Sep 2026, 2:34 AM ET
+
+- Added one-run loopback provider bridge with exact recorded continuation,
+  preserved native IDs/signatures, bounded private journal and fail-closed usage.
+- Independent27 protocol groups, actual Mo in both runtimes,28 provider cases
+  and two extra HTTP controls pass. Full suite 243/243,5/5; source bytes preserved.
+- Retained and corrected real Mo HTTP framing and mixed-selection runner failures.
+  Commands remain inert fixtures; real application packaging proceeds separately.
+
 ## Coding, workspace and private auth accepted — 19 Sep 2026, 2:18 AM ET
 
 - Coding fixture adds recorded inert-command repair orchestration and exact edit.

@@ -1,0 +1,17 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "600",
+    "--",
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/lead-bridge-ahg0l4ro/toolchain/harness/provider/bridge/run.py",
+    "lead-foundation",
+    "foundation"
+  ],
+  "exit": 0,
+  "expected": 0,
+  "started": "2026-09-19T02:30:04.751540-04:00",
+  "finished": "2026-09-19T02:30:08.061886-04:00",
+  "remaining_group": false
+}

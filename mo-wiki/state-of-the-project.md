@@ -24,7 +24,7 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 2:18 AM ET, six bounded foundations accepted.
+**Last updated:** 19 Sep 2026, 2:34 AM ET, bridge accepted; application builds underway.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
@@ -46,13 +46,17 @@ and two lead cleanup probes. A real late-response-body cleanup defect was found
 and fixed. All credentials are synthetic; live subscription login, registration,
 account/model entitlement and inference remain unverified.
 
-The bridge worker reports its first real Mo runs passing in interpreter and
-compiled execution, checking Book before dispatch. Independent lead acceptance
-is next. Trusted Linux compiler execution and native compilation passed, but
-candidate application packaging/resource policy remains separate. The next
-bounded slice, [[mo-application-build-v1]], packages pinned tools and compiles
-unchanged Logstat inside isolation before a scripted repair and coherent remote
-six-tool profile. Language value and matched Pi comparison remain unmeasured.
+[[mo-provider-bridge-v1]] is independently accepted:27 protocol groups, actual
+Mo in both runtimes,28 foundation regressions and two extra HTTP controls pass.
+Full integrated suite 243/243 and 5/5 passed; source bytes and cleanup are checked.
+Each Mo run records and replays native provider history with Book observations;
+commands are still inert fixtures.
+
+[[mo-application-build-v1]] now owns the dedicated machine for pinned image and
+real compilation controls, with a separately verified resource parent. The next
+work is coherent remote six-tool routing and a scripted Logstat repair with
+protected verification. Language value and matched Pi comparison remain unmeasured.
+Published checkpoint 5e568227 and its wiki deployment passed.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations

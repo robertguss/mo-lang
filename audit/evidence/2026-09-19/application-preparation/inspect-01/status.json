@@ -1,0 +1,19 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "90",
+    "--",
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "python3",
+    "-c",
+    "import hashlib,json,pathlib,subprocess\n\ndef run(*args):\n p=subprocess.run(args,capture_output=True,text=True,timeout=20)\n return {'command':args,'exit':p.returncode,'stdout':p.stdout,'stderr':p.stderr}\nrecords=[run('free','-b'),run('df','-B1','/','/opt/mo-harness'),run('docker','ps','-a','--no-trunc','--format','{{json .}}'),run('docker','image','ls','--no-trunc','--format','{{json .}}'),run('systemctl','list-units','--all','--no-legend','mo-*'),run('systemctl','show','mo.slice','mo-executor.slice','mo-application.slice','-p','LoadState','-p','ActiveState','-p','ControlGroup','-p','MemoryMax','-p','MemorySwapMax','-p','CPUQuotaPerSecUSec','-p','TasksMax')]\nfor x in records:print(json.dumps(x))\nfor s in ['/etc/systemd/system/mo-executor.slice','/etc/systemd/system/mo-application.slice']:\n p=pathlib.Path(s);print(json.dumps({'path':s,'exists':p.exists(),'text':p.read_text() if p.exists() else None}))\nfor s in ['/sys/fs/cgroup/mo.slice','/sys/fs/cgroup/mo.slice/mo-executor.slice']:\n p=pathlib.Path(s);print(json.dumps({'cgroup':s,'values':{n:(p/n).read_text() for n in ['cgroup.procs','cgroup.subtree_control','memory.current','memory.max','memory.events','cpu.max','pids.current','pids.max'] if (p/n).exists()},'children':[x.name for x in p.iterdir() if x.is_dir()]}))\np=pathlib.Path('/opt/mo-harness/bin/mo-e3a01bb-aarch64-linux-musl');print(json.dumps({'compiler':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'bytes':p.stat().st_size}))\nprint(json.dumps({'zig':run('/opt/mo-harness/zig-aarch64-linux-0.16.0/zig','version')}))\n"
+  ],
+  "exit": 0,
+  "group_remaining": false
+}

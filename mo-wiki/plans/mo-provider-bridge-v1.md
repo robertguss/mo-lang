@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-provider-foundation.md, plans/mo-coding-fixture-v1.md]
-status: in-progress
+status: complete
 ---
 
 # Mo provider bridge v1: native history and recorded continuation
@@ -148,6 +148,28 @@ variants in that group. No candidate command executes on Mac.
 Unchanged foundation 28-case regression must pass from a fresh prepared copy.
 Lead reviews the immutable patch and repeats tests plus an independent control.
 No live account, executor, application-repair or language-value claim follows.
+
+## Result — 19 Sep 2026, 2:32 AM ET
+
+Accepted integrated `191da144809a83ecadd1902aadd6507e898fa31b`: worker c17d65a
+and separate mixed-selection correction 9e2feb8e. Lead exact 92-file comparison,
+fresh-copy 27 independent groups, actual Mo in both runtimes, unchanged28-case
+foundation and two extra HTTP controls pass. Each Mo run has two pinned-parser
+provider calls, one inert command and three Book steps, independently read from
+disk before dispatch. Native IDs/signatures survive continuation.
+
+Full integrated build/test passed 243/243 and 5/5; 3489 tracked toolchain/examples
+files unchanged during recorded verification. All 278 provider files in main and
+copy are unchanged; owned groups/listeners closed. Retained failures include
+missing Content-Length found by real Mo, and valid mixed selection lacking Mo
+preparation. Correction uses actual selection membership, with negative tests
+rejecting before copying/Node. Exact commands and raw outputs are under
+`audit/evidence/2026-09-19/provider-bridge/`.
+
+Trusted operator enforces once-per-production-process provisioning; the library
+is one run per listener, with no global singleton. No live auth/inference,
+real executor command, application repair, crash durability or client-receipt
+claim. Worker is idle and its owned panes are closed.
 
 ## Related
 

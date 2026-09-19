@@ -1,0 +1,7 @@
+{"step": "independent", "exit": 0, "expected": 0, "group_remaining": false}
+{"step": "mixed-mo", "exit": 0, "expected": 0, "group_remaining": false}
+{"step": "foundation", "exit": 0, "expected": 0, "group_remaining": false}
+{"step": "unknown", "exit": 2, "expected": 2, "group_remaining": false}
+{"step": "empty", "exit": 2, "expected": 2, "group_remaining": false}
+{"step": "duplicate", "exit": 2, "expected": 2, "group_remaining": false}
+{"step": "extra", "exit": 0, "expected": 0, "group_remaining": false}

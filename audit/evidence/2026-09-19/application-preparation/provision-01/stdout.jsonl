@@ -1,0 +1,4 @@
+{"outer_machine_cgroup": {"memory.max": "2147483648", "memory.current": "361336832", "memory.swap.max": "0", "cpu.max": "200000 100000", "pids.max": "max"}, "self_cgroup": "0::/.lxc\n"}
+{"command": ["systemctl", "daemon-reload"], "exit": 0, "stdout": "", "stderr": ""}
+{"command": ["systemctl", "start", "mo-application.slice"], "exit": 0, "stdout": "", "stderr": ""}
+{"new_config": "/etc/systemd/system/mo-application.slice", "config": "[Unit]\nDescription=Bounded Mo application build trial\n[Slice]\nCPUQuota=100%\nMemoryMax=1536M\nMemorySwapMax=0\nTasksMax=192\n", "sha256": "ab7ea2ac24e3248cc436348ea11251db3d650c160bf443907b16bda6e1e00702", "effective_cgroup": "/sys/fs/cgroup/mo.slice/mo-application.slice", "values": {"memory.max": "1610612736", "memory.swap.max": "0", "cpu.max": "100000 100000", "pids.max": "192", "pids.current": "0", "cgroup.procs": ""}, "old_config_unchanged": true, "old_cgroup_memory_max": "536870912", "containers": ""}

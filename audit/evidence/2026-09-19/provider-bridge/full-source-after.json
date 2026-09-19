@@ -1,0 +1,40 @@
+{
+  "files": 3489,
+  "unchanged": true,
+  "changed": [],
+  "ending_head": "191da144809a83ecadd1902aadd6507e898fa31b",
+  "started_head": "9e777e5c",
+  "concurrent_integration": "Only bridge run.py, README and new retained evidence correction integrated while compiler suite ran; compiler/examples bytes unchanged.",
+  "outer_command": [
+    "python3",
+    "toolchain/bench/step36/guard.py",
+    "900",
+    "--",
+    "python3",
+    "examples/programs/agent/tests/coding-fixture-v1/full.py"
+  ],
+  "outer_exit": 0,
+  "pane": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 47832,
+        "foreground_processes": [
+          {
+            "argv": [
+              "-zsh"
+            ],
+            "argv0": "zsh",
+            "cmdline": "-zsh",
+            "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+            "name": "zsh",
+            "pid": 47832
+          }
+        ],
+        "pane_id": "w4:p1D",
+        "shell_pid": 47832
+      },
+      "type": "pane_process_info"
+    }
+  }
+}

@@ -865,3 +865,14 @@
 - Briefed separate immutable application image/policy; machine work needs explicit
   lead release. Updated handoff/state/roadmap/results/session and evidence indexes.
 - Wiki lint:264 pages,25 inherited notices (15 review,10 size), no new issues; git diff --check clean.
+
+## [2026-09-19] update | Bridge accepted and application machine released, 2:34 AM ET
+- Bridge exact92-file match and independent27 protocol groups, real Mo both
+  runtimes, foundation28 and two extras pass; full243/243,5/5. All278 provider and
+  recorded3489 toolchain/examples files unchanged; worker closed after receipt.
+- Pushed5e568227; wiki deployment35426384194 succeeded.
+- Provisioned distinct application parent after actual outer cgroup readback;
+  worker owns bounded machine/image work, old512MiB policy unchanged.
+- Retained intact remote wire review; focused encoding/Book-budget follow-up
+  underway. No live OAuth/inference or real provider-driven application claim.
+- Wiki lint264 pages/25 inherited notices after condensing this session's checkpoint; diff check clean.

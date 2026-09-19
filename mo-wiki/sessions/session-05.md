@@ -136,20 +136,20 @@ Mac cross-build passed but Linux execution is still unverified. A fresh bounded
 [[mo-provider-auth-v1]] slice will prepare private device OAuth using fixtures.
 No live credentials, application acceptance or retired audit gate is implied.
 
-## Astra overnight checkpoint — 19 Sep 2026, 2:18 AM ET
+## Astra application-boundary checkpoint — 19 Sep 2026, 2:34 AM ET
 
-Coding fixture accepted at e6f04ce after cold-runner correction: full suite
-243/243, 5/5, both runtime matrices and all lead controls. Workspace accepted
-with 27 unit/22 workspace/17 executor/lifecycle/two extras and empty cleanup.
-Private auth at 29f0dd24 passed fresh offline setup, 28/28 auth, 28/28 provider
-and two extras after a retained late-response body cleanup red. Worker panes
-closed after idle receipts; historical worktrees remain.
+Coding fixture accepted at e6f04ce after cold-runner correction: full243/243,
+5/5, both runtime matrices and lead controls. Workspace passed27 unit/22 live/
+17 executor/lifecycle/two extras with empty cleanup. Private auth passed28 auth/
+28 provider/two extras after a retained late-response-body red. Worker panes
+closed after idle receipts; historical worktrees and every failure remain.
 
-Trusted Linux execution and native build pass; prior bootstrap OOM/timeout remain.
-Bridge worker real Mo runs pass against exact e6f04ce; lead acceptance pending.
-Fresh bounded application-build brief uses a distinct pinned image/resource
-policy before scripted Logstat repair and remote tool routing. No live login,
-provider-driven repair, Pi comparison or language-value claim.
+Provider bridge accepted at191da144:27 protocol groups, real Mo both runtimes,
+28 provider/two extras, full243/243 and5/5;3489 tracked files unchanged. Mixed Mo
+selection corrected separately. Published5e568227/wiki35426384194 passed.
+Application worker owns dedicated machine/image work after exact outer/parent
+cgroup readback and release. Remote wire review flags identity/encoding/budget
+compatibility for the next slice. No live inference or application-repair claim.
 
 ## Related
 - [[session-04]]

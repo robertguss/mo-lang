@@ -154,9 +154,8 @@ Both original red and corrected green are immutable. No real credentials, live
 OAuth registration, account entitlement or inference have been tested.
 
 Raw lead evidence/scripts: `audit/evidence/2026-09-19/provider-auth/` and
-`auth-readiness/`. Last integrated compiler suite is 243/243 at e6f04ce; these
-auth commits add only provider/auth files. Next bridge checkpoint repeats the
-full suite. The worker is idle and its owned panes are closed.
+`auth-readiness/`. The bridge checkpoint ending at 191da144 also passed the full integrated
+compiler suite 243/243 and 5/5; these auth commits add only provider/auth files. The worker is idle and its owned panes are closed.
 
 ## Related
 
