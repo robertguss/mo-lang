@@ -22,7 +22,7 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 6:38 AM ET
+### Active work, 19 Sep 2026, 6:49 AM ET
 
 Ten bounded foundations have independent lead acceptance: terminal401, offline
 provider, BusyBox executor, workspace, coding fixture, private auth, native-history
@@ -30,6 +30,7 @@ provider bridge, isolated application builds, cleanup-only recovery and workspac
 HTTP. Recovery acceptance published at68e50ed6; wiki35432372898 succeeded. HTTP
 is accepted atcf99cd88e186cf293a4112582fe2d26a0f7b69ff after independent full
 compiler and cross-attempt closure. Acceptance/docs commit is030290b8918e356be5588da2b12ad4e494aeac00.
+Publicationd715f13f8a4c4cf0bfcd9ae720c240abf0e72b20 and wiki35438223776 succeeded.
 
 HTTP worker42015b73cce5f4f97d4479413354780c94b13e6c is clean; product freeze
 1cf268b356a63665214ca8331bfc55828b643603. Exact6211 new owned paths,6210 manifest
@@ -74,7 +75,9 @@ w4:p2E/tabw4:tP, actual Astra/low PID19318, shell19087, exact base030290b8, bran
 harness/application-workspace-v1 in the corresponding historical worktree root.
 Local implementation and focused Mo I/native builds/tests released; machine/full
 gates closed. It may copy the accepted lead Mo binary read-only (SHAacf1d593).
-See application-worker-release-01.json. Lead readiness
+Owned runpane isw4:p2F. Interpreter strict-JSON controls are green with early
+compile failures retained; Run/application integration is underway, no immutable
+source checkpoint yet. See application-worker-release-01.json. Lead readiness
 reviews are in audit/evidence/2026-09-19/workspace-wire-readiness/; reviewerp2C
 andp2D closed after done/process proofs. Four architecture findings incorporated:
 fresh runs-directory preflight before Open, all-six-tool terminal classification
@@ -92,6 +95,13 @@ sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4;
 manifest d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb at
 /opt/mo-harness/application-build-v1/package-02/package/manifest.json.
 Trusted Linux Mo and Zig remain under /opt/mo-harness, unchanged.
+
+Separate source-only Logstat reviewer p2G is closed after receipt. Readiness
+source-review-01.md/design.md under audit/evidence/2026-09-19/logstat-readiness/
+proposes defaulttop5-to1, an explicitly unverified prepared Main fixture to avoid
+stale-footer MO0317, all four external goldens/eight preserved Main tests, direct
+readonly-source builds and protected wrong-source/forged-output controls. This
+is not released implementation or measured semantic RED; app acceptance comes first.
 
 Keep prior failures honest: recovery malformed successful snapshot has no retained
 raw response and remains unexplained; later inactive slice was a separate proven

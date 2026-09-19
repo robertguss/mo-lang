@@ -1,0 +1,121 @@
+{
+  "agent": {
+    "id": "cli:agent:get",
+    "result": {
+      "agent": {
+        "agent": "codex",
+        "agent_status": "done",
+        "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+        "focused": false,
+        "foreground_cwd": "/Users/robertguss/Projects/startups/mo-lang",
+        "interactive_ready": true,
+        "name": "mo-logstat-readiness",
+        "pane_id": "w4:p2G",
+        "revision": 45,
+        "state_change_seq": 350,
+        "tab_id": "w4:tQ",
+        "terminal_id": "term_65bd3b476ba0e59",
+        "terminal_title": "Review Logstat repair readiness | mo-lang",
+        "terminal_title_stripped": "Review Logstat repair readiness | mo-lang",
+        "workspace_id": "w4"
+      },
+      "type": "agent_info"
+    }
+  },
+  "pane": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 21017,
+        "foreground_processes": [
+          {
+            "argv": [
+              "codex",
+              "--model",
+              "gpt-6-astra",
+              "-c",
+              "model_reasoning_effort=\"low\"",
+              "--sandbox",
+              "read-only",
+              "--ask-for-approval",
+              "never",
+              "--no-alt-screen"
+            ],
+            "argv0": "codex",
+            "cmdline": "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox read-only --ask-for-approval never --no-alt-screen",
+            "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+            "name": "codex",
+            "pid": 21017
+          }
+        ],
+        "pane_id": "w4:p2G",
+        "shell_pid": 20807
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "descendants": [
+    [
+      "21244",
+      "21188",
+      "21244",
+      "/Users/robertguss/.local/share/mise/installs/node/24.20.0/bin/node /Users/robertguss/.npm/_npx/15c61037b1978c83/node_modules/chrome-devtools-mcp/build/src/telemetry/watchdog/main.js --parent-pid=21188 --app-version=1.9.0 --os-type=2"
+    ],
+    [
+      "20807",
+      "7491",
+      "20807",
+      "-zsh"
+    ],
+    [
+      "21017",
+      "20807",
+      "21017",
+      "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox read-only --ask-for-approval never --no-alt-screen"
+    ],
+    [
+      "21122",
+      "21017",
+      "21122",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node /Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules/@oai/cua-repl/bin/cua-repl.mjs"
+    ],
+    [
+      "21123",
+      "21017",
+      "21123",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+    ],
+    [
+      "21133",
+      "21017",
+      "21133",
+      "npm exec chrome-devtools-mcp@latest   "
+    ],
+    [
+      "21136",
+      "21122",
+      "21122",
+      "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+    ],
+    [
+      "21188",
+      "21133",
+      "21133",
+      "chrome-devtools-mcp "
+    ],
+    [
+      "21224",
+      "21017",
+      "21224",
+      "/Users/robertguss/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node /Users/robertguss/.codex/plugins/cache/openai-curated-remote/codex-security/0.1.24/scripts/../mcp/server.mjs --stdio"
+    ],
+    [
+      "21560",
+      "21017",
+      "21560",
+      "/opt/homebrew/Caskroom/codex/0.155.0/bin/codex-code-mode-host"
+    ]
+  ],
+  "work": "source-only; no tests or machine workloads",
+  "closure_owns_session_helpers": true
+}
