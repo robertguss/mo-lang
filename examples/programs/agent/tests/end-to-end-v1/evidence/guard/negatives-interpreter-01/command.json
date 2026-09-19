@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "negatives",
+    "interpreter",
+    "negatives-interpreter-01",
+    "--only",
+    "service-killed,candidate-limit"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1",
+  "seconds": 1200,
+  "head": "53d415a0adca6f6e197b323e5a8f328d2a3f4e10",
+  "dirty": []
+}

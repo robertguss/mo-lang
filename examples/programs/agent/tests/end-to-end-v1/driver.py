@@ -114,9 +114,10 @@ def observations(bridge, steps):
                                   book=received.get('accepted') if isinstance(received, dict) else None),
                    execution=dict(service=produced.get('execution') if produced else ('unknown' if entry else None),
                                   book=received.get('execution') if isinstance(received, dict) else None),
-                   reply=dict(produced=produced is not None or (sent or {}).get('produced') is not None,
+                   # Produced by the owner (journalled) or, with no owner result, by the frontend itself.
+                   reply=dict(produced_by='owner' if produced is not None else ('frontend' if (sent or {}).get('produced') else None),
                               status=(sent or {}).get('status'),
-                              received_equals_produced=produced is not None and received == produced),
+                              received_equals_produced=received == (produced if produced is not None else (sent or {}).get('produced'))),
                    service_ms=(sent or {}).get('service_ms'), book_took_ms=step.get('took_ms'), timeout_ms=(sent or {}).get('timeout_ms'),
                    state=received.get('state') if isinstance(received, dict) else None,
                    error=received.get('error') if isinstance(received, dict) else None)
