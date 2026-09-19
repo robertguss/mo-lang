@@ -1,0 +1,10 @@
+{
+  "commit": "0a74a0fc3a679eb98dd1c31892a32e6b41b3cbdb",
+  "files": {
+    "examples/programs/agent/workspace-adapter.mo": {
+      "copy": "/private/tmp/mo-application-adapter-review-0a74a0fc/workspace-adapter.mo",
+      "sha256": "38d931cfd0d0402e8b5bc008bb01e7aabd8129e84974929a26717eee2e6c9b7b",
+      "bytes": 14986
+    }
+  }
+}
