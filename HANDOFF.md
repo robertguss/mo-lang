@@ -53,6 +53,9 @@ runtimes (an `answer` to a kept ask); step 40 (a narrowed `Fs` refuses links,
 |---|---|---|---|---|
 | `e2e-logstat-opus` | `w4:tY` / `w4:p2Y` | `harness/end-to-end-v1`, `~/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1` | `mo-wiki/plans/mo-harness-end-to-end-v1.md` | `examples/programs/agent/tests/end-to-end-v1/REPORT.md` |
 | `step41-exec-opus` | `w4:tZ` / `w4:p2Z` | `toolchain/step-41-exec`, `.../toolchain-step-41-exec` | `mo-wiki/plans/interpreter-step-41.md` (design: `mo-capabilities-for-the-harness.md` section 3) | `toolchain/STEP-41-REPORT.md` |
+| `step43-numbers-opus` | `w4:t0` / `w4:p31` | `toolchain/step-43-numbers`, `.../toolchain-step-43-numbers` (base `d85154cf`) | `mo-wiki/plans/interpreter-step-43.md` (the auditor's PR 15 defects) | `toolchain/STEP-43-REPORT.md` |
+
+**Update, 19 Sep, 1:23 PM ET (fresh lead session).** The auditor's PR 15 (repository audit) is read, compared and merged: lead reading `audit/fable-reading-2026-09-19-repo.md` filed first, comparison beside it, all conceded (sized literals past their type reach both runtimes; an oversized `mailbox:` panics the compiler; the fuzz driver passes a run of nothing). Step 43 fixes them and is in flight. Briefs written and waiting: `interpreter-step-42.md` (runtime memory safety, after step 41 lands) and `mo-agent-report-cap.md` (after the end-to-end slice). Step 41's report file was committed early as part of its RED commit: **a committed report is not a finished worker; also require a clean worktree and an idle agent.** A CI gate is still owed (decision-log row).
 
 The end-to-end worker **owns the OrbStack machine exclusively**; do not run live
 suites until it is done. The step 41 worker was told to stop and ask if keeping
