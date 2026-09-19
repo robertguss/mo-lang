@@ -1,0 +1,9 @@
+=== lead-smoke-native-01
+guarded examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-smoke-native-01 child_exit=0 exit=0 group_absent=True
+=== lead-smoke-interpreter-01
+guarded examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-smoke-interpreter-01 child_exit=0 exit=0 group_absent=True
+=== lead-logstat-native-01
+guarded examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-logstat-native-01 child_exit=0 exit=0 group_absent=True
+=== lead-negatives-interpreter-01
+guarded examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-negatives-interpreter-01 child_exit=0 exit=0 group_absent=True
+{"runs": 74, "workspaces": 56, "cgroups": 71, "clean": true}

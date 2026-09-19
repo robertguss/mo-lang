@@ -1,0 +1,72 @@
+{
+  "head": "94023380f48dbc2a1b3af4bc8f16c85e159fa0ed",
+  "ids_sha256": "f612fc90ee303e90e7490fdb350924bfe30333a2ac108d97157b30fb928b02db",
+  "id_scope": [
+    "logstat/main.mo",
+    "logstat/parse.mo",
+    "logstat/report.mo",
+    "logstat/stats.mo"
+  ],
+  "fault": {
+    "line": 80,
+    "old": "  var parsed = Options(dir: \"\", top: 5, since: None, json: false)\n",
+    "new": "  var parsed = Options(dir: \"\", top: 1, since: None, json: false)\n"
+  },
+  "trees": {
+    "clean": {
+      ".mo.ids": "61af0bd50585758ec0775d28a5be1ef3117da8b3d5a0acdbb5249c4d576f9a25",
+      "logstat/fixture/a.log": "18aea083d2e44b173ba7ad7c6a0cf4682f3ab8c0ed74d4482e2ff9121cdbda7f",
+      "logstat/fixture/b.log": "8c988b9362760a700791022f7f97567f647ee460a66bcee1f4458c10aa727fa7",
+      "logstat/fixture/c.log": "b0108936bd8a9d3dc3f7f2a4beb66c0cb046a97953b994acbda6a3718066969b",
+      "logstat/fixture/notes.txt": "beb914c782533ff2115db31d24339875166caee0b8554823f8ce22f6c8aba656",
+      "logstat/main.mo": "920aef38064420785f12a4b6dd8e64ad67d9ec0452214d7af2f80b626fb2987e",
+      "logstat/parse.mo": "9cb1a847ed01680595824e896c4569a94026b92f8b7e9723303289adecf14747",
+      "logstat/report.mo": "1e00d74654e602da559992d510baad764b20508d2d472c20e6aca5756e1e581d",
+      "logstat/stats.mo": "e6b65fdf9c3408f3f9004635ed1e18e254fcce617437febaebc7855fa609d1db",
+      "mo.root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "normalized": {
+      ".mo.ids": "61af0bd50585758ec0775d28a5be1ef3117da8b3d5a0acdbb5249c4d576f9a25",
+      "logstat/fixture/a.log": "18aea083d2e44b173ba7ad7c6a0cf4682f3ab8c0ed74d4482e2ff9121cdbda7f",
+      "logstat/fixture/b.log": "8c988b9362760a700791022f7f97567f647ee460a66bcee1f4458c10aa727fa7",
+      "logstat/fixture/c.log": "b0108936bd8a9d3dc3f7f2a4beb66c0cb046a97953b994acbda6a3718066969b",
+      "logstat/fixture/notes.txt": "beb914c782533ff2115db31d24339875166caee0b8554823f8ce22f6c8aba656",
+      "logstat/main.mo": "5b8e0009e9209487ba5bb6a92f3d7d2762a215fb6796a65e07d8aef5b7d40e49",
+      "logstat/parse.mo": "9cb1a847ed01680595824e896c4569a94026b92f8b7e9723303289adecf14747",
+      "logstat/report.mo": "1e00d74654e602da559992d510baad764b20508d2d472c20e6aca5756e1e581d",
+      "logstat/stats.mo": "e6b65fdf9c3408f3f9004635ed1e18e254fcce617437febaebc7855fa609d1db",
+      "mo.root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "faulty": {
+      ".mo.ids": "61af0bd50585758ec0775d28a5be1ef3117da8b3d5a0acdbb5249c4d576f9a25",
+      "logstat/fixture/a.log": "18aea083d2e44b173ba7ad7c6a0cf4682f3ab8c0ed74d4482e2ff9121cdbda7f",
+      "logstat/fixture/b.log": "8c988b9362760a700791022f7f97567f647ee460a66bcee1f4458c10aa727fa7",
+      "logstat/fixture/c.log": "b0108936bd8a9d3dc3f7f2a4beb66c0cb046a97953b994acbda6a3718066969b",
+      "logstat/fixture/notes.txt": "beb914c782533ff2115db31d24339875166caee0b8554823f8ce22f6c8aba656",
+      "logstat/main.mo": "20e154a4838d95c1844d117f3bf5b1c423dbb0f9a9e71381bd468d0b6d9b2e79",
+      "logstat/parse.mo": "9cb1a847ed01680595824e896c4569a94026b92f8b7e9723303289adecf14747",
+      "logstat/report.mo": "1e00d74654e602da559992d510baad764b20508d2d472c20e6aca5756e1e581d",
+      "logstat/stats.mo": "e6b65fdf9c3408f3f9004635ed1e18e254fcce617437febaebc7855fa609d1db",
+      "mo.root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "repaired": {
+      ".mo.ids": "61af0bd50585758ec0775d28a5be1ef3117da8b3d5a0acdbb5249c4d576f9a25",
+      "logstat/fixture/a.log": "18aea083d2e44b173ba7ad7c6a0cf4682f3ab8c0ed74d4482e2ff9121cdbda7f",
+      "logstat/fixture/b.log": "8c988b9362760a700791022f7f97567f647ee460a66bcee1f4458c10aa727fa7",
+      "logstat/fixture/c.log": "b0108936bd8a9d3dc3f7f2a4beb66c0cb046a97953b994acbda6a3718066969b",
+      "logstat/fixture/notes.txt": "beb914c782533ff2115db31d24339875166caee0b8554823f8ce22f6c8aba656",
+      "logstat/main.mo": "5b8e0009e9209487ba5bb6a92f3d7d2762a215fb6796a65e07d8aef5b7d40e49",
+      "logstat/parse.mo": "9cb1a847ed01680595824e896c4569a94026b92f8b7e9723303289adecf14747",
+      "logstat/report.mo": "1e00d74654e602da559992d510baad764b20508d2d472c20e6aca5756e1e581d",
+      "logstat/stats.mo": "e6b65fdf9c3408f3f9004635ed1e18e254fcce617437febaebc7855fa609d1db",
+      "mo.root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "goldens": {
+    "logstat.expected": "baaf6aec3007cef0a446e693ba89232b3468a5282cc67a53bf9f24080263a715",
+    "logstat-2.expected": "2efafa54d8d9bf552cde175706fcc5fe175880a41ba0ff196e5038bc5765ac5f",
+    "logstat-3.expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logstat-4.expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "repaired_equals_normalized": true
+}

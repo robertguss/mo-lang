@@ -1,0 +1,3 @@
+{"part": "native-build", "passed": true, "exit_code": 0, "elapsed_s": 16.534, "summary": "zig-out/mo-build/e2e-agent/e2e-agent", "failed_checks": []}
+{"part": "smoke", "case": "smoke", "runtime": "native", "passed": true, "exit_code": 0, "elapsed_s": 1.337, "summary": "{\"schema\": \"mo-application-workspace-v1\", \"run_id\": \"r_1\", \"event\": \"terminal\", \"step_number\": 13, \"payload\": {\"state\": \"done\", \"result\": \"all six tools answered\", \"error\": null, \"usage\": \"reported_synthetic\", \"tokens\": 7}}", "failed_checks": []}
+{"attempt": "lead-smoke-native-01", "rows": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-e2e/examples/programs/agent/tests/end-to-end-v1/evidence/lead-smoke-native-01.jsonl", "failed": false}

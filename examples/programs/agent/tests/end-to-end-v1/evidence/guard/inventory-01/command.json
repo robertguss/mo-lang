@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "toolchain/harness/executor/inventory.py",
+    "examples/programs/agent/tests/end-to-end-v1/evidence/inventory-01",
+    "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-e2e-v1",
+    "examples/programs/agent/tests/end-to-end-v1/evidence"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-end-to-end-v1",
+  "seconds": 120,
+  "head": "9fef2e18a19afa3d10a6b0f2f0e6aa38b188a497",
+  "dirty": [
+    "?? examples/programs/agent/tests/end-to-end-v1/README.md",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/deadline-native-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/deadline-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/deadline-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/negatives-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/negatives-native-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/negatives-native-01/"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "smoke",
+    "native",
+    "lead-smoke-native-01"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-e2e",
+  "seconds": 1500,
+  "head": "94023380f48dbc2a1b3af4bc8f16c85e159fa0ed",
+  "dirty": [
+    "?? .lead-build.log",
+    "?? .lead-e2e.log",
+    "?? .lead-e2e.sh"
+  ]
+}
