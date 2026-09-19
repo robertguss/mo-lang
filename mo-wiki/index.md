@@ -145,6 +145,8 @@ type: index
   and JSONL before isolated workspace/provider integration.
 - [[mo-workspace-foundation]] — bounded persistent Linux workspace, real feedback
   commands and protected snapshot identity; next executor slice
+- [[mo-provider-bridge-v1]] — native Pi history, strict recorded continuation
+  and bounded offline Mo HTTP compatibility before live inference
 - [[mo-provider-auth-v1]] — private harness credential store and pinned device
   OAuth, independently tested with synthetic credentials before live login
 - [[mo-provider-foundation]] — pinned provider-only turns, synthetic SSE controls

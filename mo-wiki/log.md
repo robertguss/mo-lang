@@ -831,3 +831,14 @@
 - Workspace controls/regressions pass with final mode/quota rerun underway.
 - Saved intact provider bridge review; briefed separate private-store/device
   OAuth implementation with actual pinned code and entirely offline controls.
+
+## [2026-09-19] create | Offline provider bridge brief, 1:56 AM ET
+- Trusted Linux execution now passed model/conformance/build and all 18 auth
+  HTTP cases with source identity and positive cleanup. Workspace integrated
+  acceptance is running on f4fe3ea with extra controls and shared Docker checks.
+- Coding-fixture cold verification found native legacy tests ran before build;
+  missing-binary exit 1 falsely passed three negative cases. Assigned narrow
+  runner/diagnostic correction; retained lead failure and unchanged sources.
+- Briefed provider bridge native history, two-step continuation, bounded journal,
+  no replay and fail-closed unknown usage. Auth remains separate; actual Mo
+  end-to-end work waits for lead fixture acceptance while protocol work proceeds.

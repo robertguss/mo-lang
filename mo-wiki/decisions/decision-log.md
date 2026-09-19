@@ -741,6 +741,12 @@ direction separately from the lead's conservative execution interpretation.
 | Cancelled terminal totals are unknown/null while recorded per-call usage is preserved. Require Run.Stopped before reporting. Correct the lead's initial zero-token inference: actual RED appended and reported 17; native race RED showed post-report append. | Astra lead; correction by GPT-6-Astra/low | decided, pending integration | coding-fixture cancel-red-2, race-before-stop-check, cancel-review-1 |
 | Start [[mo-provider-auth-v1]] separately: only new provider/auth files, actual pinned device OAuth, private store, bounded serialized mutations, synthetic credentials and denied external egress. No live login or bridge/Mo edits in this slice. | Astra lead, informed by bounded Astra/low source review | decided | fixed offline controls and later independent lead acceptance |
 
+## Offline provider bridge scope (19 Sep 2026, 1:56 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Start [[mo-provider-bridge-v1]] only in new provider/bridge files. Preserve native messages and validate exact two-step Mo continuations; distinguish offered replies from independently proved Book writes. Unknown usage fails before actionable output; existing/uncertain journals never resume or replay. Actual Mo control waits for lead coding-fixture acceptance. | Astra lead, informed by bounded Astra/low source review | decided | pinned-parser offline protocol/journal controls; later Mo end-to-end release |
+
 ## Related
 
 - [[session-05]]
