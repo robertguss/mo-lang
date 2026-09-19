@@ -6,6 +6,7 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 const lexer = @import("lexer.zig");
+const number = @import("number.zig");
 const check = @import("check.zig");
 const contracts = @import("contracts.zig");
 const moves_mod = @import("moves.zig");
@@ -272,8 +273,8 @@ pub const Bounds = struct {
     fn intOf(tree: *const ast.Tree, i: Index) ?i128 {
         const n = tree.nodes[i];
         return switch (n.kind) {
-            .int_lit => Lower.parseInt(tree.tokenText(n.main_token)),
-            .negate => if (tree.nodes[n.lhs].kind == .int_lit) -Lower.parseInt(tree.tokenText(tree.nodes[n.lhs].main_token)) else null,
+            .int_lit => if (number.int(tree.tokenText(n.main_token))) |v| v else null,
+            .negate => if (tree.nodes[n.lhs].kind != .int_lit) null else if (number.int(tree.tokenText(tree.nodes[n.lhs].main_token))) |v| -@as(i128, v) else null,
             else => null,
         };
     }
@@ -1315,7 +1316,7 @@ const Lower = struct {
         l.processes.items[l.process_of[di]] = .{
             .name = d.name,
             .decl = di,
-            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(parseInt(l.text(data.mailbox))),
+            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(number.lowered(l.text(data.mailbox))),
             .init = init_fn,
             .update = update_fn,
             .invariants = invariants.items,
@@ -1366,7 +1367,7 @@ const Lower = struct {
                 .process = l.process_of[pd],
                 .args = args_fn,
                 .restart = if (std.mem.eql(u8, atom, ":never")) .never else if (std.mem.eql(u8, atom, ":on_crash")) .on_crash else .always,
-                .max_restarts = if (data.max_restarts == ast.none) none else @intCast(parseInt(l.text(data.max_restarts))),
+                .max_restarts = if (data.max_restarts == ast.none) none else @intCast(number.lowered(l.text(data.max_restarts))),
                 .per = per_fn,
             });
         }
@@ -1698,21 +1699,14 @@ const Lower = struct {
     fn literal(l: *Lower, tok: u32) Error!Const {
         const raw = l.text(tok);
         return switch (l.tree.tokens[tok].kind) {
-            .int => .{ .int = parseInt(raw) },
-            .float => .{ .float = std.fmt.parseFloat(f64, raw) catch 0 },
+            .int => .{ .int = number.lowered(raw) },
+            .float => .{ .float = try number.loweredFloat(l.gpa, raw) },
             .string => .{ .string = try l.stringText(tok, l.tree.tokens[tok].start + quoteLen(raw), l.tree.tokens[tok].end - quoteLen(raw)) },
             .kw_true => .{ .bool = true },
             else => .{ .bool = false },
         };
     }
 
-    fn parseInt(raw: []const u8) i128 {
-        var v: i128 = 0;
-        for (raw) |ch| if (ch != '_') {
-            v = v *| 10 +| (ch - '0');
-        };
-        return v;
-    }
 
     fn quoteLen(raw: []const u8) u32 {
         return if (std.mem.startsWith(u8, raw, "\"\"\"")) 3 else 1;
@@ -1816,8 +1810,8 @@ const Lower = struct {
         l.holds(l.typeOf(i));
         switch (n.kind) {
             .int_lit, .float_lit, .true_lit, .false_lit => try l.pushConst(switch (n.kind) {
-                .int_lit => .{ .int = parseInt(l.text(n.main_token)) },
-                .float_lit => .{ .float = std.fmt.parseFloat(f64, l.text(n.main_token)) catch 0 },
+                .int_lit => .{ .int = number.lowered(l.text(n.main_token)) },
+                .float_lit => .{ .float = try number.loweredFloat(l.gpa, l.text(n.main_token)) },
                 .true_lit => .{ .bool = true },
                 else => .{ .bool = false },
             }),
@@ -1947,7 +1941,7 @@ const Lower = struct {
                 try l.projection(i, k);
             },
             .member_call => try l.callNode(i, n.lhs, l.spanAt(n.rhs)),
-            .tuple_index => try l.projection(i, @intCast(parseInt(l.text(n.main_token)))),
+            .tuple_index => try l.projection(i, @intCast(number.lowered(l.text(n.main_token)))),
             .call => {
                 const callee = l.node(n.lhs);
                 const args = l.spanAt(n.rhs);
@@ -2010,7 +2004,7 @@ const Lower = struct {
             },
             .tuple_index => {
                 const rooted = try l.loadChain(n.lhs);
-                _ = try l.emit(.field, @intCast(parseInt(l.text(n.main_token))), 0);
+                _ = try l.emit(.field, @intCast(number.lowered(l.text(n.main_token))), 0);
                 return rooted;
             },
             else => {},

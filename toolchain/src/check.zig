@@ -11,6 +11,7 @@ const diag = @import("diag.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
 const sources = @import("sources.zig");
+const number = @import("number.zig");
 
 const Index = ast.Index;
 const Node = ast.Node;
@@ -677,13 +678,6 @@ const Checker = struct {
         const raw = c.text(lit.main_token);
         // A pattern's number may be negative: its `-` is the node's lhs.
         const negative = lit.kind == .pat_literal and lit.lhs != 0;
-        var digits: [32]u8 = undefined;
-        var n: usize = 0;
-        for (raw) |ch| if (ch != '_' and n < digits.len) {
-            digits[n] = ch;
-            n += 1;
-        };
-        const v = std.fmt.parseInt(u64, digits[0..n], 10) catch std.math.maxInt(u64);
         const kind: types.IntKind = @enumFromInt(t.a);
         const max: u64 = switch (kind) {
             .i8 => 127,
@@ -699,8 +693,45 @@ const Checker = struct {
             .i8, .i16, .i32, .i64 => true,
             else => false,
         };
-        const fits = if (negative) signed and v <= max + 1 else v <= max;
+        // Every digit is read: a value past UInt64's largest fits nothing (step 43).
+        const v = number.int(raw);
+        const fits = if (v == null) false else if (negative) signed and v.? <= max + 1 else v.? <= max;
         if (!fits) try c.reportTok(.literal_range, lit.main_token, try c.print("{s}{s} does not fit in {s}", .{ if (negative) "-" else "", raw, try c.tn(d.type) }));
+    }
+
+    /// A process's mailbox bound and each child line's max_restarts, read whole (step 43).
+    fn checkCounts(c: *Checker, it: Index) Error!void {
+        const n = c.node(it);
+        switch (n.kind) {
+            .process_decl => {
+                const tok = c.tree.extraData(ast.Process, n.lhs).mailbox;
+                if (tok == ast.none) return;
+                const v = number.int(c.text(tok)) orelse 0;
+                if (v < 1 or v > number.mailbox_max) try c.reportTok(.literal_range, tok, try c.print("mailbox: {s} does not fit in a mailbox bound, 1 to 4,294,967,295", .{c.text(tok)}));
+            },
+            .supervisor_decl => for (c.spanAt(n.rhs)) |ch| {
+                const tok = c.tree.extraData(ast.Child, c.node(ch).lhs).max_restarts;
+                if (tok == ast.none) continue;
+                const v = number.int(c.text(tok)) orelse std.math.maxInt(u64);
+                if (v > number.restarts_max) try c.reportTok(.literal_range, tok, try c.print("max_restarts: {s} does not fit in a restart budget, 0 to 4,294,967,294", .{c.text(tok)}));
+            },
+            else => {},
+        }
+    }
+
+    /// A float literal past Float64's largest would read as infinity (step 43).
+    fn checkFloat(c: *Checker, tok: u32) Error!void {
+        if (try number.float(c.gpa, c.text(tok)) == null) try c.reportTok(.literal_range, tok, try c.print("{s} does not fit in Float64", .{c.text(tok)}));
+    }
+
+    /// `N.ms`, `N.seconds`, `N.minute`, and `N.days` on a literal: N in that unit fits a Duration's
+    /// Int64 milliseconds (step 43). A literal too large for Int64 is its own MO0217.
+    fn checkUnitLiteral(c: *Checker, recv: Index, name: []const u8) Error!void {
+        if (c.node(recv).kind != .int_lit) return;
+        const unit = number.unitMs(name) orelse return;
+        const v = number.int(c.text(c.node(recv).main_token)) orelse return;
+        if (v > std.math.maxInt(i64)) return;
+        if (@as(u128, v) * unit > std.math.maxInt(i64)) try c.reportTok(.literal_range, c.node(recv).main_token, try c.print("{s}.{s} does not fit in Duration", .{ c.text(c.node(recv).main_token), name }));
     }
 
     fn checkBound(c: *Checker, d: Deferred) Error!void {
@@ -1429,6 +1460,7 @@ const Checker = struct {
         for (c.refinements.items) |r| if (r.module == c.module) try c.checkRefinement(r);
         for (c.items()) |it| {
             const n = c.node(it);
+            try c.checkCounts(it);
             switch (n.kind) {
                 .fn_decl => try c.checkFn(c.sig_of_node.get(it).?),
                 .impl_decl => for (c.spanAt(n.rhs)) |f| {
@@ -1617,15 +1649,7 @@ const Checker = struct {
         if (depth > 32) return null;
         const n = c.node(i);
         switch (n.kind) {
-            .int_lit => {
-                var v: i128 = 0;
-                for (c.text(n.main_token)) |ch| {
-                    if (ch == '_') continue;
-                    v = std.math.mul(i128, v, 10) catch return null;
-                    v = std.math.add(i128, v, @as(i128, ch - '0')) catch return null;
-                }
-                return .{ .int = v };
-            },
+            .int_lit => return .{ .int = number.int(c.text(n.main_token)) orelse return null },
             .true_lit => return .{ .boolean = true },
             .false_lit => return .{ .boolean = false },
             .name_ref => {
@@ -2533,7 +2557,10 @@ const Checker = struct {
                         try c.defer_(.{ .kind = .literal, .node = i, .type = v });
                         break :blk v;
                     },
-                    .float => types.float64,
+                    .float => blk: {
+                        try c.checkFloat(n.main_token);
+                        break :blk types.float64;
+                    },
                     .string => types.string,
                     else => types.bool_,
                 };
@@ -2767,7 +2794,10 @@ const Checker = struct {
                 try c.defer_(.{ .kind = .literal, .node = i, .type = v });
                 return v;
             },
-            .float_lit => return types.float64,
+            .float_lit => {
+                try c.checkFloat(n.main_token);
+                return types.float64;
+            },
             .true_lit, .false_lit => return types.bool_,
             .string_lit => return types.string,
             .string_interp => {
@@ -2861,12 +2891,12 @@ const Checker = struct {
                 const t = try c.expr(n.lhs, types.unknown);
                 const b = c.bt(t);
                 if (b.tag == .unknown or b.tag == .variable) return types.unknown;
-                const k = std.fmt.parseInt(u32, c.text(n.main_token), 10) catch std.math.maxInt(u32);
+                const k = number.int(c.text(n.main_token)) orelse std.math.maxInt(u64);
                 if (b.tag != .tuple or k >= b.b) {
                     try c.reportTok(.no_member, n.main_token, try c.print("{s} has no position {s}", .{ try c.tn(t), c.text(n.main_token) }));
                     return types.unknown;
                 }
-                return c.pool.items.items[b.a + k];
+                return c.pool.items.items[b.a + @as(u32, @intCast(k))];
             },
             .call => return c.callExpr(i, expected),
             .named_arg => {
@@ -3084,6 +3114,7 @@ const Checker = struct {
     }
 
     fn dotCall(c: *Checker, i: Index, recv: Index, t: Id, name: []const u8, args: []const u32) Error!Id {
+        try c.checkUnitLiteral(recv, name);
         if (try c.preludeMethod(i, recv, t, name, args)) |r| return r;
         if (c.fn_names.get(name)) |s| return c.userCall(i, s, .{ .node = recv, .type = t }, args, null);
         if (try c.traitCall(i, recv, t, name, args)) |r| return r;
