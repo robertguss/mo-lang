@@ -1,0 +1,219 @@
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+target=python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/main.mo --
+groups=six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,disconnect,lost-response,journal-order-bound,shutdown
+test_six_tools (__main__.Controls.test_six_tools) ... ERROR
+test_schema (__main__.Controls.test_schema) ... ERROR
+test_framing (__main__.Controls.test_framing) ... ERROR
+test_byte_bounds (__main__.Controls.test_byte_bounds) ... ERROR
+test_identities_capability (__main__.Controls.test_identities_capability) ... ERROR
+test_duplicate_calls (__main__.Controls.test_duplicate_calls) ... ERROR
+test_concurrent_admission (__main__.Controls.test_concurrent_admission) ... FAIL
+test_file_refusals (__main__.Controls.test_file_refusals) ... ERROR
+test_deadlines (__main__.Controls.test_deadlines) ... ERROR
+test_disconnect (__main__.Controls.test_disconnect) ... FAIL
+test_lost_response (__main__.Controls.test_lost_response) ... FAIL
+test_journal_order_bound (__main__.Controls.test_journal_order_bound) ... ERROR
+test_shutdown (__main__.Controls.test_shutdown) ... FAIL
+
+======================================================================
+ERROR: test_six_tools (__main__.Controls.test_six_tools)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 182, in test_six_tools
+    status, response = self.call(b, operation=op, args=args, call_id=op)
+                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 162, in call
+    return self.read(self.connect(bridge, self.req(bridge, **kwargs)))
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_schema (__main__.Controls.test_schema)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 214, in test_schema
+    self.assertEqual(self.read(self.connect(b, body))[0], 400)
+                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_framing (__main__.Controls.test_framing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 226, in test_framing
+    self.assertEqual(self.read(self.connect(b, self.req(b), extra=extra))[0], 400)
+                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_byte_bounds (__main__.Controls.test_byte_bounds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 240, in test_byte_bounds
+    self.assertEqual(self.read(self.connect(b,b'{}',length=p.REQUEST_CAP+1))[0],413)
+                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_identities_capability (__main__.Controls.test_identities_capability)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 264, in test_identities_capability
+    self.assertEqual(self.read(self.connect(b,self.req(b),token='wrong'))[0],401)
+                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_duplicate_calls (__main__.Controls.test_duplicate_calls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 272, in test_duplicate_calls
+    b=self.bridge();self.call(b)
+                    ~~~~~~~~~^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 162, in call
+    return self.read(self.connect(bridge, self.req(bridge, **kwargs)))
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_file_refusals (__main__.Controls.test_file_refusals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 296, in test_file_refusals
+    refused(b,'read_file',{'path':path},'invalid_path')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 291, in refused
+    status,r=self.call(bridge,operation=operation,args=args,call_id=f'c{len(self.journal(bridge)["calls"])}')
+                                                                            ~~~~~~~~~~~~^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 165, in journal
+    return json.loads((bridge.directory / 'owner.json').read_bytes())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/tmppuznyyfh/0/owner.json'
+
+======================================================================
+ERROR: test_deadlines (__main__.Controls.test_deadlines)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 312, in test_deadlines
+    status,r=self.call(b)
+             ~~~~~~~~~^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 162, in call
+    return self.read(self.connect(bridge, self.req(bridge, **kwargs)))
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+ERROR: test_journal_order_bound (__main__.Controls.test_journal_order_bound)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 478, in test_journal_order_bound
+    for i in range(16):self.assertTrue(self.call(b,call_id=f'c{i}')[1]['accepted'])
+                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 162, in call
+    return self.read(self.connect(bridge, self.req(bridge, **kwargs)))
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 156, in read
+    return client.response(conn, 4)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/client.py", line 45, in response
+    head, body = bytes(raw).split(b'\r\n\r\n', 1)
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+FAIL: test_concurrent_admission (__main__.Controls.test_concurrent_admission)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 281, in test_concurrent_admission
+    self.wait_event(b,'command')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 174, in wait_event
+    self.fail('missing event ' + event)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: missing event command
+
+======================================================================
+FAIL: test_disconnect (__main__.Controls.test_disconnect)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 362, in test_disconnect
+    self.wait_event(b,'command');conn.close()
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 174, in wait_event
+    self.fail('missing event ' + event)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: missing event command
+
+======================================================================
+FAIL: test_lost_response (__main__.Controls.test_lost_response)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 401, in test_lost_response
+    self.wait_event(b,'command');conn.close();b.process.wait(timeout=3)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 174, in wait_event
+    self.fail('missing event ' + event)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: missing event command
+
+======================================================================
+FAIL: test_shutdown (__main__.Controls.test_shutdown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-4a/toolchain/harness/executor/workspace_http/local.py", line 423, in test_shutdown
+    b=self.bridge();self.assertTrue(b.close());self.assertIsNotNone(b.process.poll())
+                    ~~~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 13 tests in 111.966s
+
+FAILED (failures=4, errors=9)

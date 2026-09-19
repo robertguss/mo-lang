@@ -1,0 +1,20 @@
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+groups=six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,disconnect,lost-response,journal-order-bound,shutdown
+test_six_tools (__main__.Controls.test_six_tools) ... ok
+test_schema (__main__.Controls.test_schema) ... ok
+test_framing (__main__.Controls.test_framing) ... ok
+test_byte_bounds (__main__.Controls.test_byte_bounds) ... ok
+test_identities_capability (__main__.Controls.test_identities_capability) ... ok
+test_duplicate_calls (__main__.Controls.test_duplicate_calls) ... ok
+test_concurrent_admission (__main__.Controls.test_concurrent_admission) ... ok
+test_file_refusals (__main__.Controls.test_file_refusals) ... ok
+test_deadlines (__main__.Controls.test_deadlines) ... ok
+test_disconnect (__main__.Controls.test_disconnect) ... ok
+test_lost_response (__main__.Controls.test_lost_response) ... ok
+test_journal_order_bound (__main__.Controls.test_journal_order_bound) ... ok
+test_shutdown (__main__.Controls.test_shutdown) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 22.422s
+
+OK

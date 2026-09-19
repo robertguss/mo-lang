@@ -3,6 +3,8 @@ import argparse
 import json
 import os
 from pathlib import Path
+import secrets
+import shlex
 import socket
 import subprocess
 import sys
@@ -18,6 +20,113 @@ from workspace_http import protocol as p
 from workspace_http.client import GROUPS
 from remote import IMAGE, WORKSPACE_POLICY
 
+# `--target CMD`: the command of another server of the same wire; None is the Python bridge.
+TARGET = None
+
+
+class Served:
+    """The Bridge surface the groups use, for a server started as `CMD DIRECTORY`.
+
+    The operator lays out DIRECTORY before start: config.json and capability.json
+    (0600), and the source under workspace/data. The server writes ready.json
+    (port, operator_port), its journal owner.json and delivery.json there, and
+    answers one line per operator connection: `TOKEN COMMAND`, with close,
+    status or freeze. Scenario names map to operator settings or to the
+    server's scripted double; nothing here is patched into the server.
+    """
+    LEASES = {'near-lease': 300, 'lease-active': 1000}
+    LATE = ('slow', 'partial-ipc', 'fragmented-valid', 'fragmented-incomplete')
+
+    def __init__(self, run_id, directory, source, *, selection, verifier):
+        self.run_id, self.workspace_id = run_id, secrets.token_hex(16)
+        self.token, self.operator_token = secrets.token_hex(32), secrets.token_hex(32)
+        self.directory = Path(directory).absolute()
+        self.directory.mkdir(mode=0o700, parents=True)
+        self.directory = self.directory.resolve()
+        scenario = source.get('scenario', b'').decode()
+        data = self.directory / 'workspace/data'
+        data.mkdir(mode=0o700, parents=True)
+        for name, value in source.items():
+            (data / name).parent.mkdir(parents=True, exist_ok=True)
+            (data / name).write_bytes(value)
+        if scenario == 'links':
+            (self.directory / 'workspace/outside').write_bytes(b'secret\n')
+            os.symlink(self.directory / 'workspace/outside', data / 'link')
+            os.symlink(self.directory / 'workspace', data / 'dirlink')
+        config = dict(run_id=run_id, workspace_id=self.workspace_id, verifier=verifier,
+                      lease_ms=self.LEASES.get(scenario, 900000),
+                      journal_cap=524288 + 8192 + 300 if scenario == 'journal-full' else 4 * 1024 * 1024,
+                      late_ms=2300 if scenario in self.LATE else 0)
+        for name, value in (('config.json', config), ('capability.json',
+                            {'token': self.token, 'operator_token': self.operator_token})):
+            fd = os.open(self.directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as out:
+                out.write(p.encode(value))
+        self.process = None
+        self.ipc, self.deadline = None, 0
+
+    def start(self, owner_module=None):
+        log = (self.directory / 'server.log').open('xb')
+        self.process = subprocess.Popen(shlex.split(TARGET) + [str(self.directory)], stdout=log, stderr=log)
+        log.close()
+        deadline = time.monotonic() + 40
+        while not (self.directory / 'ready.json').exists():
+            if self.process.poll() is not None or time.monotonic() > deadline:
+                raise EOFError('no readiness')
+            time.sleep(.02)
+        ready = json.loads((self.directory / 'ready.json').read_bytes())
+        self.port, self.operator_port = ready['port'], ready['operator_port']
+        return self
+
+    def operate(self, command, timeout=5):
+        with socket.create_connection(('127.0.0.1', self.operator_port), timeout=timeout) as conn:
+            conn.sendall(f'{self.operator_token} {command}\n'.encode())
+            raw = bytearray()
+            while not raw.endswith(b'\n'):
+                part = conn.recv(65536)
+                if not part:
+                    break
+                raw.extend(part)
+        return json.loads(raw)
+
+    def status(self):
+        if self.process.poll() is not None:
+            return {'admission': 'closed', 'connections': 0}
+        return self.operate('status')
+
+    @property
+    def closed(self):
+        return self.status()['admission'] == 'closed'
+
+    @property
+    def connections(self):
+        return range(self.status()['connections'])
+
+    def freeze(self):
+        return self.operate('freeze')
+
+    def close(self, seconds=60):
+        if self.process.poll() is None:
+            try:
+                self.operate('close', timeout=seconds)
+            except (OSError, ValueError):
+                pass  # An unanswered close is judged by whether the server exits.
+        try:
+            self.process.wait(timeout=seconds)
+        except subprocess.TimeoutExpired:
+            return False
+        return True
+
+    def stop_owner(self):
+        # The target may be a guard that forwards TERM to the server but cannot forward KILL.
+        if self.process is not None and self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=2)
+
 class Controls(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -30,7 +139,7 @@ class Controls(unittest.TestCase):
         self.temp.cleanup()
 
     def bridge(self, scenario='', files=None, **kwargs):
-        bridge = Bridge('run-1', Path(self.temp.name) / str(len(self.bridges)), {'scenario': scenario.encode(), **(files or {})},
+        bridge = (Served if TARGET else Bridge)('run-1', Path(self.temp.name) / str(len(self.bridges)), {'scenario': scenario.encode(), **(files or {})},
                         selection={'policy': WORKSPACE_POLICY, 'image': IMAGE, 'toolchain': None},
                         verifier={'script': 'protected', 'checks': [{'id':'protected','stream':'stdout','mode':'exact','expected':'ok'}], 'seconds': 1}, **kwargs)
         self.bridges.append(bridge)
@@ -381,8 +490,14 @@ class Controls(unittest.TestCase):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--groups',default=','.join(GROUPS))
-    groups=choose(parser,GROUPS,parser.parse_args().groups.split(','))
+    parser.add_argument('--target',default=None,help='command of another server of this wire; its directory is appended')
+    args=parser.parse_args()
+    groups=choose(parser,GROUPS,args.groups.split(','))
+    global TARGET
+    TARGET=args.target
     print('LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE',flush=True)
+    if TARGET:
+        print('target='+TARGET,flush=True)
     print('groups='+','.join(groups),flush=True)
     suite=unittest.TestSuite(Controls('test_'+group.replace('-','_')) for group in groups)
     result=unittest.TextTestRunner(verbosity=2).run(suite)

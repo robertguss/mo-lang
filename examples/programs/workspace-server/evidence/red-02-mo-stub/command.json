@@ -1,0 +1,16 @@
+{
+ "argv": [
+  "python3",
+  "toolchain/bench/step36/guard.py",
+  "900",
+  "--",
+  "python3",
+  "-B",
+  "toolchain/harness/executor/workspace_http/local.py",
+  "--groups",
+  "six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,disconnect,lost-response,journal-order-bound,shutdown",
+  "--target",
+  "python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/main.mo --"
+ ],
+ "cwd": "repository root"
+}
