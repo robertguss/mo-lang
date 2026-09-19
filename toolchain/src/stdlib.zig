@@ -105,6 +105,8 @@ pub const Row = enum {
     fs_remove,
     fs_rename,
     fs_mkdir,
+    fs_replace,
+    fs_kind_of,
     /// `Fs.read`, which vm.zig runs; here only for a fixture's files.
     fs_read,
     out_write_line,
@@ -156,7 +158,7 @@ pub const names = std.StaticStringMap(Row).initComptime(.{
     .{ "Fs.fold_lines", .fs_fold_lines },
             .{ "Fs.size", .fs_size },                   .{ "Fs.list", .fs_list },                   .{ "Fs.list_kinds", .fs_list_kinds },
     .{ "Fs.write", .fs_write },                   .{ "Fs.append", .fs_append },               .{ "Fs.remove", .fs_remove },
-    .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
+    .{ "Fs.rename", .fs_rename },                 .{ "Fs.mkdir", .fs_mkdir },                 .{ "Fs.replace", .fs_replace },             .{ "Fs.kind_of", .fs_kind_of },                 .{ "Out.write_line", .out_write_line },     .{ "Out.flush", .out_flush },
     .{ "Out.fixture", .out_fixture },             .{ "Out.written", .out_written },           .{ "Json.encode", .json_encode },
     .{ "Json.decode", .json_decode },           .{ "Json.to_i64", .json_to_i64 },         .{ "Deadline.at_most", .deadline_at_most }, .{ "Deadline.remaining", .deadline_remaining },
     .{ "Hash.sha256", .crypto },
@@ -227,7 +229,7 @@ pub fn call(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value, int_kind: u3
         // Some(x) is Some of the function's value, None stays None (step 28).
         .option_map => if (a[0].variant.fields.len == 1) vm.variant("Some", &.{try vm.invoke(a[1].func, &.{a[0].variant.fields[0]})}) else a[0],
         .string_grouped => .{ .string = try groupedText(vm, a[0].int) },
-        .fs_read_lines, .fs_read_bytes, .fs_fold_lines, .fs_size, .fs_list, .fs_list_kinds, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir, .fs_read => files(vm, row, which, a),
+        .fs_read_lines, .fs_read_bytes, .fs_fold_lines, .fs_size, .fs_list, .fs_list_kinds, .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir, .fs_replace, .fs_kind_of, .fs_read => files(vm, row, which, a),
         .out_write_line => blk: {
             try writeOut(vm, row, a[0].cap, a[1].string, true);
             break :blk .none;
@@ -920,11 +922,21 @@ test "the calendar round-trips, leap days and the years before 1970 included" {
 
 // ---- files
 
-/// An `Entry` of `Fs.list_kinds` (step 28): the name, and whether it is a file or a folder.
-pub fn entryOf(vm: *Vm, name: []const u8, folder: bool) Error!Value {
-    const fields = try vm_mod.rawAlloc(vm.heap, Value, 2);
+/// An `EntryKind`: a link is its own kind, never what it points at (step 40).
+pub const EntryKind = enum { file, folder, link };
+
+/// An `Entry` of `Fs.list_kinds` (step 28) and `Fs.kind_of` (step 40): the name, whether it is a
+/// file, a folder, or a link, its hard link count, and its setuid bit.
+pub fn entryOf(vm: *Vm, name: []const u8, kind: EntryKind, links: u64, setuid: bool) Error!Value {
+    const fields = try vm_mod.rawAlloc(vm.heap, Value, 4);
     fields[0] = .{ .string = name };
-    fields[1] = try vm.variant(if (folder) "Folder" else "File", &.{});
+    fields[1] = try vm.variant(switch (kind) {
+        .file => "File",
+        .folder => "Folder",
+        .link => "Link",
+    }, &.{});
+    fields[2] = .{ .int = links };
+    fields[3] = .{ .bool = setuid };
     return .{ .record = .{ .decl = vm.program.checked.preludeStruct("Entry").?, .fields = fields } };
 }
 
@@ -960,6 +972,8 @@ fn files(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Value {
         .fs_remove => s.remove(vm, row, fs, path, within),
         .fs_rename => s.rename(vm, row, fs, path, a[2].string, within),
         .fs_mkdir => s.mkdir(vm, row, fs, path, within),
+        .fs_replace => s.replace(vm, row, fs, path, a[2].string, within),
+        .fs_kind_of => s.kindOf(vm, fs, path, within),
         else => unreachable,
     };
 }
@@ -1057,7 +1071,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
     const within = a[a.len - 1].duration;
     const path: []const u8 = if (which == .fs_list or which == .fs_list_kinds) "." else a[1].string;
     const writes = switch (which) {
-        .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir => true,
+        .fs_write, .fs_append, .fs_remove, .fs_rename, .fs_mkdir, .fs_replace => true,
         else => false,
     };
     if (writes and scope.read_only) return fail(vm, .other, row, "fs.{s}(\"{s}\") writes through an Fs narrowed to read_only, which only reads", .{ row.name, path });
@@ -1110,7 +1124,7 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
             }
         }.lt);
         const out = try vm_mod.rawAlloc(vm.heap, Value, listed.items.len);
-        for (listed.items, out) |n, *o| o.* = if (which == .fs_list_kinds) try entryOf(vm, n, folders.contains(n)) else .{ .string = n };
+        for (listed.items, out) |n, *o| o.* = if (which == .fs_list_kinds) try entryOf(vm, n, if (folders.contains(n)) .folder else .file, 1, false) else .{ .string = n };
         return vm.variant("Ok", &.{.{ .list = out }});
     }
     const all = system orelse return missed(vm, path);
@@ -1132,7 +1146,19 @@ fn fixtureFiles(vm: *Vm, row: prelude.Fn, which: Row, a: []const Value) Error!Va
                 else => vm.variant("Ok", &.{.{ .int = text.len }}),
             };
         },
-        .fs_write => try all.put(gpa, full, try gpa.dupe(u8, a[2].string)),
+        // A fixture has no partial files, so a replace is a write (design: section 2).
+        .fs_write, .fs_replace => try all.put(gpa, full, try gpa.dupe(u8, a[2].string)),
+        // A fixture has no links: a file or a folder, one link each, never setuid (step 40).
+        .fs_kind_of => {
+            if (all.contains(full)) return vm.variant("Ok", &.{try entryOf(vm, path, .file, 1, false)});
+            const under = if (std.mem.eql(u8, full, "/")) "/" else try std.fmt.allocPrint(gpa, "{s}/", .{full});
+            defer if (!std.mem.eql(u8, full, "/")) gpa.free(under);
+            const folder = std.mem.eql(u8, full, "/") or for (all.keys()) |key| {
+                if (std.mem.startsWith(u8, key, under)) break true;
+            } else false;
+            if (!folder) return missed(vm, path);
+            return vm.variant("Ok", &.{try entryOf(vm, path, .folder, 1, false)});
+        },
         .fs_append => {
             const held = all.get(full) orelse "";
             try all.put(gpa, full, try std.mem.concat(gpa, u8, &.{ held, a[2].string }));

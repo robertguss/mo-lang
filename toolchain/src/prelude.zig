@@ -172,10 +172,13 @@ pub const structs = [_]Struct{
         .{ .name = "in_flight", .type = "UInt64" },
         .{ .name = "paused", .type = "Bool" },
     } },
-    // A name `Fs.list_kinds` gives, with whether it is a file or a folder (step 28).
+    // A name `Fs.list_kinds` gives, with whether it is a file or a folder (step 28), or a link,
+    // its hard link count, and its setuid bit, which `Fs.kind_of` gives too (step 40).
     .{ .name = "Entry", .origin = .stdlib, .fields = &.{
         .{ .name = "name", .type = "String" },
         .{ .name = "kind", .type = "EntryKind" },
+        .{ .name = "links", .type = "UInt64" },
+        .{ .name = "setuid", .type = "Bool" },
     } },
     .{ .name = "MemoryInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "resident_bytes", .type = "UInt64" },
@@ -220,6 +223,7 @@ pub const variants = [_]Variant{
     .{ .owner = "FsError", .name = "NotText", .origin = .stdlib },
     .{ .owner = "EntryKind", .name = "File", .origin = .stdlib },
     .{ .owner = "EntryKind", .name = "Folder", .origin = .stdlib },
+    .{ .owner = "EntryKind", .name = "Link", .origin = .stdlib },
     .{ .owner = "AskError", .name = "Timeout" },
     .{ .owner = "AskError", .name = "Down" },
     .{ .owner = "LedgerError", .name = "Timeout", .origin = .corpus_only },
@@ -427,6 +431,8 @@ pub const fns = [_]Fn{
     .{ .recv = "Fs", .name = "remove", .params = &.{"String"}, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "rename", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .name = "mkdir", .params = &.{"String"}, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "replace", .params = &.{ "String", "String" }, .ret = "Result(none, FsError)", .can_wait = true, .origin = .stdlib },
+    .{ .recv = "Fs", .name = "kind_of", .params = &.{"String"}, .ret = "Result(Entry, FsError)", .can_wait = true, .origin = .stdlib },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .ret = "Fs", .only = .tests },
     .{ .recv = "Fs", .on_type = true, .name = "fixture", .named = &.{.{ .name = "delay", .type = "Duration" }}, .ret = "Fs", .only = .tests },
     .{ .recv = "Events", .name = "emit", .params = &.{"T"}, .ret = "none" },

@@ -17,13 +17,13 @@
         { "id": "16d223008a32", "name": "fn echo_lines", "hash": "745e91c460fe9753" },
         { "id": "f9d218f5e4da", "name": "fn text_bytes", "hash": "dee7397809b44e56" },
         { "id": "fcf47d8762a6", "name": "test \"an empty file system lists nothing and reads nothing\"", "hash": "df98f90afa2815b4" },
-        { "id": "7137dd9ac349", "name": "test \"list_kinds tells a file from a folder, sorted by name as list sorts\"", "hash": "d30751c454486a0c" },
+        { "id": "7137dd9ac349", "name": "test \"list_kinds tells a file from a folder, sorted by name as list sorts\"", "hash": "44983e1758adb390" },
         { "id": "a852c9792559", "name": "test \"fold_lines keeps a value across the lines, split as lines splits them\"", "hash": "f0ececad4d7178a9" },
         { "id": "d79af189be35", "name": "test \"read_bytes gives a file's bytes, as many as its size\"", "hash": "498af02d7e103b6b" },
         { "id": "4f0568a9f9b2", "name": "test \"fold_lines hands out on from line to line, split as lines splits them\"", "hash": "5bd8c18203721f5c" },
         { "id": "2e7e0ce15e8d", "name": "test \"a slow file system times out every call that waits less than its delay\"", "hash": "2186e46cbf800884" }
       ],
-      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "95bb011143c66119" }
+      "verified": { "hash": "974235e3bf5eeaa5", "declarations": "7ed7cc1d5e859823" }
     },
     {
       "path": "fs-fixture-scope.mo",
