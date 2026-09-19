@@ -65,8 +65,9 @@ report admission, execution, reply (produced versus received) and cleanup as
 four separate observations. **Note:** `origin/main` received pushes at 9:28,
 9:33 and 10:06 AM ET that the lead did not run (the reflog says "update by
 push"; no git or Claude hook pushes). So the locally merged, not yet accepted
-step 2 and raw-memory fix are already on `origin/main`. Asked Robert whether he
-is pushing.
+step 2 and raw-memory fix are already on `origin/main`. Robert confirmed he pushes `main` himself. From
+now on unaccepted worker merges are verified on a `lead/verify-<unit>` branch
+and reach `main` only at acceptance (lead skill, step 4).
 
 **Order changed:** the Mo six-tool server (plan step 4) now follows `Exec`
 (a step 41 after step 40), so it can run `docker` itself and serve all six

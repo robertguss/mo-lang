@@ -94,7 +94,11 @@ audit rules; do not treat unavailable evidence as passed.
    patch, base and status before closing only the pane created for that worker.
    Keep historical worktrees. Lead documentation commits name only owned paths;
    never sweep in unrelated staged edits.
-4. **Integrate and verify.** Save the worker's report and raw evidence. Inspect
+4. **Integrate and verify.** Robert pushes `main` himself whenever he likes
+   (19 Sep 2026), so `main` holds accepted work and lead records only: merge a
+   worker's branch into a local `lead/verify-<unit>` branch cut from `main`,
+   run every check there, and merge that branch into `main` only when the unit
+   is accepted. Save the worker's report and raw evidence. Inspect
    its exact diff before integration; a commit ID or message does not transfer
    code. Inspect the worker worktree's fixed commit or patch, account for
    deletions, and reconcile against the recorded base and
