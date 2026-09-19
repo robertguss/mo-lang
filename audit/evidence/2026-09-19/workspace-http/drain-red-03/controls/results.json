@@ -1,0 +1,82 @@
+[
+  {
+    "case": "later-new-call",
+    "first": [
+      200,
+      {
+        "version": "mo-workspace-http-v1",
+        "run_id": "run-1",
+        "workspace_id": "cb9359a280f7438ab9dcc2eb8db99b28",
+        "call_id": "first",
+        "accepted": true,
+        "state": "success",
+        "execution": "completed",
+        "error": null,
+        "result": {
+          "items": [
+            {
+              "path": "a"
+            }
+          ],
+          "truncated": false
+        }
+      }
+    ],
+    "second": null,
+    "transport_failure": {
+      "type": "ConnectionRefusedError",
+      "errno": 61
+    },
+    "admission_closed": true,
+    "delivery": {
+      "delivery": "unknown",
+      "reason": "response_write_unknown"
+    },
+    "passed": false
+  },
+  {
+    "case": "later-active-call",
+    "first": [
+      200,
+      {
+        "version": "mo-workspace-http-v1",
+        "run_id": "run-1",
+        "workspace_id": "7e8c2cce3db14a6bbad46a0de28c07d6",
+        "call_id": "first",
+        "accepted": true,
+        "state": "success",
+        "execution": "completed",
+        "error": null,
+        "result": {
+          "items": [
+            {
+              "path": "a"
+            }
+          ],
+          "truncated": false
+        }
+      }
+    ],
+    "second": [
+      200,
+      {
+        "version": "mo-workspace-http-v1",
+        "run_id": "run-1",
+        "workspace_id": "7e8c2cce3db14a6bbad46a0de28c07d6",
+        "call_id": "second",
+        "accepted": true,
+        "state": "failure",
+        "execution": "unknown",
+        "error": "owner_unknown",
+        "result": null
+      }
+    ],
+    "transport_failure": null,
+    "admission_closed": true,
+    "delivery": {
+      "delivery": "unknown",
+      "reason": "response_write_unknown"
+    },
+    "passed": false
+  }
+]

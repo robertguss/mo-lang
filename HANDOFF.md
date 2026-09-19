@@ -62,21 +62,30 @@ profile, then scripted Logstat repair and protected checks. Fresh Astra/low
 workers in separate Herdr panes/worktrees own implementation. Fresh worker mo-workspace-http-v1 is active in w4:p28, tabw4:tK, at exact
 base3023a01a744d1580ca9814e595ddf990a12e456d on harness/workspace-http-v1.
 Only new executor/workspace_http/ is owned; local work released. Machine explicitly released to this worker after fresh
-preflight and owner/API review; full compiler gate remains held until machine
-workloads end. Actual Astra/low process74596 verified. Read-only contract review is retained at workspace-http/contract-review-01.md;
+preflight and owner/API review; full compiler gate was released after machine
+workloads ended; see current details below. Actual Astra/low process74596 verified. Read-only contract review is retained at workspace-http/contract-review-01.md;
 p2A is closed. Brief clarifies admission lease, cleanup after in-flight work,
 outcome persistence before bounded IPC notification and terminal late-result handling. The lead retains application-profile-design.md
 as readiness only, awaiting frozen/accepted HTTP schema before Mo implementation.
-HTTP intermediate checkpoint75680f31 has local22/inherited59 green; exact20-file
-snapshot is /private/tmp/mo-workspace-http-review-75680f31. Fresh read-only frontend/projection review found two bridge defects:
-successful-response drain expiry wrongly closes run, and IPC/lease timeout can
-return200 owner_unknown instead of504 response_timeout. Worker is assigned
-retained local reds/narrow correction after current frozen attempt; no edits to
-running source. Source-review-75680f31.md retains exact report. p2B is closed;
-lead owner/API review is retained. Worker continues local boundary hardening and
-released real controls from immutable per-attempt sources. Lead never edits
-workspace_http/. Private tokens must stay out of Book/model/log evidence. See retained source reviews
-in audit/evidence/2026-09-19/workspace-wire-readiness/.
+HTTP immutable75680f31 review found drain-expiry and IPC/lease classification
+bugs. Worker correction83a72dd4 passed local and real22/22 on each profile;
+application normal cleanup is now confirmed with delete<=55s/core transport+5s
+inside60s configured allowance. Actual controller numeric60.05s rejected/55s
+accepted-before-absent-workspace control retained; no clock-skew cause claim.
+BusyBox/application and inherited workspace22/executor17/lifecycle1/app23 pass;
+worker final inventory205 workspace IDs/126 executions/123 actual cgroups absent,
+shared5 unchanged,23 prior groups gone, readiness20/20 raw probes/pins/limits exact.
+Machine explicitly returned to lead. Worker full compiler released sequentially:
+build0/38.13s/group89738 absent; full test running. Evidence checkpointcacb09c3.
+
+Lead independent drain RED2/2 on75680 and GREEN2/2 on83a72 use identical probe
+bytes; snapshots unchanged/groups gone. Lead setup failure and partial RED remain.
+One new concrete IPC deadline finding: fragmented valid response resets recv wait,
+returning200/success at2.413s for2s file limit, admission open. ipc-deadline-red-01
+retains local socketpair proof/group91501 gone. Worker assigned narrow absolute
+IPC deadline/late-result correction AFTER active compiler ends; no machine release
+for further worker runs yet. See lead-correction-review-83a72dd4.md. p2A/p2B closed,
+exact review copies preserved. Private tokens stay out of Book/model/log evidence.
 
 The HTTP owner must outlive a request and use cleanup-only recovery after owner
 loss. All6 tools remote; no local filesystem fallback. Strict UTF-8/base64 DTOs,
@@ -88,11 +97,10 @@ caps. Diminishing15s reporting reserve stays inside900s; terminal Book AND
 Run.Stopped precede final reread. These are readiness decisions, not implementation
 or repair acceptance. No unconditional synchronous bound across inherited locks.
 
-Machine mo-executor-r01 is now exclusively WORKSPACE-HTTP-WORKER-OWNED for
-the brief controls/regressions. No competing lead machine commands. Fresh
-preflight before release proved zero workloads. Both existing slices are active: mo-executor.slice512MiB/CPU1/PIDs128,
-mo-application.slice1536MiB/CPU1/PIDs192; outer2GiB/CPU2/swap0. Do not change
-images, config, limits or /opt inputs. The existing explicit release applies only to mo-workspace-http-v1.
+Machine mo-executor-r01 is now LEAD-OWNED after HTTP worker explicit release.
+No machine commands during the worker full compiler suite. Both existing slices
+are active: mo-executor.slice512MiB/CPU1/PIDs128, mo-application.slice1536MiB/CPU1/
+PIDs192; outer2GiB/CPU2/swap0. No image, configuration, ceiling or /opt changes.
 Application image sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4;
 manifest d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb at
 /opt/mo-harness/application-build-v1/package-02/package/manifest.json. Trusted

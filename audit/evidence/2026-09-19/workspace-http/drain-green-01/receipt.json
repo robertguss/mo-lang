@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/drain-probe.py",
+    "/private/tmp/mo-workspace-http-review-83a72dd4",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/drain-green-01/controls"
+  ],
+  "exit": 0,
+  "group": 90291,
+  "group_remaining": false,
+  "source_tip": "83a72dd4ed55dd8728745af720a818399de4c81c",
+  "snapshot_unchanged": true,
+  "probe_sha256": "1526ee35f4d5218157b5d19ebe577ab2739914ff29ed4c189e12d3baa77f3319"
+}

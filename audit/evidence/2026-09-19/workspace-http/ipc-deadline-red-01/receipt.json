@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/ipc-deadline-probe.py",
+    "/private/tmp/mo-workspace-http-review-83a72dd4",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/ipc-deadline-red-01/controls"
+  ],
+  "exit": 1,
+  "group": 91501,
+  "group_remaining": false,
+  "source_tip": "83a72dd4ed55dd8728745af720a818399de4c81c",
+  "snapshot_unchanged": true,
+  "probe_sha256": "60e3df17e993b961c9ea8c01ab8132178f50ab2802c26eb4e6139c9d7813aafb"
+}

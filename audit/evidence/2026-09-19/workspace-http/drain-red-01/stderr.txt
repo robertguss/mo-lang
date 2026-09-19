@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/workspace-http/drain-probe.py", line 37, in <module>
+    assert 'test_owner' in bridge.process.args
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
