@@ -8,7 +8,7 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-19 | Total pages: 282
+> any question. Last updated: 2026-09-19 | Total pages: 283
 
 ## Directions we like
 
@@ -139,6 +139,7 @@ type: index
   against raw evidence; never acceptance; not built (18 Sep 2026)
 - [[interpreter-step-41]] — brief: `Exec`, a child process narrowed in `main` to fixed commands, both runtimes and the simulator
 - [[interpreter-step-42]] — brief: runtime memory safety: the corpus under compaction at every safe point in both runtimes, poisoned freed regions, the audit of what outlives a frame, a parcel type, a guard that kills the group
+- [[ci-gate]] — brief: the compiler and corpus checked on every pull request; generated files out of the source tree, the corpus built in parallel, a fast and a full gate
 - [[interpreter-step-43]] — brief: every number in source validated before a runtime sees it (the auditor's PR 15: literals past their type, the mailbox bound, a sweep, the fuzz driver's budgets)
 - [[mo-agent-report-cap]] — brief: the agent's 256 KiB report cap replaced by a bound derived from the profile, now that the runtime defect is fixed
 - [[mo-harness-end-to-end-v1]] — brief: the Mo agent against the real service on the machine, then the scripted Logstat repair
