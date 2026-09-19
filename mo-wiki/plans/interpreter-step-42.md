@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [runtime, verification, tooling, processes]
 sources: [plans/toolchain-raw-memory-report.md, plans/interpreter-step-41.md]
-status: briefed
+status: in-progress
 ---
 
 # Step 42: runtime memory safety
@@ -69,7 +69,9 @@ and why it is safe: pending answers (fixed), timers and `send_later`, mailboxes,
 kept replies, the runtime surface's snapshots, bricks' buffers, the blocking
 pool's requests and results (step 41's `Exec` included), supervisors' restart
 state, the simulator's queues, and the no-`packs` modes the raw-memory report
-left unchanged. Fix what is unsafe, each with a failing test first. The list
+left unchanged; and `blocking.run` (step 30's pool), which steps 40 and 41 both
+reported still returns if `block` errors while its job is on the pool, leaving
+the job with a dead stack (`blocking.alone` has the guard). Fix what is unsafe, each with a failing test first. The list
 goes in the report as a table.
 
 ### D. The type split
@@ -100,7 +102,8 @@ when off.
 Every process under `guard.py`; after any kill, check for orphaned test
 binaries (`ps` for `.zig-cache/o/*/test`). `zig build` exit 0; focused tests
 by `-Dtest-filter` with real summary lines and exit codes; **the unfiltered
-full suite and Linux are the lead's**. RED output committed before GREEN.
+full suite is the lead's** (Linux is deferred). Tee every run your report quotes
+into a filed log with an exit file beside it, under `toolchain/bench/step42/`. RED output committed before GREEN.
 Small commits as yourself with a `Co-Authored-By` line naming your model. Not
 in scope: compaction points as a dimension the simulator varies by seed (say
 in the report what it would take). **Write your final report to
