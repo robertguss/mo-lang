@@ -1592,6 +1592,87 @@ test "main reads its Platform's parts and passes them down; the Platform itself 
     , &.{"MO0205"});
 }
 
+// Step 41: an Exec and a Program stay in main as a Platform does (MO0407); a Command is a
+// capability like any other, so it travels as a parameter and never inside a value.
+test "step 41: Exec and Program stay in main, and a Command travels as an Fs does" {
+    try expectCodes(
+        \\module T.Exec
+        \\fn remove(rm: Command, name: String) : Bool
+        \\  rm.run([name], within: 1.seconds) is Ok(_)
+        \\end
+        \\fn main(platform: Platform)
+        \\  docker = platform.exec.program("/usr/bin/docker")
+        \\  rm = docker.command([Fixed("rm"), Fixed("-f"), Hole])
+        \\  quiet = rm.env(Map.new().set("HOME", "/nowhere")).output(1024).in(platform.fs.scoped("runs"))
+        \\  if remove(quiet, "box")
+        \\    platform.stdout.write_line("gone")
+        \\  end
+        \\end
+    , &.{});
+    try expectCodes(
+        \\module T.ExecLeak
+        \\struct Held
+        \\  docker: Program
+        \\end
+        \\fn takes(exec: Exec) : UInt8
+        \\  0
+        \\end
+        \\fn given(docker: Program) : UInt8
+        \\  0
+        \\end
+        \\fn main(platform: Platform)
+        \\  docker = platform.exec.program("/usr/bin/docker")
+        \\  platform.stdout.write_line("#{given(docker)}")
+        \\  platform.stdout.write_line("#{takes(platform.exec)}")
+        \\end
+    , &.{ "MO0403", "MO0407", "MO0407", "MO0407", "MO0407" });
+    try expectCodes(
+        \\module T.ExecSent
+        \\process Keeper()
+        \\  state
+        \\    n: UInt64
+        \\  end
+        \\  message Keep(docker: Program)
+        \\  fn update(state, message)
+        \\    case message
+        \\      Keep(docker: _): state.n += 1
+        \\    end
+        \\  end
+        \\end
+        \\fn main(platform: Platform)
+        \\  keeper = Keeper.start()
+        \\  keeper.send(Keep(docker: platform.exec.program("/bin/true")))
+        \\end
+    , &.{"MO0407"});
+    try expectCodes(
+        \\module T.ExecCaptured
+        \\fn main(platform: Platform)
+        \\  docker = platform.exec.program("/usr/bin/docker")
+        \\  made = ["rm", "ps"].map(fn(word) docker.command([Fixed(word)]) end)
+        \\  platform.stdout.write_line("#{made.size}")
+        \\end
+    , &.{"MO0409"});
+    try expectCodes(
+        \\module T.ExecFixture
+        \\fn made() : UInt8
+        \\  e = Exec.fixture(fn(argv, stdin) Done(exit: Exited(code: 0), stdout: [], stderr: [], truncated: false, took: 0.ms) end)
+        \\  0
+        \\end
+    , &.{"MO0403"});
+    try expectCodes(
+        \\module T.ExecFlows
+        \\never "a token never reaches a child"
+        \\  flows(Token, into: Command)
+        \\end
+        \\struct Token
+        \\  text: String
+        \\end
+        \\fn leak(run: Command, t: Token) : Bool
+        \\  run.run(["#{t}"], within: 1.seconds) is Ok(_)
+        \\end
+    , &.{"MO0404"});
+}
+
 test "a message line may declare a capability or a handle, and a capability sent in one moves" {
     try expectCodes(
         \\module T.Moves
