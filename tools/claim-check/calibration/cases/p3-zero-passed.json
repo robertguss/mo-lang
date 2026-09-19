@@ -1,0 +1,23 @@
+{
+ "id": "p3-zero-passed",
+ "kind": "planted",
+ "source": "Planted negative control: '0 passed' reported as green.",
+ "report": "tools/claim-check/calibration/reports/planted-zero-passed.md",
+ "report_at": null,
+ "logs": [
+  "tools/claim-check/calibration/planted/zero-passed/tls-vectors.log"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "'0 passed' reported as green",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "0 passed",
+   "truth": false,
+   "why": "nothing ran"
+  }
+ ]
+}

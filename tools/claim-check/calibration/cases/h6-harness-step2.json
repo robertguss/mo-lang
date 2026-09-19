@@ -1,0 +1,23 @@
+{
+ "id": "h6-harness-step2",
+ "kind": "historical",
+ "source": "Harness step 2's report as first committed (29ec6a66) against the lead's live rerun (audit/evidence/2026-09-19/fable-lead-verification/live-rerun-step2.exits: appctl exit 1, scratch-fresh) and HANDOFF.md 'Step 2 state, 9:51 AM ET'.",
+ "report": "toolchain/harness/executor/STEP-2-REPORT.md",
+ "report_at": "29ec6a66",
+ "logs": [
+  "audit/evidence/2026-09-19/fable-lead-verification/live-rerun-step2.exits"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "A live regression (application controls 22 of 23) that the report's offline claims could not show; the report said the live suites had not run.",
+ "expected": "missed",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "Ran 106 tests",
+   "truth": true,
+   "why": "the lead's later unit run agreed (110 after the follow-up's four)"
+  }
+ ]
+}

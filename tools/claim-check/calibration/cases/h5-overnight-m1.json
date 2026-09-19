@@ -1,0 +1,23 @@
+{
+ "id": "h5-overnight-m1",
+ "kind": "historical",
+ "source": "Overnight review M1 (audit/evidence/2026-09-19/fable-overnight-review/README.md): boundaries.mo's error arm asserts a string every error contains.",
+ "report": "tools/claim-check/calibration/reports/overnight-m1.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-19/coding-fixture/attempt-02/verify.stdout.txt"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "A test that cannot fail; the output is a true '2 passed'.",
+ "expected": "missed",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "2 passed, 0 failed",
+   "truth": true,
+   "why": "the output prints it for boundaries"
+  }
+ ]
+}

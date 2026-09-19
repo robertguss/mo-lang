@@ -1,0 +1,23 @@
+{
+ "id": "p5-sha-off-branch",
+ "kind": "planted",
+ "source": "Planted negative control: a SHA that is not on the branch.",
+ "report": "tools/claim-check/calibration/reports/planted-sha-off-branch.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-19/fable-lead-verification/step43/linux-focused-tests.log"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "a SHA that is not on the branch",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "commit",
+   "contains": "4ad89c1b",
+   "truth": false,
+   "why": "no such commit"
+  }
+ ]
+}

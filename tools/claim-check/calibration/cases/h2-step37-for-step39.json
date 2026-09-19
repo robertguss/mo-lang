@@ -1,0 +1,33 @@
+{
+ "id": "h2-step37-for-step39",
+ "kind": "historical",
+ "source": "Step 37's worker report and raw outputs (audit/evidence/2026-09-18/step-37/). Step 39 (mo-wiki/plans/interpreter-step-39.md) records two defects behind them: tls-client.mo's tests stay green with the handshake replaced by a Timeout, and the fuzz driver's count can hide a failed batch.",
+ "report": "audit/evidence/2026-09-18/step-37/worker-raw/worker-report-SYNTHESIS.txt",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-C1.log",
+  "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-C2.log",
+  "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-A2.log",
+  "audit/evidence/2026-09-18/step-37/worker-raw/step37/suites/suite-B2.log",
+  "audit/evidence/2026-09-18/step-37/worker-raw/step37/fuzz-3701.txt"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "A corpus test that tested nothing and a fuzz count that could hide a failed batch. Neither shows in the output: the tests pass and the hour's count is what the driver printed.",
+ "expected": "missed",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "87,440 inputs",
+   "truth": true,
+   "why": "the driver printed this count; whether a batch was hidden is not known"
+  },
+  {
+   "kind": "summary",
+   "contains": "234/234 tests passed",
+   "truth": true,
+   "why": "suite-C1 and C2 print it with exit=0"
+  }
+ ]
+}

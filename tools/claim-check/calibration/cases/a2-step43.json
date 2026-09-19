@@ -1,0 +1,18 @@
+{
+ "id": "a2-step43",
+ "kind": "accurate",
+ "source": "Step 43, accepted 19 Sep 2026; the lead's runs in audit/evidence/2026-09-19/fable-lead-verification/step43/README.md.",
+ "report": "toolchain/STEP-43-REPORT.md",
+ "report_at": null,
+ "logs": [
+  "audit/evidence/2026-09-19/fable-lead-verification/step43/darwin-full-suite.log",
+  "audit/evidence/2026-09-19/fable-lead-verification/step43/darwin-exits.txt",
+  "audit/evidence/2026-09-19/fable-lead-verification/step43/linux-focused-tests.log"
+ ],
+ "ref": "HEAD",
+ "defective": false,
+ "defect": "",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": []
+}

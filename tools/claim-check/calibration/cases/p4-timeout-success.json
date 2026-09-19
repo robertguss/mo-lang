@@ -1,0 +1,23 @@
+{
+ "id": "p4-timeout-success",
+ "kind": "planted",
+ "source": "Planted negative control: a timeout followed by success.",
+ "report": "tools/claim-check/calibration/reports/planted-timeout-success.md",
+ "report_at": null,
+ "logs": [
+  "tools/claim-check/calibration/planted/timeout-success/suite.log"
+ ],
+ "ref": "HEAD",
+ "defective": true,
+ "defect": "a timeout followed by success",
+ "expected": "caught",
+ "caught_by_incomplete": false,
+ "labels": [
+  {
+   "kind": "summary",
+   "contains": "225/225",
+   "truth": false,
+   "why": "a test timed out at 300 s before the summary"
+  }
+ ]
+}
