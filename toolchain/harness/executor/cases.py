@@ -36,10 +36,18 @@ def choose(parser, fixed, selected):
     return list(selected)
 
 
+class Fields(dict):
+    """Record fields a case action adds on purpose, e.g. Fields(status=..., exit_code=...)."""
+
+
 class Cases:
     """Runs table rows in order. Each row leaves one record, {key: name, 'ok',
-    'elapsed_seconds', 'error' (the traceback) if it failed, and any fields the
-    action returns}, rewritten to `path` and printed as a JSON line."""
+    'elapsed_seconds', 'error' (the traceback) if it failed, and the Fields the
+    action returned}, rewritten to `path` and printed as a JSON line.
+
+    An action returns None or Fields. Any other value (a leaked command result,
+    a tuple) or a field named like the runner's own is a test-authoring error:
+    that case fails with a TypeError saying so."""
 
     def __init__(self, path, *, key='case', stop=False):
         self.path, self.key, self.stop = Path(path), key, stop
@@ -56,7 +64,7 @@ class Cases:
         record = {self.key: name, 'ok': False}
         started = time.monotonic()
         try:
-            record.update(action(*args) or {})
+            record.update(self.fields(action(*args)))
             if after:
                 after()
             record['ok'] = True
@@ -67,6 +75,16 @@ class Cases:
         self.path.write_text(json.dumps(self.records, indent=2))
         print(json.dumps(record), flush=True)
         return record
+
+    def fields(self, value):
+        if value is None:
+            return {}
+        if not isinstance(value, Fields):
+            raise TypeError(f'case action returned {type(value).__name__}; return None, or cases.Fields(...) for record fields')
+        clash = set(value) & {self.key, 'ok', 'error', 'elapsed_seconds'}
+        if clash:
+            raise TypeError(f'case action fields {sorted(clash)} would overwrite the runner\'s own')
+        return value
 
     @property
     def passed(self):
