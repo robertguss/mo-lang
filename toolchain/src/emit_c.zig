@@ -20,6 +20,7 @@
 //! and Http rows are the runtime's: real sockets under main, their fixtures in a test binary.
 const std = @import("std");
 const lexer = @import("lexer.zig");
+const number = @import("number.zig");
 const surface_mod = @import("surface.zig");
 const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
@@ -947,7 +948,7 @@ const Emitter = struct {
         e.processes.items[pi] = .{
             .name = d.name,
             .decl = di,
-            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(parseInt(e.text(data.mailbox))),
+            .mailbox = if (data.mailbox == ast.none) 1_000 else @intCast(number.lowered(e.text(data.mailbox))),
             .init = init_fn,
             .update = update_fn,
             .invariants = invariants.items,
@@ -999,7 +1000,7 @@ const Emitter = struct {
                 .process = e.process_of[pd],
                 .args = b.cname,
                 .restart = if (std.mem.eql(u8, atom, ":never")) .never else if (std.mem.eql(u8, atom, ":on_crash")) .on_crash else .always,
-                .max_restarts = if (data.max_restarts == ast.none) none else @intCast(parseInt(e.text(data.max_restarts))),
+                .max_restarts = if (data.max_restarts == ast.none) none else @intCast(number.lowered(e.text(data.max_restarts))),
                 .per = per,
             });
         }
@@ -1345,8 +1346,8 @@ const Emitter = struct {
     fn literal(e: *Emitter, tok: u32) Error!bytecode.Const {
         const raw = e.text(tok);
         return switch (e.tree.tokens[tok].kind) {
-            .int => .{ .int = parseInt(raw) },
-            .float => .{ .float = std.fmt.parseFloat(f64, raw) catch 0 },
+            .int => .{ .int = number.lowered(raw) },
+            .float => .{ .float = try number.loweredFloat(e.gpa, raw) },
             .string => .{ .string = try e.stringText(tok, e.tree.tokens[tok].start + quoteLen(raw), e.tree.tokens[tok].end - quoteLen(raw)) },
             .kw_true => .{ .bool = true },
             else => .{ .bool = false },
@@ -1363,13 +1364,6 @@ const Emitter = struct {
         };
     }
 
-    fn parseInt(raw: []const u8) i128 {
-        var v: i128 = 0;
-        for (raw) |ch| if (ch != '_') {
-            v = v *| 10 +| (ch - '0');
-        };
-        return v;
-    }
 
     fn quoteLen(raw: []const u8) u32 {
         return if (std.mem.startsWith(u8, raw, "\"\"\"")) 3 else 1;
@@ -1509,8 +1503,8 @@ const Emitter = struct {
             else => e.b.clean = false,
         }
         switch (n.kind) {
-            .int_lit => return e.constant(.{ .int = parseInt(e.text(n.main_token)) }),
-            .float_lit => return e.constant(.{ .float = std.fmt.parseFloat(f64, e.text(n.main_token)) catch 0 }),
+            .int_lit => return e.constant(.{ .int = number.lowered(e.text(n.main_token)) }),
+            .float_lit => return e.constant(.{ .float = try number.loweredFloat(e.gpa, e.text(n.main_token)) }),
             .true_lit => return "mo_bool(true)",
             .false_lit => return "mo_bool(false)",
             .string_lit => return e.constant(try e.literal(n.main_token)),
@@ -1648,7 +1642,7 @@ const Emitter = struct {
                 return e.projection(i, k);
             },
             .member_call => return e.callNode(i, n.lhs, e.spanAt(n.rhs)),
-            .tuple_index => return e.projection(i, @intCast(parseInt(e.text(n.main_token)))),
+            .tuple_index => return e.projection(i, @intCast(number.lowered(e.text(n.main_token)))),
             .call => {
                 const callee = e.node(n.lhs);
                 const args = e.spanAt(n.rhs);
@@ -1712,7 +1706,7 @@ const Emitter = struct {
             },
             .tuple_index => {
                 const inner = try e.loadChain(n.lhs);
-                return .{ .value = try e.temp("{s}.as.xs[{d}]", .{ inner.value, parseInt(e.text(n.main_token)) }), .rooted = inner.rooted };
+                return .{ .value = try e.temp("{s}.as.xs[{d}]", .{ inner.value, number.lowered(e.text(n.main_token)) }), .rooted = inner.rooted };
             },
             else => {},
         }

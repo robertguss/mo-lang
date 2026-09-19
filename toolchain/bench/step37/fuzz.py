@@ -20,12 +20,15 @@ left no trace in the count), and is then run again an input at a time; each inpu
 alone is also kept under `work/fuzz-<seed>/crashes/`. The run stops when the driver has used
 `--minutes` of CPU (user and system, from the kernel's accounting of the children), and
 `work/fuzz-<seed>.txt`, which begins with the date and `uptime`, has both counts. The script exits
-1 when either is not zero.
+1 when either is not zero, and 1 when the campaign ran no input at all (step 43). `--minutes` must
+be finite and above 0 and `--batch` a whole number above 0, or the script exits 2 before it
+builds or records anything.
 """
 
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import random
 import resource
@@ -126,11 +129,32 @@ def run(listing: str, seconds: float) -> tuple[int, str]:
     return ran.returncode, ran.stdout + ran.stderr
 
 
+def minutes(text: str) -> float:
+    """A CPU budget: finite and above 0, since nan, inf, and 0 or less each ran no input and passed."""
+    try:
+        x = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a number of minutes") from None
+    if not math.isfinite(x) or x <= 0:
+        raise argparse.ArgumentTypeError(f"{text} is not a finite number of minutes above 0")
+    return x
+
+
+def batch(text: str) -> int:
+    try:
+        n = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a whole number of inputs") from None
+    if n <= 0:
+        raise argparse.ArgumentTypeError(f"{text} is not a number of inputs above 0")
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, required=True)
-    ap.add_argument("--minutes", type=float, default=60.0)
-    ap.add_argument("--batch", type=int, default=40)
+    ap.add_argument("--minutes", type=minutes, default=60.0)
+    ap.add_argument("--batch", type=batch, default=40)
     args = ap.parse_args()
     c.ensure_tools()
     work = c.WORK / f"fuzz-{args.seed}"
@@ -221,6 +245,9 @@ def main() -> int:
     out.write(c.stamp())
     out.close()
     print(summary)
+    if inputs == 0:
+        print("no input ran: the campaign tested nothing", flush=True)
+        return 1
     return 1 if failed or crashes else 0
 
 
