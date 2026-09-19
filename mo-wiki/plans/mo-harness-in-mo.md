@@ -127,6 +127,8 @@ and the Mo share of harness source reported at each acceptance.
 
 ## Related
 
+- [[mo-harness-end-to-end-v1]]
+- [[interpreter-step-41]]
 - [[mo-capabilities-for-the-harness]]
 - [[mo-first-coding-harness]]
 - [[mo-application-workspace-v1]]
