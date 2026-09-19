@@ -46,6 +46,17 @@ evidence under 2 MiB). Released for local work and focused both-runtime tests
 only; machine runs and the full suite stay lead-gated. Follow with
 `herdr agent get/read app-workspace-v2-opus`. Workers from here on start with bypass permissions (Robert, 8:05 AM ET).
 
+**Overnight work reviewed, 8:35 AM ET:** four Opus source reviews are in
+`audit/evidence/2026-09-19/fable-overnight-review/README.md`; four decision-log
+rows. All ten components kept; recovery's machine-side `recover()` to be
+rewritten and its acceptance qualified. Queue after the application workspace
+worker reports: (1) executor/workspace-HTTP fix brief (E1, E2, E4, E5, H1 to
+H7), a fresh Opus worker with bypass permissions; (2) recovery rewrite (E3, E7);
+(3) Mo agent test fixes (M1 to M8); (4) provider live blockers (P1 to P5) with
+the live-provider slice. Check the rebuilt adapter against H4 and H5 at
+acceptance. The lead's own full-suite run on `main` is still owed; not run while
+a worker uses the host.
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
