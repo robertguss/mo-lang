@@ -65,6 +65,15 @@ where a module moves to Mo anyway. Robert answered at 8:20 AM ET: yes, Mo gains 
 scoped child-process capability (decision-log row); the lead writes its design
 page next, from the design map.
 
+**Plan of record, 8:35 AM ET:** `mo-wiki/plans/mo-harness-in-mo.md` (nine steps;
+replaces the plain fix queue above). Lead-verified on the way: `Fs.scoped` is
+lexical only, so a symlink inside a scope escapes it; fixing that is the first
+toolchain step. Next lead actions: accept the rebuilt application workspace
+(merged locally at `ddd81c06`; build exit 0, full suite running), confirm the
+worker's toolchain defect (raw memory printed by the native binary on reports
+over about 0.35 MB), then launch steps 1, 2 and 8 in parallel and write the
+design page for capabilities 1 to 3.
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac

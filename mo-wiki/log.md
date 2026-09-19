@@ -948,3 +948,6 @@
 ## [2026-09-19] review | Fable's source review of Astra's overnight harness work
 - Four read-only Opus reviews: all ten components kept, recovery's `recover()` to be rewritten, acceptance wording qualified. Evidence: audit/evidence/2026-09-19/fable-overnight-review/README.md. Four rows in decisions/decision-log.md; queue in HANDOFF.md.
 - Correction, 8:12 AM ET: the times first written on this morning's takeover rows and pages were the lead's estimates and ran up to 50 minutes late; they now match the commit times (takeover 7:18, rebuild 7:20, launch 7:22, bypass 7:33, review 7:42, Mo-first 8:08).
+
+## [2026-09-19] create | plans/mo-harness-in-mo.md
+- Robert: as much of the harness in Mo as possible; Mo gains a scoped child-process capability. The plan maps 8,800 non-Mo lines to stay, move now, or move with a named capability, in nine steps. Lead-verified finding: `Fs.scoped` is lexical only.

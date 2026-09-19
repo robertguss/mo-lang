@@ -137,6 +137,7 @@ type: index
 ## Plans
 - [[report-claim-check]] — proposed TypeSafe triage of worker report claims
   against raw evidence; never acceptance; not built (18 Sep 2026)
+- [[mo-harness-in-mo]] — the harness moved into Mo: the capabilities Mo gains, the target shape, nine steps
 - [[mo-first-coding-harness]] — selected Mo-written coding application; headless
   first slice, protected verification, matched Pi comparison; implementation authorized
 - [[mo-executor-foundation]] — first provider-independent executor slice with
