@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, security, processes]
 sources: [plans/mo-harness-in-mo.md, plans/mo-harness-end-to-end-v1.md, research/comparisons/bend2.md]
-status: paused
+status: in-progress
 ---
 
 # The Mo workspace server, part A
@@ -24,11 +24,20 @@ workspace folder it holds as a narrowed `Fs`, with admission, the journal and
 the operator's path. It runs on Darwin and Linux with no machine, no Docker
 and no `Exec`. **Part B** (a later brief) adds `command` through `Exec`
 (step 41), the container policy and cleanup proofs on the machine, and the
-cutover. Nothing Python is deleted in part A. Worker: a fresh Claude Opus
-session, bypass permissions, own worktree and Herdr tab. The lead owns the
-wiki, audit and acceptance. No new syntax, no toolchain change: if the
+cutover. Nothing Python is deleted in part A. Worker: a fresh clean OMP
+session using GPT Sol at high reasoning, own worktree and Herdr tab.
+The lead owns the wiki, audit and acceptance. No new syntax, no toolchain change: if the
 language or stdlib cannot say something, stop and report it with the smallest
 example; that finding is a result, not a failure.
+
+**Resumption authorized, 19 Sep, evening:** continue from `d679f568` on
+`harness/workspace-server-4a`. Read `WIP.md` and branch history; preserve the
+Opus worker's evidence. Its 7/13 figure is an unfiled scratch run with
+`--half-close`, not unchanged-wire acceptance. First resolve or report F1
+with a filed minimal reproduction; never require clients to add a newline
+or half-close as a substitute for the original wire. Keep D2's operator
+independence and report conflicting inherited tests rather than weaken them.
+No machine or full-suite release. Benchmark runs require lead scheduling.
 
 ## Write scope
 

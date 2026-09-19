@@ -940,6 +940,14 @@ direction separately from the lead's conservative execution interpretation.
 | Ratified defaults of the worker (Claude Opus 5): a module's own variant or message hides a stdlib struct of the same name in that module (so the new `Done` did not break the agent); `flows` follows a list literal at the call; a message line's field may not be a `Platform`, `Exec` or `Program`; when the leader exits the rest of its group is killed before it is reaped; the child gets its own session, not only its own group; the fixture's function receives the program's path first; each run has its own thread with no cap on concurrent runs; Darwin uses one `posix_spawn` (`CLOEXEC_DEFAULT`) after the fork version cost 94 ms a run closing a million descriptors. `semantic` | Fable lead | decided | step 41's controls |
 | Recorded for later toolchain work, from the worker's report: no cap on concurrent runs; exit detection naps instead of `EVFILT_PROC` or a pidfd; output as `List(UInt8)` makes 1 MiB cost 2.3 to 3.9 times C (a `Bytes` type would fix it); `blocking.run` still returns if `block` errors while its job is on the pool (step 42's audit takes this one). | Fable lead | recorded | step 42 |
 
+## 19 Sep 2026 — OMP lead and fresh Sol workers; both WIP units resume
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Astra leads in OMP in this existing pane while Claude Code is unavailable. Workers use OMP with GPT Sol at high reasoning. Every assignment, including saved-WIP continuation and review, gets a fresh clean session; no resumed, forked or imported conversation. Maximum three workers, each in its own tab and implementation worktree. | Robert | decided | the server part A and step 42 launches |
+| Workers write all implementation and code, including test/probe scripts. Astra owns plans, briefs, review, documentation, coordination and acceptance, and Robert explicitly permits the lead to run independent acceptance builds/tests. Existing audit safeguards, Linux deferral and push ownership remain. `semantic` | Robert; recorded by Astra (GPT-6) | decided | independent acceptance of the two resumed units |
+| Resume [[mo-workspace-server-4a]] at `d679f568` and [[interpreter-step-42]] at `0a4dffcd` after recording the workflow. Their original worktrees are clean at these commits. Server WIP's 7/13 is an unfiled half-close run, not unchanged-wire evidence; F1 needs a filed reproduction or a solution without changing clients. No acceptance claimed. | Robert (resume); Astra (evidence qualification) | decided | fresh workers' filed results and lead checks |
+
 ## Related
 
 - [[session-05]]

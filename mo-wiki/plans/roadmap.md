@@ -10,25 +10,24 @@ status: in-progress
 
 # Roadmap
 
-## Current direction: agent-native, overnight implementation authorized (19 Sep 2026)
+## Current direction: agent-native, OMP resumption authorized (19 Sep 2026)
 
 Robert approved the direction in [[01-premise]] and the supersession recorded in
 [[decision-log]]. Mo is another option, not a BEAM replacement. Agents are the
 code authors and readers; humans judge behavior and evidence. The complete,
 fast, trustworthy agent feedback loop for existing features takes priority over
-expansion. Robert's 19 Sep overnight instruction authorizes the Astra lead to
-decide and drive bounded harness setup, implementation and verification while
-he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
-The prior implementation pause and Amp/oracle workflow are superseded.
+expansion. Robert's evening instruction resumes the two paused units with
+Astra leading in the existing OMP pane and fresh OMP/Sol/high workers.
+The lead reviews and independently runs acceptance checks; workers write
+implementation code. The Claude Code/Opus workflow is superseded.
 
-**Current checkpoint, 19 Sep 2026, 6:38 AM ET:** ten bounded components have
-independent acceptance. HTTP local22/inherited59, real22 per profile, old
-regressions and two new extras pass. Full243/243,5/5;17339 unchanged files,
-100 execution/131 workspace-ID/97 cgroup closure. Historical unknowns remain.
+**Current checkpoint, 19 Sep 2026, evening:** resumption authorized, not a new
+acceptance. Last accepted Darwin full suite: 268 of 268. Linux remains owed;
+the live provider, first model-driven task and Pi comparison remain ahead.
 
 | board | current work |
 |---|---|
-| Now | **Paused by Robert, 19 Sep, 3:48 PM ET**, until his usage limits return. No worker running. Stopped as WIP commits on their branches: [[mo-workspace-server-4a]] (7 of 13 groups green) and [[interpreter-step-42]] (the guard's part done). `HANDOFF.md` has the resume steps |
+| Now | Resume [[mo-workspace-server-4a]] from `d679f568` and [[interpreter-step-42]] from `0a4dffcd`, each in a fresh clean OMP/Sol/high session and its own worktree/tab. Worker launch is being verified. The server's reported 7/13 is an unfiled half-close scratch run, not acceptance; F1 is still a wire blocker. `HANDOFF.md` owns live pointers |
 | Done today | Accepted on `main`: the rebuilt [[mo-application-workspace-v1]]; [[mo-harness-in-mo]] steps 1, 8 and 2; the raw-memory runtime fix ([[toolchain-raw-memory-report]]); [[interpreter-step-40]] (a scope that holds against links, `Fs.replace`); [[interpreter-step-43]] (the auditor's PR 15: every number in source held to its range, accepted 1:59 PM ET). [[mo-harness-end-to-end-v1]] (the Mo agent end to end on the machine with the scripted Logstat repair, accepted 2:20 PM ET). [[mo-agent-report-cap]] (the report cap and defect D1, accepted 3:06 PM ET); the [[report-claim-check]] calibration. [[interpreter-step-41]] (`Exec`, accepted on macOS 3:33 PM ET, full suite 268 of 268). the first x86_64 Linux full suite 249 of 249 on step 40's tree |
 | Next | In order: [[ci-gate]] (briefed, after step 42); the Mo six-tool server ([[mo-harness-in-mo]] step 4): part A briefed as [[mo-workspace-server-4a]], part B (`command` through `Exec`, the machine, cutover) after it; plan steps 5 to 7; provider live blockers with Robert's login; the first model-driven task; the Pi comparison |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |

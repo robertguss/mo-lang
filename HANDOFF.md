@@ -1,21 +1,24 @@
-# Mo Lang — Fable lead and Opus Herdr workers (read START HERE)
+# Mo Lang — Astra lead and fresh OMP/Sol workers (read START HERE)
 
-## START HERE: paused by Robert, 19 Sep 2026, 3:48 PM ET
+## START HERE: OMP workflow recorded; resumption authorized, 19 Sep 2026
 
-Robert paused the project until his usage limits return. **No worker is
-running, no tab is open but the lead's, nothing runs on the Mac or the
-machine.** (A Linux full suite for step 41 may still be finishing alone on the
-VM in `~/Projects/mo-lang-lead-verify`; it is informational, Linux is
-deferred.) Load the `mo-lead` skill, read this section, then
-`mo-wiki/SCHEMA.md`, then run the auditor check
-(`git fetch origin && python3 audit/automation/fable_poll.py check`; 0 new
-records at 1:18 PM ET; PRs 15 and 16 are merged). The whole picture is the
-"Paused" section at the top of `mo-wiki/state-of-the-project.md`.
+Robert's Claude Code subscription is unavailable. Astra leads in this existing
+OMP session; workers use OMP with GPT Sol at high reasoning. Robert explicitly
+authorized resuming both saved units below after recording the new workflow.
+The afternoon pause is superseded for that work. No new code is accepted.
+
+Load `mo-lead`, then this section and `mo-wiki/SCHEMA.md`. Run the auditor check
+(`git fetch origin && python3 audit/automation/fable_poll.py check`; this
+session's check at 7:36 PM ET found 0 new records). PRs 15 and 16 are merged.
+The lead owns briefs, reviews, records and acceptance; it may run independent
+builds/tests, but workers write all implementation and code, including probes.
 
 ### Standing instructions learned today (in force)
 
-- **At most three Opus workers at once**, each in its own Herdr tab, bypass
-  permissions. Finished means: agent idle, worktree clean, the final report
+- **At most three Sol/high workers at once**, each in its own Herdr tab, OMP
+  auto-approval within its bounded brief. Every assignment starts a fresh clean
+  session, even for saved WIP; no continue/resume/fork/import. Finished means:
+  agent idle, worktree clean, the final report
   committed (a worker may commit its report file early, and Herdr shows `done`
   whenever a turn ends while a background run continues).
 - **Linux is deferred**: accept on macOS alone; keep the "Linux owed" list
@@ -32,17 +35,17 @@ records at 1:18 PM ET; PRs 15 and 16 are merged). The whole picture is the
 - The TypeSafe key is age-encrypted in the git-ignored `fnox.toml`:
   `fnox -c <repo>/fnox.toml exec -- <command>`. Never print it.
 
-### Stopped mid-flight (WIP commits on their own branches; nothing on `main`)
+### Authorized resumptions (saved WIP, not accepted on `main`)
 
 | unit | branch, worktree | WIP commit | notes | brief |
 |---|---|---|---|---|
-| Mo six-tool server, part A | `harness/workspace-server-4a`, `.../harness-workspace-server-4a` | `d679f568` (processes and the test double built, 7 of 13 in-scope groups green) | `examples/programs/workspace-server/WIP.md` | `mo-wiki/plans/mo-workspace-server-4a.md` |
+| Mo six-tool server, part A | `harness/workspace-server-4a`, `.../harness-workspace-server-4a` | `d679f568` (7/13 groups reported only in an unfiled half-close scratch run; unchanged-wire blocker F1 remains) | `examples/programs/workspace-server/WIP.md` | `mo-wiki/plans/mo-workspace-server-4a.md` |
 | Step 42, runtime memory safety | `toolchain/step-42-memory`, `.../toolchain-step-42-memory` | `0a4dffcd` (part E green: the guard kills the group; other parts not begun or partial) | `toolchain/WIP.md` | `mo-wiki/plans/interpreter-step-42.md` |
 
-To resume either: a **fresh** Opus worker in the same worktree, told to read
-the brief, then `WIP.md`, then `git log` of the branch, and to continue; the
-launch prompt used today is in this session's log entry and the lead skill's
-step 2.
+Resume each with a **fresh clean OMP/Sol/high session** in its saved worktree.
+Read the current brief from the lead checkout, then the worker's `WIP.md`,
+then its branch history. Old worktree role instructions are superseded by the
+current lead skill and explicit launch brief. Keep all prior evidence.
 
 ### Next, in order
 

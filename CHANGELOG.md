@@ -2,6 +2,16 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## OMP workflow and authorized WIP resumption — 19 Sep 2026, evening
+
+- Astra leads in the existing OMP pane; workers use GPT Sol at high reasoning.
+  Every assignment starts a fresh clean session, including saved-WIP continuations.
+- Workers own implementation code; the lead owns review and acceptance and
+  may independently run builds/tests. Separate worktrees/tabs and the
+  three-worker limit remain.
+- Robert authorized resuming the Mo server part A and step 42 from their
+  preserved WIP commits. No new code accepted; Linux verification stays owed.
+
 ## Step 41: `Exec`, a child process narrowed to fixed commands — 19 Sep 2026, 3:33 PM ET
 
 - `platform.exec` exists only in `main`; it makes a `Program` (one absolute

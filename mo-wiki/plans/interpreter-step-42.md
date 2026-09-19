@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [runtime, verification, tooling, processes]
 sources: [plans/toolchain-raw-memory-report.md, plans/interpreter-step-41.md]
-status: paused
+status: in-progress
 ---
 
 # Step 42: runtime memory safety
@@ -20,16 +20,25 @@ step makes the class fail loudly in the suite, then audits for its other
 members. Two terms, used below. A **region value** is a `Value` pointing into a
 process's region, valid only until the next compaction. A **parcel** is a
 packed, owned copy that outlives compaction (what `send` makes). Worker: a
-fresh Claude Opus session, bypass permissions, own worktree and Herdr tab, based
-on the `main` that holds step 41. The lead owns the wiki, audit and acceptance.
+fresh clean OMP session using GPT Sol at high reasoning, own worktree and
+Herdr tab. The lead owns the wiki, audit and acceptance.
 No new syntax; no change to Mo's semantics.
+
+**Resumption authorized, 19 Sep, evening:** continue from `0a4dffcd` on
+`toolchain/step-42-memory` (original base `2f669902`). Read `WIP.md` and branch
+history, preserve the Opus worker's part E RED/GREEN evidence, then finish A–D
+and verify E's remaining limits. Do not treat the WIP's implementation ideas
+as accepted designs. Benchmarks and full-suite timing need lead scheduling;
+focused builds/tests remain in this worktree, never the server worker's.
 
 ## Write scope
 
 `toolchain/src/**`, `toolchain/runtime/**`, `toolchain/build.zig`,
-`toolchain/bench/step36/guard.py`, `toolchain/README.md` (the runtime
-paragraphs only), new corpus files under `examples/` with sidecars and
-`verified:` lines (real tools only). No harness code, no wiki, no `audit/`, no
+`toolchain/bench/step36/guard.py`, `toolchain/bench/step42/**`,
+`toolchain/STEP-42-REPORT.md`, `toolchain/WIP.md`, `toolchain/README.md` (the runtime
+paragraphs only), `toolchain/PRELUDE.md` if the prelude changes, new corpus files
+under `examples/` with sidecars and `verified:` lines (real tools only).
+No `examples/programs/workspace-server/**`, no harness code, no wiki, no `audit/`, no
 `HANDOFF.md`. No machine, Docker, `/opt`. No push. Never use `tr`; `ls` is
 aliased, use `/bin/ls`. The Linux VM is the lead's; you run on this Mac only.
 You are not alone on this host: preserve others' edits, no nested delegation.

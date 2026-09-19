@@ -1002,3 +1002,8 @@
 
 ## [2026-09-19] pause | Robert paused the project until his usage limits return
 - 3:48 PM ET: both workers stopped at a checkpoint with WIP commits and WIP.md notes (server part A d679f568, step 42 0a4dffcd); tabs closed; no stray process on the Mac. HANDOFF.md has a new START HERE; state-of-the-project.md a Paused section; the roadmap board says paused. Accepted this session: PR 15 and step 43, end to end v1, the claim check calibration, the report cap and D1, step 41 (macOS), PR 16. Lint 26 notices of the inherited kinds, none new.
+
+## [2026-09-19] workflow | Astra in OMP; fresh Sol/high workers; resume authorized
+- Robert replaced Claude Code/Opus with Astra leading in this OMP pane and GPT Sol/high workers. Every assignment starts a fresh clean session, including WIP continuations. The lead may run independent acceptance builds/tests but workers write all implementation code. Both paused units are authorized to resume after this record.
+- Auditor check at 7:36 PM ET: 0 new records. Launch discovery: OMP 18.2.6 supports `openai-codex/gpt-5.6-sol`, `--thinking high`, `--no-prewalk` and `--auto-approve`; Herdr 0.9.0 supports kind `omp`. Existing WIP worktrees are clean at server `d679f568` and memory `0a4dffcd`. No new acceptance or Linux result.
+- Documentation validation: 284 pages checked, 26 notices (15 review, 11 size; the inherited categories), no new error category; `git diff --check` exit 0. No toolchain tests needed for this documentation-only transition.

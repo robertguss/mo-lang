@@ -24,7 +24,15 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 1:13 PM ET: a pause for a fresh lead session.
+**Current, 19 Sep 2026, evening:** Robert authorized resuming the Mo server's
+part A and step 42 memory safety after recording an OMP workflow: Astra leads
+in the existing pane; every worker assignment starts a fresh clean Sol/high
+session. Workers own code; Astra reviews and independently runs acceptance
+builds/tests. Their saved WIP is not accepted. The last accepted Darwin suite
+is 268 of 268; Linux remains owed. The live provider, model-driven task and Pi
+comparison are still ahead. [[roadmap]] and `HANDOFF.md` carry current status.
+
+The account below preserves the earlier checkpoints.
 
 **19 Sep, the day so far.** Robert made Fable (Claude Code) the lead at 7:18 AM
 ET, with Claude Opus workers, and asked for three things: review what Astra
@@ -119,7 +127,7 @@ The final review labelled DeepSeek was byte-identical to the supplied Kimi body,
 verified by comparison and SHA-256. Four distinct review bodies, not five; the
 reason for duplicate attribution is unknown.
 
-## Paused, 19 Sep 2026, 3:41 PM ET: read this first
+## Historical pause, 19 Sep 2026, afternoon (resumption authorized above)
 
 Robert paused the project until his usage limits return. Everything accepted is
 on `main`; two workers were stopped at a checkpoint with their work committed as

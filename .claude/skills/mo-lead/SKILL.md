@@ -2,7 +2,7 @@
 name: mo-lead
 description:
   The lead's role and loop for building Mo. Use when starting or resuming a Mo
-  session, briefing an Opus worker in Herdr, accepting a step, or recording a
+  session, briefing an OMP worker in Herdr, accepting a step, or recording a
   decision.
 ---
 
@@ -16,26 +16,27 @@ The onboarding/audit loop is lead-only. Worker threads identify themselves as
 workers, follow shared safety rules and their bounded brief, and do not run the
 lead's audit inbox, publication/integration or decision-recording workflow.
 
-**Mac workflow (Robert, 19 Sep 2026, 7:18 AM ET):** Fable (Claude Code) is the
-lead on Robert's Mac, taking over from Astra. Spawn fresh Claude Opus workers in
-Herdr panes. This supersedes the overnight Astra-lead/Astra-low-worker workflow
-and the earlier Amp orb/thread workflow; no oracle is available or required. OrbStack is the proposed Linux execution
-environment, separate from where agents run. `HANDOFF.md` owns current readiness.
-Preserve existing Mac services, Docker contexts and historical worktrees.
+**Mac workflow (Robert, 19 Sep 2026, evening):** Astra leads in OMP in the
+existing lead pane. Workers use OMP with GPT Sol at high reasoning. This
+supersedes Claude Code/Opus and earlier Astra-low/Amp workflows; no oracle is
+required. `HANDOFF.md` owns current readiness and authorization. Preserve
+existing Mac services, Docker contexts and historical worktrees.
 
-- **The lead (Fable, this same thread).** Writes briefs, verifies, decides,
-  records. Owns substantive evaluations and decisions, using bounded worker
-  reviews when useful. Never
-  writes code or prose under `toolchain/` or `examples/` by hand. Owns the
-  syntheses, the spec chapters (`mo-wiki/spec/design-v0/`), the program specs
-  (`mo-wiki/spec/programs/`), and the concept pages. Do not create a replacement
-  lead thread for a new phase.
-- **The worker (Claude Opus, fresh Herdr pane).** Does every line of code and
-  prose in `toolchain/`, `examples/`, and the generated or table files a brief
-  names. Each worker/new work unit/phase gets a fresh Claude Code session with
-  `--model opus`. It never writes under
-  `mo-wiki/` except the spec lines its brief lists. Read-only review workers
-  may share the lead checkout; implementation workers use separate worktrees.
+- **The lead (Astra, this same session).** Owns planning, briefs, substantive
+  review, independent verification, acceptance decisions, documentation and
+  coordination. May execute builds, tests and probes for acceptance. Does not
+  write implementation code, including test or probe scripts; workers author
+  those from lead-owned requirements. Never writes code or prose under
+  `toolchain/` or `examples/` by hand. Owns the wiki, specs and audit records.
+  New phases do not create replacement lead sessions.
+- **The worker (GPT Sol, OMP, high reasoning).** Owns implementation and all
+  code, plus prose under `toolchain/`, `examples/`, and files its brief names.
+  Every assignment, new phase, review or continuation of saved WIP starts a
+  fresh clean OMP session. Never continue, resume, fork or import a previous
+  conversation. Saved code and evidence may carry forward; conversational
+  state does not. Worker wiki writes are limited to spec lines its brief names.
+  Implementation uses separate worktrees; read-only review may share the lead
+  checkout. No nested delegation.
 - **Robert.** Reviews the decision log, not the queue. The lead's recommendation is the decision, made without waiting and recorded with who, status, and what first tests it. Overturning is cheap; nothing is a mistake at this stage. One question per message to him, code options first, a PL term defined in three lines before use, no phones. Every time given to him is US Eastern (Robert, 17 Sep 2026; the VM's clock is UTC: `TZ=America/New_York date`), labelled ET, in reports, wakeup reasons, and the rows and pages he reads. Frame every report: where the work sits in the whole against the "Where we are" table on `mo-wiki/plans/roadmap.md`, what was verified, the numbers, anything unmet, said plainly.
 
 ## The auditor (Robert, 17 Sep 2026)
@@ -45,7 +46,7 @@ An independent auditor, a Perplexity session only Robert opens, reads raw eviden
 The loop with the auditor, as it runs today (charter option B, manual, Robert-driven; `mo-wiki/plans/the-audit-workflow.md` is the wiki's account):
 
 - **Before a round or a program:** the pre-registration (predictions, suites' shape, the P4 change) is on its page and pushed before any session starts; the report to Robert says "ready for `audit: pre-registration <name>`" so he can open the session. For program 7 the auditor also writes the hidden suites; the lead's spec is sealed first and the lead never sees those suites.
-- **After a round or an acceptance:** the lead's reading is a decision-log row (pushed), and the raw pointers and outputs go under `audit/evidence/<date>/` with a README in the charter's form (paths, branches, commits, numbers as printed, the scripts that produced them; the lead's readings named but marked "open after your own"). The lead's own probe scripts and their outputs belong there too, since `toolchain/` is the worker's and the auditor needs them reproducible. The report to Robert says "ready for `audit: <name>`".
+- **After a round or an acceptance:** the lead's reading is a decision-log row (pushed), and raw pointers and outputs go under `audit/evidence/<date>/` with a README in the charter's form (paths, branches, commits, numbers as printed, scripts that produced them; lead readings marked "open after your own"). Workers author any new probe scripts to the lead's requirements; the lead independently runs and reviews them. Retain those scripts and outputs in the evidence bundle. The report to Robert says "ready for `audit: <name>`".
 - **When the auditor's file lands** (`audit/mo-audit-<date>-<subject>.md`, Robert pushes or pastes it): the lead first writes `audit/fable-reading-<date>-<subject>.md` if its reading is not already a row, then reads the auditor's file, then files each disagreement as a decision-log row citing both files, "for Robert". A ratified threshold or retirement mapping changes only by a row with a reason, never in place.
 - **Never:** open an audit session, paste the lead's synthesis into one, read or write a sealed suite, or amend a pre-registration once evidence is in view (the charter calls that a role violation).
 
@@ -71,23 +72,28 @@ audit rules; do not treat unavailable evidence as passed.
 1. **Brief.** One plan page in `mo-wiki/plans/` with Orientation, Write scope, Parts, Numbers, Done when. A toolchain step's write scope always includes the corpus's `.mo.ids` sidecars and `toolchain/PRELUDE.md` when the corpus or the prelude changes (step 35, 17 Sep 2026). A step is one brief; a program has a spec page (the lead's) and a brief. Every Done-when asks the worker to tee each run its report quotes into a filed log with an exit file beside it (19 Sep 2026: the claim check's calibration found most unverifiable claims were runs with no raw output filed); `tools/claim-check/` may be run on a report as a first pass, and never accepts anything.
 2. **Fresh worker.** Read `herdr --skill` and verify `HERDR_ENV=1`. Discover
    the calling workspace/pane; never reuse historical IDs. At most three
-   Opus workers run at once (Robert, 19 Sep 2026, 1:33 PM ET): queue briefs instead. Never split the lead's tab (Robert, 19 Sep 2026: stacked worker panes made
+   Sol workers run at once (Robert, 19 Sep 2026): queue briefs instead. Never split the lead's tab (Robert, 19 Sep 2026: stacked worker panes made
    the lead unreadable, and he talks to the lead often). Put each worker in its
    own tab: `herdr tab create --workspace <id> --cwd <worktree> --label
    <worker name> --no-focus`, and use that tab's pane; wait for its shell prompt.
-   Start a uniquely named agent with `herdr agent start <name> --kind claude
-   --pane <id> -- --model opus --dangerously-skip-permissions` (Robert, 19 Sep
-   2026, 7:33 AM ET: every worker runs with bypass permissions; the brief's
-   write scope and constraints are the boundary).
-   Verify the startup output names Opus before sending the brief with
-   `herdr agent prompt`. A read-only review is bounded by its brief.
-   For implementation, create a separate worktree from the exact local base
-   under `~/Projects/startups/mo-lang-worktrees/`; a local branch may be ahead
-   of origin. Name role, lead pane, base, write scope, constraints, checks and
-   Done-when. Tell workers they are not alone, must preserve others' edits and
-   must do their own assignment without nested delegation. Request raw outputs,
-   real exit codes, local commits when useful and decisions the brief did not
-   cover. Worker pushes and PRs need separate authorization.
+   Discover the installed syntax with `omp --help`, `omp models find sol
+   --json`, and `herdr agent`. The verified selector on 19 Sep is
+   `openai-codex/gpt-5.6-sol`. Start a uniquely named agent:
+   `herdr agent start <name> --kind omp --pane <id> -- --model
+   openai-codex/gpt-5.6-sol --thinking high --no-prewalk --auto-approve`.
+   Keep the model fixed; no automatic implementation-model switch. Use a new
+   session with no continue/resume/fork/import flags; retain its saved session
+   for evidence. Verify startup names Sol and high reasoning before prompting.
+   For new implementation, create a separate worktree from the exact local base
+   under `~/Projects/startups/mo-lang-worktrees/`. For saved WIP, use its
+   preserved worktree after checking branch, commit and uncommitted changes.
+   A local branch may be ahead of origin. Name role, lead pane, exact base,
+   write scope, constraints, checks and Done-when. Point workers at the lead's
+   current skill and brief by absolute path when worktree copies are stale.
+   Tell workers they are not alone, must preserve others' edits and must do
+   their assignment without nested delegation. Request filed raw outputs,
+   real exit codes, local commits and decisions the brief did not cover.
+   Worker pushes and PRs need separate authorization.
 3. **While it works.** Keep this lead session. Use `herdr agent get/read/wait`
    and `prompt` for the same assignment; each new work unit gets a fresh worker.
    A timeout or unknown state is not completion. Preserve the user's focus.
@@ -97,15 +103,15 @@ audit rules; do not treat unavailable evidence as passed.
    never sweep in unrelated staged edits.
 4. **Integrate and verify.** Robert pushes `main` himself whenever he likes
    (19 Sep 2026), so `main` holds accepted work and lead records only: merge a
-   worker's branch into a local `lead/verify-<unit>` branch cut from `main`,
-   run every check there, and merge that branch into `main` only when the unit
-   is accepted. Save the worker's report and raw evidence. Inspect
+   worker's branch into a local `lead/verify-<unit>` branch cut from `main`
+   in its own verification worktree (never share `zig-out`), run every check
+   there, and merge into `main` only when accepted. Save the report and evidence. Inspect
    its exact diff before integration; a commit ID or message does not transfer
    code. Inspect the worker worktree's fixed commit or patch, account for
    deletions, and reconcile against the recorded base and
    intervening lead/upstream changes without overwriting unrelated work. Run
-   checks in the lead checkout containing the integrated result, using shell
-   tools and Herdr run panes for ongoing commands. For code acceptance: `zig build` and
+   checks in that integrated verification worktree, using shell tools and
+   owned run panes for ongoing commands. For code acceptance: `zig build` and
    `zig build test --summary all` from `toolchain/`, under explicit
    timeouts/watchdogs, plus probes on inputs the brief did not name. Use both
    runtimes where affected (`mo run`, a `mo build` binary, `mo test --sim` for
