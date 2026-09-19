@@ -1,0 +1,8 @@
+pass  test "the scripted commands are test_owner.py's"
+pass  test "a file call runs, is journaled by the worker, and frees admission": 200 simulated runs, but passes only without faults
+      seed 16745871413434756889, with faults: examples/programs/workspace-server/worker.mo:183:3: assert envelope.result == Some("{\"text\": \"héllo\", \"truncated\": false}") failed; left = None, right = Some("{"text": "héllo", "truncated": false}")
+      mo test --sim 1 --seed 16745871413434756889 runs it again
+pass  test "the production worker serves no command"
+3 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 0 held under faults, 1 passed only without faults
+verified: types, contracts, tests (3), property (0 seeds), sim (200 runs)
+          proven: not run

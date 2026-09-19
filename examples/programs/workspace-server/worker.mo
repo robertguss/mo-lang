@@ -195,3 +195,6 @@ test "the production worker serves no command"
     Deadline.fixture(1.minute))
   assert worked.0.error == Some("request_refused")
 end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (200 runs)
+          proven: not run

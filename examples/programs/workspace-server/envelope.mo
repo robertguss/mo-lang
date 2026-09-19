@@ -248,3 +248,6 @@ test "command output past 65,536 bytes is cut at a character and marked truncate
     done(Ran(exit_code: 0, stdout: "y".repeat(70_000), stderr: "", elapsed_ms: 5)))
   assert shown.state == "success" and (shown.result or "").contains?("\"truncated\": true")
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

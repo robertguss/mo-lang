@@ -1,0 +1,8 @@
+pass  test "a whole head gives the body's length and the token offered"
+pass  test "each departure from the request line earns its own refusal"
+pass  test "headers: extra, repeated, unknown, missing, and bad lengths"
+pass  test "a head is bounded in bytes, and past 32 fields it is malformed"
+pass  test "a response carries its length and closes"
+5 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

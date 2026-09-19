@@ -1,0 +1,26 @@
+== examples/programs/workspace-server/admission.mo ==
+EXIT:0
+== examples/programs/workspace-server/connection.mo ==
+EXIT:0
+== examples/programs/workspace-server/door.mo ==
+EXIT:0
+== examples/programs/workspace-server/double.mo ==
+EXIT:0
+== examples/programs/workspace-server/envelope.mo ==
+EXIT:0
+== examples/programs/workspace-server/journal.mo ==
+EXIT:0
+== examples/programs/workspace-server/main.mo ==
+EXIT:0
+== examples/programs/workspace-server/operator.mo ==
+EXIT:0
+== examples/programs/workspace-server/schema.mo ==
+EXIT:0
+== examples/programs/workspace-server/server.mo ==
+EXIT:0
+== examples/programs/workspace-server/tools.mo ==
+EXIT:0
+== examples/programs/workspace-server/wire.mo ==
+EXIT:0
+== examples/programs/workspace-server/worker.mo ==
+EXIT:0

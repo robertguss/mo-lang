@@ -1,0 +1,9 @@
+pass  test "a whole call reads back"
+pass  test "repeated keys, at the top or deeper, are malformed"
+pass  test "not JSON, not an object, nonfinite, a lone surrogate: malformed"
+pass  test "types, extras and IDs"
+pass  test "another run or workspace is unbound, after the shape is whole"
+pass  test "a command's timeout is an integer of 500 to 120,000"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

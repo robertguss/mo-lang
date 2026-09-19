@@ -1,0 +1,22 @@
+LINE-COMPLETING CLIENT: JSON bodies end in newline; raw bodies half-close; oversized unfinished headers get CRLF; expectations unchanged
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+target=python3 toolchain/bench/step36/guard.py 180 -- zig-out/mo-build/workspace-server-double/workspace-server-double
+groups=six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,disconnect,lost-response,journal-order-bound,shutdown
+test_six_tools (local.Controls.test_six_tools) ... ok
+test_schema (local.Controls.test_schema) ... ok
+test_framing (local.Controls.test_framing) ... ok
+test_byte_bounds (local.Controls.test_byte_bounds) ... ok
+test_identities_capability (local.Controls.test_identities_capability) ... ok
+test_duplicate_calls (local.Controls.test_duplicate_calls) ... ok
+test_concurrent_admission (local.Controls.test_concurrent_admission) ... ok
+test_file_refusals (local.Controls.test_file_refusals) ... ok
+test_deadlines (local.Controls.test_deadlines) ... ok
+test_disconnect (local.Controls.test_disconnect) ... ok
+test_lost_response (local.Controls.test_lost_response) ... ok
+test_journal_order_bound (local.Controls.test_journal_order_bound) ... ok
+test_shutdown (local.Controls.test_shutdown) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 21.001s
+
+OK

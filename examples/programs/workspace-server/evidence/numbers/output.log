@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/workspace/examples/programs/workspace-server/numbers.py", line 7, in <module>
+    import statistics
+  File "/usr/lib/python3.12/statistics.py", line 135, in <module>
+    from fractions import Fraction
+  File "/usr/lib/python3.12/fractions.py", line 6, in <module>
+    from decimal import Decimal
+  File "/usr/lib/python3.12/decimal.py", line 3, in <module>
+    from _decimal import *
+AttributeError: module 'numbers' has no attribute 'Number'

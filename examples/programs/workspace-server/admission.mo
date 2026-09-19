@@ -193,3 +193,6 @@ test "sixteen sequential calls are admitted, a seventeenth is call_limit, and a 
   assert admission.ask(Status, within: 1.minute) is Ok(standing)
   assert standing.calls == 16 and !standing.active
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run

@@ -1,0 +1,8 @@
+pass  test "a refusal before admission names no identities and started nothing"
+pass  test "a success carries its operation's result, or it is invalid_result"
+pass  test "a refusal keeps its completed execution and has no result"
+pass  test "a response past its cap is response_too_large, not truncated"
+pass  test "command output past 65,536 bytes is cut at a character and marked truncated"
+5 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

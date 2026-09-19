@@ -1,0 +1,12 @@
+{
+ "argv": [
+  "python3",
+  "toolchain/bench/step36/guard.py",
+  "60",
+  "--",
+  "bash",
+  "-c",
+  "set -e\nfor f in examples/programs/workspace-server/*.mo; do\n  echo \"== $f ==\"\n  toolchain/zig-out/bin/mo fmt --check \"$f\"\n  echo EXIT:$?\ndone"
+ ],
+ "cwd": "repository root"
+}

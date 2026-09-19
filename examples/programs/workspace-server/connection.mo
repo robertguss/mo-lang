@@ -466,3 +466,6 @@ test "a wait past its deadline is 504 with execution unknown; an owner lost is 2
   lost = status_of(Error(Down), c)
   assert (lost.0, lost.1.error) == (200, Some("owner_unknown"))
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run

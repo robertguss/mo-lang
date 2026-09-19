@@ -234,3 +234,6 @@ test "a delivery that is not known leaves delivery.json beside the journal"
   assert fs.read("delivery.json", within: 1.minute) is Ok(text)
   assert text.starts_with?("{\"delivery\": \"unknown\"")
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run

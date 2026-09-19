@@ -130,3 +130,6 @@ fn serve_run(run: Fs, net: Net, clock: Clock, random: Random, double: Bool,
   end
   Ok(settings.lease_ms)
 end
+
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run

@@ -1,0 +1,3 @@
+hostile: links, hardlink, fifo, setuid walk: ok
+hostile: lexical escapes and exact_edit leave bytes unchanged: ok
+hostile: all ok

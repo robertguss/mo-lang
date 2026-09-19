@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/workspace/examples/programs/workspace-server/hostile.py", line 107, in <module>
+    main()
+  File "/workspace/examples/programs/workspace-server/hostile.py", line 64, in main
+    refused(b, 'write_file', {'path': '../outside', 'text': 'x'}, 'invalid_path', 'lexw')
+  File "/workspace/examples/programs/workspace-server/hostile.py", line 40, in refused
+    assert (status, r['state'], r['execution'], r['error'], r['result']) == (
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('write_file', {'path': '../outside', 'text': 'x'}, {'version': 'mo-workspace-http-v1', 'run_id': 'run-1', 'workspace_id': 'b606ebb1e8bbf96f78cbd2f95d686c8b', 'call_id': 'lexw', 'accepted': True, 'state': 'refusal', 'execution': 'completed', 'error': 'unsupported_entry', 'result': None})

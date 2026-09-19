@@ -1,0 +1,9 @@
+pass  test "a head, then a body with no newline after it, is whole only when the stream ends"
+pass  test "a body ending in its own newline is whole at once; more bytes than its length are refused"
+pass  test "a head past 16,384 bytes is too large, and a stream that ends mid-head is malformed"
+pass  test "the gate lets four in, and compares the token in constant time": 200 simulated runs
+pass  test "a wait past its deadline is 504 with execution unknown; an owner lost is 200 owner_unknown"
+invariant "no more connections are inside than the limit" in Gate: kept, and no seed's message tripped it in a test rejects
+5 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults
+verified: types, contracts, tests (5), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run

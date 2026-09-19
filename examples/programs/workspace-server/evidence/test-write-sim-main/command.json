@@ -1,0 +1,15 @@
+{
+ "argv": [
+  "python3",
+  "toolchain/bench/step36/guard.py",
+  "900",
+  "--",
+  "toolchain/zig-out/bin/mo",
+  "test",
+  "--write",
+  "--sim",
+  "200",
+  "examples/programs/workspace-server/main.mo"
+ ],
+ "cwd": "repository root"
+}

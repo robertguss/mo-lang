@@ -1,0 +1,12 @@
+{
+ "argv": [
+  "python3",
+  "toolchain/bench/step36/guard.py",
+  "120",
+  "--",
+  "python3",
+  "-B",
+  "examples/programs/workspace-server/observations.py"
+ ],
+ "cwd": "repository root"
+}

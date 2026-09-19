@@ -1,0 +1,135 @@
+{
+  "python_source": 840,
+  "python_test": 0,
+  "mo_source": 1760,
+  "mo_test": 400,
+  "features_dropped": [
+    "command through Exec / the real controller (part B)",
+    "container policy and cleanup proofs on the machine (part B)",
+    "Python owner subprocess, orbctl, workspace_controller HTTP to the machine"
+  ],
+  "features_added": [
+    "four separate journal observations (admission, execution, reply produced, delivery)",
+    "operator path on its own listener and token (D2)",
+    "binding hashes for source and verifier configuration",
+    "H1\u2013H6 held in the Mo processes (one deadline, half-close is not pipelining, one process per connection, truncated not output_encoding, invalid_result, disconnect is delivery unknown)"
+  ],
+  "rows": [
+    {
+      "side": "python",
+      "name": "bridge.py",
+      "source": 312,
+      "test": 0
+    },
+    {
+      "side": "python",
+      "name": "owner.py",
+      "source": 185,
+      "test": 0
+    },
+    {
+      "side": "python",
+      "name": "protocol.py",
+      "source": 117,
+      "test": 0
+    },
+    {
+      "side": "python",
+      "name": "workspace_files.py (all five file tools)",
+      "source": 207,
+      "test": 0
+    },
+    {
+      "side": "python",
+      "name": "workspace_controller.py (file dispatch only; command/container left for part B)",
+      "source": 19,
+      "test": 0
+    },
+    {
+      "side": "mo",
+      "name": "admission.mo",
+      "source": 110,
+      "test": 64
+    },
+    {
+      "side": "mo",
+      "name": "connection.mo",
+      "source": 360,
+      "test": 39
+    },
+    {
+      "side": "mo",
+      "name": "door.mo",
+      "source": 34,
+      "test": 5
+    },
+    {
+      "side": "mo",
+      "name": "double.mo",
+      "source": 25,
+      "test": 0
+    },
+    {
+      "side": "mo",
+      "name": "envelope.mo",
+      "source": 163,
+      "test": 42
+    },
+    {
+      "side": "mo",
+      "name": "journal.mo",
+      "source": 148,
+      "test": 57
+    },
+    {
+      "side": "mo",
+      "name": "main.mo",
+      "source": 25,
+      "test": 0
+    },
+    {
+      "side": "mo",
+      "name": "operator.mo",
+      "source": 138,
+      "test": 4
+    },
+    {
+      "side": "mo",
+      "name": "schema.mo",
+      "source": 161,
+      "test": 46
+    },
+    {
+      "side": "mo",
+      "name": "server.mo",
+      "source": 115,
+      "test": 0
+    },
+    {
+      "side": "mo",
+      "name": "tools.mo",
+      "source": 224,
+      "test": 66
+    },
+    {
+      "side": "mo",
+      "name": "wire.mo",
+      "source": 119,
+      "test": 44
+    },
+    {
+      "side": "mo",
+      "name": "worker.mo",
+      "source": 138,
+      "test": 33
+    },
+    {
+      "side": "mo-harness",
+      "name": "behaviour.py",
+      "source": 52,
+      "test": 0
+    }
+  ]
+}
+python source 840 test 0
+mo source 1760 test 400

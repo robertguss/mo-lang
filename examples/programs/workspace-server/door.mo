@@ -42,3 +42,6 @@ test "the door lets main go once, whenever it is asked"
   door.send(Knock)
   assert door.ask(Wait, within: 1.minute) == Ok(true)
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (200 runs)
+          proven: not run

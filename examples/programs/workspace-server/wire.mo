@@ -194,3 +194,6 @@ test "a response carries its length and closes"
     "{}") == "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"
   assert response(409, "é").contains?("Content-Length: 2\r\n")
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

@@ -1,0 +1,16 @@
+pass  test "one call at a time: a second is busy, and after the first finishes it is admitted": 200 simulated runs, but passes only without faults
+      seed 13606914075544602286, with faults: examples/programs/workspace-server/admission.mo:126:3: assert admission.ask(Admit(call_id: "a", payload_sha256: "x", operation: "list_files"), failed
+      mo test --sim 1 --seed 13606914075544602286 runs it again
+pass  test "the refusals come in the bridge's order"
+pass  test "closed stays closed, and a lease not opened admits nothing": 200 simulated runs
+pass  test "a journal that cannot hold the intent refuses the call, and nothing is active": 200 simulated runs, but passes only without faults
+      seed 13606914075544602285, with faults: examples/programs/workspace-server/admission.mo:164:3: assert journal.ask(Bind(binding: "{}"), within: 1.minute) == Ok(true) failed; left = Ok(false), right = Ok(true)
+      mo test --sim 1 --seed 13606914075544602285 runs it again
+pass  test "waits: two seconds for a file, 300 for a command, never past the lease"
+pass  test "sixteen sequential calls are admitted, a seventeenth is call_limit, and a duplicate id is once": 200 simulated runs, but passes only without faults
+      seed 13606914075544602284, with faults: examples/programs/workspace-server/admission.mo:185:5: assert admission.ask(Admit(call_id: id, payload_sha256: "x", operation: "list_files"), failed
+      mo test --sim 1 --seed 13606914075544602284 runs it again
+invariant "no more than 16 calls are ever admitted" in Admission: kept, and no seed's message tripped it in a test rejects
+6 passed, 0 failed, 0 skipped; 4 tests under 200 seeds with 5% faults: 1 held under faults, 3 passed only without faults
+verified: types, contracts, tests (6), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run

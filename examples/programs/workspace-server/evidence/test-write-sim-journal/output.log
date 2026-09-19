@@ -1,0 +1,14 @@
+pass  test "the binding is the first row, and each record rewrites the whole journal": 200 simulated runs, but passes only without faults
+      seed 11916547486195178408, with faults: examples/programs/workspace-server/journal.mo:187:3: assert journal.ask(Replied(call_id: "c1", reply: "{\"status\": 504}"), failed; left = Ok(false), right = Ok(true)
+      mo test --sim 1 --seed 11916547486195178408 runs it again
+pass  test "an intent the journal could not hold with its largest reply is refused, and a repeat too": 200 simulated runs, but passes only without faults
+      seed 11916547486195178409, with faults: examples/programs/workspace-server/journal.mo:206:3: assert small.ask(Bind(binding: bound()), within: 1.minute) == Ok(true) failed; left = Ok(false), right = Ok(true)
+      mo test --sim 1 --seed 11916547486195178409 runs it again
+pass  test "an execution with no intent before it is refused"
+pass  test "a delivery that is not known leaves delivery.json beside the journal": 200 simulated runs, but passes only without faults
+      seed 11916547486195178408, with faults: examples/programs/workspace-server/journal.mo:233:3: assert journal.ask(Froze(frozen: "{\"sha256\": \"x\"}"), within: 1.minute) == Ok(true) failed; left = Ok(false), right = Ok(true)
+      mo test --sim 1 --seed 11916547486195178408 runs it again
+invariant "every execution recorded follows its call's intent, and no call executes twice" in Journal: kept, and no seed's message tripped it in a test rejects
+4 passed, 0 failed, 0 skipped; 3 tests under 200 seeds with 5% faults: 0 held under faults, 3 passed only without faults
+verified: types, contracts, tests (4), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run

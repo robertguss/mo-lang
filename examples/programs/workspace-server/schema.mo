@@ -238,3 +238,6 @@ test "a command's timeout is an integer of 500 to 120,000"
     (call(command.replace("T", p.0), "run-1", ws()) != Error(malformed())) == p.1
   end)
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

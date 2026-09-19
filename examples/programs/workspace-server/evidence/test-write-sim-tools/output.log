@@ -1,0 +1,9 @@
+pass  test "paths are lexical: escapes and odd components are invalid_path"
+pass  test "the five tools on a small tree"
+pass  test "exact_edit changes nothing unless exactly one non-empty match"
+pass  test "a file past 64 KiB is oversized, even for a write elsewhere in its tree, and a reply past the controller's cap is refused whole"
+pass  test "search stops at 200 hits and says so; a listing is cut by its bytes"
+pass  test "a call past its deadline is a timeout of unknown execution"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

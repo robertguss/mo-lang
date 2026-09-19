@@ -1,0 +1,57 @@
+{
+  "version": "mo-workspace-server-journal-v1",
+  "binding": {
+    "run_id": "run-1",
+    "workspace_id": "12d96df59dc63c5040529fbaf60754a6",
+    "source_sha256": "d3bb3c610bcb95fcbe21a05e00897de7ca56fe386cb41bcdc79a36a91a6ac0e8",
+    "observed_sha256": "d3bb3c610bcb95fcbe21a05e00897de7ca56fe386cb41bcdc79a36a91a6ac0e8",
+    "verifier_sha256": "b0da7ecc96bfdf0b0bc61e7479a7c738cb472aeddbbf5cfff39275633b7ceb9d"
+  },
+  "calls": {
+    "obs-1": {
+      "core_call_id": "8cb35414bf4f35a87c2be5e6d20f4731",
+      "payload_sha256": "ea96a24bb0b7b85aff804ef0024f3175342217b507734bc109c0a3b060efd11f",
+      "operation": "read_file",
+      "admission": "admitted",
+      "intent": true,
+      "execution": "completed",
+      "result": {
+        "version": "mo-workspace-http-v1",
+        "run_id": "run-1",
+        "workspace_id": "12d96df59dc63c5040529fbaf60754a6",
+        "call_id": "obs-1",
+        "accepted": true,
+        "state": "success",
+        "execution": "completed",
+        "error": null,
+        "result": {
+          "text": "aaa\n",
+          "truncated": false
+        }
+      },
+      "reply": {
+        "status": 200,
+        "state": "success",
+        "execution": "completed",
+        "error": ""
+      },
+      "delivery": {
+        "known": true,
+        "written": true,
+        "peer_ended_during_call": false
+      }
+    }
+  },
+  "cleanup": {
+    "cleanup": "confirmed",
+    "execution": "unknown",
+    "method": "admission closed, no call in flight"
+  },
+  "frozen": null
+}
+OBSERVATION admission admitted intent True
+OBSERVATION execution completed result {'version': 'mo-workspace-http-v1', 'run_id': 'run-1', 'workspace_id': '12d96df59dc63c5040529fbaf60754a6', 'call_id': 'obs-1', 'accepted': True, 'state': 'success', 'execution': 'completed', 'error': None, 'result': {'text': 'aaa\n', 'truncated': False}}
+OBSERVATION reply_produced {'status': 200, 'state': 'success', 'execution': 'completed', 'error': ''}
+OBSERVATION delivery {'known': True, 'written': True, 'peer_ended_during_call': False}
+OBSERVATION cleanup {'cleanup': 'confirmed', 'execution': 'unknown', 'method': 'admission closed, no call in flight'}
+OBSERVATION binding {'run_id': 'run-1', 'workspace_id': '12d96df59dc63c5040529fbaf60754a6', 'source_sha256': 'd3bb3c610bcb95fcbe21a05e00897de7ca56fe386cb41bcdc79a36a91a6ac0e8', 'observed_sha256': 'd3bb3c610bcb95fcbe21a05e00897de7ca56fe386cb41bcdc79a36a91a6ac0e8', 'verifier_sha256': 'b0da7ecc96bfdf0b0bc61e7479a7c738cb472aeddbbf5cfff39275633b7ceb9d'}

@@ -333,3 +333,6 @@ test "a call past its deadline is a timeout of unknown execution"
   got = run(slow, a_call("read_file", Map.new().set("path", "a")), Deadline.fixture(10.ms))
   assert got == timed_out()
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

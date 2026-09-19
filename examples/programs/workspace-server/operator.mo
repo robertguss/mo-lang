@@ -166,3 +166,6 @@ test "an operator line is its token, a space, and its command"
   assert command_of("abc status") == ("abc", "status")
   assert command_of("abc") == ("abc", "")
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
