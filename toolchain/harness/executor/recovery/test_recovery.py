@@ -195,7 +195,7 @@ class Machine(unittest.TestCase):
         root = self.c.root_for(self.ws.workspace_id)
         root.mkdir()
         state = {'workspace_id':self.ws.workspace_id, 'run_id':self.ws.run_id,
-                 'phase':'ready', 'active':{'execution_id':eid,'started':True,'readonly':False}}
+                 'phase':'ready', 'active':{'execution_id':eid,'call_id':call,'started':True,'readonly':False}}
         self.c.state_write(root,state)
         eroot = self.m.EXECUTION_BASE / ('mo-executor-'+eid)
         eroot.mkdir()

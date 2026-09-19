@@ -238,6 +238,11 @@ def _create(request, root):
     BASE.mkdir(mode=0o755, exist_ok=True)
     if (BASE / ('.retired-' + request['workspace_id'])).exists():
         raise files.Refusal('retired_workspace')
+    # Exact machine ownership precedes root creation, covering an interrupted
+    # mkdir/state-write interval without adopting unjournaled directories.
+    with (BASE / ('.owner-' + request['workspace_id'])).open('x') as out:
+        json.dump({'workspace_id': request['workspace_id'], 'run_id': request['run_id'],
+                   'selection': selected}, out)
     root.mkdir(mode=0o700)
     state = {'workspace_id': request['workspace_id'], 'run_id': request['run_id'],
              'phase': 'creating', 'active': None}
@@ -302,6 +307,8 @@ def handle(request):
                 response['execution'] = 'unknown'
                 try:
                     response['result'] = dispatch(root, state, request['operation'], request['args'], deadline)
+                    if request['operation'] == 'reserve':
+                        state['active']['call_id'] = request['call_id']
                 finally:
                     state_write(root, state)
         response.update(state='success', execution='completed')
@@ -337,6 +344,7 @@ def handle(request):
     if response['state'] == 'success' and request['operation'] == 'delete':
         # Trusted tombstone prevents identity replay after owned directories go.
         with (BASE / ('.retired-' + request['workspace_id'])).open('x') as out:
-            json.dump(response, out)
+            json.dump({**response, 'selection': state.get('selection', {}),
+                       'completed_executions': state.get('completed_executions', {})}, out)
         shutil.rmtree(root)
     return response

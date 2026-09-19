@@ -52,6 +52,10 @@ print(json.dumps(result))
 ''', data=json.dumps(receipts).encode()))
 
 
+def state_identity(ws):
+    return json.loads(py("import hashlib,json,pathlib,sys; root=pathlib.Path('/var/lib/mo-harness/mo-workspace-'+sys.argv[1]); print(json.dumps({'state_sha256':hashlib.sha256((root/'state.json').read_bytes()).hexdigest(),'terminal':pathlib.Path('/var/lib/mo-harness/.recovery-'+sys.argv[1]).exists()}))",ws.workspace_id))
+
+
 def main(output, selected):
     output.mkdir(parents=True, exist_ok=False)
     (output / 'selected.json').write_text(json.dumps({'fixed': GROUPS, 'selected': selected}))
@@ -98,6 +102,22 @@ def main(output, selected):
                        'operation':'create','args':{'files':[]},'deadline':time.time()+15}
             result = send_request(request)
             require(result['state'] != 'success', result)
+            import workspace
+            original = workspace.remote
+            for suffix, needle in [('before-root', '    root.mkdir(mode=0o700)'),
+                                   ('before-state', "    state_write(root, state)\n    with lock(root, request['deadline']):")]:
+                partial = new(name+'-'+suffix, create=False)
+                def interrupted(args, data=None, **kwargs):
+                    payload=json.loads(data)
+                    source=payload['sources']['workspace_controller']
+                    require(needle in source, 'missing injection point')
+                    payload['sources']['workspace_controller']=source.replace(needle,"    raise RuntimeError('test partial create')\n"+needle,1)
+                    return original(args,data=json.dumps(payload).encode(),**kwargs)
+                with patch.object(workspace,'remote',side_effect=interrupted):
+                    try: partial.create({'a':b'x'})
+                    except (RuntimeError,ValueError): pass
+                    else: raise AssertionError('create interruption not injected')
+                cleanup(partial)
         elif name == 'create-response':
             ws = new(name, create=False)
             import workspace
@@ -139,6 +159,20 @@ def main(output, selected):
                 except RuntimeError: pass
                 else: raise AssertionError('injection failed')
             cleanup(ws)
+            for suffix in ('before-transport','partial-root'):
+                partial = new(name+'-'+suffix)
+                partial_run=partial._prepare_command('echo NEVER')
+                partial.ownership['executions'][-1]['dispatch_requested']=True
+                persist(partial)
+                if suffix == 'partial-root':
+                    def partial_bootstrap(source,*args,**kwargs):
+                        source=source.replace(" (root/'remote.py').write_text(p['source'])", " raise RuntimeError('test after root mkdir')\n (root/'remote.py').write_text(p['source'])")
+                        return original(source,*args,**kwargs)
+                    with patch.object(adapter,'py',side_effect=partial_bootstrap):
+                        try: partial_run.start()
+                        except RuntimeError: pass
+                        else: raise AssertionError('bootstrap interruption not injected')
+                cleanup(partial)
         elif name == 'active-owner-death':
             # Child owns the Python object and is killed after actual registration.
             directory = output / name
@@ -193,16 +227,37 @@ def main(output, selected):
             ws.command('true')
             cleanup(ws)
             cleanup(ws)
+            healthy = new(name+'-healthy-delete')
+            healthy.command('true')
+            healthy.delete()
+            cleanup(healthy)
+            cleanup(healthy)
         elif name == 'foreign-identity':
             ws = new(name)
             path = ws.directory / 'ownership.json'
             original = path.read_bytes()
             ws.__del__()
+            before = state_identity(ws)
             bad = dict(ws.ownership, run_id=uuid.uuid4().hex)
             path.write_text(json.dumps(bad))
             require(recover(path)['cleanup'] == 'unresolved')
+            require(state_identity(ws) == before, 'foreign refusal changed target state/terminal')
+            require(not before['terminal'], before)
             path.write_bytes(original)
             cleanup(ws)
+            omitted = new(name+'-omitted-completed')
+            omitted.command('true')
+            omitted.__del__()
+            path=omitted.directory/'ownership.json'
+            original=path.read_bytes()
+            before=state_identity(omitted)
+            bad=dict(omitted.ownership,executions=[])
+            path.write_text(json.dumps(bad))
+            result=recover(path)
+            require(result['cleanup']=='unresolved' and not result['completed'],result)
+            require(state_identity(omitted)==before and not before['terminal'],before)
+            path.write_bytes(original)
+            cleanup(omitted)
         elif name == 'malformed-linked':
             ws = new(name)
             path = ws.directory / 'ownership.json'
@@ -268,6 +323,7 @@ def main(output, selected):
             ws.__del__()
             cleanup_results.append(recover(ws.directory / 'ownership.json'))
         (output / 'cleanup.json').write_text(json.dumps(cleanup_results, indent=2))
+        require(all(r['cleanup'] == 'confirmed' and r['execution'] == 'unknown' for r in cleanup_results), cleanup_results)
         receipts = [w.ownership for w in workspaces]
         if (output / 'dead-owner-receipt.json').exists():
             receipts.append(json.loads((output / 'dead-owner-receipt.json').read_text()))

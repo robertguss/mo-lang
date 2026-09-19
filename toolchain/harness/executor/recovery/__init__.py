@@ -147,6 +147,33 @@ def intent(ws, run, call_id, readonly):
     persist(ws)
 
 
+def validate_response(raw, receipt):
+    if not isinstance(raw, bytes) or len(raw) > MAX_RECORD:
+        raise ValueError('recovery response bound')
+    response = json.loads(raw)
+    required = {'run_id', 'workspace_id', 'cleanup', 'execution', 'completed', 'unresolved'}
+    if not isinstance(response, dict) or not required <= set(response) <= required | {'error'}:
+        raise ValueError('recovery response schema')
+    if any(response[k] != receipt[k] for k in ('run_id', 'workspace_id')):
+        raise ValueError('recovery response identity')
+    if response['cleanup'] not in ('confirmed', 'unresolved') or response['execution'] != 'unknown':
+        raise ValueError('recovery response status')
+    ids = [row['execution_id'] for row in receipt['executions']]
+    done, remaining = response['completed'], response['unresolved']
+    if not isinstance(done, list) or not isinstance(remaining, list):
+        raise ValueError('recovery response phases')
+    if response['cleanup'] == 'confirmed':
+        if done != ['terminal_barrier', *ids, 'workspace_deleted'] or remaining or 'error' in response:
+            raise ValueError('contradictory cleanup confirmation')
+    else:
+        if response.get('error') != 'cleanup_unknown':
+            raise ValueError('recovery response error')
+        count = len(done) - 1 if done else 0
+        if count < 0 or count > len(ids) or (done and done != ['terminal_barrier', *ids[:count]]) or remaining != ids[count:]:
+            raise ValueError('recovery response phases')
+    return response
+
+
 def recover(receipt_path, *, seconds=60):
     """Retire and clean exact recorded ownership. Never start/resume execution."""
     if type(seconds) not in (int, float) or not math.isfinite(seconds) or not .5 <= seconds <= 1800:
@@ -179,9 +206,7 @@ print(json.dumps(sys.modules['recovery_machine'].recover(p['receipt'],p['seconds
             raw = adapter.remote(['python3', '-c', bootstrap],
                                  data=json.dumps({'sources': sources, 'receipt': receipt, 'seconds': remaining}).encode(),
                                  timeout=remaining)
-            response = json.loads(raw)
-            if any(response.get(k) != receipt[k] for k in ('run_id', 'workspace_id')):
-                raise ValueError('recovery response identity')
+            response = validate_response(raw, receipt)
             result.update(response)
     except Exception as exc:
         result['error'] = 'ownership_busy' if isinstance(exc, TimeoutError) and not acquired else 'recovery_unknown'

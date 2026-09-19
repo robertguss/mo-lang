@@ -41,6 +41,13 @@ record bounds, symlinks, hard links, nonprivate directories, and conflicting
 local or remote binding are refused. Records are limited to 1 MiB. Identity
 records are atomically replaced, with no fsync or crash-durability claim.
 
+An exact `.owner-<workspace_id>` machine record precedes root creation; it covers
+owner loss before the initial workspace state write. Ordinary delete retains
+completed proofs in its retired record. Reserved, not-started authority plus
+the terminal barrier and fresh runtime absence covers loss before bootstrap
+transport or manifest creation. Completed IDs omitted from a receipt are a
+conflict and fail before cleanup effects.
+
 The trusted machine terminal `.recovery-<workspace_id>` lives outside the
 workspace root and survives storage deletion. Registration locking serializes
 create, bootstrap, and recovery; bootstrap checks the barrier *before* creating
@@ -91,6 +98,12 @@ selections before output creation or machine activity. Fault injection is
 confined to these tests and their exact resources; production has no fault flag.
 The actual process-death group kills a known child after candidate registration;
 other phase controls explicitly abandon their test object before cleanup.
+The live `malformed-linked` group tests a receipt symlink; local tests additionally
+cover hard links, nonprivate directories, invalid schemas/bounds, proof flags,
+and malformed matching-ID transport responses. Foreign refusal checks the
+unchanged target-state hash and absence of a terminal before restoring its
+operator receipt. Final cleanup statuses, actual group absence, and the total
+16 MiB attempt ceiling are asserted, not inferred from command exit.
 
 The regression runner invokes unchanged workspace22, executor17, lifecycle1,
 and application23 control bodies. Its only application test adaptation redirects
