@@ -1,0 +1,195 @@
+test
++- run test w
+---- mo run, exit 0
+read a.txt: ok safe
+read hard: ok safe
+read out_link: missing out_link
+read in_link: missing in_link
+read dirlink/a.txt: missing dirlink/a.txt
+read dirout_link/x.txt: missing dirout_link/x.txt
+read_lines in_link: missing in_link
+read_bytes in_link: missing in_link
+size in_link: missing in_link
+fold_lines in_link: missing in_link
+scoped dirout_link: missing x.txt
+scoped dirlink: missing a.txt
+scoped dirlink, listed: unlisted
+operator's link: ok safe
+operator's link, then in_link: missing in_link
+device: missing null
+list: a.txt, dirlink, dirout_link, fifo, hard, in_link, out_link, sub
+list_kinds: a.txt file, dirlink link, dirout_link link, fifo file, hard file, in_link link, out_link link, sub folder
+write out_link: missing out_link
+write in_link: missing in_link
+append in_link: missing in_link
+write dirlink/new.txt: missing dirlink/new.txt
+mkdir dirlink: missing dirlink
+mkdir dirlink/made: missing dirlink/made
+remove in_link: missing in_link
+rename in_link to moved: missing in_link
+rename sub/b.txt to in_link: missing in_link
+rename sub/b.txt to dirlink/b.txt: missing dirlink/b.txt
+read a.txt after: ok safe
+write fifo: missing fifo
+read fifo: missing fifo
+size fifo: missing fifo
+---- binary, exit 0
+read a.txt: ok safe
+read hard: ok safe
+read out_link: missing out_link
+read in_link: missing in_link
+read dirlink/a.txt: missing dirlink/a.txt
+read dirout_link/x.txt: missing dirout_link/x.txt
+read_lines in_link: missing in_link
+read_bytes in_link: missing in_link
+size in_link: missing in_link
+fold_lines in_link: missing in_link
+scoped dirout_link: missing x.txt
+scoped dirlink: missing a.txt
+scoped dirlink, listed: unlisted
+operator's link: ok safe
+operator's link, then in_link: missing in_link
+device: missing null
+list: a.txt, dirlink, dirout_link, fifo, hard, in_link, out_link, sub
+list_kinds: a.txt file, dirlink link, dirout_link link, fifo file, hard file, in_link link, out_link link, sub folder
+write out_link: missing out_link
+write in_link: missing in_link
+append in_link: missing in_link
+write dirlink/new.txt: missing dirlink/new.txt
+mkdir dirlink: missing dirlink
+mkdir dirlink/made: missing dirlink/made
+remove in_link: missing in_link
+rename in_link to moved: missing in_link
+rename sub/b.txt to in_link: missing in_link
+rename sub/b.txt to dirlink/b.txt: missing dirlink/b.txt
+read a.txt after: ok safe
+write fifo: missing fifo
+read fifo: missing fifo
+size fifo: missing fifo
+---- mo run, exit 0
+a.txt: a.txt file, setuid false
+a.txt links: 2
+suid: suid file, setuid true
+suid links: 1
+in_link: in_link link, setuid false
+out_link: out_link link, setuid false
+sub: sub folder, setuid false
+sub/b.txt: sub/b.txt file, setuid false
+dirlink/a.txt: missing dirlink/a.txt
+../outside.txt: missing ../outside.txt
+nothing: missing nothing
+fifo: fifo file, setuid false
+---- binary, exit 0
+a.txt: a.txt file, setuid false
+a.txt links: 2
+suid: suid file, setuid true
+suid links: 1
+in_link: in_link link, setuid false
+out_link: out_link link, setuid false
+sub: sub folder, setuid false
+sub/b.txt: sub/b.txt file, setuid false
+dirlink/a.txt: missing dirlink/a.txt
+../outside.txt: missing ../outside.txt
+nothing: missing nothing
+fifo: fifo file, setuid false
+---- mo test, exit 0
+pass  test "a fixture's file and folder are what kind_of says, one link each and never setuid"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "a fixture's file and folder are what kind_of says, one link each and never setuid"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- mo run, exit 0
+replace t.txt: ok
+read t.txt: ok new
+replace fresh.txt: ok
+replace sub/b.txt: ok
+replace in_link: missing in_link
+replace out_link: missing out_link
+replace dirlink/t.txt: missing dirlink/t.txt
+replace nofolder/t.txt: missing nofolder/t.txt
+replace sub: missing sub
+replace fifo: missing fifo
+replace ../outside.txt: missing ../outside.txt
+replace a 255-byte name: ok
+read it: ok long
+remove it: ok
+list: a.txt, dirlink, dirout_link, fifo, fresh.txt, hard, in_link, out_link, sub, t.txt
+list sub: b.txt
+---- binary, exit 0
+replace t.txt: ok
+read t.txt: ok new
+replace fresh.txt: ok
+replace sub/b.txt: ok
+replace in_link: missing in_link
+replace out_link: missing out_link
+replace dirlink/t.txt: missing dirlink/t.txt
+replace nofolder/t.txt: missing nofolder/t.txt
+replace sub: missing sub
+replace fifo: missing fifo
+replace ../outside.txt: missing ../outside.txt
+replace a 255-byte name: ok
+read it: ok long
+remove it: ok
+list: a.txt, dirlink, dirout_link, fifo, fresh.txt, hard, in_link, out_link, sub, t.txt
+list sub: b.txt
+---- mo test, exit 0
+pass  test "on a fixture, replace is write"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "on a fixture, replace is write"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-reportcap/toolchain/zig-out/bin/mo: 1000 replaced
+643 reads, 0 partial, 0 not there, exit .{ .exited = 0 }
+---- ./zig-out/mo-build/flip/flip: 1000 replaced
+1078 reads, 0 partial, 0 not there, exit .{ .exited = 0 }
+8000000: guard: killed 42699 (rss 61 MB, 1 s)
+
+8000000: guard: killed 42731 (rss 61 MB, 2 s)
+
+8000000: guard: killed 42744 (rss 61 MB, 2 s)
+
+8000000: guard: killed 42762 (rss 61 MB, 2 s)
+
+8000000: guard: killed 42886 (rss 61 MB, 3 s)
+
+8000000: guard: killed 43201 (rss 61 MB, 3 s)
+
+8000000: guard: killed 43449 (rss 61 MB, 3 s)
+
+8000000: guard: killed 43466 (rss 61 MB, 3 s)
+
+---- /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-reportcap/toolchain/zig-out/bin/mo: 8 of 8 rounds killed, 8 temporary files left, 8 of them whole (killed between write and rename); the target whole every time
+8000000: guard: killed 43485 (rss 28 MB, 1 s)
+
+8000000: guard: killed 43495 (rss 28 MB, 2 s)
+
+8000000: guard: killed 43518 (rss 28 MB, 2 s)
+
+8000000: guard: killed 43652 (rss 28 MB, 2 s)
+
+8000000: guard: killed 43712 (rss 28 MB, 3 s)
+
+8000000: guard: killed 43761 (rss 28 MB, 3 s)
+
+8000000: guard: killed 43780 (rss 28 MB, 3 s)
+
+8000000: guard: killed 43802 (rss 28 MB, 3 s)
+
+---- ./zig-out/mo-build/flip/flip: 8 of 8 rounds killed, 6 temporary files left, 6 of them whole (killed between write and rename); the target whole every time
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-reportcap/toolchain/zig-out/bin/mo ./.zig-cache/o/1c01a24d258a6776e679034c93017f1a/test --cache-dir=./.zig-cache --seed=0x3289d3cf --listen=-
+
+Build Summary: 5/5 steps succeeded; 263/263 tests passed
+test success
++- run test 263 pass (263 total) 19m MaxRSS:463M
+   +- compile test Debug native success 19s MaxRSS:1G
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 98ms MaxRSS:35M
+

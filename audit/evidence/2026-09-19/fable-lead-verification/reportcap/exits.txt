@@ -1,0 +1,3 @@
+deadline exit 0
+full-exit 0
+inventory exit 0

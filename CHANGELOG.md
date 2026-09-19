@@ -2,6 +2,17 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## The agent's report cap lifted; a late command's reply is no longer lost — 19 Sep 2026, 3:06 PM ET
+
+- `report_cap()` was 256 KiB because of a runtime defect that is fixed; it is
+  now derived from the profile (23,068,672 bytes), a defence no correct run
+  meets. Reports up to the largest a run can make render whole and identical in
+  both runtimes.
+- End to end v1's defect D1: a clamped command now leaves a 5 s collection
+  margin, so its reply arrives and its execution is known. Seen on the machine.
+- A Claude Opus 5 worker. Lead: Darwin full suite 263 of 263; the machine's
+  outer-deadline run green with a clean inventory.
+
 ## The Mo agent runs end to end on the machine — 19 Sep 2026, 2:20 PM ET
 
 - For the first time the Mo agent (`mo run` and a `mo build` binary) drove the

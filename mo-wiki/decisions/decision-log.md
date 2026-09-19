@@ -916,6 +916,14 @@ direction separately from the lead's conservative execution interpretation.
 | The TypeSafe claim check is accepted as a calibration and merged at `tools/claim-check/`: 73 requests, $0.0033, 0.175 s median. It caught 5 of 5 planted failures (4 by code, 1 by Jev) and 2 of 6 historical defects (both by code); Jev wrongly flagged 1 of 34 true claims. **Acceptance does not depend on it**: the lead may run it as a first pass on a report, and still runs every suite itself. On this evidence the model adds little over the code checks; that may change with false claims code cannot settle, which the history barely contains. | Fable lead | decided | the next report it is run on |
 | From now on every brief's Done-when asks the worker to tee each run its report quotes into a filed log with an exit file beside it (ten of the twelve true claims the tool flagged were runs with no raw output in the repository). The lead skill's step 1 carries the rule. | Fable lead | decided | the next brief |
 
+## 19 Sep 2026 — The report cap and the collection margin accepted, 3:06 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accepted: the agent's report cap is the profile's own bound (23,068,672 bytes), and a clamped command leaves a 5 s collection margin (D1). The lead saw the margin hold on the machine: the last command of a 881 s run was received with execution known. Darwin full suite 263 of 263. `semantic` | Fable lead | accepted | the first model-driven task |
+| Ratified defaults of the worker (Claude Opus 5): the model reply bound is the runtime's 1 MiB HTTP body limit, named `model_reply_cap()`; the margin is 5 s, about 3.5 times the largest measured need, and appears on the profile line as `candidate_margin_ms`. | Fable lead | decided | that brief's tests |
+| `examples/programs/agent/tests/application-workspace-v1/real_bridge.py` has failed 2 of 3 cases since harness steps 1 and 2 changed the executor's test double; nobody reran it. It is fixed or retired with the Mo six-tool server's behaviour tests, which replace that double. | Fable lead | recorded | the six-tool server's brief |
+
 ## Related
 
 - [[session-05]]
