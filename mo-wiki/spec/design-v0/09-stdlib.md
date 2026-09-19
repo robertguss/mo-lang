@@ -479,3 +479,47 @@ Nothing else until a program asks: no SHA-3, no ECDSA, no RSA, no scrypt or bcry
 | `Random` (on type) | `fixture` | | `Random` | a stream from the run's seed (ChaCha20 keyed by SHA-256 of the seed), so a test that draws a key draws the same bytes every run, under `mo test`, `--sim`, and in a test binary; each fixture starts at the stream's beginning, and each draw goes on along it; tests only |
 
 Step 35.
+
+## Exec
+
+A child process narrowed to fixed commands (step 41; the design is [[mo-capabilities-for-the-harness]], section 3). A child has none of Mo's checked authority, so no handle that can run *anything* exists below `main`: `platform.exec` makes a `Program`, one absolute path; a `Program` makes a `Command`, a fixed argument list; and only a `Command` runs or travels. A process handed a `Command` that removes containers can remove containers and do nothing else. No shell, no `PATH`, no interpolation: a `Hole` is one whole argument, byte for byte, so no row builds a command from text.
+
+```ruby
+fn main(platform: Platform)
+  docker = platform.exec.program("/usr/bin/docker")
+  remove = docker.command([Fixed(text: "rm"), Fixed(text: "-f"), Hole])
+  Executor.start(remove, platform.fs.scoped("runs"))
+end
+
+# far from main, holding only `remove`:
+case remove.run([name], within: 10.seconds)
+  Ok(done): done.exit        # Exited(code: 0), Signalled(signal: 9)
+  Error(Timeout): ...        # the group was killed and the child reaped
+  Error(_): ...
+end
+```
+
+| receiver | name | parameters | returns | |
+|---|---|---|---|---|
+| `Platform` | `exec` | | `Exec` | `main` only, like every part of the platform |
+| `Exec` | `program` | `path: String` | `Program` | an absolute path; no `PATH` search, ever. A relative path, or one holding a NUL, crashes when the `Program` is made: the caller broke a rule |
+| `Program` | `command` | `List(Arg)` | `Command` | a fixed argument list; `Arg` is an ordinary enum, `Fixed(text: String)` or `Hole`, built by its named field as every variant is. A `Fixed` text holding a NUL crashes |
+| `Command` | `env` | `Map(String, String)` | `Command` | the child's whole environment, in the map's order; the default is empty, never the parent's. A name that is empty or holds `=` or a NUL, or a value holding a NUL, makes every run `Refused` |
+| `Command` | `in_folder` | `Fs` | `Command` | the child works in this scope's folder, reached as `list` reaches it (step 40): a scope that climbed out, a folder not there, or a link on the way from the folder `platform.fs.scoped` named makes every run `Failed`. The default is a new empty folder private to the owner (0700) under `TMPDIR` or `/tmp`, removed with what the child left in it after the run. The folder is where the child starts, not a fence: what the child reaches is the operating system's to limit |
+| `Command` | `output` | `UInt64` | `Command` | bytes kept of stdout and of stderr each; default 65,536, at most 16 MiB (a larger bound crashes) |
+| `Command` | `run` | `List(String)`, `stdin: String` (optional) | `Result(Done, ExecError)` | fills the holes in order, the program's path as `argv[0]`; `stdin` is written to the child and then closed (without it, the child's stdin is closed at once). Waits, so it takes `within:` |
+| `Exec` (on type) | `fixture` | `fn(List(String), String) Done` | `Exec` | tests only: the function answers every run of the commands made from it, given the argument list the child would get (the program's path first, the holes filled) and the stdin. It refuses what the real one refuses. Under `mo test --sim` a run is scheduled as any wait and fails with `Timeout` or `Failed` at the run's fault rate |
+
+`Done` is `exit: Exit` (`Exited(code: UInt8)` or `Signalled(signal: UInt8)`), `stdout` and `stderr` as `List(UInt8)`, `truncated: Bool` (either stream went past the bound; the bytes past it are dropped), and `took: Duration`. `ExecError` is `Missing` (no program at the path, or a folder on the way is not one), `Refused` (a wrong number of values for the holes, a value holding a NUL, or an environment `env` refused), `Timeout`, or `Failed(why: String)` (anything else that kept the program from starting: not executable, a folder, not a program the system runs, no working folder; `why` says which in a few words).
+
+The rules that make it safe to hold:
+
+- **Exec and Program stay in main** (`MO0407`, as a `Platform` does): no function, process, supervisor, or message line takes one; a name of one is only ever read through a dot, so it is never passed, bound to another name, put in a list, sent, returned, or interpolated; one made on the spot may be given a name. A struct field, a return type, and a capture refuse them as they refuse every capability (`MO0403`, `MO0409`). A `Command` travels like an `Fs`: a parameter, a process's start argument, a message's field, never a value's field or a capture. `flows(T, into: Command)` refuses a `T` that reaches a run, a list written at the call included.
+- **The deadline is kept by killing.** The child starts a session of its own, so it leads its own process group and has no controlling terminal. At the deadline the whole group gets `SIGKILL`, the child is reaped, and only then is the answer `Timeout`. When the child exits, whatever is left of its group is killed before the child is reaped, so nothing it started outlives the run. A process that left the group (its own `setsid`) is the operating system's to contain (a cgroup, a container): Mo does not pretend otherwise.
+- **Output is drained as the child runs and bounded**, and the bound is reported (`truncated`), never silent; a child writing more than a pipe holds never blocks on it.
+- **The child inherits nothing:** no environment, no descriptor but its three pipes on 0, 1 and 2, every signal at its default and none blocked, no terminal.
+- **A run holds no scheduler.** It waits on a thread of its own, as a file write waits on the blocking pool, and under processes the update waits holding no scheduler, so every other process goes on.
+
+Not in this version: streaming output, a child that outlives the run, signals other than the deadline's kill, a pseudo-terminal, pipes between children. Each `env`, `in_folder`, and `output` call makes a new `Command` the run keeps, as each `scoped` makes a new `Fs`, so a program makes its commands in `main`, not in a loop.
+
+Step 41. Two spellings differ from the design page: `in_folder` for the design's `in`, which is a keyword (`for x in xs`) and cannot follow a `.`; and `Fixed(text: "rm")` for `Fixed("rm")`, since a variant is built by naming its fields.

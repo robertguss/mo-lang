@@ -1,0 +1,10 @@
+runtime	row	runs	best_process_ms	per_run_us	load_1m_min	load_1m_max
+mo run	none	0	33.4	0.0	25.06	25.06
+mo run	true	300	28092.9	93531.5	10.03	20.51
+mo run	mib	30	3089.9	101881.0	8.29	9.14
+binary	none	0	33.8	0.0	25.06	25.06
+binary	true	300	28810.2	95921.2	8.60	23.79
+binary	mib	30	2928.0	96472.2	8.29	8.97
+C posix_spawn	none	0	32.9	0.0	25.06	25.06
+C posix_spawn	true	300	340.5	1025.5	8.60	23.79
+C posix_spawn	mib	30	74.7	1396.4	8.29	8.97
