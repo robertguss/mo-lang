@@ -1,0 +1,322 @@
+{
+  "passed": false,
+  "verifier": "mo-executor-external-checks-v1",
+  "identity_valid": true,
+  "policy_valid": true,
+  "checks": [
+    {
+      "id": "parent",
+      "expected": "parent\n",
+      "stream": "stdout",
+      "mode": "contains",
+      "passed": true
+    },
+    {
+      "id": "child",
+      "expected": "child\n",
+      "stream": "stdout",
+      "mode": "contains",
+      "passed": true
+    },
+    {
+      "id": "grandchild",
+      "expected": "grandchild\n",
+      "stream": "stdout",
+      "mode": "contains",
+      "passed": true
+    },
+    {
+      "id": "session",
+      "expected": "session\n",
+      "stream": "stdout",
+      "mode": "contains",
+      "passed": true
+    }
+  ],
+  "observation": {
+    "attach_exit_code": 137,
+    "cancelled": false,
+    "candidate_sha256": "43a397073cd55db9993f9fdd9f48c26e3b8cc6b9d780a85bbb7c51c6b311cc1b",
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-a17e4d3305f5cfd90029448de149acb8f3b9c318ff3033832bd9fca6534c83c0.scope",
+    "cleanup": {
+      "absent": true,
+      "cgroup_absent": true,
+      "removed_rc": 0,
+      "host_confirmed": true
+    },
+    "container_id": "a17e4d3305f5cfd90029448de149acb8f3b9c318ff3033832bd9fca6534c83c0",
+    "counters": {
+      "cpu.stat:burst_usec": 0,
+      "cpu.stat:nice_usec": 0,
+      "cpu.stat:nr_bursts": 0,
+      "cpu.stat:nr_periods": 3,
+      "cpu.stat:nr_throttled": 0,
+      "cpu.stat:system_usec": 2043,
+      "cpu.stat:throttled_usec": 0,
+      "cpu.stat:usage_usec": 7153,
+      "cpu.stat:user_usec": 5109,
+      "memory.events:high": 0,
+      "memory.events:low": 0,
+      "memory.events:max": 0,
+      "memory.events:oom": 0,
+      "memory.events:oom_group_kill": 0,
+      "memory.events:oom_kill": 0,
+      "memory.events:sock_throttled": 0,
+      "pids.events:max": 0
+    },
+    "effective": {
+      "AppArmorProfile": "",
+      "Args": [
+        "-c",
+        "echo parent\n/bin/sh -c 'echo child; /bin/sh -c \"echo grandchild; sleep 30\" & wait' &\nsetsid /bin/sh -c 'echo session; sleep 30' &\nwait"
+      ],
+      "Config": {
+        "AttachStderr": true,
+        "AttachStdin": false,
+        "AttachStdout": true,
+        "Cmd": [
+          "/bin/sh",
+          "-c",
+          "echo parent\n/bin/sh -c 'echo child; /bin/sh -c \"echo grandchild; sleep 30\" & wait' &\nsetsid /bin/sh -c 'echo session; sleep 30' &\nwait"
+        ],
+        "Domainname": "",
+        "Entrypoint": null,
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "Hostname": "a17e4d3305f5",
+        "Image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+        "Labels": {},
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Tty": false,
+        "User": "65534:65534",
+        "Volumes": null,
+        "WorkingDir": "/work"
+      },
+      "Created": "2026-09-19T04:32:23.923487887Z",
+      "Driver": "overlayfs",
+      "ExecIDs": null,
+      "HostConfig": {
+        "AutoRemove": false,
+        "Binds": null,
+        "BlkioDeviceReadBps": [],
+        "BlkioDeviceReadIOps": [],
+        "BlkioDeviceWriteBps": [],
+        "BlkioDeviceWriteIOps": [],
+        "BlkioWeight": 0,
+        "BlkioWeightDevice": [],
+        "CapAdd": null,
+        "CapDrop": [
+          "ALL"
+        ],
+        "Cgroup": "",
+        "CgroupParent": "mo-executor.slice",
+        "CgroupnsMode": "private",
+        "ConsoleSize": [
+          0,
+          0
+        ],
+        "ContainerIDFile": "",
+        "CpuCount": 0,
+        "CpuPercent": 0,
+        "CpuPeriod": 0,
+        "CpuQuota": 0,
+        "CpuRealtimePeriod": 0,
+        "CpuRealtimeRuntime": 0,
+        "CpuShares": 0,
+        "CpusetCpus": "",
+        "CpusetMems": "",
+        "DeviceCgroupRules": null,
+        "DeviceRequests": null,
+        "Devices": [],
+        "Dns": null,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "ExtraHosts": null,
+        "GroupAdd": null,
+        "IOMaximumBandwidth": 0,
+        "IOMaximumIOps": 0,
+        "IpcMode": "private",
+        "Isolation": "",
+        "Links": null,
+        "LogConfig": {
+          "Config": {},
+          "Type": "none"
+        },
+        "MaskedPaths": [
+          "/proc/acpi",
+          "/proc/asound",
+          "/proc/interrupts",
+          "/proc/kcore",
+          "/proc/keys",
+          "/proc/latency_stats",
+          "/proc/sched_debug",
+          "/proc/scsi",
+          "/proc/timer_list",
+          "/proc/timer_stats",
+          "/sys/devices/virtual/powercap",
+          "/sys/firmware"
+        ],
+        "Memory": 67108864,
+        "MemoryReservation": 0,
+        "MemorySwap": 67108864,
+        "MemorySwappiness": null,
+        "NanoCpus": 250000000,
+        "NetworkMode": "none",
+        "OomKillDisable": false,
+        "OomScoreAdj": 0,
+        "PidMode": "",
+        "PidsLimit": 16,
+        "PortBindings": {},
+        "Privileged": false,
+        "PublishAllPorts": false,
+        "ReadonlyPaths": [
+          "/proc/bus",
+          "/proc/fs",
+          "/proc/irq",
+          "/proc/sys",
+          "/proc/sysrq-trigger"
+        ],
+        "ReadonlyRootfs": true,
+        "RestartPolicy": {
+          "MaximumRetryCount": 0,
+          "Name": "no"
+        },
+        "Runtime": "runc",
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "ShmSize": 67108864,
+        "Tmpfs": {
+          "/tmp": "rw,noexec,nosuid,size=8388608,mode=1777",
+          "/work": "rw,noexec,nosuid,size=8388608,mode=1777"
+        },
+        "UTSMode": "",
+        "Ulimits": [],
+        "UsernsMode": "",
+        "VolumeDriver": "",
+        "VolumesFrom": null
+      },
+      "HostnamePath": "",
+      "HostsPath": "",
+      "Id": "a17e4d3305f5cfd90029448de149acb8f3b9c318ff3033832bd9fca6534c83c0",
+      "Image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "ImageManifestDescriptor": {
+        "digest": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "size": 405
+      },
+      "LogPath": "",
+      "MountLabel": "",
+      "Mounts": [],
+      "Name": "/mo-executor-e4ea03ad627d403b848a2ade91571ac6",
+      "NetworkSettings": {
+        "Networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": ""
+          }
+        },
+        "Ports": {},
+        "SandboxID": "",
+        "SandboxKey": ""
+      },
+      "Path": "/bin/sh",
+      "Platform": "linux",
+      "ProcessLabel": "",
+      "ResolvConfPath": "",
+      "RestartCount": 0,
+      "State": {
+        "Dead": false,
+        "Error": "",
+        "ExitCode": 0,
+        "FinishedAt": "0001-01-01T00:00:00Z",
+        "OOMKilled": false,
+        "Paused": false,
+        "Pid": 0,
+        "Restarting": false,
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "Status": "created"
+      },
+      "Storage": {
+        "RootFS": {
+          "Snapshot": {
+            "Name": "overlayfs"
+          }
+        }
+      }
+    },
+    "elapsed_seconds": 5.152861220994964,
+    "exit_code": 137,
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "name": "mo-executor-e4ea03ad627d403b848a2ade91571ac6",
+    "oom_killed": false,
+    "policy": "mo-executor-r01-v1",
+    "policy_errors": [],
+    "run_id": "e4ea03ad627d403b848a2ade91571ac6",
+    "signal": null,
+    "signal_hint": 9,
+    "status": "timeout",
+    "stderr": "",
+    "stdout": "cGFyZW50CmNoaWxkCnNlc3Npb24KZ3JhbmRjaGlsZAo=",
+    "timed_out": true,
+    "truncated": false
+  },
+  "manifest": {
+    "run_id": "e4ea03ad627d403b848a2ade91571ac6",
+    "name": "mo-executor-e4ea03ad627d403b848a2ade91571ac6",
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "policy": "mo-executor-r01-v1",
+    "candidate_sha256": "43a397073cd55db9993f9fdd9f48c26e3b8cc6b9d780a85bbb7c51c6b311cc1b",
+    "script": "ZWNobyBwYXJlbnQKL2Jpbi9zaCAtYyAnZWNobyBjaGlsZDsgL2Jpbi9zaCAtYyAiZWNobyBncmFuZGNoaWxkOyBzbGVlcCAzMCIgJiB3YWl0JyAmCnNldHNpZCAvYmluL3NoIC1jICdlY2hvIHNlc3Npb247IHNsZWVwIDMwJyAmCndhaXQ=",
+    "checks": [
+      {
+        "id": "parent",
+        "expected": "parent\n",
+        "stream": "stdout",
+        "mode": "contains"
+      },
+      {
+        "id": "child",
+        "expected": "child\n",
+        "stream": "stdout",
+        "mode": "contains"
+      },
+      {
+        "id": "grandchild",
+        "expected": "grandchild\n",
+        "stream": "stdout",
+        "mode": "contains"
+      },
+      {
+        "id": "session",
+        "expected": "session\n",
+        "stream": "stdout",
+        "mode": "contains"
+      }
+    ],
+    "seconds": 5,
+    "verifier": "mo-executor-external-checks-v1",
+    "deadline": 1789792348.8970497
+  }
+}

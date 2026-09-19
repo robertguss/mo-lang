@@ -1,0 +1,19 @@
+{
+  "run_id": "6fe2a15b1c254a8e9b257d27de316377",
+  "name": "mo-executor-6fe2a15b1c254a8e9b257d27de316377",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-r01-v1",
+  "candidate_sha256": "21a2c4309fb9964fbb5f722ed30c868efb7f4f09145430bed0767abdd072556d",
+  "script": "ZWNobyBwaWQtcHJvYmUKL2Jpbi9zaCAtYyAnaT0wOyB3aGlsZSBbICIkaSIgLWx0IDQwIF07IGRvIHNsZWVwIDMwICYgaT0kKChpKzEpKTsgZG9uZTsgd2FpdCcgJgpzbGVlcCAzMDsgd2FpdA==",
+  "checks": [
+    {
+      "id": "output",
+      "expected": "pid-probe\n",
+      "stream": "stdout",
+      "mode": "exact"
+    }
+  ],
+  "seconds": 2.5,
+  "verifier": "mo-executor-external-checks-v1",
+  "deadline": 1789792281.296792
+}
