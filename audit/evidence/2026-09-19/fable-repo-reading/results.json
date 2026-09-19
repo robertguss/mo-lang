@@ -1,0 +1,462 @@
+[
+ {
+  "probe": "check leading-zero",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "leading-zero.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run leading-zero",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "leading-zero.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "256"
+  ]
+ },
+ {
+  "probe": "build leading-zero",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "leading-zero.mo",
+   "-o",
+   "leading-zero"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "zig-out/mo-build/leading-zero/leading-zero"
+  ]
+ },
+ {
+  "probe": "native leading-zero",
+  "cmd": [
+   "./zig-out/mo-build/leading-zero/leading-zero"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "256"
+  ]
+ },
+ {
+  "probe": "check oversized",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "oversized.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run oversized",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "oversized.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "18446744073709551616"
+  ]
+ },
+ {
+  "probe": "build oversized",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "oversized.mo",
+   "-o",
+   "oversized"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "zig-out/mo-build/oversized/oversized"
+  ]
+ },
+ {
+  "probe": "native oversized",
+  "cmd": [
+   "./zig-out/mo-build/oversized/oversized"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "18446744073709551616"
+  ]
+ },
+ {
+  "probe": "check huge",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "huge.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run huge",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "huge.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "170141183460469231731687303715884105727"
+  ]
+ },
+ {
+  "probe": "build huge",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "huge.mo",
+   "-o",
+   "huge"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "zig-out/mo-build/huge/huge"
+  ]
+ },
+ {
+  "probe": "native huge",
+  "cmd": [
+   "./zig-out/mo-build/huge/huge"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "170141183460469231731687303715884105727"
+  ]
+ },
+ {
+  "probe": "check lz-int8",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "lz-int8.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run lz-int8",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "lz-int8.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "200"
+  ]
+ },
+ {
+  "probe": "build lz-int8",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "lz-int8.mo",
+   "-o",
+   "lz-int8"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "zig-out/mo-build/lz-int8/lz-int8"
+  ]
+ },
+ {
+  "probe": "native lz-int8",
+  "cmd": [
+   "./zig-out/mo-build/lz-int8/lz-int8"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "200"
+  ]
+ },
+ {
+  "probe": "check u64-plus",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "u64-plus.mo"
+  ],
+  "exit": 1,
+  "first_lines": [
+   "u64-plus.mo:4:7: MO0217 18446744073709551616 does not fit in Int64",
+   "    a = 18446744073709551616",
+   "        ^"
+  ]
+ },
+ {
+  "probe": "run u64-plus",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "u64-plus.mo"
+  ],
+  "exit": 1,
+  "first_lines": [
+   "u64-plus.mo:4:7: MO0217 18446744073709551616 does not fit in Int64",
+   "    a = 18446744073709551616",
+   "        ^"
+  ]
+ },
+ {
+  "probe": "build u64-plus",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "u64-plus.mo",
+   "-o",
+   "u64-plus"
+  ],
+  "exit": 1,
+  "first_lines": [
+   "u64-plus.mo:4:7: MO0217 18446744073709551616 does not fit in Int64",
+   "    a = 18446744073709551616",
+   "        ^"
+  ]
+ },
+ {
+  "probe": "check neg-duration",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "neg-duration.mo"
+  ],
+  "exit": 1,
+  "first_lines": [
+   "neg-duration.mo:6:29: MO0206 - needs numbers, found Duration",
+   "    platform.stdout.write(\"#{(-d).ms}\\n\")",
+   "                              ^"
+  ]
+ },
+ {
+  "probe": "run neg-duration",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "neg-duration.mo"
+  ],
+  "exit": 1,
+  "first_lines": [
+   "neg-duration.mo:6:29: MO0206 - needs numbers, found Duration",
+   "    platform.stdout.write(\"#{(-d).ms}\\n\")",
+   "                              ^"
+  ]
+ },
+ {
+  "probe": "build neg-duration",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "neg-duration.mo",
+   "-o",
+   "neg-duration"
+  ],
+  "exit": 1,
+  "first_lines": [
+   "neg-duration.mo:6:29: MO0206 - needs numbers, found Duration",
+   "    platform.stdout.write(\"#{(-d).ms}\\n\")",
+   "                              ^"
+  ]
+ },
+ {
+  "probe": "check mailbox-overflow",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "mailbox-overflow.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run mailbox-overflow",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "mailbox-overflow.mo"
+  ],
+  "exit": 134,
+  "first_lines": [
+   "thread 9348567 panic: integer does not fit in destination type",
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/src/types.zig:191:31: 0x100e74dcf in lower (mo)",
+   "            cur = p.vars.items[t.a].bound orelse return cur;"
+  ]
+ },
+ {
+  "probe": "build mailbox-overflow",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "mailbox-overflow.mo",
+   "-o",
+   "mailbox-overflow"
+  ],
+  "exit": 134,
+  "first_lines": [
+   "thread 9348674 panic: integer does not fit in destination type",
+   "/opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/hash_map.zig:736:63: 0x10078cda7 in run (mo)",
+   "            new_cap = math.ceilPowerOfTwo(u32, new_cap) catch unreachable;"
+  ]
+ },
+ {
+  "probe": "check mailbox-zero",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "mailbox-zero.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run mailbox-zero",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "mailbox-zero.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "ok"
+  ]
+ },
+ {
+  "probe": "build mailbox-zero",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "mailbox-zero.mo",
+   "-o",
+   "mailbox-zero"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "zig-out/mo-build/mailbox-zero/mailbox-zero"
+  ]
+ },
+ {
+  "probe": "native mailbox-zero",
+  "cmd": [
+   "./zig-out/mo-build/mailbox-zero/mailbox-zero"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "ok"
+  ]
+ },
+ {
+  "probe": "check mailbox-u32max",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "mailbox-u32max.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run mailbox-u32max",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "mailbox-u32max.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "ok"
+  ]
+ },
+ {
+  "probe": "build mailbox-u32max",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "mailbox-u32max.mo",
+   "-o",
+   "mailbox-u32max"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "zig-out/mo-build/mailbox-u32max/mailbox-u32max"
+  ]
+ },
+ {
+  "probe": "native mailbox-u32max",
+  "cmd": [
+   "./zig-out/mo-build/mailbox-u32max/mailbox-u32max"
+  ],
+  "exit": 0,
+  "first_lines": [
+   "ok"
+  ]
+ },
+ {
+  "probe": "check mailbox-huge",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "check",
+   "mailbox-huge.mo"
+  ],
+  "exit": 0,
+  "first_lines": [
+   ""
+  ]
+ },
+ {
+  "probe": "run mailbox-huge",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "run",
+   "mailbox-huge.mo"
+  ],
+  "exit": 134,
+  "first_lines": [
+   "thread 9351647 panic: integer does not fit in destination type",
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/src/types.zig:191:31: 0x100fc4dcf in lower (mo)",
+   "            cur = p.vars.items[t.a].bound orelse return cur;"
+  ]
+ },
+ {
+  "probe": "build mailbox-huge",
+  "cmd": [
+   "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+   "build",
+   "mailbox-huge.mo",
+   "-o",
+   "mailbox-huge"
+  ],
+  "exit": 134,
+  "first_lines": [
+   "thread 9351720 panic: integer does not fit in destination type",
+   "/opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/hash_map.zig:736:63: 0x104d18da7 in run (mo)",
+   "            new_cap = math.ceilPowerOfTwo(u32, new_cap) catch unreachable;"
+  ]
+ }
+]
