@@ -1,0 +1,10 @@
+{
+  "child_exit": 0,
+  "exit": 0,
+  "timed_out": false,
+  "process_group": 34743,
+  "group_absent": true,
+  "remaining": [],
+  "output_bytes": 785,
+  "elapsed_seconds": 894.285
+}
