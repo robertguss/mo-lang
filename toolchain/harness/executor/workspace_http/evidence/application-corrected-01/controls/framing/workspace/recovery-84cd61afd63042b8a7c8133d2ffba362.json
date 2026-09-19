@@ -1,0 +1,11 @@
+{
+  "run_id": "0b13d2a579e640efa2c3f2ed231d2cce",
+  "workspace_id": "5077b90a776d4bc4a09e6046f6ef1c0e",
+  "cleanup": "confirmed",
+  "execution": "unknown",
+  "completed": [
+    "terminal_barrier",
+    "workspace_deleted"
+  ],
+  "unresolved": []
+}

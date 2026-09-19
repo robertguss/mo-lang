@@ -1,0 +1,1 @@
+["python3", "-B", "toolchain/harness/executor/recovery/final_inventory.py", "toolchain/harness/executor/workspace_http/evidence", "toolchain/harness/executor/workspace_http/evidence/final-corrected-inventory-01/proof"]

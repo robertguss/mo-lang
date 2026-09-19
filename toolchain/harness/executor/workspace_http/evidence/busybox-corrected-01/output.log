@@ -1,0 +1,23 @@
+six-tools PASS
+output-encoding PASS
+schema PASS
+framing PASS
+byte-bounds PASS
+identities-capability PASS
+duplicate-calls PASS
+concurrent-admission PASS
+file-refusals PASS
+deadlines PASS
+disconnect PASS
+frontend-death PASS
+owner-death PASS
+lost-response PASS
+owner-stall PASS
+startup-failure PASS
+shutdown PASS
+protected-verifier PASS
+application-binding PASS
+cleanup-outcome PASS
+invalid-selection PASS
+journal-order-bound PASS
+{"groups": 22, "passed": 22, "actual_workspace": true, "acceptance": false}

@@ -1,4 +1,4 @@
-# Workspace HTTP v1 worker report — local correction frozen
+# Workspace HTTP v1 worker report — corrected controls complete
 
 Worker: GPT-6-Astra, low reasoning. Lead: w4:p1. Owned run pane: w4:p29,
 created right/no-focus from worker w4:p28. No nested agents, push or rebase.
@@ -140,3 +140,33 @@ SOURCE.json retains the prior83 identities and separately binds corrected bytes.
 ATTEMPTS.json and EVIDENCE.json retain completed attempts and artifact hashes.
 The correction is a separate commit; scope remains the owned bridge directory.
 Independent lead verification and acceptance are not delegated to this report.
+
+
+## Corrected source real controls and release
+
+All following attempts used unchanged production source
+`1cf268b356a63665214ca8331bfc55828b643603`, sequentially in owned run pane w4:p29.
+No inherited machine suite or compiler run was repeated for this correction.
+
+| Attempt | Result | Guard seconds | Elapsed seconds | Owned group, absent |
+| --- | --- | --- | --- | --- |
+| readiness-corrected-01 | 20/20, identity/limits and runtime absence | 180 | 1.404 | 2351, yes |
+| busybox-corrected-01 | 22/22 actual Workspace | 1800 | 45.669 | 2611, yes |
+| application-corrected-01 | 22/22 actual Workspace | 1800 | 45.866 | 3328, yes |
+| review-live-corrected-01 | 2/2 real review extensions | 1800 | 8.511 | 4063, yes |
+| final-corrected-inventory-01 | cross-attempt absence and shared5 | 300 | 0.572 | 4847, yes |
+| readiness-corrected-final-01 | 20/20, identity/limits and runtime absence | 180 | 1.311 | 4933, yes |
+
+Every guard and child exited0, with bounded raw transport and evidence below16MiB
+per attempt. Final inventory checked296 recorded workspace IDs (including public
+HTTP IDs, not296 created workspaces),156 execution IDs,153 actual cgroups and35
+prior local groups; all absent. Shared5 remained unchanged. Final20 readbacks
+confirm pinned images, effective limits, manifest and parent identity with zero
+runtime, using the existing unchanged slices. All original failures remain.
+
+The worker explicitly returned exclusive machine ownership to lead w4:p1 after
+final proof. No subsequent worker machine commands are authorized or planned.
+The source/contract identities remain unchanged; final metadata and evidence are
+committed separately. Earlier compiler243/243 is pre-correction evidence only.
+Lead integrated full/inherited runs and independent acceptance remain required;
+this report makes no acceptance claim.

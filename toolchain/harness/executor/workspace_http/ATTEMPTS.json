@@ -15,6 +15,21 @@
     ]
   },
   {
+    "attempt": "application-corrected-01",
+    "exit": 0,
+    "seconds": 45.8659365420026,
+    "actual_bytes": 6363957,
+    "group": 3328,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/application-corrected-01/controls",
+      "--application"
+    ]
+  },
+  {
     "attempt": "application-final-01",
     "exit": 0,
     "seconds": 45.81706779199885,
@@ -60,6 +75,20 @@
     ]
   },
   {
+    "attempt": "busybox-corrected-01",
+    "exit": 0,
+    "seconds": 45.66943950000859,
+    "actual_bytes": 6315409,
+    "group": 2611,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/live.py",
+      "toolchain/harness/executor/workspace_http/evidence/busybox-corrected-01/controls"
+    ]
+  },
+  {
     "attempt": "busybox-final-01",
     "exit": 0,
     "seconds": 45.83370874999673,
@@ -97,6 +126,21 @@
       "sh",
       "-c",
       "cd toolchain && zig build test --summary all"
+    ]
+  },
+  {
+    "attempt": "final-corrected-inventory-01",
+    "exit": 0,
+    "seconds": 0.5716178750008112,
+    "actual_bytes": 553444,
+    "group": 4847,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/final_inventory.py",
+      "toolchain/harness/executor/workspace_http/evidence",
+      "toolchain/harness/executor/workspace_http/evidence/final-corrected-inventory-01/proof"
     ]
   },
   {
@@ -279,6 +323,34 @@
     ]
   },
   {
+    "attempt": "readiness-corrected-01",
+    "exit": 0,
+    "seconds": 1.4043310830020346,
+    "actual_bytes": 347788,
+    "group": 2351,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/readiness_probes.py",
+      "toolchain/harness/executor/workspace_http/evidence/readiness-corrected-01/probes"
+    ]
+  },
+  {
+    "attempt": "readiness-corrected-final-01",
+    "exit": 0,
+    "seconds": 1.311340290994849,
+    "actual_bytes": 344777,
+    "group": 4933,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/recovery/readiness_probes.py",
+      "toolchain/harness/executor/workspace_http/evidence/readiness-corrected-final-01/probes"
+    ]
+  },
+  {
     "attempt": "readiness-final-01",
     "exit": 0,
     "seconds": 1.2898574999999255,
@@ -421,6 +493,20 @@
       "-B",
       "toolchain/harness/executor/workspace_http/review_live.py",
       "toolchain/harness/executor/workspace_http/evidence/review-live-02/controls"
+    ]
+  },
+  {
+    "attempt": "review-live-corrected-01",
+    "exit": 0,
+    "seconds": 8.510924250003882,
+    "actual_bytes": 582541,
+    "group": 4063,
+    "group_absent": true,
+    "command": [
+      "python3",
+      "-B",
+      "toolchain/harness/executor/workspace_http/review_live.py",
+      "toolchain/harness/executor/workspace_http/evidence/review-live-corrected-01/controls"
     ]
   },
   {

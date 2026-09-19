@@ -1,0 +1,25 @@
+{
+  "run_id": "e76890f7ec8b4ba49e9dc4ef30383e3d",
+  "name": "mo-executor-e76890f7ec8b4ba49e9dc4ef30383e3d",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-workspace-v1",
+  "candidate_sha256": "7c79bf8b983c6110d971a9603eb34708433c131d4d52e396dcc64e7414a183a5",
+  "script": "c2xlZXAgNg==",
+  "checks": null,
+  "seconds": 0.5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "b79efc952508916138a47cb3ec239ac1e4e41bcc7624403a69bcb968a683965a",
+  "supervisor_sha256": "0cc68fe166b8153b37a1d04147c63572da1d5c21e25073bbf109ca288a0255c6",
+  "workspace": {
+    "workspace_id": "1e3c20d27eaa43ac8f5e1234fdc8b916",
+    "workspace_run_id": "719fea1338ae4883a6be269b39796b54",
+    "source": "/var/lib/mo-harness/mo-workspace-1e3c20d27eaa43ac8f5e1234fdc8b916/storage/data",
+    "readonly": false,
+    "snapshot": null
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "5c337d42156ed7d7fcd37a1874e7128cee7796d8c3fb497f80df22eaf0e71c68",
+  "check_inventory_sha256": null,
+  "workspace_call_id": "308be83292f54bf7a2e7eee516733c7f",
+  "deadline": 1789812706.3811195
+}
