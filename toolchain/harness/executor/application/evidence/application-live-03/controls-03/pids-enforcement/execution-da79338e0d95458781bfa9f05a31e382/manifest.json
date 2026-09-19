@@ -1,0 +1,29 @@
+{
+  "run_id": "07c737b13cda49b5bedd7efce7ca21f0",
+  "name": "mo-executor-07c737b13cda49b5bedd7efce7ca21f0",
+  "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+  "policy": "application-build-v1",
+  "candidate_sha256": "e49432c2eae35a759dadebc7708888d1d4ccb79b411b441ad5d57ef1a55e4d28",
+  "script": "ZWNobyBwaWRzLXByb2JlOyAvYmluL3NoIC1jICdpPTA7IHdoaWxlIFsgIiRpIiAtbHQgMTYwIF07IGRvIHNsZWVwIDMwICYgaT0kKChpKzEpKTsgZG9uZTsgd2FpdCcgJiB3aGlsZSA6OyBkbyA6OyBkb25l",
+  "checks": null,
+  "seconds": 5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+  "supervisor_sha256": "a3a3c83955a6c326897d3c53d04c8d0f331ac5d2c9d9aa530ad5017c25e1e8c7",
+  "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+  "workspace": {
+    "image": "sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4",
+    "policy": "application-build-v1",
+    "toolchain": "d31b5c5e7e1912f98eba21268854d0f7b830dba7048b2de0e2c0458d10e507eb",
+    "workspace_id": "fade8630a85844c4bc0e5d8d36250d70",
+    "workspace_run_id": "73699bf2b76944bca90fa84482cd13fc",
+    "source": "/var/lib/mo-harness/mo-workspace-fade8630a85844c4bc0e5d8d36250d70/storage/data",
+    "readonly": false,
+    "snapshot": null
+  },
+  "workspace_verifier": "mo-workspace-verifier-v1",
+  "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+  "check_inventory_sha256": null,
+  "workspace_call_id": "48dcdebc5c8a439c872cbfc286e6e38e",
+  "deadline": 1789800582.6091769
+}

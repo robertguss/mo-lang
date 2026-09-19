@@ -1,0 +1,7 @@
+zig-out/mo-build/logstat/logstat
+Filesystem           1K-blocks      Used Available Use% Mounted on
+tmpfs                   524288     77976    446312  15% /build
+tmpfs                    16384         0     16384   0% /tmp
+Filesystem              Inodes      Used Available Use% Mounted on
+tmpfs                    16384      4107     12277  25% /build
+tmpfs                  2053098         1   2053097   0% /tmp

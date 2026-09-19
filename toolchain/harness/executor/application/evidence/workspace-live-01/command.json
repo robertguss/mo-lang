@@ -1,0 +1,1 @@
+{"argv": ["/opt/homebrew/opt/python@3.14/bin/python3.14", "-B", "toolchain/bench/step36/guard.py", "600", "--", "python3", "-B", "toolchain/harness/executor/test_workspace_live.py", "toolchain/harness/executor/application/evidence/workspace-live-01/controls"], "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-application-build-v1"}

@@ -1,0 +1,299 @@
+{
+  "run_id": "e0460fa056b54155a6cbf6b0e9c0297d",
+  "workspace_id": "89cc5c964a8d4848a5cd008fd31bf27a",
+  "call_id": "62ec3fc7e14a4af59f036ae861db1d9c",
+  "state": "success",
+  "execution": "completed",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "MTYrMCByZWNvcmRzIGluCjE2KzAgcmVjb3JkcyBvdXQK",
+  "stderr": "",
+  "encoding": "base64",
+  "truncated": false,
+  "elapsed_seconds": 0.2502824969997164,
+  "execution_valid": true,
+  "manifest": {
+    "run_id": "ce10b5136ed4498485c8206f2eb8c1ea",
+    "name": "mo-executor-ce10b5136ed4498485c8206f2eb8c1ea",
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "policy": "mo-executor-workspace-v1",
+    "candidate_sha256": "604e1d356eafdc9dfe3c03332b58ab471a7d93607dc354715997581c57a5a29c",
+    "script": "ZGQgaWY9L2Rldi96ZXJvIG9mPWNodW5rMSBicz0xMDQ4NTc2IGNvdW50PTE2IDI+JjE=",
+    "checks": null,
+    "seconds": 10,
+    "verifier": "mo-executor-external-checks-v1",
+    "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+    "supervisor_sha256": "a3a3c83955a6c326897d3c53d04c8d0f331ac5d2c9d9aa530ad5017c25e1e8c7",
+    "workspace": {
+      "workspace_id": "89cc5c964a8d4848a5cd008fd31bf27a",
+      "workspace_run_id": "e0460fa056b54155a6cbf6b0e9c0297d",
+      "source": "/var/lib/mo-harness/mo-workspace-89cc5c964a8d4848a5cd008fd31bf27a/storage/data",
+      "readonly": false,
+      "snapshot": null
+    },
+    "workspace_verifier": "mo-workspace-verifier-v1",
+    "workspace_verifier_sha256": "ecd8626cf02eb2d6cd0109aff453132d0776f0b1b5aa22eb5e26f469c88a1d7d",
+    "check_inventory_sha256": null,
+    "workspace_call_id": "62ec3fc7e14a4af59f036ae861db1d9c",
+    "deadline": 1789800635.278362
+  },
+  "observation": {
+    "attach_exit_code": 0,
+    "cancelled": false,
+    "candidate_sha256": "604e1d356eafdc9dfe3c03332b58ab471a7d93607dc354715997581c57a5a29c",
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-333e3bf6ea7d21797dfe8517ffd675e5bd4976248483b40f761c13e1a7c41cce.scope",
+    "cleanup": {
+      "absent": true,
+      "cgroup_absent": true,
+      "removed_rc": 0,
+      "host_confirmed": true,
+      "host_cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-333e3bf6ea7d21797dfe8517ffd675e5bd4976248483b40f761c13e1a7c41cce.scope",
+      "host_cgroup_absent": true,
+      "ordering": [
+        "supervisor_stopped",
+        "container_absent",
+        "cgroup_absent",
+        "deadline_units_stopped",
+        "units_absent"
+      ],
+      "services_absent": true
+    },
+    "container_id": "333e3bf6ea7d21797dfe8517ffd675e5bd4976248483b40f761c13e1a7c41cce",
+    "counters": {},
+    "effective": {
+      "AppArmorProfile": "",
+      "Args": [
+        "-c",
+        "dd if=/dev/zero of=chunk1 bs=1048576 count=16 2>&1"
+      ],
+      "Config": {
+        "AttachStderr": true,
+        "AttachStdin": false,
+        "AttachStdout": true,
+        "Cmd": [
+          "/bin/sh",
+          "-c",
+          "dd if=/dev/zero of=chunk1 bs=1048576 count=16 2>&1"
+        ],
+        "Domainname": "",
+        "Entrypoint": null,
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "Hostname": "333e3bf6ea7d",
+        "Image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+        "Labels": {},
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Tty": false,
+        "User": "65534:65534",
+        "Volumes": null,
+        "WorkingDir": "/workspace"
+      },
+      "Created": "2026-09-19T06:50:25.309139747Z",
+      "Driver": "overlayfs",
+      "ExecIDs": null,
+      "HostConfig": {
+        "AutoRemove": false,
+        "Binds": [
+          "/var/lib/mo-harness/mo-workspace-89cc5c964a8d4848a5cd008fd31bf27a/storage/data:/workspace:rw"
+        ],
+        "BlkioDeviceReadBps": [],
+        "BlkioDeviceReadIOps": [],
+        "BlkioDeviceWriteBps": [],
+        "BlkioDeviceWriteIOps": [],
+        "BlkioWeight": 0,
+        "BlkioWeightDevice": [],
+        "CapAdd": null,
+        "CapDrop": [
+          "ALL"
+        ],
+        "Cgroup": "",
+        "CgroupParent": "mo-executor.slice",
+        "CgroupnsMode": "private",
+        "ConsoleSize": [
+          0,
+          0
+        ],
+        "ContainerIDFile": "",
+        "CpuCount": 0,
+        "CpuPercent": 0,
+        "CpuPeriod": 0,
+        "CpuQuota": 0,
+        "CpuRealtimePeriod": 0,
+        "CpuRealtimeRuntime": 0,
+        "CpuShares": 0,
+        "CpusetCpus": "",
+        "CpusetMems": "",
+        "DeviceCgroupRules": null,
+        "DeviceRequests": null,
+        "Devices": [],
+        "Dns": null,
+        "DnsOptions": [],
+        "DnsSearch": [],
+        "ExtraHosts": null,
+        "GroupAdd": null,
+        "IOMaximumBandwidth": 0,
+        "IOMaximumIOps": 0,
+        "IpcMode": "private",
+        "Isolation": "",
+        "Links": null,
+        "LogConfig": {
+          "Config": {},
+          "Type": "none"
+        },
+        "MaskedPaths": [
+          "/proc/acpi",
+          "/proc/asound",
+          "/proc/interrupts",
+          "/proc/kcore",
+          "/proc/keys",
+          "/proc/latency_stats",
+          "/proc/sched_debug",
+          "/proc/scsi",
+          "/proc/timer_list",
+          "/proc/timer_stats",
+          "/sys/devices/virtual/powercap",
+          "/sys/firmware"
+        ],
+        "Memory": 67108864,
+        "MemoryReservation": 0,
+        "MemorySwap": 67108864,
+        "MemorySwappiness": null,
+        "NanoCpus": 250000000,
+        "NetworkMode": "none",
+        "OomKillDisable": false,
+        "OomScoreAdj": 0,
+        "PidMode": "",
+        "PidsLimit": 16,
+        "PortBindings": {},
+        "Privileged": false,
+        "PublishAllPorts": false,
+        "ReadonlyPaths": [
+          "/proc/bus",
+          "/proc/fs",
+          "/proc/irq",
+          "/proc/sys",
+          "/proc/sysrq-trigger"
+        ],
+        "ReadonlyRootfs": true,
+        "RestartPolicy": {
+          "MaximumRetryCount": 0,
+          "Name": "no"
+        },
+        "Runtime": "runc",
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "ShmSize": 67108864,
+        "Tmpfs": {
+          "/tmp": "rw,noexec,nosuid,size=8388608,mode=1777",
+          "/work": "rw,noexec,nosuid,size=8388608,mode=1777"
+        },
+        "UTSMode": "",
+        "Ulimits": [],
+        "UsernsMode": "",
+        "VolumeDriver": "",
+        "VolumesFrom": null
+      },
+      "HostnamePath": "",
+      "HostsPath": "",
+      "Id": "333e3bf6ea7d21797dfe8517ffd675e5bd4976248483b40f761c13e1a7c41cce",
+      "Image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+      "ImageManifestDescriptor": {
+        "digest": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "platform": {
+          "architecture": "arm64",
+          "os": "linux",
+          "variant": "v8"
+        },
+        "size": 405
+      },
+      "LogPath": "",
+      "MountLabel": "",
+      "Mounts": [
+        {
+          "Destination": "/workspace",
+          "Mode": "rw",
+          "Propagation": "rprivate",
+          "RW": true,
+          "Source": "/var/lib/mo-harness/mo-workspace-89cc5c964a8d4848a5cd008fd31bf27a/storage/data",
+          "Type": "bind"
+        }
+      ],
+      "Name": "/mo-executor-ce10b5136ed4498485c8206f2eb8c1ea",
+      "NetworkSettings": {
+        "Networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": ""
+          }
+        },
+        "Ports": {},
+        "SandboxID": "",
+        "SandboxKey": ""
+      },
+      "Path": "/bin/sh",
+      "Platform": "linux",
+      "ProcessLabel": "",
+      "ResolvConfPath": "",
+      "RestartCount": 0,
+      "State": {
+        "Dead": false,
+        "Error": "",
+        "ExitCode": 0,
+        "FinishedAt": "0001-01-01T00:00:00Z",
+        "OOMKilled": false,
+        "Paused": false,
+        "Pid": 0,
+        "Restarting": false,
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "Status": "created"
+      },
+      "Storage": {
+        "RootFS": {
+          "Snapshot": {
+            "Name": "overlayfs"
+          }
+        }
+      }
+    },
+    "elapsed_seconds": 0.2502824969997164,
+    "exit_code": 0,
+    "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+    "name": "mo-executor-ce10b5136ed4498485c8206f2eb8c1ea",
+    "oom_killed": false,
+    "policy": "mo-executor-workspace-v1",
+    "policy_errors": [],
+    "run_id": "ce10b5136ed4498485c8206f2eb8c1ea",
+    "signal": null,
+    "signal_hint": null,
+    "status": "completed",
+    "stderr": "",
+    "stdout": "MTYrMCByZWNvcmRzIGluCjE2KzAgcmVjb3JkcyBvdXQK",
+    "timed_out": false,
+    "truncated": false,
+    "workspace": {
+      "readonly": false,
+      "snapshot": null,
+      "source": "/var/lib/mo-harness/mo-workspace-89cc5c964a8d4848a5cd008fd31bf27a/storage/data",
+      "workspace_id": "89cc5c964a8d4848a5cd008fd31bf27a",
+      "workspace_run_id": "e0460fa056b54155a6cbf6b0e9c0297d"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "remaining_owned_paths": [],
+  "containers": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "units": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "images": {
+    "exit": 0,
+    "stdout": "REPOSITORY            TAG       IMAGE ID                                                                  CREATED          SIZE\n<none>                <none>    sha256:b9fda4ae85f369e475e0f412e15dea9044a849a64bc2ec94bb3bc5a661eab3c4   12 minutes ago   505MB\n<none>                <none>    sha256:3f0a2c913067f4648c96fd7cea99c9db0a1e3b575504dbbdd9f8e185cb01887c   12 minutes ago   505MB\n<none>                <none>    sha256:ee24619dcfa5b724b4b4404c0c5808ac9e8404dacdbbd9cc2b6cc0143e37a8ec   12 minutes ago   505MB\n<none>                <none>    sha256:f7774c346e164b86b6cc6a18af3edc422f58a4db550df3e0f6ef80d7357c16e7   12 minutes ago   505MB\n<none>                <none>    sha256:56d1e341168ff63e39d1941ee1b152f8265b4f3e15018c5755e097d0633a2a93   12 minutes ago   505MB\nmo-executor-fixture   r01       sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337   3 hours ago      2.97MB\n",
+    "stderr": ""
+  },
+  "mounts": {
+    "exit": 0,
+    "stdout": "{\n   \"filesystems\": [\n      {\n         \"target\": \"/\",\n         \"children\": [\n            {\n               \"target\": \"/run\",\n               \"children\": [\n                  {\n                     \"target\": \"/run/lock\"\n                  },{\n                     \"target\": \"/run/user/0\"\n                  },{\n                     \"target\": \"/run/user/501\"\n                  }\n               ]\n            },{\n               \"target\": \"/dev\",\n               \"children\": [\n                  {\n                     \"target\": \"/dev/shm\"\n                  },{\n                     \"target\": \"/dev/fuse\"\n                  },{\n                     \"target\": \"/dev/net/tun\"\n                  },{\n                     \"target\": \"/dev/vhost-net\"\n                  },{\n                     \"target\": \"/dev/ntsync\"\n                  },{\n                     \"target\": \"/dev/vdb1\",\n                     \"children\": [\n                        {\n                           \"target\": \"/dev/vdb1\"\n                        }\n                     ]\n                  },{\n                     \"target\": \"/dev/loop0\"\n                  },{\n                     \"target\": \"/dev/loop1\"\n                  },{\n                     \"target\": \"/dev/loop2\"\n                  },{\n                     \"target\": \"/dev/loop3\"\n                  },{\n                     \"target\": \"/dev/nbd0\"\n                  },{\n                     \"target\": \"/dev/nbd1\"\n                  },{\n                     \"target\": \"/dev/nbd2\"\n                  },{\n                     \"target\": \"/dev/nbd3\"\n                  },{\n                     \"target\": \"/dev/vda\"\n                  },{\n                     \"target\": \"/dev/vdb\"\n                  },{\n                     \"target\": \"/dev/vdc\"\n                  },{\n                     \"target\": \"/dev/zram0\"\n                  },{\n                     \"target\": \"/dev/mqueue\"\n                  },{\n                     \"target\": \"/dev/.lxc/proc\"\n                  },{\n                     \"target\": \"/dev/.lxc/sys\"\n                  },{\n                     \"target\": \"/dev/full\"\n                  },{\n                     \"target\": \"/dev/null\"\n                  },{\n                     \"target\": \"/dev/random\"\n                  },{\n                     \"target\": \"/dev/tty\"\n                  },{\n                     \"target\": \"/dev/urandom\"\n                  },{\n                     \"target\": \"/dev/zero\"\n                  },{\n                     \"target\": \"/dev/pts\"\n                  },{\n                     \"target\": \"/dev/ptmx\"\n                  },{\n                     \"target\": \"/dev/console\"\n                  }\n               ]\n            },{\n               \"target\": \"/proc\",\n               \"children\": [\n                  {\n                     \"target\": \"/proc/sys/kernel/random/boot_id\"\n                  }\n               ]\n            },{\n               \"target\": \"/sys\",\n               \"children\": [\n                  {\n                     \"target\": \"/sys/devices/virtual/net\"\n                  },{\n                     \"target\": \"/sys/fs/fuse/connections\"\n                  },{\n                     \"target\": \"/sys/kernel/security\"\n                  },{\n                     \"target\": \"/sys/kernel/tracing\"\n                  },{\n                     \"target\": \"/sys/fs/cgroup\"\n                  }\n               ]\n            },{\n               \"target\": \"/usr/lib/modules/7.0.14-orbstack-00380-ga7e0a2dc9535\"\n            },{\n               \"target\": \"/tmp\"\n            },{\n               \"target\": \"/opt/orbstack-guest\"\n            }\n         ]\n      }\n   ]\n}\n",
+    "stderr": ""
+  },
+  "processes": {
+    "exit": 0,
+    "stdout": "    PID    PPID COMMAND\n      1       0 /sbin/init\n      7       1 orbstack-agent: mo-executor-r01\n    121       1 /usr/lib/systemd/systemd-journald\n    176       1 /usr/lib/systemd/systemd-networkd\n    191       1 /usr/sbin/cron -f -P\n    192       1 @dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation --syslog-only\n    197       1 /usr/lib/systemd/systemd-logind\n    201       1 /sbin/agetty -o -p -- \\u --noclear --keep-baud - 115200,38400,9600 vt220\n    203       1 /usr/sbin/rsyslogd -n -iNONE\n   1496       1 /usr/lib/systemd/systemd --user\n   1497    1496 (sd-pam)\n   2013       1 /usr/bin/containerd\n   2373       1 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock\n  56171       1 /usr/lib/systemd/systemd --user\n  56173   56171 (sd-pam)\n 182794       7 python3 -B -c import hashlib,json,pathlib,subprocess,sys p=json.load(sys.stdin); r={} paths=['/tmp/'+name for name in p['runs']]+['/var/lib/mo-harness/mo-workspace-'+i for i in p['workspaces']]+p['cgroups'] r['remaining_owned_paths']=[path for path in paths if pathlib.Path(path).exists()] for key,args in {'containers':['docker','ps','-a','--no-trunc','--format','{{.ID}} {{.Names}} {{.State}}'], 'units':['systemctl','list-units','--all','--no-legend','mo-executor-*','mo-appv1-*'], 'images':['docker','image','ls','-a','--no-trunc'], 'mounts':['findmnt','--json','-o','TARGET'], 'processes':['ps','-eo','pid,ppid,args']}.items():  q=subprocess.run(args,capture_output=True,text=True,timeout=5); r[key]={'exit':q.returncode,'stdout':q.stdout,'stderr':q.stderr} r['owned_processes']=[line for line in r['processes']['stdout'].splitlines() if any('/tmp/'+name+'/' in line for name in p['runs'])] r['slice_files']={name:hashlib.sha256(pathlib.Path('/etc/systemd/system/'+name).read_bytes()).hexdigest() for name in ('mo-application.slice','mo-executor.slice')} r['parents']={} for name in ('mo-application.slice','mo-executor.slice'):  path=pathlib.Path('/sys/fs/cgroup/mo.slice')/name  r['parents'][name]={f:(path/f).read_text() for f in ('memory.max','memory.swap.max','memory.peak','memory.events','cpu.max','pids.max')}  r['parents'][name]['tasks']={str(f):f.read_text() for f in path.rglob('cgroup.procs') if f.read_text().strip()} print(json.dumps(r)) \n 182815  182794 ps -eo pid,ppid,args\n",
+    "stderr": ""
+  },
+  "owned_processes": [],
+  "slice_files": {
+    "mo-application.slice": "ab7ea2ac24e3248cc436348ea11251db3d650c160bf443907b16bda6e1e00702",
+    "mo-executor.slice": "d1d127ae499351d04844684218743b84a50278a999b4f5cc87105828ea2da31d"
+  },
+  "parents": {
+    "mo-application.slice": {
+      "memory.max": "1610612736\n",
+      "memory.swap.max": "0\n",
+      "memory.peak": "1181556736\n",
+      "memory.events": "low 0\nhigh 0\nmax 73\noom 2\noom_kill 2\noom_group_kill 0\nsock_throttled 0\n",
+      "cpu.max": "100000 100000\n",
+      "pids.max": "192\n",
+      "tasks": {}
+    },
+    "mo-executor.slice": {
+      "memory.max": "536870912\n",
+      "memory.swap.max": "0\n",
+      "memory.peak": "75476992\n",
+      "memory.events": "low 0\nhigh 0\nmax 454\noom 12\noom_kill 12\noom_group_kill 0\nsock_throttled 0\n",
+      "cpu.max": "100000 100000\n",
+      "pids.max": "128\n",
+      "tasks": {}
+    }
+  }
+}

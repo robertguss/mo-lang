@@ -242,3 +242,14 @@ synthetic shell/file acceptance only; it makes no Mo/compiler/application claim.
 Workspace evidence and bounded runners live under `evidence/workspace-v1/`.
 Keep each attempt, including failures. Live work requires exclusive release of
 `mo-executor-r01` by the lead; never use the shared Mac Docker endpoint.
+
+## Explicit application policy
+
+`Workspace(..., policy='application-build-v1', image='sha256:<content-id>',
+toolchain='<package-manifest-sha256>')` binds a separate application policy at
+creation. It uses the independently provisioned `mo-application.slice`, a
+120-second command maximum and fresh executable `/build`; defaults above remain
+the BusyBox workspace policy. The registered identity cannot change per command.
+See [application/README.md](application/README.md) for pinned offline packaging,
+resource limits and controls, and [application/HTTP-CONTRACT.md](application/HTTP-CONTRACT.md)
+for the current public API and the limits of its caller wall-time guarantees.

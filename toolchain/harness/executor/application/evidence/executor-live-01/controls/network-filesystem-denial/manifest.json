@@ -1,0 +1,21 @@
+{
+  "run_id": "6535adedd3ed43cc90e2bfa37f77667c",
+  "name": "mo-executor-6535adedd3ed43cc90e2bfa37f77667c",
+  "image": "sha256:debdba9954b1065ab1ce723c6c1f2f22e52a78c164f863b938d58cc2c9f0d337",
+  "policy": "mo-executor-r01-v1",
+  "candidate_sha256": "6b4fa0ecf4f6acea78201b5264635acc6c01421c6b8e31e6121aaf5dda735fa9",
+  "script": "ZWNobyBib3VuZGFyeS1wcm9iZQppZCAtdQpwcmludGYgbG9vcGJhY2stb2sgPiAvd29yay9pbmRleC5odG1sCmh0dHBkIC1mIC1wIDEyNy4wLjAuMTo4MDgwIC1oIC93b3JrICYKc2xlZXAgLjIKd2dldCAtcU8tIGh0dHA6Ly8xMjcuMC4wLjE6ODA4MC8gfHwgZXhpdCAxCmVjaG8KaWYgd2dldCAtVCAxIC1xTyAvdG1wL25ldHdvcmsgaHR0cDovLzE5Mi4wLjIuMS87IHRoZW4gZXhpdCAyOyBlbHNlIGVjaG8gbmV0d29yay1kZW5pZWQ7IGZpCmlmIGVjaG8geCA+IC9yb290LXdyaXRlOyB0aGVuIGV4aXQgMzsgZWxzZSBlY2hvIHJvb3QtZGVuaWVkOyBmaQpmb3IgcCBpbiAvdmFyL3J1bi9kb2NrZXIuc29jayAvbW50L21hYyAvVXNlcnMgL3J1bi9ob3N0LXNlcnZpY2VzL3NzaC1hdXRoLnNvY2s7IGRvCiBbICEgLWUgIiRwIiBdIHx8IGV4aXQgNApkb25lCmVjaG8gbW91bnRzLWFic2VudApbIC1yIC9wcm9jL3NlbGYvc3RhdHVzIF0gfHwgZXhpdCA1CndoaWxlIHJlYWQga2V5IHZhbHVlIHJlc3Q7IGRvCiBjYXNlICIka2V5IiBpbiBDYXBFZmY6fE5vTmV3UHJpdnM6KSBlY2hvICIka2V5JHZhbHVlIjs7IGVzYWMKZG9uZSA8IC9wcm9jL3NlbGYvc3RhdHVz",
+  "checks": [
+    {
+      "id": "output",
+      "expected": "boundary-probe\n65534\nloopback-ok\nnetwork-denied\nroot-denied\nmounts-absent\nCapEff:0000000000000000\nNoNewPrivs:1\n",
+      "stream": "stdout",
+      "mode": "exact"
+    }
+  ],
+  "seconds": 5,
+  "verifier": "mo-executor-external-checks-v1",
+  "adapter_sha256": "8686822dfea368e4190d10c8920bdb845e358b6da5f22d4ce303d69f0f505e1f",
+  "supervisor_sha256": "a3a3c83955a6c326897d3c53d04c8d0f331ac5d2c9d9aa530ad5017c25e1e8c7",
+  "deadline": 1789800690.8846443
+}

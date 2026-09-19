@@ -1,0 +1,7 @@
+zig-out/mo-build/hello/hello
+Filesystem           1K-blocks      Used Available Use% Mounted on
+tmpfs                   524288     76916    447372  15% /build
+tmpfs                    16384         0     16384   0% /tmp
+Filesystem              Inodes      Used Available Use% Mounted on
+tmpfs                    16384      4107     12277  25% /build
+tmpfs                  2053098         1   2053097   0% /tmp

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "controls": 1,
+  "collector_exit_code": -9,
+  "independent_cleanup": {
+    "absent": true,
+    "cgroup": "/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-5df3ca2bca3db5e63e9b0bacaae9630d13c5e551e0a062a54f8711a96b9f5db9.scope",
+    "cgroup_absent": true,
+    "removed_rc": 0
+  },
+  "final_status": "infrastructure_failure"
+}
