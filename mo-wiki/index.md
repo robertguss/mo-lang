@@ -139,6 +139,7 @@ type: index
   against raw evidence; never acceptance; not built (18 Sep 2026)
 - [[interpreter-step-41]] — brief: `Exec`, a child process narrowed in `main` to fixed commands, both runtimes and the simulator
 - [[interpreter-step-42]] — brief: runtime memory safety: the corpus under compaction at every safe point in both runtimes, poisoned freed regions, the audit of what outlives a frame, a parcel type, a guard that kills the group
+- [[interpreter-step-43]] — brief: every number in source validated before a runtime sees it (the auditor's PR 15: literals past their type, the mailbox bound, a sweep, the fuzz driver's budgets)
 - [[mo-agent-report-cap]] — brief: the agent's 256 KiB report cap replaced by a bound derived from the profile, now that the runtime defect is fixed
 - [[mo-harness-end-to-end-v1]] — brief: the Mo agent against the real service on the machine, then the scripted Logstat repair
 - [[interpreter-step-40]] — brief: `Fs.scoped` made to hold against symlinks in both runtimes, and `Fs.replace`

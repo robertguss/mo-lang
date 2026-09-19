@@ -972,3 +972,6 @@
 
 ## [2026-09-19] brief | step 42, runtime memory safety; a fresh lead session onboarded
 - 1:16 PM ET: fresh Fable lead session onboarded (auditor check 0 new records; both Opus workers still working; the VM full suite still running). Brief written: plans/interpreter-step-42.md (stress mode for the whole corpus in both runtimes, poisoned freed regions with an ASan step, the audit of what outlives a frame, a parcel type, guard.py killing the process group; compaction points as a simulator dimension left out and named). Launches after step 41 lands. Roadmap board rewritten. Lint 26 notices of the inherited kinds, none new.
+
+## [2026-09-19] audit | PR 15 (repository audit) read after the lead's own reading; all conceded
+- 1:22 PM ET: lead reading filed first at f0b99fe4 with probes under audit/evidence/2026-09-19/fable-repo-reading/; comparison audit/fable-comparison-2026-09-19-repo.md; three rows in decisions/decision-log.md; brief plans/interpreter-step-43.md. PR 15 merged unchanged. Lint 26 notices of the inherited kinds, none new.

@@ -859,6 +859,14 @@ direction separately from the lead's conservative execution interpretation.
 | Linux toolchain checks run on Robert's Linux VM (`aurora-but-gold`, x86_64), not on the Mac; the OrbStack machine is for the harness's live executor suites only. Its first use found a Linux-only defect in a test harness that Darwin could not show. | Robert | decided | step 40's Linux run |
 | The harness proceeds on two tracks at once: the end-to-end run and scripted Logstat repair on the existing Python services ([[mo-harness-end-to-end-v1]]), which proves the design and yields the behaviour tests the Mo server must match; and the toolchain capabilities ([[interpreter-step-41]], then runtime memory safety). **For Robert**: say if the Mo port should come first instead. | Fable lead | decided | the end-to-end run's report |
 
+## 19 Sep 2026 — The auditor's repository audit (PR 15) read and compared, 1:21 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| PR 15's findings are conceded whole: sized integer literals past their type reach both runtimes (`check.zig` `checkLiteral` truncates at 32 digits and turns a parse overflow into `maxInt(u64)`), an oversized `mailbox:` bound passes the checker and panics the compiler, and the fuzz driver exits 0 on a run of no inputs. The lead's reading (`audit/fable-reading-2026-09-19-repo.md`, filed first) reproduced all of it on current `main` on Darwin and found one worse form: a 54-digit literal silently becomes a different number. Comparison: `audit/fable-comparison-2026-09-19-repo.md`. No disagreement is open. `semantic` | Fable lead | accepted | [[interpreter-step-43]] |
+| The fix is its own small toolchain step, [[interpreter-step-43]], RED first, with a sweep of every number the compiler reads from source; it runs beside step 42 and the lead accepts the merge work. Default range for a mailbox bound: 1 to 4,294,967,295, 0 refused unless the spec gives it a meaning. **For Robert**: the language's sentence "overflow is never implicit" was false for literals until this lands. | Fable lead | decided | step 43's RED tests |
+| A reproducible compiler and corpus CI gate is still owed (the auditor's standing concern 2, first raised 18 Sep), and the suite writing generated files into the source tree is part of it: two runs cannot share a tree. It follows steps 42 and 43. | Fable lead | decided | the gate's first run on a pull request |
+
 ## Related
 
 - [[session-05]]
