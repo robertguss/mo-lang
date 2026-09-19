@@ -29,6 +29,7 @@ marked.
 
 - No child process, Unix socket, signal, `chmod`/`chown`, or `write_bytes`.
 - No HTTPS on `Http.send`; the TLS client is unaccepted (step 39).
+- (Corrected 11:29 AM ET: the next bullet overstated it; the lexical check is the fixture's, and the real `Fs` compared resolved paths. The real holes are listed on [[mo-capabilities-for-the-harness]].)
 - **`Fs.scoped` is a lexical check only** (`toolchain/src/stdlib.zig`, `pathIn`
   and `climbsOut`: `resolvePosix` and a `..` count). A symlink inside a scope
   reaches outside it. This is a hole in the language's own authority claim, not

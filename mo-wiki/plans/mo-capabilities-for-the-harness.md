@@ -25,6 +25,17 @@ scope is reachable". The runtime checks the path's text only
 inside `fs.scoped("work")` that points at `/etc` reaches `/etc`. The sentence in
 the spec is false today.
 
+**Correction, 19 Sep 2026, 11:29 AM ET.** The lead's statement of the defect was half
+right. The text-only check (`stdlib.zig`, `pathIn`, `climbsOut`) is the
+*fixture's*. The real `Fs` (`server.zig` `realScopedIn`, `mo_rt.c`
+`real_scoped`) already compared resolved paths, so a read through a link
+pointing outside the scope was already `Missing`. Step 40's RED run showed the
+holes that were real: a program's own `fs.scoped("link")` rooted the new scope
+outside (an escape); links pointing inside, and folder links as a middle
+component, were followed; `write`, `append`, `remove` and `rename` acted
+through links; a FIFO hung both runtimes until killed; and the check and the
+use were separate path lookups. The decision to make `scoped` hold stands.
+
 **Decision: fix `scoped`, do not add a second kind of scope.** One scope whose
 promise is true beats two where the default leaks.
 
