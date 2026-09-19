@@ -9,8 +9,8 @@ import threading
 import os
 from contextlib import contextmanager
 
-from adapter import Run, remote, validate_checks, verify
-from remote import CAP, IMAGE, WORKSPACE_POLICY, policy_errors, selection, workspace_selection, manifest_policy
+from adapter import LOAD, Run, remote, sources, validate_checks, verify
+from remote import CAP, IMAGE, WORKSPACE_POLICY, Invalid, policy_errors, selection, workspace_selection, manifest_policy
 import workspace_files as files
 from workspace_controller import digest
 
@@ -125,16 +125,11 @@ class Workspace:
             attempt = self.directory / ('call-' + call_id)
             attempt.mkdir(mode=0o700)
             (attempt / 'request.json').write_text(json.dumps(request))
-            sources = {name: Path(__file__).with_name(name + '.py').read_text()
-                       for name in ('remote', 'workspace_files', 'workspace_controller')}
-            bootstrap = """import json,sys,types
-payload=json.load(sys.stdin)
-for name,source in payload['sources'].items():
- module=types.ModuleType(name); sys.modules[name]=module; exec(compile(source,name+'.py','exec'),module.__dict__)
-print(json.dumps(sys.modules['workspace_controller'].handle(payload['request'])))
-"""
             try:
-                raw = remote(['python3', '-c', bootstrap], data=json.dumps({'sources': sources, 'request': request}).encode(), timeout=seconds + 5)
+                # Through this module's `remote`, which live controls replace.
+                raw = remote(['python3', '-c', LOAD + "print(json.dumps(sys.modules['workspace_controller'].handle(p['request'])))"],
+                             data=json.dumps({'sources': sources('remote', 'workspace_files', 'workspace_controller'),
+                                              'request': request}).encode(), timeout=seconds + 5)
                 result = json.loads(raw)
                 if any(result.get(k) != request[k] for k in ('run_id', 'workspace_id', 'call_id')):
                     raise RuntimeError('mismatched response identity')
@@ -222,7 +217,7 @@ print(json.dumps(sys.modules['workspace_controller'].handle(payload['request']))
         previous = self.active
         try:
             self.start_command(script, seconds=seconds, call_id=call_id)
-        except ValueError:
+        except (files.Refusal, Invalid):
             if self.active and self.active is not previous:
                 return self.collect()
             return {'run_id': self.run_id, 'workspace_id': self.workspace_id, 'call_id': call_id,

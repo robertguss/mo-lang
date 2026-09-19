@@ -4,6 +4,7 @@ import hashlib, json, pathlib, shutil, subprocess, sys, tempfile
 root = pathlib.Path(__file__).resolve().parent
 repo = root.parents[2]
 guard = repo / 'toolchain/bench/step36/guard.py'
+guarded = str(repo / 'toolchain/harness/executor/guarded.py')
 # Snapshot tracked bytes, including historical evidence, before any verification.
 tracked = subprocess.check_output(['git', 'ls-files', '-z', '--', str(root)], cwd=repo).decode().split('\0')
 def digest(path):
@@ -19,14 +20,17 @@ for path in root.iterdir():
 assert not (copy/'.cache').exists() and not (copy/'node_modules').exists()
 runner = copy/'cold-runner'
 runner.mkdir()
-shutil.copy2(root/'run.py', runner/'run.py')
+def sterile(name, cwd, *command):
+    # Node and npm get an empty home and a 100-second process-group bound.
+    return [sys.executable, guarded, '100', str(output/(name + '-run')), '--cwd', str(cwd),
+            '--home', str(cwd/'.cache/home'), '--', *command]
 steps = [
-    ('cold-runner', [sys.executable, str(runner/'run.py'), '100', 'node', '--version']),
+    ('cold-runner', sterile('cold-runner', runner, 'node', '--version')),
     ('setup', [sys.executable, 'setup.py']),
-    ('install', [sys.executable, 'run.py', '100', 'npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund']),
+    ('install', sterile('install', copy, 'npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund')),
     ('provenance', [sys.executable, 'provenance.py']),
     ('prepare', [sys.executable, 'prepare.py']),
-    ('catalog', [sys.executable, 'run.py', '100', 'node', 'catalog.mjs']),
+    ('catalog', sterile('catalog', copy, 'node', 'catalog.mjs')),
     ('verify', [sys.executable, 'verify.py']),
 ]
 results = []

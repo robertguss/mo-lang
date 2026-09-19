@@ -1,5 +1,5 @@
-"""Owned offline attempt: fresh prepared copy, guard, process-group cleanup, receipts."""
-import hashlib, json, os, pathlib, shutil, signal, subprocess, sys, time, tarfile, io
+"""Owned offline attempt: fresh prepared copy and receipts; executor/guarded.py runs Node."""
+import hashlib, json, pathlib, shutil, subprocess, sys, tarfile, io
 root = pathlib.Path(__file__).resolve().parent
 repo = root.parents[3]
 name, selection = sys.argv[1:3]
@@ -41,27 +41,15 @@ if selection != 'foundation' and 'mo' in selected:
     (cache/'bridge/release.json').write_text(json.dumps(release,indent=2)+'\n')
     receipt['moRelease']=release
 (out / 'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
-command = ['python3', str(repo/'toolchain/bench/step36/guard.py'), '580', '--', 'python3', str(cache/'run.py'), '550', 'python3', str(repo/'toolchain/bench/step36/guard.py'), '540', '--', 'node']
-command += ['test.mjs', str(out/'outbound.json')] if selection == 'foundation' else ['bridge/test.mjs', selection, str(out/'observations.json')]
-if selection != 'foundation' and 'mo' in selected:
-    command = ['python3', str(repo/'toolchain/bench/step36/guard.py'), '580', '--', 'python3', str(cache/'bridge/execute.py'), 'bridge/test.mjs', selection, str(out/'observations.json')]
+# One guarded runner: empty home, minimal PATH (node, npm, zig), owned process group.
+node = ['bridge/test.mjs', selection, str(out/'observations.json')] if selection != 'foundation' else ['test.mjs', str(out/'outbound.json')]
+command = ['python3', str(repo/'toolchain/harness/executor/guarded.py'), '550', str(out/'run'),
+           '--cwd', str(cache), '--home', str(cache/'bridge/.home'), '--', 'node', *node]
 receipt['command'] = command
 with (out/'output.log').open('wb') as log:
-    p = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-    def stop(*_):
-        try: os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError: pass
-    for sig in (signal.SIGINT, signal.SIGTERM): signal.signal(sig, stop)
-    try: rc = p.wait(timeout=590)
-    except subprocess.TimeoutExpired: stop(); p.wait(); rc = 124
-    finally: stop()
-receipt['owned_outer_pgid']=p.pid
-for _ in range(20):
-    try: os.killpg(p.pid,0)
-    except ProcessLookupError: receipt['outer_group_remaining']=False;break
-    time.sleep(0.05)
-else: receipt['outer_group_remaining']=True
-receipt.update(exit=rc, group_cleanup='SIGKILL owned outer group after exit; inner foundation runner cleans Node group', evidence_bytes=sum(p.stat().st_size for p in out.rglob('*') if p.is_file()))
+    rc = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=590).returncode
+receipt['runner'] = json.loads((out/'run'/'exit.json').read_text())
+receipt.update(exit=rc, evidence_bytes=sum(p.stat().st_size for p in out.rglob('*') if p.is_file()))
 assert receipt['evidence_bytes'] < 16 * 1024 * 1024
 (out/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
 print(f'BRIDGE ATTEMPT {name} exit={rc}', flush=True)

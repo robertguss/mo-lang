@@ -1,21 +1,15 @@
 """Actual controller validation using numeric server-local deadlines; no candidate."""
 import hashlib
 import json
-from pathlib import Path
 import uuid
-from adapter import py
+from adapter import LOAD, py, sources as module_sources
 from .owner import private_write
 
 
 def check(output):
-    root = Path(__file__).resolve().parents[1]
-    sources = {name: (root / (name + '.py')).read_text()
-               for name in ('remote', 'workspace_files', 'workspace_controller')}
+    sources = module_sources('remote', 'workspace_files', 'workspace_controller')
     payload = {'sources': sources, 'run_id': uuid.uuid4().hex, 'workspace_id': uuid.uuid4().hex}
-    script = '''import json,sys,time,types,pathlib
-p=json.load(sys.stdin)
-for name,source in p['sources'].items():
- m=types.ModuleType(name);sys.modules[name]=m;exec(compile(source,name+'.py','exec'),m.__dict__)
+    script = LOAD + '''import time
 controller=sys.modules['workspace_controller'];rows=[]
 root=controller.root_for(p['workspace_id'])
 assert not root.exists()

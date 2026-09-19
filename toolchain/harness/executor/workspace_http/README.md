@@ -25,14 +25,12 @@ Run every test/server/build in an owned right/no-focus Herdr pane, from the repo
 root, with a new evidence directory and a numeric guard. Example local command:
 
 ```sh
-python3 -B toolchain/harness/executor/workspace_http/run_guarded.py 120 NEW_EVIDENCE python3 -B toolchain/harness/executor/workspace_http/local.py
+python3 -B toolchain/harness/executor/guarded.py 120 NEW_EVIDENCE -- python3 -B toolchain/harness/executor/workspace_http/local.py
 ```
 
 `local.py --groups deadlines,shutdown` selects existing named groups; unknown,
 empty and duplicate selections fail before setup. Local controls use a separate
-subprocess double and cannot prove remote isolation. `review_baseline.py` is a
-retained failing regression control against the immutable pre-fix bridge. It is
-expected to exit1 and is not part of the green matrix.
+subprocess double and cannot prove remote isolation.
 
 Real execution requires the lead's exact machine release. With release, run
 `live.py NEW_CONTROLS` or `live.py NEW_CONTROLS --application` through the same
@@ -43,9 +41,9 @@ lost-create fault is an operator-owned test marker, absent from production.
 groups. It advances the test frontend deadline before dispatch; it is not a full
 900s soak. No production policy constant is changed.
 
-Inherited machine regressions use unchanged
-`recovery/observe_regression.py SUITE NEW_CONTROLS`, separately guarded and
-sequential, where SUITE is workspace22, executor17, lifecycle1 or application23.
+Inherited machine regressions run the unchanged suites (`test_workspace_live.py`, `selftest.py`,
+`test_lifecycle_live.py`, `application/controls.py`), each under `guarded.py`,
+sequentially; `inventory.py` gives the read-only cleanup proof afterwards.
 The compiler has a separate gate and must never overlap machine workload.
 Exact commands, source snapshots/hashes, original failures, exits, process groups,
 raw transport and positive cleanup/readback evidence live under `evidence/`.

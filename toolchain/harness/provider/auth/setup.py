@@ -14,7 +14,10 @@ for name in ('source.tgz', 'artifact.tgz'):
 for name in ('source', 'artifact'):
     shutil.copytree(source/'.cache'/name, target/'.cache'/name)
 shutil.copytree(source/'node_modules', target/'node_modules', symlinks=True)
-for args in ([sys.executable, 'prepare.py'], [sys.executable, 'run.py', '100', 'node', 'catalog.mjs'], [sys.executable, 'verify.py']):
+guarded = str(foundation.parents[2] / 'toolchain/harness/executor/guarded.py')
+catalog = [sys.executable, guarded, '100', str(target/'.cache/catalog-run'), '--cwd', str(target),
+           '--home', str(target/'.cache/home'), '--', 'node', 'catalog.mjs']
+for args in ([sys.executable, 'prepare.py'], catalog, [sys.executable, 'verify.py']):
     subprocess.run(args, cwd=target, check=True, timeout=150)
 names = ['pin.json', 'catalog.json', 'upstream.patch', 'evidence/runtime-hashes.json', 'evidence/dependencies.json']
 for name in names:

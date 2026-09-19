@@ -10,7 +10,9 @@ import threading
 from unittest.mock import patch
 
 from adapter import Run, validate_checks, verify
-from remote import CAP, IMAGE, cgroup_path, policy_errors, reap, finalize
+from remote import CAP, IMAGE, REAP_ATTEMPTS, cgroup_path, cleanup, policy_errors, reap, finalize, run_name
+
+NAME = 'mo-executor-' + 'a' * 32
 
 
 def check(expected='ok\n', name='output', mode='exact', stream='stdout'):
@@ -94,26 +96,129 @@ class ExecutorTests(unittest.TestCase):
         command.return_value = subprocess.CompletedProcess([], 0, b'/mo.slice/mo-executor.slice\n', b'')
         self.assertEqual(cgroup_path('abc'), '/sys/fs/cgroup/mo.slice/mo-executor.slice/docker-abc.scope')
 
-    @patch('remote.cleanup', side_effect=RuntimeError('unconfirmed cleanup'))
+    def reaper_root(self, directory, populated=None):
+        root = Path(directory)
+        (root / 'manifest.json').write_text(json.dumps({'name': NAME}))
+        group = root / 'candidate-cgroup'
+        if populated is not None:
+            group.mkdir()
+            (group / 'cgroup.events').write_text(f'populated {int(populated)}\nfrozen 0\n')
+        (root / 'registration.json').write_text(json.dumps({'container_id': 'abc', 'cgroup': str(group)}))
+        return root
+
     @patch('remote.command')
-    def test_independent_reaper_requests_dedicated_machine_poweroff_if_cleanup_unknown(self, command, cleanup):
+    def test_reaper_cleanup_timeout_reports_unconfirmed_without_poweroff(self, command):
+        def machine(args, **kwargs):
+            if args[0] == 'docker': raise subprocess.TimeoutExpired(args, kwargs.get('timeout'))
+            return subprocess.CompletedProcess(args, 0, b'', b'')
+        command.side_effect = machine
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / 'manifest.json').write_text(json.dumps({'name': 'mo-executor-unit'}))
+            root = self.reaper_root(directory, populated=False)
             reap(root)
-            self.assertFalse(json.loads((root / 'reaped.json').read_text())['absent'])
-            self.assertIn((['systemctl', 'poweroff'],), [c.args for c in command.call_args_list])
+            record = json.loads((root / 'reaped.json').read_text())
+        calls = [c.args[0] for c in command.call_args_list]
+        self.assertNotIn(['systemctl', 'poweroff'], calls)
+        self.assertEqual(record['containment'], 'cleanup_unconfirmed')
+        self.assertFalse(record['absent'])
+        self.assertTrue(1 < len(record['attempts']) <= REAP_ATTEMPTS)
+        self.assertEqual(len([c for c in calls if c[:3] == ['docker', 'rm', '-f']]), len(record['attempts']))
+        self.assertNotIn(['systemctl', 'stop', NAME + '-deadline.timer'], calls)
+
+    @patch('remote.cleanup', return_value={'absent': False, 'removed_rc': 1})
+    @patch('remote.command')
+    def test_reaper_powers_off_only_on_proven_containment_failure(self, command, cleanup):
+        command.return_value = subprocess.CompletedProcess([], 0, b'', b'')
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.reaper_root(directory, populated=True)
+            reap(root)
+            record = json.loads((root / 'reaped.json').read_text())
+        self.assertEqual(record['containment'], 'failed')
+        self.assertIn(['systemctl', 'poweroff'], [c.args[0] for c in command.call_args_list])
+
+    @patch('remote.cleanup', side_effect=RuntimeError('programming error'))
+    @patch('remote.command')
+    def test_reaper_unknown_error_is_unconfirmed_not_poweroff(self, command, cleanup):
+        command.return_value = subprocess.CompletedProcess([], 0, b'', b'')
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.reaper_root(directory)
+            reap(root)
+            record = json.loads((root / 'reaped.json').read_text())
+        self.assertEqual(record['containment'], 'cleanup_unconfirmed')
+        self.assertIn('programming error', record['attempts'][0]['error'])
+        self.assertNotIn(['systemctl', 'poweroff'], [c.args[0] for c in command.call_args_list])
+
+    @patch('remote.command')
+    def test_cleanup_timeout_is_a_result_not_an_exception(self, command):
+        command.side_effect = subprocess.TimeoutExpired(['docker'], 2)
+        result = cleanup(NAME)
+        self.assertFalse(result['absent'])
+        self.assertIn('TimeoutExpired', result['error'])
 
     @patch('adapter.py', side_effect=RuntimeError('machine unavailable'))
     @patch('adapter.subprocess.run')
-    def test_host_cleanup_failure_stops_only_named_machine_and_fails_closed(self, command, remote_python):
-        command.return_value = subprocess.CompletedProcess([], 0, b'', b'')
+    def test_host_cleanup_unknown_fails_closed_without_stopping_machine(self, command, remote_python):
         with tempfile.TemporaryDirectory() as root:
             run = Run('echo ok', [check()], Path(root) / 'run')
             result = run.collect()
             self.assertFalse(result['passed'])
             self.assertEqual(result['observation']['status'], 'infrastructure_failure')
+            self.assertIn('cleanup_error', result['observation'])
+            command.assert_not_called()
+
+    @patch('adapter.subprocess.run')
+    def test_host_stops_only_named_machine_on_proven_containment_failure(self, command):
+        command.return_value = subprocess.CompletedProcess([], 0, b'', b'')
+        with tempfile.TemporaryDirectory() as root:
+            run = Run('echo ok', [check()], Path(root) / 'run')
+            def machine(source, *args, **kwargs):
+                if 'observation.json' in source: return b'{"status": "infrastructure_failure"}'
+                return json.dumps({'host_confirmed': False, 'containment_failed': True}).encode()
+            with patch('adapter.py', side_effect=machine): result = run.collect()
+            self.assertFalse(result['passed'])
             self.assertEqual(command.call_args.args[0], ['orbctl', 'stop', 'mo-executor-r01'])
+
+    def test_machine_rejects_run_names_before_systemd(self):
+        bad = ['mo-executor-' + 'a' * 31, 'mo-executor-' + 'A' * 32, 'mo-executor-' + 'a' * 32 + '\n',
+               'mo-executor-' + 'a' * 32 + ' /bin/sh -c id', 'x', None]
+        for name in bad:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                run_name(name)
+        self.assertEqual(run_name(NAME), NAME)
+
+    def test_bootstrap_refuses_invalid_name_before_lock_or_systemd(self):
+        import builtins, io, sys
+        import adapter
+        manifest = {'name': 'mo-executor-' + 'a' * 32 + ' /bin/sh -c id', 'seconds': 1}
+        payload = json.dumps({'sources': {'remote': Path(adapter.__file__).with_name('remote.py').read_text()},
+                              'manifest': manifest})
+        opened = []
+        def fake_open(path, *args, **kwargs):
+            opened.append(path)
+            return io.StringIO()
+        namespace = {'__name__': '__main__', '__builtins__': {**builtins.__dict__, 'open': fake_open}}
+        saved = {name: sys.modules.get(name) for name in ('remote',)}
+        try:
+            with tempfile.TemporaryDirectory() as directory, \
+                    patch.object(sys, 'argv', ['-c', str(Path(directory) / 'root')]), \
+                    patch.object(sys, 'stdin', io.StringIO(payload)), \
+                    patch('subprocess.run') as run, patch('fcntl.flock'):
+                with self.assertRaises(ValueError):
+                    exec(adapter.BOOTSTRAP, namespace)
+                self.assertFalse((Path(directory) / 'root').exists())
+            run.assert_not_called()
+            self.assertEqual(opened, [])
+        finally:
+            for name, module in saved.items():
+                if module is None: sys.modules.pop(name, None)
+                else: sys.modules[name] = module
+
+    @patch('remote.command')
+    def test_reaper_refuses_invalid_name_before_systemd(self, command):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'manifest.json').write_text(json.dumps({'name': 'x; poweroff'}))
+            with self.assertRaises(ValueError): reap(root)
+        command.assert_not_called()
 
     def test_caller_check_mutation_does_not_change_registered_inventory(self):
         with tempfile.TemporaryDirectory() as root:
@@ -142,10 +247,11 @@ class ExecutorTests(unittest.TestCase):
     @patch('remote.command')
     def test_finalizer_keeps_reaper_armed_when_removal_is_uncertain(self, command, cleanup, lock):
         command.return_value = subprocess.CompletedProcess([], 0, b'', b'')
-        with tempfile.TemporaryDirectory(prefix='mo-executor-') as root:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / NAME; root.mkdir()
             with self.assertRaisesRegex(RuntimeError, 'reaper remains armed'):
-                finalize(Path(root))
-            self.assertFalse((Path(root) / 'cleanup-confirmed.json').exists())
+                finalize(root)
+            self.assertFalse((root / 'cleanup-confirmed.json').exists())
         stopped = [c.args[0] for c in command.call_args_list if c.args[0][:2] == ['systemctl', 'stop']]
         self.assertEqual(len(stopped), 1)
         self.assertNotIn('-deadline', ' '.join(stopped[0]))
@@ -154,8 +260,8 @@ class ExecutorTests(unittest.TestCase):
     @patch('remote.cleanup', return_value={'absent': True, 'removed_rc': 0})
     @patch('remote.command')
     def test_finalizer_proves_cgroup_absence_before_disarming(self, command, cleanup, lock):
-        with tempfile.TemporaryDirectory(prefix='mo-executor-') as directory:
-            root = Path(directory); group = root / 'candidate-cgroup'; group.mkdir()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / NAME; root.mkdir(); group = root / 'candidate-cgroup'; group.mkdir()
             (root / 'registration.json').write_text(json.dumps({'container_id': 'abc'}))
             def machine(args, **kwargs):
                 if args[:2] == ['systemctl', 'stop'] and '-deadline' in args[2]:

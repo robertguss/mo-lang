@@ -78,14 +78,15 @@ recovery, remote HTTP cancellation, or client receipt.
 ## Reproducible controls
 
 Run from the repository root in an owned right/no-focus Herdr pane, using a
-fresh output directory every time. The wrapper retains argv, source hashes and
-snapshots, real exit, output, and local process inventory; it applies the numeric
-repository guard and kills only the owned process group at exit.
+fresh output directory every time. `executor/guarded.py` retains argv, git head
+and dirty paths, the child's real exit, output and the owned process group's
+absence; it applies the numeric repository guard and kills only that group.
 
 ```sh
-python3 -B toolchain/harness/executor/recovery/run_guarded.py 120 NEW_LOCAL python3 -B toolchain/harness/executor/recovery/local_suite.py
-python3 -B toolchain/harness/executor/recovery/run_guarded.py 900 NEW_LIVE python3 -B toolchain/harness/executor/recovery/live.py NEW_LIVE/controls
-python3 -B toolchain/harness/executor/recovery/run_guarded.py 1800 NEW_REGRESSION python3 -B toolchain/harness/executor/recovery/regressions.py NEW_REGRESSION/controls
+python3 -B toolchain/harness/executor/guarded.py 120 NEW_LOCAL -- python3 -B toolchain/harness/executor/recovery/local_suite.py
+python3 -B toolchain/harness/executor/guarded.py 900 NEW_LIVE -- python3 -B toolchain/harness/executor/recovery/live.py NEW_LIVE/controls
+python3 -B toolchain/harness/executor/guarded.py 1800 NEW_REGRESSION -- python3 -B toolchain/harness/executor/recovery/regressions.py NEW_REGRESSION/controls
+python3 -B toolchain/harness/executor/inventory.py NEW_INVENTORY NEW_LIVE NEW_REGRESSION
 ```
 
 Machine commands require exclusive lead release of `mo-executor-r01`. The 16

@@ -27,9 +27,9 @@ def fault_collector(directory):
             # deliberately incomplete observation cannot authorize a pass.
             return json.dumps({'status': 'infrastructure_failure',
                                'error': 'injected terminal observation with cleanup still outstanding'}).encode()
-        elif 'from remote import finalize;' in source:
-            source = source.replace('from remote import finalize;',
-                "import remote as machine; machine.cleanup=lambda name: {'absent':False,'removed_rc':1}; from remote import finalize;")
+        elif 'from remote import finalize_report;' in source:
+            source = source.replace('from remote import finalize_report;',
+                "import remote as machine; machine.cleanup=lambda name: {'absent':False,'removed_rc':1}; from remote import finalize_report;")
             (run.directory / 'fault-finalizer.py').write_text(source)
         return real_py(source, *args, **kwargs)
 
