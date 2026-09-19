@@ -8,7 +8,7 @@ type: index
 > **Start here.** [[state-of-the-project|The state of the project]] is the whole picture, rewritten at every pause. The maps of content gather the pages behind it: [[the-thesis-and-its-evidence|the thesis and its evidence]], [[the-rounds|the rounds and the measurements]], [[the-language|the language]], [[the-runtime|the runtime]], [[the-programs|the programs]], [[for-robert|for Robert]], [[how-we-work|how we work]]. The [[roadmap]] board is the authority on order and status; the [[decision-log]] is what Robert reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-19 | Total pages: 260
+> any question. Last updated: 2026-09-19 | Total pages: 268
 
 ## Directions we like
 
@@ -300,6 +300,7 @@ type: index
 - [[reliability-and-testing-philosophies|Reliability and testing philosophies]] — R6: FoundationDB, Antithesis sometimes-assertions, Jepsen, SQLite coverage, let-it-crash restart intensity, QuickCheck shrinking, SRE error budgets, mutation testing
 
 ## Research monitoring
+- [[hermes-daily-2026-09-19]] — OTP timeout/late-response semantics and the boundary between duplicate refusal and safe replay.
 - [[hermes-daily-2026-09-18]] — TLS state-sequence coverage, harness limitations, and versioned EOF semantics.
 - [[hermes-research-monitoring]] — the plan of the Hermes lane: an independent daily evidence scan and Monday synthesis, wiki-only, reviewed through a research PR before merging
 - [[hermes-daily-2026-09-17]] — Crash-consistency fault models, capability API confinement boundaries, and daily validation.
