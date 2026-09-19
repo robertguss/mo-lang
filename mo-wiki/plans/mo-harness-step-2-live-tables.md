@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification]
 sources: [plans/mo-harness-in-mo.md]
-status: in-progress
+status: done
 ---
 
 # Harness step 2: live suites as tables
@@ -66,6 +66,10 @@ name before and after, proving none was lost. Small commits as yourself with a
 `Co-Authored-By` line naming your model. **Write your final report to
 `toolchain/harness/executor/STEP-2-REPORT.md` and commit it**: commits,
 decisions the brief did not cover, what the lead must rerun on the machine.
+
+## Result
+
+Accepted 19 Sep 2026, 10:37 AM ET ([[decision-log]]); full suite 244 of 244. The worker's report is committed with its work; the lead's runs are in `audit/evidence/2026-09-19/fable-lead-verification/`.
 
 ## Related
 

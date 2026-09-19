@@ -2,6 +2,24 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## A runtime use-after-free fixed; harness step 2 accepted — 19 Sep 2026, 10:37 AM ET
+
+- Both runtimes: an `answer` to an ask a process kept was held as a bare value
+  into the process's region until the update committed; a returning frame past
+  the 1 MiB frame budget compacted the region first, so the asker got freed
+  memory (native: raw bytes printed; interpreter: a panic). `answer` now packs
+  when it runs, as `send` always did. New corpus program `deferred-large.mo`
+  and a test that rebuilds the native runtime compacting at every safe point.
+  Found by the application workspace rebuild, fixed by a Claude Opus 5 worker.
+- Harness step 2: six live suites as case tables on one runner, recovery's four
+  tests now fail when `recover()` is broken, the HTTP double runs the real file
+  controller, the runner accepts only `None` or `Fields` from a case. Python
+  rose from 6,326 to 6,643 counted lines.
+- Lead: full suite 244 of 244, exit 0; all eight live suites green after one
+  regression the lead's live rerun caught. `guard.py` kills its child but not
+  the group; an orphan from a killed run broke the next run once.
+- Research PR 14 (Hermes) reviewed and merged.
+
 ## Application workspace rebuilt; executor and Mo agent review fixes accepted — 19 Sep 2026, 9:03 AM ET
 
 - Fable leads with Claude Opus workers (Robert, 19 Sep). Astra's unfinished

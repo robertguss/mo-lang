@@ -25,6 +25,15 @@ Source review of Astra's night: `audit/evidence/2026-09-19/fable-overnight-revie
 In flight since 9:05 AM ET, each in its own Herdr tab, Opus 5 with bypass permissions, both based on `31ad3ba9`: `step2-tables-opus` (tab `w4:tS`, pane `w4:p2Q`, branch `harness/step-2-live-tables`, brief `mo-wiki/plans/mo-harness-step-2-live-tables.md`) and `rawmem-toolchain-opus` (tab `w4:tT`, pane `w4:p2R`, branch `toolchain/raw-memory-report`, brief `mo-wiki/plans/toolchain-raw-memory-report.md`). Each commits a report file its brief names. Neither may use the machine or run the full suite. Workers go in
 their own Herdr tab, never a split of the lead's tab, with bypass permissions.
 
+**Accepted 10:37 AM ET:** the raw-memory runtime fix and harness step 2; full suite
+244 of 244 on `2a852d68`. Step 40's worker tab was closed about 10:07 AM ET
+before it finished; its work is WIP commit `a687fd2f` on
+`toolchain/step-40-scope` (RED tests `373d7f85`; fix across 13 files; corpus
+run done; reruns, benchmarks and report not done). A fresh worker finishes it.
+Run the full suite detached (`nohup`) with a 1,500 s guard: the tool's
+10-minute cap is shorter than the suite now, and `guard.py` does not kill
+grandchildren.
+
 **Update, 9:25 AM ET.** The raw-memory defect is found and fixed by
 `rawmem-toolchain-opus` (`44a4da08`, merged locally at `9304fc65`, tab closed):
 an `answer` to a kept ask held a bare value into the process's region until the

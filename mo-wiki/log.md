@@ -960,3 +960,6 @@
 
 ## [2026-09-19] review | research PR 14 (Hermes, timeout outcomes and retry contracts) read and merged
 - 10:10 AM ET: both raw snapshots' hashes verified, every cited claim found in the saved text, no conflicts. Its four separate observations (admission, execution, reply produced versus received, cleanup) go into the Mo six-tool server's brief. Index total corrected to 276. Review comment on the PR.
+
+## [2026-09-19] accept | the raw-memory runtime fix and harness step 2
+- 10:37 AM ET: full suite 244 of 244 exit 0 on `2a852d68`; four rows in decisions/decision-log.md; CHANGELOG entry. Two earlier full-suite runs were the lead's own doing (a 570 s guard limit, then an orphan from that kill deleting the shared zig-out) and are retained in the evidence README.

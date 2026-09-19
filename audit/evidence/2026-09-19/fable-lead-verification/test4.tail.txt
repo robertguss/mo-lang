@@ -1,0 +1,30 @@
+test
++- run test 243 pass, 1 fail (244 total)
+error: 'corpus.test.corpus: every module's tests and every program, built by mo build, print what the interpreter prints' failed:
+       corpus: mo build programs/exit-pending.mo failed: mo build: exit-pending.mo: zig build-obj rejected the crypto brick in zig-out/mo-build/.bricks/43fe902360000a82:
+       error: unable to open output directory 'zig-out/mo-build/.bricks/43fe902360000a82': FileNotFound
+       
+       
+       corpus: mo build programs/hello.mo failed: mo build: hello.mo: the crypto brick's object did not move into zig-out/mo-build/.bricks/43fe902360000a82/crypto.o: FileNotFound
+       
+       expected 0, found 2
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:118:17: 0x10254294b in expectEqualInner__anon_387590 (test)
+                       return error.TestExpectedEqual;
+                       ^
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:83:5: 0x1028c9dd3 in expectEqual (test)
+           return expectEqualInner(T, expected, actual);
+           ^
+       /Users/robertguss/Projects/startups/mo-lang/toolchain/src/corpus.zig:797:5: 0x1028c9f5b in test.corpus: every module's tests and every program, built by mo build, print what the interpreter prints (test)
+           try std.testing.expectEqual(@as(u32, 0), programs.wrong);
+           ^
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo ./.zig-cache/o/6cef9134b2d7e43f31ae126ddbcd84e8/test --cache-dir=./.zig-cache --seed=0xa2f09158 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 243/244 tests passed (1 failed)
+test transitive failure
++- run test 243 pass, 1 fail (244 total)
+   +- compile test Debug native cached 51ms MaxRSS:35M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 50ms MaxRSS:35M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0xa2f09158 -Z8cfa985609b2c8c7 test --summary all

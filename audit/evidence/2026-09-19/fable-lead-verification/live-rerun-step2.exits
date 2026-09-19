@@ -1,0 +1,8 @@
+selftest exit 0
+lifecycle exit 0
+wslive exit 0
+recovery exit 0
+http exit 0
+httpapp exit 0
+appctl exit 1
+inventory exit 0

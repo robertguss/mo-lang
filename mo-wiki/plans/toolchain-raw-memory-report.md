@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [compiler, runtime, security]
 sources: [plans/mo-harness-in-mo.md]
-status: in-progress
+status: done
 ---
 
 # Toolchain defect: raw memory in a large report
@@ -65,6 +65,10 @@ Every process under `toolchain/bench/step36/guard.py` with a timeout and the
 exit codes. If you cannot find the cause in the time it takes to do the rest,
 stop and report the reduction and what you ruled out. **Write your final report
 to `toolchain/STEP-RAW-MEMORY-REPORT.md` and commit it.**
+
+## Result
+
+Accepted 19 Sep 2026, 10:37 AM ET ([[decision-log]]); full suite 244 of 244. The worker's report is committed with its work; the lead's runs are in `audit/evidence/2026-09-19/fable-lead-verification/`.
 
 ## Related
 

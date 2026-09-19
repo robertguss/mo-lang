@@ -19,6 +19,15 @@ and `<name>.tail.txt` the last 6,000 bytes of output. Times are ET and approxima
 | `workspace_http/live.py --application` | same | 8:51 AM | 22 of 22, exit 0 |
 | `inventory.py` over the seven run folders | same | 8:52 AM | clean: 111 runs, 142 workspace IDs, 103 cgroups selected; 0 remaining paths, 0 slice tasks |
 
+Later the same day, on `main` at `2a852d68` (step 2 and the raw-memory fix merged):
+
+| run | result |
+|---|---|
+| all eight live suites on the restructured step 2 code (`live-rerun-step2.exits`) | first pass: application controls 22 of 23, exit 1 (`scratch-fresh`, a runner bug); after the worker's fix: 23 of 23, selftest 17 of 17, the rest unchanged and green, inventory clean |
+| full suite, `test3` | **killed by the lead's own 570 s guard limit, exit 137**; no test result |
+| full suite, `test4`, started while `test3`'s orphaned test binary was still alive | **243 of 244, exit 1**: two `mo build`s lost `zig-out/mo-build/.bricks/<hash>` mid-run. `guard.py` kills its child, not the group, so the orphan finished and its cleanup deleted the shared `zig-out`. Explanation, not proof |
+| full suite, `test5`, no orphans, load 2.7 | **244 of 244, exit 0**, 10:37 AM ET |
+
 Not run: the two real-machine E1 checks the step 1 worker named (the reaper
 reading a populated `cgroup.events`; a stalled Docker daemon leaving
 `cleanup_unconfirmed` without a power-off). Both need a fault injected on the
