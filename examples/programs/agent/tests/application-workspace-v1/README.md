@@ -28,7 +28,10 @@ lead-gated and were not run.
   covers everything: work gets the remainder less a 15 s report reserve, and the
   existing shared, diminishing grace is kept. Model and file waits are at most 2
   s. The command wait is at most 300 s, and the candidate timeout is at most 120
-  s, taken from what remains after encoding. Below 500 ms nothing is sent.
+  s, taken from what remains after encoding less a 5 s collection margin
+  (`candidate_margin_ms`), so that the bridge's reply to a clamped command,
+  which comes after the timeout, still arrives (end to end v1's defect D1).
+  Below 500 ms nothing is sent.
 - **Requests and responses.** Requests are capped at 851968 bytes. Response
   bodies are capped at 524288 bytes and must be strict JSON: no duplicate keys,
   integers only. The exact envelope, identities (null only on pre-admission

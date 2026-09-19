@@ -1,5 +1,5 @@
 module Agent.WorkspaceAdapter
-expose Settings, Scan, wire_version, file_ms, command_ms, candidate_ms, candidate_floor_ms, request_cap, response_cap, config_cap, tools, strict, scanned, members, settings, local, sent, encoded, timed, checked, stops?, refusal?
+expose Settings, Scan, wire_version, file_ms, command_ms, candidate_ms, candidate_floor_ms, candidate_margin_ms, request_cap, response_cap, config_cap, tools, strict, scanned, members, settings, local, sent, encoded, timed, checked, stops?, refusal?
 
 use Agent.Tools{Call}
 
@@ -42,6 +42,12 @@ end
 
 fn candidate_floor_ms() : Int64
   500
+end
+
+# What a clamped command leaves of the run's time for the bridge to collect it and prove its
+# cleanup after its timeout (measured 0.5 to 1.4 s), so its reply can still arrive.
+fn candidate_margin_ms() : Int64
+  5_000
 end
 
 fn request_cap() : UInt64
@@ -234,11 +240,12 @@ fn encoded(settings: Settings, call: Call, id: String) : Result(String, String)
   Ok(body)
 end
 
-# A command's timeout taken now, after encoding, from what the run has left and at most the
-# candidate's cap; below the bridge's minimum nothing is sent. Other bodies are whole already.
+# A command's timeout taken now, after encoding, from what the run has left less the collection
+# margin and at most the candidate's cap; below the bridge's minimum nothing is sent. Other
+# bodies are whole already.
 fn timed(body: String, operation: String, by: Deadline) : Option(String)
   return Some(body) if operation != "command"
-  ms = min_of(candidate_ms(), by.remaining.ms)
+  ms = min_of(candidate_ms(), by.remaining.ms - candidate_margin_ms())
   return None if ms < candidate_floor_ms()
   Some("#{body}#{ms}}}")
 end

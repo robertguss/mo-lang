@@ -7,7 +7,7 @@ use Agent.Record{Order, Status, budget, fixture_tools}
 use Agent.Report{application_report, application_error}
 use Agent.Run{Run}
 use Agent.Steps{Setup}
-use Agent.WorkspaceAdapter{Settings, settings, config_cap, file_ms, command_ms, candidate_ms, candidate_floor_ms, request_cap, response_cap, wire_version}
+use Agent.WorkspaceAdapter{Settings, settings, config_cap, file_ms, command_ms, candidate_ms, candidate_floor_ms, candidate_margin_ms, request_cap, response_cap, wire_version}
 
 intent "One operator-launched application run: a private bridge configuration read within its bound, a fresh operator-owned Book root bound to the bridge's external run, Run started with no local writer and every tool routed to the workspace bridge, all inside one outer deadline that keeps the report's reserve; the start's reply is kept and answered once, by delayed self-polls, when the Book is terminal and Run has stopped, or with a versioned reporting error."
 
@@ -66,7 +66,7 @@ end
 # The fixed caps the legacy log header cannot show, as the report's first line.
 fn profile() : String
   caps = "\"steps\": 16, \"tokens\": 4096, \"wall_ms\": 900000, \"retries\": 0, \"tool_ms\": 2000, \"grants\": #{Json.encode(fixture_tools())}"
-  waits = "\"report_reserve_ms\": #{reserve_ms()}, \"model_wait_ms\": 2000, \"file_wait_ms\": #{file_ms()}, \"command_wait_ms\": #{command_ms()}, \"candidate_ms\": #{candidate_ms()}, \"candidate_floor_ms\": #{candidate_floor_ms()}"
+  waits = "\"report_reserve_ms\": #{reserve_ms()}, \"model_wait_ms\": 2000, \"file_wait_ms\": #{file_ms()}, \"command_wait_ms\": #{command_ms()}, \"candidate_ms\": #{candidate_ms()}, \"candidate_floor_ms\": #{candidate_floor_ms()}, \"candidate_margin_ms\": #{candidate_margin_ms()}"
   bounds = "\"request_bytes\": #{request_cap()}, \"response_bytes\": #{response_cap()}, \"config_bytes\": #{config_cap()}, \"report_bytes\": #{report_cap()}, \"wire\": #{Json.encode(wire_version())}"
   "{#{caps}, #{waits}, #{bounds}}"
 end
