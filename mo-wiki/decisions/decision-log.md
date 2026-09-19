@@ -924,6 +924,13 @@ direction separately from the lead's conservative execution interpretation.
 | Ratified defaults of the worker (Claude Opus 5): the model reply bound is the runtime's 1 MiB HTTP body limit, named `model_reply_cap()`; the margin is 5 s, about 3.5 times the largest measured need, and appears on the profile line as `candidate_margin_ms`. | Fable lead | decided | that brief's tests |
 | `examples/programs/agent/tests/application-workspace-v1/real_bridge.py` has failed 2 of 3 cases since harness steps 1 and 2 changed the executor's test double; nobody reran it. It is fixed or retired with the Mo six-tool server's behaviour tests, which replace that double. | Fable lead | recorded | the six-tool server's brief |
 
+## 19 Sep 2026 — Linux checks deferred; acceptance on macOS for now, 3:26 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Robert: the Linux builds and tests take too long; defer them and test on macOS for now. From here a toolchain step is accepted on the lead's Darwin checks alone (build, focused tests, full suite, probes). Linux is not waived, it is owed: the lead keeps a list in `HANDOFF.md` ("Linux owed") and runs it as one batch later, or the CI gate ([[ci-gate]]) brings it back on every pull request. Two things depend on Linux whatever the Mac says and are gated on that batch: step 41's fork child (only `posix_spawn` runs on Darwin) and part B of the Mo workspace server, which runs on the Linux machine. | Robert | decided | the Linux batch, or the CI gate's first run |
+| Owed on Linux at this row: step 41 (`-Dtest-filter="step 41"` and the full suite; first run 5 of 6, the one failure a test predicate, `took > 0.ms`, that a sub-millisecond run fails), and every toolchain step accepted after it. | Fable lead | recorded | the Linux batch |
+
 ## Related
 
 - [[session-05]]

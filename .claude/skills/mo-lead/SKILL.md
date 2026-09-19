@@ -122,6 +122,10 @@ audit rules; do not treat unavailable evidence as passed.
    (`nohup`) under the guard and poll. The OrbStack machine `mo-executor-r01`
    is only for the harness's live executor suites, which drive containers on it
    by design.
+   **Deferred (Robert, 19 Sep 2026, 3:26 PM ET): Linux runs take too long; accept on
+   Darwin alone for now, keep a "Linux owed" list in `HANDOFF.md`, and run it as
+   one batch later or through the CI gate.** Code that only runs on Linux (step
+   41's fork child, the machine-side server) is gated on that batch.
    Linux checks do not satisfy Darwin full-sync obligations.
 5. **Record.** One commit (by path: `git commit -m <msg> -- <paths>`):
    decision-log rows in `mo-wiki/decisions/decision-log.md` (who, status, first

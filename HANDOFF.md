@@ -24,6 +24,12 @@ new records at 7:15 AM ET). Everything below this section is history.
 - **Robert pushes `main` himself at any time.** So `main` holds accepted work
   and lead records only. Verify a worker's branch on a local
   `lead/verify-<unit>` branch; merge to `main` at acceptance.
+- **Linux is deferred** (Robert, 19 Sep, 3:26 PM ET): accept on macOS alone for now;
+  do not wait on the VM. **Linux owed** (run as one batch later, or by the CI
+  gate): step 41 (focused tests and full suite; first VM run 5 of 6, the failure
+  a test predicate `took > 0.ms`; the fork child only runs on Linux) and every
+  toolchain step accepted after it. Part B of the Mo workspace server runs on
+  the Linux machine and is gated on that batch.
 - **Linux toolchain runs go on his Linux VM**, not the Mac: `ssh -o
   IdentitiesOnly=yes -i ~/.ssh/id_exe robertguss@aurora-but-gold.exe.xyz`
   (x86_64, 4 cores, Zig 0.16 via `mise`; the `dev-box` alias is broken). Use
