@@ -22,37 +22,56 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 12:41 AM ET
+### Active work, 19 Sep 2026, 1:19 AM ET
 
-- Dedicated `mo-executor-r01` exists with isolation/network isolation enabled,
-  2 CPU, 2 GiB RAM, 8 GiB disk, no Mac sharing/SSH forwarding. Docker and a
-  pinned BusyBox fixture are installed inside it. Do not use the shared Mac
-  Docker daemon. Setup evidence: `audit/evidence/2026-09-19/executor-readiness/`.
-- `mo-executor` is implementing only `toolchain/harness/executor/` in branch
-  `harness/executor-foundation-r01`, separate worktree under
-  `~/Projects/startups/mo-lang-worktrees/`. Worker reports 9 unit/17 live checks
-  passing and is finalizing lifecycle evidence; lead acceptance is still owed.
-- `mo-auth` has finished branch `harness/agent-terminal-auth-v1`, tip
-  `bc784d87cc9c98f8c5a4978316c324129a69b1de`. Worker reports 18/18 status/count
-  cases, 16 versioned and 9 inherited recipe tests, model 3/3. Lead reviewed
-  the change and requested portable test paths/unknown-selection rejection;
-  corrections are committed. Integration and lead controls are next.
-- Read-only `mo-provider` research is complete and its pane closed after
-  receipt. [[mo-provider-foundation]] in `mo-wiki/plans/` defines the next
-  isolated worker: actual pinned Pi parser, synthetic upstream traffic, honest
-  usage and error distinctions. No credentials/login/inference started.
-- Native `zig build -j2` passed. The first full test attempt hit its 300-second
-  guard while compiling examples; the lead cleaned its owned process group.
-  A second guarded 1200-second attempt is running. Preserve its evidence under
-  `audit/evidence/2026-09-19/harness-native-baseline/`; do not change Mo/compiler
-  source in main until this baseline finishes.
+Three foundations are independently accepted on integrated main `e3a01bb`:
 
-Rediscover Herdr IDs; currently lead w4:p1, executor worker w4:pN/run w4:pQ,
-completed auth worker w4:pR, baseline run w4:pV. Close only owned panes after
-writers stop and results are retained. Main has local documentation commits;
-no push yet. Historical worktrees stay intact. Next: independent acceptance,
-provider foundation and a versioned headless Mo integration brief. Step 39
-remains unaccepted and Program 7 suspended.
+- Executor: 15 unit, 17 live, collector-death and extra exit-137 controls passed.
+  Cleanup empty; all five shared Mac Docker IDs/states unchanged across lead run.
+  Source tips `dfed32f`/`4227a89` integrated `cf21525`/`4b6c3c0`; worker closed.
+- Provider: tips `6081981`/`7ae1eed` integrated `432beb4`/`1661dad`. Fresh setup
+  initially failed missing cache; corrected clean-copy reproduction passed,
+  seven generated records match, 28 parser cases plus two extra controls pass.
+  No tracked provider bytes changed. No OAuth/credentials/live inference.
+- Auth: tips through `ebbf86c` integrated through `e3a01bb`. Lead 18-case matrix
+  and six controls pass; final full suite 243/243, 5/5, exit 0 at 1:17 AM ET.
+  Prior 241/243 dependency and 242/243 formatter failures retained. Exact final
+  comparison: 62 changed auth files match worker tip, shared recipe unchanged.
+
+Evidence: `audit/evidence/2026-09-19/harness-integration/` and
+`audit/evidence/2026-09-19/agent-terminal-auth/`. Each plan has numbers/limits.
+
+Active implementation: Astra/low `mo-coding-fixture`, separate worktree/branch
+`harness/coding-fixture-v1` at base `5f87021`, exact brief in
+`mo-wiki/plans/mo-coding-fixture-v1.md`. Authorized module filename correction:
+exact-edit.mo, command-adapter.mo, coding-fixture.mo. It has a real interpreter
+scripted repair and is running 24-case matrices/boundaries. Its inherited auth
+formatting baseline is known; no worker auth edits. Integrate owned changes onto
+green main and repeat acceptance. Command text remains inert fixture data.
+
+Fresh read-only Astra/low `mo-workspace-design` completed its review and was
+closed after receipt. `mo-wiki/plans/mo-workspace-foundation.md` authorizes the
+next bounded Python/BusyBox implementation: persistent files, real feedback
+commands and frozen snapshots. HTTP/provider/Mo-build integration is deferred.
+Start a fresh Astra/low worker; it may implement locally while the lead Linux
+build runs, but must wait for lead machine-release before live tests.
+
+Linux: official Zig 0.16.0 arm64 is hash-verified and installed under
+`/opt/mo-harness/zig-aarch64-linux-0.16.0` in `mo-executor-r01`. Exact source
+`e3a01bb` is under `/opt/mo-harness/source-e3a01bbf613c1f130955b6e123d5987a4c559d18`.
+First trusted build (j2, 1.5 GiB/1.5 CPU/128 tasks/private network/900 s) hit OOM;
+follow-up cleanup command targeted an already removed unit and also failed.
+Both retained. `build-retry.py` is running j1 with the same bounds, checking unit
+and Zig-process absence. This is not candidate execution. Do not change machine
+configuration while it runs. Evidence is under linux-toolchain-preparation/.
+
+Rediscover Herdr IDs. Current lead w4:p1; coding worker w4:p15/run w4:p16;
+Linux build w4:p1D. Workspace review, auth/provider workers and completed
+auth/provider run panes are closed after receipts and idle proof.
+Historical worktrees stay. Main integrations/docs are local; no push yet.
+Next: checkpoint accepted foundations, finish coding fixture and Linux build,
+then bounded real workspace/command/provider integration. Step 39 remains
+unaccepted, Darwin full-sync unmet, Program 7 suspended.
 
 ## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
 

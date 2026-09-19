@@ -1,0 +1,8 @@
+{
+  "controls": 1,
+  "passed": true,
+  "exit_code": 137,
+  "signal": null,
+  "signal_hint": 9,
+  "status": "completed"
+}

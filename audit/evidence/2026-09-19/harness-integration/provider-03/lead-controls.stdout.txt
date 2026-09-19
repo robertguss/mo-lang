@@ -1,0 +1,34 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+{
+  "passed": 2,
+  "controls": [
+    {
+      "case": "UTF-8 split at every byte",
+      "passed": true,
+      "requests": 1,
+      "usage": {
+        "status": "reported",
+        "input": 10,
+        "output": 5,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 15
+      },
+      "text": "Mo café 🦉 漢字"
+    },
+    {
+      "case": "boolean total is unknown",
+      "passed": true,
+      "requests": 1,
+      "usage": {
+        "status": "unknown"
+      },
+      "text": "Mo café 🦉 漢字"
+    }
+  ],
+  "byte_chunks": 1156,
+  "node": "v24.20.0"
+}
+owned-command-exit=0

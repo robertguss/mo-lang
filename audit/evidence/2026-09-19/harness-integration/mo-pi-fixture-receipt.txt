@@ -1,0 +1,100 @@
+  └ {"id":"cli:pane:process_info","result":{"process_info":
+    {"foreground_process_group_id":28368,"foreground_processes":[{"argv":
+    … +719 lines (ctrl + t to view transcript)
+     toolchain/harness/provider/verify.py               |   24 +
+     54 files changed, 10248 insertions(+)
+
+• Ran git diff --cached --check -- toolchain/harness/provider ':(exclude)toolchain/harness/
+  │ provider/upstream.patch' ':(exclude)toolchain/harness/provider/evidence/
+  │ artifact-source.diff'; git diff --cached --name-only | tail -15; herdr pane read w4:pZ
+  │ … +1 lines
+  └ toolchain/harness/provider/evidence/test-03.outbound.json
+    toolchain/harness/provider/evidence/verify-01.exit
+    … +17 lines (ctrl + t to view transcript)
+    harness-provider-foundation-r01 harness/provider-foundation-r01* ≡
+    ❯
+
+• Ran cat >> toolchain/harness/provider/evidence/REPORT.md <<'EOF'
+  │
+  │ Precommit whitespace check passes when excluding the two verbatim `.patch`/`.diff`
+  │ … +11 lines
+  └ [harness/provider-foundation-r01 6081981] feat: add pinned offline provider turn foundation
+     54 files changed, 10254 insertions(+)
+    … +53 lines (ctrl + t to view transcript)
+     create mode 100644 toolchain/harness/provider/verify.py
+    6081981c151bc22983746087c954904401dac209
+
+• Ran herdr pane close w4:pZ; herdr agent prompt w4:p1 'Provider worker ready for review. Base
+  │ f093d6b6a988195561a6b57b35738b972bb5e94e -> local tip
+  │ 6081981c151bc22983746087c954904401dac209 on harness/provider-foundation-r01. Only
+  │ … +12 lines
+  └ {"id":"cli:agent:prompt","result":{"agent":
+    {"agent":"codex","agent_status":"working","cwd":"/Users/robertguss/Projects/startups/
+    … +3 lines (ctrl + t to view transcript)
+    mo-lang","terminal_title_stripped":"Read HANDOFF.md |
+    mo-lang","workspace_id":"w4"},"type":"agent_prompted"}}
+
+• Committed locally and reported to lead.
+
+  - Base: f093d6b6a988195561a6b57b35738b972bb5e94e
+  - Tip: 6081981c151bc22983746087c954904401dac209
+  - Scope: only toolchain/harness/provider/; clean tree, no push.
+  - Final tests: 28/28 passed, exit 0 after clean locked install.
+  - Exact source, artifact mismatch, frozen catalog, patch, commands and failures retained in
+    toolchain/harness/provider/evidence/REPORT.md.
+
+  Lead patch review and integrated acceptance remain. Run pane closed after writers stopped;
+  worker remains available for corrections.
+
+  Worked for 13m 50s · done 12:56 AM
+
+
+› Lead reviewed and integrated 6081981 as432beb4. Fresh integrated setup reproduced exit1
+  FileNotFoundError .cache/source.tgz because setup.py never creates cache; README commands
+  fail from clean checkout. Raw lead evidence audit/evidence/2026-09-19/harness-integration/
+  provider-01/setup.stderr.txt. Correct cache initialization in setup.py and run.py as
+  appropriate with minimal change; preserve ALL prior evidence. Add reproducible clean-
+  directory setup verification (owned temporary provider copy/fresh checkout okay), actual
+  guarded commands and exit codes. Do not overwrite committed evidence during tests: make
+  output path support or preserve originals and compare as appropriate, minimal solution. Lead
+  needs run documented setup/provenance/prepare/catalog/verify from main without changing
+  historical evidence; propose exact method. Actual Astra author/committer, local new commit no
+  push/rebase. No runtime/provider behavior change unless new evidence requires it. No nested
+  agents.
+
+
+• I’ll fix cache initialization, verify the documented sequence in a clean owned copy, and keep
+  all existing evidence unchanged. I’ll also give the lead an exact way to run it from main
+  without rewriting historical evidence.
+
+• Ran git status --short; cat toolchain/harness/provider/setup.py; cat toolchain/harness/
+  │ provider/run.py; cat toolchain/harness/provider/provenance.py; cat toolchain/harness/
+  │ provider/prepare.py; cat toolchain/harness/provider/catalog.mjs; cat toolchain/harness/
+  │ … +1 lines
+  └ """Bounded official downloads; no ambient npm configuration or lifecycle scripts."""
+    import hashlib, json, pathlib, urllib.request, tarfile, base64
+    … +145 lines (ctrl + t to view transcript)
+    print('source license', receipt['registry']['license'])
+    print('catalog sha256',hashlib.sha256((root/'catalog.json').read_bytes()).hexdigest())
+
+• Ran test "${HERDR_ENV:-}" = 1 && herdr pane current --current; python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('toolchain/harness/provider/setup.py');s=p.read_text().replace("cache = root /
+  │ … +8 lines
+  └ {"id":"cli:pane:current","result":{"pane":{"agent":"codex","agent_status":"working","cwd":"/
+    Users/robertguss/Projects/startups/mo-lang-worktrees/
+    … +12 lines (ctrl + t to view transcript)
+    {"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":63},"tab_id":"w4:t4","ter
+    minal_id":"term_65bcef954884732","workspace_id":"w4"},"type":"pane_info"}}
+
+• Both scripts assumed .cache already existed. The fixes are one line each. To preserve
+  historical evidence, I’ll add a clean-copy verification command that runs the setup sequence
+  in a new ignored directory, compares regenerated artifacts with the committed records, and
+  writes logs to a new evidence directory.
+
+• Running clean setup (51s • esc to interrupt)
+
+⠁   ⠈         ⠄             ⠈     ⢀     ⠁        ⠐        ⠂                 ⠄      ⠄  ⠄
+› Ask Codex to do anything⡀  ⠈     ⠈    ⠁                             ⠄             ⠁
+        ⠐        ⠄        ⠄                         ⠠⡀⠄                             ⠂
+  gpt-6-astra low · ~/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01 · Imp…

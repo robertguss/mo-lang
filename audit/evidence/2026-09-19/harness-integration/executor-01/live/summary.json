@@ -1,0 +1,145 @@
+{
+  "cases": [
+    {
+      "case": "completion-descendants",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 5,
+      "elapsed_seconds": 1.7601118750026217
+    },
+    {
+      "case": "wrong-output",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 1,
+      "elapsed_seconds": 0.6028077499940991
+    },
+    {
+      "case": "nonzero",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 7,
+      "check_count": 1,
+      "elapsed_seconds": 0.5990707079981803
+    },
+    {
+      "case": "forged-success",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 1,
+      "elapsed_seconds": 0.6132721249960014
+    },
+    {
+      "case": "overwrite-authority",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 1,
+      "elapsed_seconds": 0.5914695829997072
+    },
+    {
+      "case": "fault-stimulus-control",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 2,
+      "elapsed_seconds": 0.6130741669985582
+    },
+    {
+      "case": "absent-fault-stimulus",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 2,
+      "elapsed_seconds": 0.5956744169961894
+    },
+    {
+      "case": "timeout-descendants",
+      "ok": true,
+      "status": "timeout",
+      "exit_code": 137,
+      "check_count": 4,
+      "elapsed_seconds": 3.0696892909982125
+    },
+    {
+      "case": "cancel-descendants",
+      "ok": true,
+      "status": "cancelled",
+      "exit_code": 137,
+      "check_count": 4,
+      "elapsed_seconds": 0.912002000004577
+    },
+    {
+      "case": "output-overflow",
+      "ok": true,
+      "status": "output_overflow",
+      "exit_code": 137,
+      "check_count": 1,
+      "elapsed_seconds": 0.5828242920033517
+    },
+    {
+      "case": "cpu-enforcement",
+      "ok": true,
+      "status": "timeout",
+      "exit_code": 137,
+      "check_count": 1,
+      "elapsed_seconds": 2.6691614579976886
+    },
+    {
+      "case": "memory-enforcement",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 137,
+      "check_count": 1,
+      "elapsed_seconds": 1.1781680830026744
+    },
+    {
+      "case": "pid-enforcement",
+      "ok": true,
+      "status": "timeout",
+      "exit_code": 137,
+      "check_count": 1,
+      "elapsed_seconds": 3.085459082998568
+    },
+    {
+      "case": "scratch-enforcement",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 1,
+      "elapsed_seconds": 0.5870252079985221
+    },
+    {
+      "case": "network-filesystem-denial",
+      "ok": true,
+      "status": "completed",
+      "exit_code": 0,
+      "check_count": 1,
+      "elapsed_seconds": 0.8952953749976587
+    },
+    {
+      "case": "controller-death",
+      "ok": true,
+      "controller_exit_code": -9,
+      "status": "timeout",
+      "check_count": 4,
+      "elapsed_seconds": 7.509250125003746
+    },
+    {
+      "case": "supervisor-death",
+      "ok": true,
+      "kill_command_rc": 0,
+      "status": "infrastructure_failure",
+      "check_count": 4,
+      "elapsed_seconds": 7.4294468329972005
+    }
+  ],
+  "count": 17,
+  "passed": 17,
+  "inventory_unchanged": true,
+  "units_empty": true,
+  "artifact_bytes": 424523
+}

@@ -790,3 +790,34 @@
   simulator tests under 100 seeds. Lead full-suite recheck is running.
 - Validation: 260 wiki pages, 25 inherited review/size notices; no structural
   or raw-source-drift errors.
+
+## [2026-09-19] update | Executor accepted; integration corrections continue, 1:06 AM ET
+- Lead reviewed and integrated executor foundation plus reaper-order correction.
+  Independent 15 unit/17 live/collector-loss/explicit-exit checks passed; no
+  candidates or run units remained, shared Mac Docker IDs/states matched.
+- Recorded auth full-suite 242/243 formatting failure and provider clean setup
+  failure; workers are correcting only owned scope. Coding-fixture worker active.
+- Updated handoff, roadmap, state, result, changelog, session and instruments map.
+
+## [2026-09-19] update | Provider accepted; Linux build memory control, 1:16 AM ET
+- Independent cold setup and seven generated-record comparisons passed after
+  retained missing-cache failure. Actual parser 28/28 and two lead controls pass;
+  17 top-level source files remain identical and tracked provider bytes unchanged.
+- Official Linux Zig installed in the dedicated machine. First two-job trusted
+  build hit 1.5 GiB memory; one-job retry uses the same bound. No candidate code.
+- Fresh read-only Astra/low worker reviews the next workspace/command boundary.
+
+## [2026-09-19] update | Terminal-auth accepted; three foundation checkpoint, 1:19 AM ET
+- Final full suite at e3a01bb passed 243/243 tests, 5/5 build steps, exit 0;
+  owned process groups empty. 62 changed files match reviewed worker tip,
+  generic recipe unchanged. Retained dependency and formatter failures.
+- Updated result, changelog, handoff, roadmap, state and session; coding-fixture
+  matrices and bounded Linux build preparation continue independently.
+
+## [2026-09-19] create | Persistent workspace foundation brief, 1:23 AM ET
+- Fresh read-only Astra/low source review retained; next bounded worker owns
+  Python executor workspace/snapshot operations and narrow lifecycle extensions.
+  Existing fixture policy remains; HTTP/provider/Mo-build integration deferred.
+- Lead selected trusted Linux descriptor-based file handling, bounded tmpfs,
+  real container feedback and protected copied snapshot identity. No candidate
+  command executes on Mac; live worker tests wait for ongoing lead build.

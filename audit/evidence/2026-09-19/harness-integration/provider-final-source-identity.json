@@ -1,0 +1,24 @@
+{
+  "commit": "e3a01bbf613c1f130955b6e123d5987a4c559d18",
+  "copy": "/Users/robertguss/Projects/startups/mo-lang/toolchain/harness/provider/.cache/clean-setup-8f3xpo0r",
+  "identical_top_level_files": {
+    "upstream.patch": "3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660",
+    "test.mjs": "d29eb8499f2608b12e26e48461e911e5081aec31e6551c1ec846b77239bc0b3e",
+    "run.py": "02dc06682b1974b7aeff33c6225ba5385efacb1410a4f665a29b493ee7cdde37",
+    "turn.mjs": "da6c1aafa6b9a89308df7eabff84caeab7d05dbccd6a4ee8974b1e676be28422",
+    "turn.d.mts": "b2f8f91523afcf9357160e51f459b20cd17ea9edfc4e110831b0ed6cb73e61f2",
+    "clean_setup.py": "c3388897efb07703a93adc1972f5dd58de01a724f6e9f68d71fd1843171b5903",
+    "README.md": "6adf3a3acaa72f11111fc1975c1663ecab598e65f42ad5b828d1f236b479fe2e",
+    "catalog.mjs": "6330298987bedc24e349866fd8af14cdcf4265632518a491f2b0ad5b8e9b9660",
+    "setup.py": "f26b41cce5687da77d82000014a26b4f21261b98adeeb566c9eecdd503be36a7",
+    ".gitignore": "d42d7e886c1d2b43f9ec427c29c3b8ea81a21ef1003967771c587a9a82dec20f",
+    "package-lock.json": "68d35f2958377cf94900cdfebaf244e7a80f759f32d36d208965315fef06fd09",
+    "package.json": "b2b3de2543aaddbe79bf4193d8a14f7d736428f8b57f7ebf8dc2942d0abbdfdd",
+    "pin.json": "7690aadb45c429938ecbabc9df9a7a74960b0d7d9f5026b928f02fe4f0977360",
+    "provenance.py": "9430414ede66b51ffaa21c19687d1f67cd3828f1c85c55c94df3fb33e419a319",
+    "verify.py": "71c8c05390cf4c196b9520aea0dfba874f2b52010a54eb52621970e8caa46754",
+    "catalog.json": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744",
+    "prepare.py": "b2ee35f99b6ad999ca993ea6315f3b00858c611ed47b63339e011c67623212df"
+  },
+  "tracked_provider_diff": ""
+}

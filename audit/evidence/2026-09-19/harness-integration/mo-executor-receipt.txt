@@ -1,0 +1,100 @@
+  │ root=Path('toolchain/harness/executor/evidence')
+  │ … +19 lines
+  └ (no output)
+
+• Ran cat toolchain/harness/executor/evidence/lifecycle-journal.txt; cat toolchain/harness/executor/evidence/final-lifecycle-state.txt; cat toolchain/harness/executor/evidence/
+  │ lifecycle-unit-02.exit toolchain/harness/executor/evidence/lifecycle-live-01.exit toolchain/harness/executor/evidence/live-06.exit toolchain/harness/executor/evidence/lifecycle-journal.exit
+  │ toolchain/harness/executor/evidence/final-lifecycle-state.exit; git diff -- toolchain/harness/executor/adapter.py toolchain/harness/executor/remote.py
+  └ Started mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.service - /usr/bin/python3 /tmp/mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81/remote.py supervise /tmp/
+    mo-executor-9bedfdc4dc8e4fee90bf5be8f5f42b81.
+    … +208 lines (ctrl + t to view transcript)
+         m = json.loads((root / 'manifest.json').read_text())
+         deadline = time.monotonic() + 3
+
+• Ran python3 - <<'PY'
+  │ p='toolchain/harness/executor/test_lifecycle_live.py';s=open(p).read().replace("'--property=ExecStopPost=-/usr/bin/false'", "'--property=ExecStopPost=/usr/bin/false'")
+  │ s=s.replace("        assert armed == 'active', armed", "        assert armed == 'active', armed\n        journal = remote(['journalctl', '--no-pager', '-n', '30', '-o', 'cat', '-u', run.name +
+  │ … +7 lines
+  └ (no output)
+
+• Explored
+  └ Read lifecycle-live-02.exit, lifecycle-live-02.txt, supervisor-journal.txt
+
+• The stronger fault run confirms ExecStopPost actually exited 1 in the systemd journal. The earlier journal assertion failed because the injected command used systemd’s ignored-error prefix; that
+  attempt is preserved. I’m tightening the control once more so it enters the ordinary post-observation cleanup path, matching the reviewed interval directly.
+
+• Ran python3 - <<'PY'
+  │ p='toolchain/harness/executor/test_lifecycle_live.py';s=open(p).read().replace("            raise RuntimeError('injected observation transport loss')", "            # Enter the ordinary
+  │ post-observation cleanup path while the\n            # deliberately incomplete observation cannot authorize a pass.\n            return json.dumps({'status': 'infrastructure_failure',\n
+  │ … +7 lines
+  └ (no output)
+
+• Ran cat toolchain/harness/executor/evidence/lifecycle-live-03.exit; cat toolchain/harness/executor/evidence/final-lifecycle-state-03.exit; python3 - <<'PY'
+  │ p='toolchain/harness/executor/adapter.py';s=open(p).read().replace("    def collect(self):\n        with self._lifecycle():\n            (self.directory / 'closed').touch()", "    def
+  │ collect(self):\n        with self._lifecycle():\n            if (self.directory / 'disposed').exists():\n                raise RuntimeError('run already disposed; read the retained host
+  │ … +27 lines
+  └ 0
+    0
+
+• Ran cat > toolchain/harness/executor/evidence/LIFECYCLE-CORRECTION.md <<'MD'
+  │ # Lifecycle correction after lead review
+  │
+  │ … +106 lines
+  └ lifecycle-unit-03 0
+    live-07 0
+    lifecycle-live-04 0
+    final-lifecycle-state-04 0
+    {'count': 17, 'passed': 17, 'inventory_unchanged': True, 'units_empty': True, 'artifact_bytes': 424694}
+
+• Final checks pass: 15 unit tests, 17 fixture controls, and the collector-loss fault control, all exit 0. The final inventory shows no candidates, run units, temporary run directories, or host
+  test processes. I’ll commit the correction now; the handoff records the exact ordering and preserves the red regression and supplemental journal failure.
+
+• Ran git status --short; git diff --check -- toolchain/harness/executor/adapter.py toolchain/harness/executor/remote.py toolchain/harness/executor/test_executor.py toolchain/harness/executor/
+  │ README.md; python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +9 lines
+  └ (no output)
+
+• Ran python3 - <<'PY'
+  │ import subprocess
+  │ paths=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+  │ … +9 lines
+  └ live-07-exit=0
+    lifecycle-live-04-exit=0
+    … +2 lines (ctrl + t to view transcript)
+    harness-executor-foundation-r01 harness/executor-foundation-r01* ≡43s
+    ❯{"id":"cli:pane:close","result":{"type":"ok"}}
+
+• Corrected commit: 4227a89ca7641813d0484c1cd0ff679571a3c034
+  Parent: dfed32f9eaf3de090aef79510e3573b3f03bdc15. Clean tree; no push.
+
+  Cleanup now follows this order:
+
+  1. Stop only the supervisor; confirm writers cannot restart.
+  2. Keep the reaper armed while proving container and cgroup absence.
+  3. Persist cleanup proof.
+  4. Unload deadline units, then verify unit absence.
+
+  The fault control observed ExecStopPost exit 1, a surviving candidate/cgroup, and an active timer. After collector SIGKILL (-9), independent cleanup succeeded before host recovery.
+
+  15 unit tests, 17 fixture controls, and the focused fault control passed, all exit 0. Start/collect/dispose interleavings are guarded; final inventory is empty. All previous attempts remain
+  preserved.
+
+  Exact ordering, commands, and evidence (toolchain/harness/executor/evidence/LIFECYCLE-CORRECTION.md). Owned run pane closed; worker session retained.
+
+  Worked for 13m 10s · done 12:58 AM
+
+
+› Lead has reviewed the lifecycle correction and integrated both changes with actual Astra attribution. Your worker commits retain configured Robert author/committer; lead integration records
+  original IDs and uses GPT-6-Astra author/committer without rewriting your history. Do not mutate the dedicated machine while lead acceptance runs. Keep worker idle available for corrections. No
+  further work needed until lead reports.
+
+
+• Understood. I’ll remain idle and available for corrections, with no dedicated-machine changes while lead acceptance runs.
+
+  done 1:03 AM
+
+                         ⢀              ⠁          ⠐        ⠄           ⠄                    ⠠      ⡀   ⠈⡀ ⠂      ⠁                            ⠈   ⠁⢀   ⠠     ⢀⡀   ⠂  ⢀   ⠄ ⠐   ⠂⠈
+› Ask Codex to do anything   ⠈            ⠁                           ⠄    ⠂        ⠁⠐  ⠈  ⢀    ⠁                      ⠈         ⢀           ⠁⠁      ⠐                         ⠈           ⠄        ⠐
+      ⠠⢀            ⠠                        ⢀       ⡀ ⠂                  ⠄         ⠂          ⠠                   ⡀                              ⢀  ⠈                    ⠁         ⠐            ⢀  ⠁
+  gpt-6-astra low · ~/Projects/startups/mo-lang-worktrees/harness-executor-foundation-r01 · Implement executor foundation

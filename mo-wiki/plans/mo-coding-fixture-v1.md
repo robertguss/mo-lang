@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, contracts]
 sources: [plans/mo-first-coding-harness.md, plans/mo-provider-foundation.md]
-status: ready
+status: in-progress
 ---
 
 # Mo coding fixture v1: headless repair orchestration
@@ -28,8 +28,8 @@ continue separately. Their future HTTP/workspace bridges are not present yet.
 
 One fresh Astra/low Herdr worker, separate worktree at an explicit base, owns:
 
-- New `examples/programs/agent/coding_fixture.mo`, `report.mo`, `exact_edit.mo`
-  and `command_adapter.mo`.
+- New `examples/programs/agent/coding-fixture.mo`, `report.mo`, `exact-edit.mo`
+  and `command-adapter.mo`.
 - Only the integration needed in `examples/programs/agent/main.mo`, `run.mo`,
   `steps.mo`, `tools.mo`, `record.mo` and `registry.mo`.
 - New `examples/programs/agent/tests/coding-fixture-v1/` for drivers, independent
@@ -150,6 +150,16 @@ verification accompanies acceptance. Before any real model-generated candidate
 or command trial, all workspace operations must share the isolated workspace
 adapter with protected verdicts and verified command cleanup. That integration,
 the provider HTTP bridge and actual candidate verification remain separate work.
+
+## Filename correction — 19 Sep 2026, 1:10 AM ET
+
+Worker checks 4 and 5 reproduced MO0323 for underscore filenames and MO0001
+for underscore module names. The lead authorized `exact-edit.mo`,
+`command-adapter.mo` and `coding-fixture.mo` in place of the original underscore
+paths, with matching owned IDs. This follows the existing resolver convention;
+module names remain Agent.ExactEdit, Agent.CommandAdapter and Agent.CodingFixture.
+No compiler change or behavioral scope expansion. Failed checks remain in worker
+evidence. The active write scope above reflects this correction.
 
 ## Related
 

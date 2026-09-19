@@ -93,6 +93,38 @@ Round 8's change spec, pre-registration, worktrees, and suites; measurement 2 ru
 
 `HANDOFF.md`.
 
+## Astra overnight harness checkpoint — 19 Sep 2026, 1:06 AM ET
+
+[[mo-executor-foundation]] passed independent acceptance after the lead found
+and the Astra/low worker corrected premature reaper disarm. Lead results:
+15 unit tests, 17 live controls, collector-death fault control and explicit
+exit-137 control all passed. Cleanup and shared Mac Docker identity comparisons
+are retained under `audit/evidence/2026-09-19/harness-integration/`.
+
+Auth generated closure advanced the full suite from 241/243 to 242/243; three
+formatting failures remain assigned. Provider fresh setup reproduced a missing
+cache directory and is assigned back. A fresh Astra/low worker now implements
+[[mo-coding-fixture-v1]]. No live credentials/inference or application repair
+acceptance; Step 39 and Program 7 remain unchanged.
+
+## Offline provider accepted — 19 Sep 2026, 1:16 AM ET
+
+[[mo-provider-foundation]] passed independent clean setup, 28 actual-parser
+cases and two extra controls, with original evidence unchanged. Source/artifact
+mismatch and the SSE observation hook remain explicit. No live authentication
+or Mo bridge is claimed. Linux trusted build preparation hit its memory cap
+with two jobs; the same resource bound now runs one job. A fresh read-only
+worker is reviewing the next isolated workspace slice while coding-fixture
+implementation and the auth full-suite recheck continue.
+
+## Terminal-auth accepted — 19 Sep 2026, 1:19 AM ET
+
+[[mo-agent-terminal-auth]] passed final lead full-suite verification at e3a01bb:
+243/243 tests, 5/5 steps, exit 0. All 62 changed files match the reviewed worker
+tip; shared recipe bytes stay unchanged. Earlier 241/243 and 242/243 failures
+remain, alongside 18 HTTP cases and six extra lead controls. Three local
+foundations are accepted; coding-fixture and Linux build work continue.
+
 ## Related
 - [[session-04]]
 - [[decision-log]]

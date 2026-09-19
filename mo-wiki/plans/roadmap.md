@@ -21,19 +21,21 @@ decide and drive bounded harness setup, implementation and verification while
 he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
 The prior implementation pause and Amp/oracle workflow are superseded.
 
-**Current checkpoint, 19 Sep 2026, 12:41 AM ET:** the dedicated isolated
-OrbStack machine is provisioned. The executor worker is finalizing resource,
-verdict and cleanup controls. Terminal-auth v1 is integrated: 18/18 HTTP cases and six additional lead
-controls passed. The integrated full suite found stale dependency verification
-records (241/243); generated refresh and another full check precede acceptance.
-The earlier native baseline passed 243/243 after a retained timeout.
+**Current checkpoint, 19 Sep 2026, 1:19 AM ET:** executor, offline provider and
+terminal-auth foundations are independently accepted. Auth's final full suite
+passed 243/243 and 5/5 steps after retained dependency/formatting failures.
+Provider clean setup, 28 parser cases and two extra controls pass. Executor
+15 unit/17 live controls, collector-death and extra signal-accounting control
+pass with cleanup and unchanged shared Docker inventory. The Mo coding-fixture
+worker is running its interpreter/native matrix; Linux trusted build preparation
+is retrying one job after the two-job service hit its memory cap.
 
 | board | current work |
 |---|---|
-| Now | Lead acceptance of [[mo-agent-terminal-auth]] and [[mo-executor-foundation]]; native suite running |
-| Next | [[mo-provider-foundation]] with actual pinned parser and synthetic responses, then [[mo-coding-fixture-v1]] |
+| Now | [[mo-coding-fixture-v1]] verification; Linux toolchain preparation; isolated workspace design review |
+| Next | Persistent isolated workspace/file/command adapter and protected application checks; provider/command bridge |
 | Waiting on Robert's presence | Interactive subscription login when the adapter is ready; offline work continues |
-| Recently done | Mac isolation/setup evidence, terminal-401 worker implementation, provider source/API review |
+| Recently done | [[mo-executor-foundation]], [[mo-provider-foundation]], [[mo-agent-terminal-auth]] independently accepted |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none

@@ -1,0 +1,20 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "120",
+    "--",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo",
+    "test",
+    "--sim",
+    "examples/programs/agent/model.mo"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "commit": "a9b820917b7cc1a555ab0200d92fc2ef46f7e964",
+  "started_et": "2026-09-19T00:44:33.680605-04:00",
+  "finished_et": "2026-09-19T00:44:33.790273-04:00",
+  "exit_code": 0,
+  "outer_timeout": false,
+  "cleanup_before": [],
+  "cleanup_after": []
+}

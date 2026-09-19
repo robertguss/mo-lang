@@ -24,27 +24,32 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 12:41 AM ET, three harness work streams.
+**Last updated:** 19 Sep 2026, 1:19 AM ET, three foundations accepted.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
 with separate implementation worktrees. The lead reviews, integrates and
 independently verifies their results.
 
-The dedicated isolated OrbStack machine now exists with bounded resources,
-Mac filesystem sharing disabled and a restricted Docker fixture environment.
-The executor worker is finalizing protected-verdict and cleanup controls.
-Terminal-401 policy v1 is committed in its worker branch with 18/18 reported
-HTTP cases; lead acceptance is next. The native compiler builds on this Mac.
-The full test suite exceeded its first five-minute compilation guard and is
-running again with a twenty-minute limit; that first failure is retained.
+The isolated executor passed 15 unit tests, 17 live fixture controls, a
+collector-death regression and an extra signal-accounting control. Cleanup was
+observed and shared Mac Docker IDs/states stayed unchanged across the lead run.
+The offline provider passed clean setup, 28 actual-parser cases and two extra
+controls; source/artifact differences and unknown usage remain explicit.
 
-Provider research confirmed the pinned Pi provider-only API and identified
-usage-presence and native-conversation requirements. [[mo-provider-foundation]]
-prepares the actual parser with synthetic responses before live authentication.
-No credentials were read, login started or live inference performed. The
-headless Mo coding path and an independently verified candidate repair remain
-unfinished. These slices do not establish language value or a Pi comparison.
+Terminal-401 policy passed 18 interpreter/native cases and six extra lead
+controls. Its final integrated full suite passed 243/243 tests and 5/5 steps
+after correcting generated dependency records and formatter output. The earlier
+241/243 and 242/243 failures remain in evidence. These acceptances cover local
+foundations, not a full candidate application repair or live provider session.
+
+The coding-fixture worker is verifying the existing Mo loop, exact edits, inert
+HTTP command responses and structured JSONL. A fresh read-only worker is
+reviewing the next isolated workspace boundary. Official Linux Zig is installed
+inside the dedicated machine; its first two-job trusted build hit a 1.5 GiB
+limit, and one-job retry keeps the same bound. No credentials were read, login
+started or live inference performed. Language value and the Pi comparison remain
+unmeasured.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations

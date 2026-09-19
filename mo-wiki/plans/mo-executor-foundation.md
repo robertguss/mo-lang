@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-first-coding-harness.md]
-status: in-progress
+status: complete
 ---
 
 # Mo executor foundation: bounded execution and protected verdicts
@@ -108,6 +108,38 @@ Lead acceptance must independently demonstrate:
 - Python checks and live fixture controls pass from the integrated lead tree.
   No Zig build is required for this Python-only adapter; no compiler/runtime
   acceptance is claimed. Later Mo changes require the lead's Zig/Mo checks.
+
+## Result — 19 Sep 2026, 1:06 AM ET
+
+Accepted as a Python/BusyBox fixture boundary after lead review and independent
+integrated-tree checks. Worker commits `dfed32f` and `4227a89` were integrated as
+`cf21525` and `4b6c3c0`. Original worker commits used the configured Robert git
+identity with an Astra trailer; lead integration uses actual GPT-6-Astra author
+and committer without rewriting the retained worker history.
+
+The first review found cleanup disarmed the independent timer before proving
+candidate removal. The correction keeps the reaper armed, stops the supervisor,
+proves container and actual cgroup absence, persists proof, then unloads and
+verifies run units. It serializes start/collect/dispose and rejects start replay.
+A live fault control records failing ExecStopPost, a surviving candidate/cgroup,
+an active timer and collector SIGKILL; independent removal happens before host
+recovery. All failed precursor attempts remain.
+
+| Lead check | Result |
+|---|---|
+| Unit suite | 15/15, exit 0 |
+| Live fixture suite | 17/17, 35 declared checks, exit 0 |
+| Collector-death fault regression | 1/1, collector -9, independent cleanup |
+| Additional explicit `exit 137` control | 1/1, signal remains unknown, candidate verdict fails |
+| Final cleanup | no containers, run units, temporary run directories or host test processes |
+| Shared Mac Docker comparison | all five IDs/states unchanged before/after this lead run |
+
+Exact commands, statuses, raw streams and snapshots are under
+`audit/evidence/2026-09-19/harness-integration/executor-01/`, with the runner and
+extra control one directory above. The earlier arrival inventory recorded only
+counts/states, so the stronger identity comparison applies to this lead run.
+No compiler/runtime, live provider, workspace adapter or application acceptance
+is inferred from these results.
 
 ## Remaining obligations
 

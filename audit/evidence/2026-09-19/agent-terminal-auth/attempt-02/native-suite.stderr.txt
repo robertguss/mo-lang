@@ -1,0 +1,27 @@
+test
++- run test 242 pass, 1 fail (243 total)
+error: 'corpus.test.corpus: every example passes every implemented stage; rejects/ is rejected' failed:
+       corpus: programs/agent/model.mo is not formatted; run mo fmt on it
+       corpus: programs/agent/tests/terminal-auth/driver.mo is not formatted; run mo fmt on it
+       corpus: recipes/agent-model-client-v1.mo is not formatted; run mo fmt on it
+       expected 0, found 3
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:118:17: 0x1051c694b in expectEqualInner__anon_387590 (test)
+                       return error.TestExpectedEqual;
+                       ^
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:83:5: 0x10555880f in expectEqual (test)
+           return expectEqualInner(T, expected, actual);
+           ^
+       /Users/robertguss/Projects/startups/mo-lang/toolchain/src/corpus.zig:727:5: 0x1055588e7 in test.corpus: every example passes every implemented stage; rejects/ is rejected (test)
+           try std.testing.expectEqual(@as(u32, 0), unformatted);
+           ^
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo ./.zig-cache/o/529747537466987b0e808840a49fa331/test --cache-dir=./.zig-cache --seed=0xa0762c7e --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 242/243 tests passed (1 failed)
+test transitive failure
++- run test 242 pass, 1 fail (243 total)
+   +- compile test Debug native cached 54ms MaxRSS:35M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 54ms MaxRSS:35M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0xa0762c7e -Z25e1b4a4a2272b1f test -j2 --summary all

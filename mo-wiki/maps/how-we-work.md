@@ -46,9 +46,12 @@ Nothing is final until measured ([[d28-nothing-final-until-measured]]); every st
 
 ## The instruments
 
-[[mo-executor-foundation]] builds the first bounded executor and protected
-verdict path for [[mo-first-coding-harness]]. Its fixtures do not replace
-independent application acceptance or historical audit obligations.
+[[mo-executor-foundation]] is the accepted bounded fixture executor and protected
+verdict path for [[mo-first-coding-harness]]. [[mo-agent-terminal-auth]],
+[[mo-provider-foundation]] and [[mo-coding-fixture-v1]] hold the active integration
+work; [[mo-workspace-foundation]] defines the next isolated storage/command slice.
+Fixture acceptance does not replace independent application acceptance
+or historical audit obligations.
 
 The suites live beside their plans under `mo-wiki/plans/*-suite/`; see [[the-rounds]] for the list. `mo-wiki/tools/lint.py` checks links, frontmatter, tags, orphans, and sizes. The site is built by Quartz from `site/` and published on every push to `main`.
 

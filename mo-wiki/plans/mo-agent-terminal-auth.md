@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, errors, verification, contracts]
 sources: [plans/mo-first-coding-harness.md, spec/programs/05-agent-harness.md]
-status: ready
+status: complete
 ---
 
 # Agent terminal authentication policy v1
@@ -113,6 +113,39 @@ and the diff stays within the allowlist. Report actual commands/counts and
 any untested obligation. No dependency on the new executor's readiness is
 claimed: these are trusted local fixtures testing the application client,
 not untrusted coding-trial candidates.
+
+## Result — 19 Sep 2026, 1:19 AM ET
+
+Accepted after independent integrated-tree verification. Worker commits through
+`ebbf86c` are integrated through `e3a01bb`. The implementation specializes
+Agent.Model's 401 behavior and binds the new versioned recipe; the shared
+`model-client.mo` remains byte-identical with its nine inherited tests preserved.
+
+| Evidence | Result |
+|---|---|
+| Real baseline red | 401 followed by an unexpected second request and Answer(7,5); runner exit 1 |
+| Lead nine-case matrix | interpreter 9/9 and compiled 9/9; request counts 1,2,2,2,3,1,0,1,1 |
+| Extra lead controls | both runtimes: 403/429 still recover; valid-JSON 401 body remains Status(401), 6/6 |
+| Model/conformance/generic | 3/3 model; 16/16 versioned with three signatures; 9/9 inherited tests |
+| Generated dependency closure | eight unchanged dependent source files; only recorded Model dependency hashes changed, prior sim100 retained |
+| Formatter closure | three files match actual formatter output; one driver ID record's two hash fields regenerated |
+| Final lead full native suite | build exit 0; 243/243 tests, 5/5 steps, exit 0; no remaining owned process groups |
+| Final source comparison | all 62 changed auth files match reviewed worker tip; generic recipe unchanged |
+
+The initial full-suite failures remain: 241/243 before dependency closure, then
+242/243 before formatter output. Final full suite ran at `e3a01bb`, 1:09–1:17 AM
+ET. Earlier lead matrix/extra controls ran before generated-only/formatter
+corrections; the worker repeated six focused status/deadline cases after the
+formatter, and the final full suite covers the integrated result. No unreported
+matrix rerun is implied. Standalone recipe source reports one test and 15 skips;
+actual conformance against Agent.Model executes all 16. Model-only `--sim`
+reports simulation not run; the 100-seed claims apply to actual dependent process
+tests, not that command.
+
+Raw lead scripts, all three attempts, six extra controls and exact final identity
+are under `audit/evidence/2026-09-19/agent-terminal-auth/`. This calibrates the
+versioned local policy; it does not establish live provider behavior, an isolated
+candidate repair, language value, Step 39 or Program 7 acceptance.
 
 ## Related
 

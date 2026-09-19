@@ -1,0 +1,6 @@
+pass  test "a reply's tokens come out of either kind"
+pass  test "a deadline with time left is not spent, and one with none is"
+pass  test rejects "a call retried more than ten times": tripped requires retries <= 10
+3 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

@@ -1,0 +1,30 @@
+{
+  "pin.json": {
+    "expected": "7690aadb45c429938ecbabc9df9a7a74960b0d7d9f5026b928f02fe4f0977360",
+    "generated": "7690aadb45c429938ecbabc9df9a7a74960b0d7d9f5026b928f02fe4f0977360"
+  },
+  "upstream.patch": {
+    "expected": "3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660",
+    "generated": "3694da374ee66676fb9be571139cd1b67c3a10ce95a84e4d67300435456dd660"
+  },
+  "catalog.json": {
+    "expected": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744",
+    "generated": "3d3b5959b8bdd6dfd96b435501b298f32ab9406b1fe8a84555f00651ed039744"
+  },
+  "evidence/artifact-source.diff": {
+    "expected": "02f5a3b5ec5534f05295546ed4be4f1e95cfe9905215944d9454848e105fd6c9",
+    "generated": "02f5a3b5ec5534f05295546ed4be4f1e95cfe9905215944d9454848e105fd6c9"
+  },
+  "evidence/catalog-comparison.json": {
+    "expected": "44e18491e9fc5eb721ed6e64e4e2baffe58a5e68e80db0702628bced7e9c0b97",
+    "generated": "44e18491e9fc5eb721ed6e64e4e2baffe58a5e68e80db0702628bced7e9c0b97"
+  },
+  "evidence/runtime-hashes.json": {
+    "expected": "3afab589c926f8acdab067add177ca7b10f8a108ae723d7a63a12e9742f6284d",
+    "generated": "3afab589c926f8acdab067add177ca7b10f8a108ae723d7a63a12e9742f6284d"
+  },
+  "evidence/dependencies.json": {
+    "expected": "82631dd2abd1ef1419048ff51df99b1c3fd67192f6f7edb980497d0ad796937b",
+    "generated": "82631dd2abd1ef1419048ff51df99b1c3fd67192f6f7edb980497d0ad796937b"
+  }
+}

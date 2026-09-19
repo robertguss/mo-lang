@@ -1,0 +1,209 @@
+test
++- run test 241 pass, 2 fail (243 total)
+error: 'corpus.test.corpus: every example passes every implemented stage; rejects/ is rejected' failed:
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: ../examples/programs/agent/../agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       corpus: programs/agent/tests/terminal-auth/driver.mo has no verified: line; run mo test --write --sim 100 on it
+       corpus: ../examples/programs/agent/tools.mo at byte 14803: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+       expected 0, found 9
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:118:17: 0x1028c294b in expectEqualInner__anon_387590 (test)
+                       return error.TestExpectedEqual;
+                       ^
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:83:5: 0x102c53d83 in expectEqual (test)
+           return expectEqualInner(T, expected, actual);
+           ^
+       /Users/robertguss/Projects/startups/mo-lang/toolchain/src/corpus.zig:705:5: 0x102c53e77 in test.corpus: every example passes every implemented stage; rejects/ is rejected (test)
+           try std.testing.expectEqual(@as(u32, 0), tally.failed);
+           ^
+error: 'corpus.test.corpus: every module's tests and every program, built by mo build, print what the interpreter prints' failed:
+       corpus: mo build --tests programs/agent/check.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/registry.mo:103:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/server.mo:203:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/check.mo:218:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/main.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/registry.mo:103:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/server.mo:203:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/check.mo:218:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/main.mo:428:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/registry.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/registry.mo:103:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/run.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/runs.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/runs.mo:278:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (8), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/server.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/../agent/registry.mo:103:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/server.mo:203:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/steps.mo failed: programs/agent/../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       programs/agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build --tests programs/agent/tools.mo failed: programs/agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       corpus: mo build programs/agent/main.mo failed: ../agent/tools.mo:377:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (5), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       ../agent/steps.mo:364:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       ../agent/run.mo:195:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs, invariants (kept 2, tripped 2))
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       ../agent/registry.mo:103:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       ../agent/server.mo:203:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       ../agent/check.mo:218:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       main.mo:428:1: MO0317 Agent.Model, a module it uses, changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+         verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+         ^
+         why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.
+       
+       expected 0, found 8
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:118:17: 0x1028c294b in expectEqualInner__anon_387590 (test)
+                       return error.TestExpectedEqual;
+                       ^
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:83:5: 0x102c3f99f in expectEqual (test)
+           return expectEqualInner(T, expected, actual);
+           ^
+       /Users/robertguss/Projects/startups/mo-lang/toolchain/src/corpus.zig:796:5: 0x102c3fb3f in test.corpus: every module's tests and every program, built by mo build, print what the interpreter prints (test)
+           try std.testing.expectEqual(@as(u32, 0), modules.wrong);
+           ^
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo ./.zig-cache/o/529747537466987b0e808840a49fa331/test --cache-dir=./.zig-cache --seed=0xfeea1125 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 241/243 tests passed (2 failed)
+test transitive failure
++- run test 241 pass, 2 fail (243 total)
+   +- compile test Debug native cached 50ms MaxRSS:35M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 50ms MaxRSS:35M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0xfeea1125 -Z76db29dc6b03136b test -j2 --summary all

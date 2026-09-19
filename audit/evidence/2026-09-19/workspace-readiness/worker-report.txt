@@ -1,0 +1,120 @@
+    6:
+    7: The design of **Mo**, a from-scratch programming language for the AI era, co-designed by Robert Guss and Claude. This vault is the single record of the design: what we like, what is asked,
+        what is decided, what we researched, and what happened in each session. It replaces the two Notion pages that held sessions 1–2 (exported verbatim into `raw/notion/`).
+    8:
+    9: This repo is a monorepo (Robert, session 3). The wiki lives in `mo-wiki/`, which is the Obsidian vault root and the only thing Obsidian syncs. The spec (`mo-wiki/spec/`: design-v0, grammar,
+        error catalog) is prose humans read, so it lives inside the vault as an artifact folder, like `raw/`. Code lives beside the vault and never inside it: `examples/` (the Mo corpus),
+        `toolchain/` (Zig). Wiki pages ma...
+
+• Recommendation for lead w4:p1: implement one session-persistent Linux workspace, sequential file/command operations, and a frozen-candidate verification handoff. Keep this worker entirely under
+  toolchain/harness/executor/; integrate Mo dispatch after the coding-fixture worker lands.
+
+  Reviewed committed main e3a01bbf613c1f130955b6e123d5987a4c559d18, reading Git objects directly. No writes, subprocess launches, tests, network, credentials, auditor files, or hidden suites were
+  used.
+
+  Source facts
+
+  - The fixture is explicitly trusted orchestration. Its command text is currently inert; real trials require all workspace operations behind the isolated adapter. Its exact-edit and HTTP contracts
+    are already specified: fixture contract (mo-wiki/plans/mo-coding-fixture-v1.md:60).
+
+  - Run.__init__ hashes the script, not application files. verify checks externally supplied expectations, effective policy, identity and cleanup: toolchain/harness/executor/adapter.py:45.
+  - policy_errors requires no mounts, a specific BusyBox image, and tmpfs /work; supervise constructs that exact container: toolchain/harness/executor/remote.py:39, supervise (toolchain/harness/
+    executor/remote.py:180).
+
+  - Main’s Agent.Tools.inside? checks path spelling only; this is not evidence of symlink containment. Local dispatch and Writer are the eventual integration seams:
+    examples/programs/agent/tools.mo:81, inside? (examples/programs/agent/tools.mo:117), Registry.started_run (examples/programs/agent/registry.mo:62).
+
+  - Final authority must bind exact candidate/toolchain/configuration/check inventory, independently of development tests: harness requirements (mo-wiki/plans/mo-first-coding-harness.md:96).
+
+  1. Recommended workspace ownership and containment
+
+  Use one trusted-controller-created workspace in mo-executor-r01, identified by an opaque random ID. Persist it between operations, not across reboot. A dedicated size/inode-limited tmpfs mounted
+  beneath a root-owned administrative directory is a small, enforceably bounded starting point. Bind only its candidate subtree into containers at /workspace; no Mac checkout, home, Git metadata,
+  sockets, result store, or supervisor directory.
+
+  The controller owns the registry, workspace lifecycle and mount root. Candidate UID 65534 owns candidate contents. Every operation takes the same machine-side exclusive workspace lock; retain the
+  executor’s single-active-candidate restriction. A command may change files arbitrarily inside the workspace. No file operation, snapshot or deletion starts until its predecessor’s cleanup is
+  confirmed. Unknown cleanup quarantines the workspace and retains existing machine-stop behavior.
+
+  File operations should run a fixed trusted helper inside a fresh supervised container, avoiding privileged host traversal of candidate paths. Reject absolute paths, NUL, .., empty/noncanonical
+  segments and overlong paths; allow . only for list/search. Walk components through directory descriptors with no-follow opens. Accept directories and regular files only; reject symlinks at every
+  component, special files and regular files with link count other than one. Use nonblocking opens before type validation to prevent FIFO hangs. Do not rely on realpath followed by an ordinary
+  open.
+
+  Import only bounded, explicitly named application files through the same rules—no archive extraction or shared hardlinks. Commands can create links; subsequent tools/snapshotting must reject
+  them.
+
+  Implement exact-edit in this helper: nonempty old text, exactly one overlap-counted byte occurrence, original/result ≤64 KiB, preserve every other byte. Write a fresh same-directory temporary
+  regular file and rename under the lock. Refusals leave the destination unchanged; timeout after mutation remains uncertain. This improves replacement atomicity without claiming crash durability.
+
+  2. Feedback versus protected verification
+
+  Candidate command is feedback: bounded shell text becomes /bin/sh -c argv inside Linux isolation only. Exit zero means command success, never task acceptance. Writable tests, printed “passed,”
+  and candidate-generated result files have no authority.
+
+  Finalization closes dispatch, confirms all writers/containers/cgroups are gone, then creates a fresh protected snapshot by copying validated regular-file bytes—never hardlinks. Hash a canonical
+  inventory containing relative path, type, permitted mode, length and content digest. Reject unsupported entries and oversized trees; include empty directories if retained. Freeze this snapshot
+  outside candidate-writable storage.
+
+  Final verification receives a read-only snapshot, pinned trusted toolchain, fresh bounded build scratch and externally fixed check inventory. Candidate binaries still execute in isolation; the
+  authoritative verifier/result writer remains outside. Bind verdict to run/workspace ID, snapshot digest, image/compiler digest, policy and verifier identities, requirements/check-inventory
+  digest, actual observations and cleanup proof. Discard development build outputs and rebuild. No candidate-supplied check selection.
+
+  For this worker, deliver the snapshot/binding mechanism plus independent synthetic positive/wrong-candidate controls. Application behavioral acceptance remains a separately named prerequisite.
+
+  3. Narrow HTTP contract
+
+  Preserve POST /fixture/v1/command and its exact request/response fields from contract lines 75 onward (mo-wiki/plans/mo-coding-fixture-v1.md:75), using an operator-selected real-executor
+  endpoint. Keep the inert fixture service separate.
+
+  Add one POST /workspace/v1/file:
+
+  - Request: version, run_id, call_id, workspace_id, operation, operation-specific string args, timeout_ms, max_output_bytes.
+  - Operations: list_files, read_file, literal search, write_file, exact_edit.
+  - Response: matching identities, the existing state/execution vocabulary, structured operation result, explicit truncation, elapsed time and allowlisted error code.
+
+  Endpoints, roots, images, mounts, environment and bounds are operator-owned. Reject unknown keys, invalid types, foreign workspace/run IDs and reused call IDs before execution. Enforce grants
+  server-side. Send once; uncertain dispatch is never retried automatically.
+
+  Bind the bridge to loopback with a harness-only session credential outside candidate storage; candidates have no network. No model-visible create/delete/final-verification endpoint. Sanitize
+  errors instead of returning raw subprocess exceptions. Specify UTF-8 handling and serialized-response bounds, including JSON escaping.
+
+  4. Minimum ownership and lifecycle seams
+
+  Next worker owns new workspace.py, workspace_files.py, http_bridge.py, focused tests and README under the executor directory; narrowly edits adapter.py and remote.py. No Agent/compiler/provider
+  changes.
+
+  Add one explicit workspace policy alongside the unchanged fixture policy. Extend only manifest construction, container argv/effective-policy validation, and operation-result classification. Do
+  not manufacture dummy expected checks for feedback commands: separate execution validity from external behavioral verdicts.
+
+  Preserve:
+
+  - Run.start one-shot dispatch and _lifecycle serialization.
+  - _start registration lock and timer-before-supervisor ordering.
+  - supervise bounded capture/drain.
+  - finalize: stop supervisor → prove container/cgroup absence → persist proof → disarm timer → prove unit absence.
+  - reap, collect, dispose fail-closed behavior.
+
+  Anchors: Run._start (toolchain/harness/executor/adapter.py:109), finalize (toolchain/harness/executor/remote.py:91), lifecycle README (toolchain/harness/executor/README.md:85).
+
+  5. Prerequisites, limits and acceptance
+
+  Proposed initial limits: one workspace/operation, 64 MiB workspace, 4,096 inodes, 1,000 files, 64 KiB file edits/output, 200 search hits; commands ≤32 KiB. Keep current execution limits for shell
+  controls. These are recommendations, not demonstrated application-build capacity.
+
+  Required negative controls: traversal; intermediate/final symlinks; hardlinks; FIFO/device refusal; overlapping edits; quota exhaustion; duplicate/foreign calls; disconnected HTTP client;
+  descendant mutation after command exit; controller/supervisor death with workspace mounted; forged verdict; stale digest; changed snapshot; missing checks/stimulus; protected-result overwrite.
+  Confirm cleanup before snapshot and deletion.
+
+  Readiness remains unresolved: Linux Zig/Mo build completion, pinned helper/toolchain image, application runtime/build memory and time budgets, executable scratch, transport cleanup allowance
+  versus fixture’s two-second call cap, and protected application checks. The reported j2 1.5 GiB attempt and forthcoming j1 retry are not build readiness. Retain current lifecycle regressions and
+  require independent lead reruns before acceptance.
+
+  Lead handoff is ready. I could not separately prompt Herdr pane w4:p1 through the available non-process tools without breaking this task’s no-process constraint. I remain available for follow-up.
+
+  Worked for 2m 52s · done 1:17 AM
+
+⠁   ⠈         ⠄                 ⠁                ⠐ ⠐     ⠐                  ⠄         ⠄      ⠠             ⠂ ⡀          ⠐⠁  ⡀  ⠁  ⢀        ⡀   ⠈           ⠈   ⡀   ⠂         ⠂          ⠠
+›⠁Ask Codex to do anything              ⠁                             ⠄             ⠁  ⠁⠈  ⢀    ⠁       ⠄       ⠂                ⢀           ⠁       ⠐⠂ ⠄       ⠁  ⡀                ⢀      ⠄  ⠈
+      ⠠⢀⠐        ⠄                  ⠠        ⢀                            ⠄    ⠄                               ⠁   ⡀                                 ⠈            ⠄     ⠂ ⠁             ⡀
+  gpt-6-astra low · ~/Projects/startups/mo-lang · Define next workspace slice

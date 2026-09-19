@@ -1,0 +1,22 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "1200",
+    "--",
+    "zig",
+    "build",
+    "test",
+    "-j2",
+    "--summary",
+    "all"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang/toolchain",
+  "commit": "e3a01bbf613c1f130955b6e123d5987a4c559d18",
+  "started_et": "2026-09-19T01:09:51.030036-04:00",
+  "finished_et": "2026-09-19T01:17:04.093901-04:00",
+  "exit_code": 0,
+  "outer_timeout": false,
+  "cleanup_before": [],
+  "cleanup_after": []
+}

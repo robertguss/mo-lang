@@ -1,0 +1,100 @@
+  │ terminal-auth/verify.py; herdr pane layout --pane w4:pR
+  └ test
+    +- run test 242 pass, 1 fail (243 total)
+    … +125 lines (ctrl + t to view transcript)
+    {"id":"cli:pane:layout","result":{"layout":{"area":{"height":63,"width":198,"x":0,"y":0},"focused_pane_id":"w4:pR","panes":[{"focused":true,"pane_id":"w4:pR","rect":
+    {"height":63,"width":198,"x":0,"y":0}}],"splits":[],"tab_id":"w4:t6","workspace_id":"w4","zoomed":false},"type":"pane_layout"}}
+
+• Ran herdr pane split --pane w4:pR --direction right --cwd "$PWD" --no-focus; cat > examples/programs/agent/tests/terminal-auth/format-checks-v3.py <<'EOF'
+  │ #!/usr/bin/env python3
+  │ """Capture actual formatter output, apply it only to owned sources, and check it."""
+  │ … +40 lines
+  └ {"id":"cli:pane:split","result":{"pane":{"agent_status":"unknown","cwd":"/Users/robertguss/Projects/startups/mo-lang-worktrees/
+    harness-agent-terminal-auth-v1","focused":false,"foreground_cwd":"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-agent-terminal-auth-v1","pane_id":"w4:p1A","revision":0,"scroll":
+    {"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":63},"tab_id":"w4:t6","terminal_id":"term_65bcef9b5acc633","workspace_id":"w4"},"type":"pane_info"}}
+
+• Ran herdr pane run w4:p1A 'MO_BIN=/Users/robertguss/Projects/startups/mo-lang/toolchain/zig-out/bin/mo python3 toolchain/bench/step36/guard.py 600 -- python3 examples/programs/agent/tests/
+  │ terminal-auth/format-checks-v3.py > examples/programs/agent/tests/terminal-auth/evidence/format-checks-v3-1.jsonl 2>&1; rc=$?; echo $rc > examples/programs/agent/tests/terminal-auth/evidence/
+  │ format-checks-v3-1.exit; echo FORMAT_CHECKS_DONE:$rc'
+  └ (no output)
+
+• Ran python3 - <<'PY'
+  │ import json
+  │ from pathlib import Path
+  │ … +4 lines
+  └ preview-examples/programs/agent/model.mo 0
+    format-examples/programs/agent/model.mo 0
+    … +161 lines (ctrl + t to view transcript)
+         model = Model(host: "localhost", port: listener.port, tools: ["now"])
+         asked = Request(run: "r_1", goal: "g", tools: ["now"], transcript: [])
+
+• The formatter changed all three files. It condensed the driver’s deadline if expression, which invalidated the driver’s Caller hash; the resulting MO0317 failure is retained. I’ll regenerate only
+  the driver record, then check the deadline cases in both runtimes. Agent.Model’s verification still passes.
+
+• Ran cat > examples/programs/agent/tests/terminal-auth/format-recheck-v3.py <<'EOF'
+  │ #!/usr/bin/env python3
+  │ """Refresh the formatter-invalidated driver record and verify the bounded change."""
+  │ … +36 lines
+  └ (no output)
+
+• Ran git diff -- examples/programs/.mo.ids; cat examples/programs/agent/tests/terminal-auth/evidence/formatter-manifest-v3.json; python3 - <<'PY'
+  │ import json
+  │ from pathlib import Path
+  │ … +3 lines
+  └ diff --git a/examples/programs/.mo.ids b/examples/programs/.mo.ids
+    index cf2623d..4e3b3e6 100644
+    … +48 lines (ctrl + t to view transcript)
+    compiled-immediate-401 0
+    compiled-exhausted 0
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('examples/programs/agent/tests/terminal-auth/verify.py');s=p.read_text()
+  │ … +54 lines
+  └ (no output)
+
+• Ran cat examples/programs/agent/tests/terminal-auth/evidence/verification-v3-1.json; cat examples/programs/agent/tests/terminal-auth/evidence/verification-v3-1.exit; cat examples/programs/agent/
+  │ tests/terminal-auth/evidence/format-recheck-v3-1.exit; git diff --numstat; git status --short
+  └ {
+      "base": "ff669fd52e93ccf6aa970b05082d842c471cb1c9",
+    … +41 lines (ctrl + t to view transcript)
+    ?? examples/programs/agent/tests/terminal-auth/format-checks-v3.py
+    ?? examples/programs/agent/tests/terminal-auth/format-recheck-v3.py
+
+• All three formatting checks now pass. The 18 follow-up commands also passed: conformance 16/16 plus generic regression 9/9, model tests 3/3, Agent/driver builds, and six focused HTTP cases. The
+  verifier confirms that all three Mo files exactly match captured formatter output. Only two hash fields in the driver’s ID record needed regeneration; all 39 prior evidence files are unchanged.
+
+• Ran cat >> examples/programs/agent/tests/terminal-auth/README.md <<'EOF'
+  │
+  │ ## Formatter correction v3
+  │ … +51 lines
+  └ [harness/agent-terminal-auth-v1 ebbf86c] style(agent): apply canonical formatter to terminal auth policy and driver
+     18 files changed, 286 insertions(+), 22 deletions(-)
+    … +11 lines (ctrl + t to view transcript)
+     create mode 100644 examples/programs/agent/tests/terminal-auth/format-recheck-v3.py
+    ebbf86c7361131aca58e936b7e3e994544fe49ec
+
+• Ran herdr agent prompt w4:p1 'Formatter correction committed at ebbf86c7361131aca58e936b7e3e994544fe49ec, parent 9f4b43385329b103cc0a1df198552ebb21d60eb2. Clean tree, actual GPT-6-Astra author/
+  │ committer, no push/rebase. Exactly three Mo source files changed, solely captured actual mo fmt output (30 added/14 removed lines). Formatter condensed driver deadline if; MO0317 red
+  │ retained, then actual mo test --write --sim 100 only on driver updated precisely two hash fields in its single aggregate ID record. No other IDs or dependent sources changed; sim100
+  │ … +4 lines
+  └ {"id":"cli:agent:prompt","result":{"agent":{"agent":"codex","agent_status":"working","cwd":"/Users/robertguss/Projects/startups/mo-lang","focused":true,"foreground_cwd":"/Users/robertguss/
+    Projects/startups/mo-lang","pane_id":"w4:p1","revision":1120,"state_change_seq":202,"tab_id":"w4:t1","terminal_id":"term_65bc1576ab1f34","terminal_title":"⠹ Read HANDOFF.md |
+    mo-lang","terminal_title_stripped":"Read HANDOFF.md | mo-lang","workspace_id":"w4"},"type":"agent_prompted"}}
+
+• Committed ebbf86c7361131aca58e936b7e3e994544fe49ec with GPT-6-Astra author/committer.
+
+  - Exactly 3 Mo files changed solely through mo fmt: 30 added / 14 removed lines.
+  - Regenerated only 2 hash fields in 1 driver ID record.
+  - Formatting 3/3 and follow-up commands 18/18 passed, including six focused HTTP cases.
+  - All 39 prior evidence files, generic recipe bytes, dependent sources, and sim100 records preserved.
+  - Clean tree; no rebase/push. Run pane closed; lead notified.
+
+  Full-suite rerun remains with lead.
+
+  Worked for 3m 35s · done 1:09 AM
+
+                                ⠁       ⠁        ⠐ ⠐    ⡀⠐              ⠄          ⠄  ⠄                    ⠂      ⠁            ⠁           ⡀   ⠈              ⢀    ⠂  ⢀   ⠄ ⠐   ⠂⠈
+› Ask Codex to do anything   ⠈     ⠈    ⠁ ⠁                  ⠈        ⠄                    ⢀                                     ⢀           ⠁   ⠂                                         ⠄   ⠈
+      ⠠⢀            ⠠                        ⢀       ⡀⠄                        ⠄               ⠠      ⢀                                           ⢀  ⠈                    ⠁         ⠐            ⢀
+  gpt-6-astra low · ~/Projects/startups/mo-lang-worktrees/harness-agent-terminal-auth-v1 · Implement terminal auth harness

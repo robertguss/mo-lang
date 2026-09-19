@@ -1,0 +1,19 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "60",
+    "--",
+    "python3",
+    "-B",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/harness-integration/executor-control.py",
+    "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/harness-integration/executor-01/lead-control"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+  "started_et": "2026-09-19T01:05:47.692466-04:00",
+  "finished_et": "2026-09-19T01:05:48.346626-04:00",
+  "exit_code": 0,
+  "forced": false,
+  "cleanup_before": [],
+  "cleanup_after": []
+}

@@ -2,6 +2,39 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Versioned terminal-401 policy accepted — 19 Sep 2026, 1:19 AM ET
+
+- Agent.Model stops immediately after HTTP 401 through a separately versioned
+  recipe; other retries and deadlines retain their behavior. The shared generic
+  recipe remains byte-identical.
+- Lead 18-case interpreter/native matrix and six additional controls pass.
+  Final integrated full suite passed 243/243 and 5/5 steps after generated
+  dependency and formatter corrections. Both earlier full-suite failures and
+  the real 401-then-unexpected-request baseline red remain in evidence.
+
+## Offline provider foundation accepted — 19 Sep 2026, 1:16 AM ET
+
+- Integrated the pinned provider-only library with explicit usage presence,
+  sanitized failures, no retries and native continuation messages. Source and
+  registry artifact differences and the minimal parser hook are disclosed.
+- Lead fresh setup passed after correcting missing cache initialization;
+  seven regenerated records match, all 28 parser controls and two extra lead
+  controls pass. Historical evidence stayed unchanged. No live auth/inference
+  or Mo integration is claimed.
+
+## External fixture executor accepted — 19 Sep 2026, 1:06 AM ET
+
+- Integrated the bounded Python executor for the dedicated isolated machine.
+  Protected host checks bind candidate identity, effective policy and cleanup.
+  Lead review corrected reaper ordering before acceptance.
+- Independent verification passed 15 unit tests, 17 live controls, collector
+  death during uncertain cleanup, and explicit exit-137 signal accounting.
+  Final candidate/service inventory was empty; shared Mac Docker IDs/states
+  were unchanged across the lead run. Application/provider acceptance is separate.
+- Auth and provider foundations are integrated but acceptance remains open:
+  auth full suite is 242/243 pending formatting; provider clean setup exposed
+  missing cache initialization. Both failures are retained and assigned back.
+
 ## Astra/Herdr workflow and overnight authority — 19 Sep 2026, 12:10 AM ET
 
 - Robert keeps Astra as lead on his Mac and selects fresh Astra workers at low

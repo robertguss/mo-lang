@@ -1,0 +1,30 @@
+{
+  "observations": [
+    {
+      "case": "UTF-8 split at every byte",
+      "passed": true,
+      "requests": 1,
+      "usage": {
+        "status": "reported",
+        "input": 10,
+        "output": 5,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 15
+      },
+      "text": "Mo café 🦉 漢字"
+    },
+    {
+      "case": "boolean total is unknown",
+      "passed": true,
+      "requests": 1,
+      "usage": {
+        "status": "unknown"
+      },
+      "text": "Mo café 🦉 漢字"
+    }
+  ],
+  "requests": 2,
+  "byteChunks": 1156,
+  "server_closed": true
+}

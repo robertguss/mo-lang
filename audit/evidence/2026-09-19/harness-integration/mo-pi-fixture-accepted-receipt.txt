@@ -1,0 +1,100 @@
+    … +141 lines (ctrl + t to view transcript)
+    print('source license', receipt['registry']['license'])
+    print('catalog sha256',hashlib.sha256((root/'catalog.json').read_bytes()).hexdigest())
+
+• Ran test "${HERDR_ENV:-}" = 1 && herdr pane current --current; python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('toolchain/harness/provider/setup.py');s=p.read_text().replace("cache = root / '.cache'", "cache = root / '.cache'\ncache.mkdir(parents=True, exist_ok=True)");p.write_text(s)
+  │ … +3 lines
+  └ {"id":"cli:pane:current","result":{"pane":{"agent":"codex","agent_status":"working","cwd":"/Users/robertguss/Projects/startups/mo-lang-worktrees/
+    harness-provider-foundation-r01","focused":false,"foreground_cwd":"/Users/robertguss/Projects/startups/mo-lang-worktrees/
+    … +5 lines (ctrl + t to view transcript)
+    harness-provider-foundation-r01","pane_id":"w4:p19","revision":0,"scroll":
+    {"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":63},"tab_id":"w4:t4","terminal_id":"term_65bcef954884732","workspace_id":"w4"},"type":"pane_info"}}
+
+• Both scripts assumed .cache already existed. The fixes are one line each. To preserve historical evidence, I’ll add a clean-copy verification command that runs the setup sequence in a new ignored
+  directory, compares regenerated artifacts with the committed records, and writes logs to a new evidence directory.
+
+• Ran cat > toolchain/harness/provider/clean_setup.py <<'EOF'
+  │ """Reproduce setup in a new owned copy; never regenerate historical evidence in place."""
+  │ import hashlib, json, pathlib, shutil, subprocess, sys, tempfile
+  │ … +92 lines
+  └
+    harness-provider-foundation-r01 harness/provider-foundation-r01* ≡
+    ❯
+
+• Ran cat toolchain/harness/provider/evidence/clean-setup-01.outer.log; git diff --stat; git status --short
+  └ cold-runner exit 0
+    setup exit 0
+    … +15 lines (ctrl + t to view transcript)
+    ?? toolchain/harness/provider/evidence/clean-setup-01.outer.log
+    ?? toolchain/harness/provider/evidence/clean-setup-01/
+
+• The clean-copy check passed: all seven steps exited 0, seven regenerated records were byte-identical, and all tracked files—including prior evidence—remained unchanged. Both the standalone runner
+  and setup succeeded without a pre-existing cache. I’m giving the per-step guards a little more margin for Node/npm version discovery, then recording the final run.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('toolchain/harness/provider/clean_setup.py');s=p.read_text().replace("str(guard), '120',", "str(guard), '150',");p.write_text(s)
+  │ … +5 lines
+  └ diff --git a/toolchain/harness/provider/run.py b/toolchain/harness/provider/run.py
+    index 5ed2547..16d2b3a 100644
+    … +21 lines (ctrl + t to view transcript)
+     pin = '36b60d2e8985899743c4cf5bd5f8929832a3f05d'
+     def download(url, name):
+
+• Ran cat toolchain/harness/provider/evidence/clean-setup-02.outer.log; cat toolchain/harness/provider/evidence/clean-setup-02.outer.exit; herdr pane process-info --pane w4:p19; git diff --check;
+  │ git diff --name-only
+  └ cold-runner exit 0
+    setup exit 0
+    … +10 lines (ctrl + t to view transcript)
+    toolchain/harness/provider/run.py
+    toolchain/harness/provider/setup.py
+
+• Ran cat > toolchain/harness/provider/evidence/CLEAN-SETUP-FIX.md <<'EOF'
+  │ # Clean setup correction
+  │
+  │ … +53 lines
+  └  toolchain/harness/provider/README.md               |  38 +++--
+     toolchain/harness/provider/clean_setup.py          |  52 ++++++
+    … +42 lines (ctrl + t to view transcript)
+     toolchain/harness/provider/setup.py                |   1 +
+     45 files changed, 1122 insertions(+), 12 deletions(-)
+
+• The final clean-directory run passed with every exit code 0. Prior evidence is unchanged, and the regenerated pin, patch, catalog, runtime hashes, artifact diff, and dependency records match
+  byte-for-byte. I’m committing the setup-only correction and handing the lead the reproduction command.
+
+• Ran GIT_AUTHOR_NAME=GPT-6-Astra GIT_AUTHOR_EMAIL=noreply@openai.com GIT_COMMITTER_NAME=GPT-6-Astra GIT_COMMITTER_EMAIL=noreply@openai.com git commit -m 'fix: initialize provider caches and verify
+  │ clean setup safely' -- toolchain/harness/provider
+  │  git rev-parse HEAD
+  │ … +2 lines
+  └ [harness/provider-foundation-r01 7ae1eed] fix: initialize provider caches and verify clean setup safely
+     45 files changed, 1122 insertions(+), 12 deletions(-)
+    … +42 lines (ctrl + t to view transcript)
+    7ae1eed066c6b023337468955e237194952a55c3
+    {"id":"cli:pane:close","result":{"type":"ok"}}
+
+• Ran herdr agent prompt w4:p1 'Setup correction ready: new local commit 7ae1eed066c6b023337468955e237194952a55c3, parent 6081981c151bc22983746087c954904401dac209. Two one-line cache fixes in
+  │ setup.py/run.py; no provider/runtime behavior change. Added 52-line clean_setup.py and README method so historical evidence is never regenerated in place. From main root run: python3
+  │ toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/clean_setup.py evidence/lead-clean-01 . It refuses existing output directories, creates fresh ignored provider copy
+  │ … +4 lines
+  └ {"id":"cli:agent:prompt","result":{"agent":{"agent":"codex","agent_status":"working","cwd":"/Users/robertguss/Projects/startups/mo-lang","focused":true,"foreground_cwd":"/Users/robertguss/
+    Projects/startups/mo-lang","pane_id":"w4:p1","revision":1120,"state_change_seq":202,"tab_id":"w4:t1","terminal_id":"term_65bc1576ab1f34","terminal_title":"⠇ Read HANDOFF.md |
+    mo-lang","terminal_title_stripped":"Read HANDOFF.md | mo-lang","workspace_id":"w4"},"type":"agent_prompted"}}
+
+• Committed 7ae1eed066c6b023337468955e237194952a55c3 locally as GPT-6-Astra. No push/rebase; clean tree.
+
+  Fixed cache initialization in both scripts. Two clean-copy attempts passed: all seven steps exited 0, regenerated records matched, and prior evidence stayed unchanged.
+
+  From main:
+
+  python3 toolchain/bench/step36/guard.py 1200 -- python3 toolchain/harness/provider/clean_setup.py evidence/lead-clean-01
+
+  Lead notified. No provider behavior changes; available for corrections.
+
+  Worked for 3m 17s · done 1:08 AM
+
+                                                        ⡀⠐                ⢀                  ⠠                              ⡀  ⠁           ⡀               ⠈  ⢀    ⠂  ⢀     ⠐    ⠈
+› Ask Codex to do anything           ⠂                                ⠄                                         ⠂      ⠈                     ⠁⠁         ⠄       ⠁                  ⢀       ⠄  ⠈⠈    ⠐
+        ⠐                                    ⢀      ⠠⡀                    ⠄                          ⠁         ⠁   ⡀                              ⢀
+  gpt-6-astra low · ~/Projects/startups/mo-lang-worktrees/harness-provider-foundation-r01 · Implement provider foundation brief

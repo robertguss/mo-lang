@@ -701,6 +701,38 @@ direction separately from the lead's conservative execution interpretation.
 | Start [[mo-coding-fixture-v1]] in a separate worker tree: existing Agent loop, exact edit, inert HTTP command fixtures and post-run JSONL. Adopt 16 steps, 4096 reported fixture tokens, 30-second run/2-second call limits, 64 KiB byte bounds and a separate 15-second recording/report grace. This does not execute candidate commands or connect the live provider. | Astra lead, informed by Astra/low interface review | decided, semantic | interpreter/native scripted repair and stop-bound controls |
 | Full auth integration exposed stale dependency verification (MO0317) and an unverified driver despite focused green checks. Authorize generated-only closure regeneration with existing simulation coverage preserved; eight source files remained identical. No policy, compiler or shared recipe change. | Astra lead; regeneration by GPT-6-Astra/low | recorded, acceptance pending | retained 241/243 failure, reviewed 9f4b433, lead full-suite recheck |
 
+## Executor acceptance and retained integration failures (19 Sep 2026, 1:06 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept [[mo-executor-foundation]] only after reaper disarm follows positive writer/container/cgroup cleanup proof. Lead repeats 15 unit, 17 live, collector-loss and explicit-exit controls; shared Docker IDs/states match and final inventory is empty. | Astra lead; implementation and review correction by GPT-6-Astra/low | accepted, semantic | raw `harness-integration/executor-01` evidence at integrated `4b6c3c0` |
+| Keep auth acceptance open after full-suite progression 241/243 to 242/243: generated closure is fixed, three owned files require actual formatter output. Keep provider acceptance open after clean setup reproduces missing `.cache`. Correct both narrowly and preserve red attempts; fixture greens do not waive integrated checks. | Astra lead | decided | next guarded full-suite and fresh provider setup |
+
+## Coding fixture filename correction (19 Sep 2026, 1:10 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Replace three underscore filenames in [[mo-coding-fixture-v1]] with resolver-conventional exact-edit.mo, command-adapter.mo and coding-fixture.mo; matching IDs are owned. Preserve module names and behavior scope. | Astra lead after Astra/low worker MO0323/MO0001 reproduction | decided | retained worker check-4/check-5 failures, next compile check |
+
+## Offline provider acceptance and Linux build preparation (19 Sep 2026, 1:16 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept [[mo-provider-foundation]] as offline one-turn library: exact git TypeScript plus reviewed SSE hook, frozen generated catalog, honest unknown usage, no retries and sanitized failures. Retain the 148/177 source/artifact mismatch and clean-setup red. Lead clean-copy reproduction, 28 parser and two extra controls passed with original tracked bytes unchanged. | Astra lead; implementation/correction by GPT-6-Astra/low | accepted, semantic | provider-01/02/03 raw evidence at integrated `e3a01bb` |
+| Prepare trusted Linux Mo builds inside the dedicated machine, separate from candidate fixture policy. Official Zig archive is hash-verified; build service has independent 900-second deadline, 1.5 GiB RAM, 1.5 CPU and 128 tasks, private network. First two-job build hit the memory cap; retain it and retry one job without increasing limits. This is not candidate/application acceptance. | Astra lead | decided | retained Linux build attempts and unit/process cleanup observations |
+
+## Terminal-auth acceptance (19 Sep 2026, 1:19 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept [[mo-agent-terminal-auth]] after final integrated full suite 243/243, 5/5, exit 0 and exact 62-file worker-tip comparison. Retain initial dependency/formatting failures and the earlier 18-case matrix/six independent controls; distinguish subsequent focused reruns from a fresh full matrix. Shared recipe bytes remain unchanged. | Astra lead; implementation and narrow corrections by GPT-6-Astra/low | accepted, semantic | `agent-terminal-auth/attempt-03` at `e3a01bb`, final-source-identity.json |
+
+## Workspace foundation scope (19 Sep 2026, 1:23 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Start [[mo-workspace-foundation]] as a Python/BusyBox-only slice: bounded Linux tmpfs, descriptor-based trusted file handling, actual isolated feedback commands and frozen snapshot verification. Defer HTTP/provider/Mo-build integration. Preserve accepted fixture policy and reaper lifecycle; live tests wait for the lead build to stop while local implementation proceeds. | Astra lead, informed by fresh Astra/low read-only review | decided, semantic | mounted-workspace negative controls plus unchanged executor regressions |
+
 ## Related
 
 - [[session-05]]

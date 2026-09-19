@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, contracts]
 sources: [plans/mo-first-coding-harness.md]
-status: ready
+status: complete
 ---
 
 # Mo provider foundation: pinned Pi turns and honest usage
@@ -112,6 +112,42 @@ real exit codes, remaining limitations and decisions the brief did not cover.
 The lead reviews the patch and repeats tests from the integrated tree with an
 additional control. Python/Node-only work makes no compiler/runtime acceptance
 claim. This is not live OAuth, account/model entitlement or a full coding path.
+
+## Result — 19 Sep 2026, 1:16 AM ET
+
+Accepted as an offline provider-only foundation after integrated lead review.
+Worker commits `6081981` and setup correction `7ae1eed` are integrated as
+`432beb4` and `1661dad`. The initial clean lead setup failed because `.cache`
+was not created; that exit 1 is retained. Two one-line directory fixes and a
+clean-copy reproduction runner corrected it without provider behavior changes.
+
+The npm artifact differs from the pinned source: 148/177 embedded TypeScript
+sources match. Execution uses the exact pinned git TypeScript plus a disclosed
+four-hunk SSE observation patch. The selected Astra catalog is generated offline
+from the pinned generator; its sole artifact difference is the generator's
+`supportsMidConvoSystemMessages=true` metadata. No reproducible-build identity
+between source and package is asserted.
+
+| Independent lead check | Result |
+|---|---|
+| Fresh cold runner/setup/install/provenance/prepare/catalog/verify | seven child exits 0; seven generated records byte-identical |
+| Fixed actual-parser suite | 28/28, 401 and 503 one request each, three unexpected egress attempts rejected |
+| Additional byte-split UTF-8 control | final multilingual text preserved across 1156 one-byte chunks shared by two cases |
+| Additional boolean usage-total control | unknown usage, not a fabricated counter |
+| Source/evidence identity after checks | 17 top-level files match integrated source; original tracked provider files unchanged |
+| Runtime | Node 24.20.0, npm 11.19.0, 92 locked packages |
+
+Lead reproduction runs the integrated files in a fresh ignored provider copy;
+its exact source is checked against main before/after, and historical generated
+records are never regenerated in place. Raw setup/parser/control outputs and
+source comparisons are in `audit/evidence/2026-09-19/harness-integration/`,
+attempts provider-01 (red), provider-02 (clean setup), provider-03 (parser/control).
+
+No credentials, OAuth, live inference, model entitlement, Mo bridge or compiler
+acceptance. Unknown usage remains explicit; missing cache-write presence is
+conservatively unknown. The fixed endpoint and supplied transport are a trusted
+library contract, not an OS network sandbox. Error fields are allowlisted and
+native continuation messages are separate from authoritative usage.
 
 ## Related
 

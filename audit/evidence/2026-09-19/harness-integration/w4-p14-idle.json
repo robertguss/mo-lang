@@ -1,0 +1,1 @@
+{"id":"cli:pane:process_info","result":{"process_info":{"foreground_process_group_id":36196,"foreground_processes":[{"argv":["-zsh"],"argv0":"zsh","cmdline":"-zsh","cwd":"/Users/robertguss/Projects/startups/mo-lang","name":"zsh","pid":36196}],"pane_id":"w4:p14","shell_pid":36196},"type":"pane_process_info"}}
