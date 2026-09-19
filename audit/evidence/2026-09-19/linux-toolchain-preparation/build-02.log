@@ -1,0 +1,17 @@
+{"step": "build", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "950", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "root", "systemd-run", "--wait", "--pipe", "--collect", "--unit=mo-toolchain-build-r02", "--working-directory=/opt/mo-harness/source-e3a01bbf613c1f130955b6e123d5987a4c559d18/toolchain", "--property=RuntimeMaxSec=900s", "--property=TimeoutStopSec=5s", "--property=KillMode=control-group", "--property=MemoryMax=1536M", "--property=CPUQuota=150%", "--property=TasksMax=128", "--property=PrivateNetwork=yes", "--property=NoNewPrivileges=yes", "--setenv=ZIG_GLOBAL_CACHE_DIR=/opt/mo-harness/zig-cache", "/opt/mo-harness/zig-aarch64-linux-0.16.0/zig", "build", "-j1"], "started_et": "2026-09-19T01:14:48.836997-04:00", "finished_et": "2026-09-19T01:29:48.998683-04:00", "exit_code": 1, "remaining_group": []}
+{"step": "final-state", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "30", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "root", "python3", "-c", "import json,subprocess;u=subprocess.run(['systemctl','list-units','--all','--no-legend','mo-toolchain-build-r0*'],capture_output=True,text=True,check=True);p=subprocess.run(['pgrep','-a','-x','zig'],capture_output=True,text=True);print(json.dumps({'units':u.stdout,'zig_processes':p.stdout,'pgrep_rc':p.returncode}));assert not u.stdout.strip() and p.returncode==1"], "started_et": "2026-09-19T01:29:48.999023-04:00", "finished_et": "2026-09-19T01:29:49.120679-04:00", "exit_code": 0, "remaining_group": []}
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/linux-toolchain-preparation/build-retry.py", line 54, in <module>
+    run('build', 950, PREFIX + ['systemd-run', '--wait', '--pipe', '--collect', '--unit=' + service,
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--working-directory=' + directory, '--property=RuntimeMaxSec=900s', '--property=TimeoutStopSec=5s',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--property=KillMode=control-group', '--property=MemoryMax=1536M', '--property=CPUQuota=150%',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--property=TasksMax=128', '--property=PrivateNetwork=yes', '--property=NoNewPrivileges=yes',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--setenv=ZIG_GLOBAL_CACHE_DIR=/opt/mo-harness/zig-cache', zig, 'build', '-j1'])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/linux-toolchain-preparation/build-retry.py", line 45, in run
+    raise RuntimeError(name + ' failed; evidence retained')
+RuntimeError: build failed; evidence retained

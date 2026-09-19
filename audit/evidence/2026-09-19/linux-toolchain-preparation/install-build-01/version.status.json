@@ -1,0 +1,20 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "/opt/mo-harness/zig-aarch64-linux-0.16.0/zig",
+    "version"
+  ],
+  "started_et": "2026-09-19T01:13:11.205806-04:00",
+  "finished_et": "2026-09-19T01:13:11.319684-04:00",
+  "exit_code": 0,
+  "remaining_group": []
+}

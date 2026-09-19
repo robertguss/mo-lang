@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "120",
+    "--",
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "python3",
+    "-c",
+    "import hashlib,json,pathlib,tarfile,sys\nrev,zig_hash,source_name,source_hash=sys.argv[1:]\nbase=pathlib.Path('/opt/mo-harness');base.mkdir(exist_ok=True)\nincoming=pathlib.Path('/home/mo/mo-linux-prep')\nfor name,digest,dest in [('zig-aarch64-linux-0.16.0.tar.xz',zig_hash,base), (source_name,source_hash,base/('source-'+rev))]:\n data=incoming/name\n assert hashlib.sha256(data.read_bytes()).hexdigest()==digest\n if dest!=base: dest.mkdir(exist_ok=False)\n with tarfile.open(data) as tar: tar.extractall(dest,filter='data')\nprint(json.dumps({'zig':str(base/'zig-aarch64-linux-0.16.0'),'source':str(base/('source-'+rev))}))\n",
+    "e3a01bbf613c1f130955b6e123d5987a4c559d18",
+    "ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17",
+    "mo-source-e3a01bbf613c1f130955b6e123d5987a4c559d18.tar",
+    "feba58a9b458f3629db22f8b054614baaca38fdb6837d336c15bc03d6754a16b"
+  ],
+  "started_et": "2026-09-19T01:13:07.692814-04:00",
+  "finished_et": "2026-09-19T01:13:11.205474-04:00",
+  "exit_code": 0,
+  "remaining_group": []
+}

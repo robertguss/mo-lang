@@ -1,0 +1,21 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "mo",
+    "mkdir",
+    "-p",
+    "/home/mo/mo-linux-prep"
+  ],
+  "started_et": "2026-09-19T01:13:06.750361-04:00",
+  "finished_et": "2026-09-19T01:13:06.862255-04:00",
+  "exit_code": 0,
+  "remaining_group": []
+}

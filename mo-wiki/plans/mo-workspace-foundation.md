@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, security]
 sources: [plans/mo-first-coding-harness.md, plans/mo-executor-foundation.md]
-status: ready
+status: in-progress
 ---
 
 # Mo workspace foundation: persistent files and protected snapshots

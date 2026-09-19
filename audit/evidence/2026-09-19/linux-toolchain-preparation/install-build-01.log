@@ -1,0 +1,32 @@
+{"step": "transfer-directory", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "30", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "mo", "mkdir", "-p", "/home/mo/mo-linux-prep"], "started_et": "2026-09-19T01:13:06.750361-04:00", "finished_et": "2026-09-19T01:13:06.862255-04:00", "exit_code": 0, "remaining_group": []}
+{"step": "transfer-zig", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "120", "--", "orbctl", "push", "-m", "mo-executor-r01", "/private/tmp/mo-linux-toolchain-bcqwt2vz/zig-aarch64-linux-0.16.0.tar.xz", "mo-linux-prep/"], "started_et": "2026-09-19T01:13:06.862661-04:00", "finished_et": "2026-09-19T01:13:07.529820-04:00", "exit_code": 0, "remaining_group": []}
+{"step": "transfer-source", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "120", "--", "orbctl", "push", "-m", "mo-executor-r01", "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-linux-source-tkf4an77/mo-source-e3a01bbf613c1f130955b6e123d5987a4c559d18.tar", "mo-linux-prep/"], "started_et": "2026-09-19T01:13:07.530169-04:00", "finished_et": "2026-09-19T01:13:07.692405-04:00", "exit_code": 0, "remaining_group": []}
+{"step": "install", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "120", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "root", "python3", "-c", "import hashlib,json,pathlib,tarfile,sys\nrev,zig_hash,source_name,source_hash=sys.argv[1:]\nbase=pathlib.Path('/opt/mo-harness');base.mkdir(exist_ok=True)\nincoming=pathlib.Path('/home/mo/mo-linux-prep')\nfor name,digest,dest in [('zig-aarch64-linux-0.16.0.tar.xz',zig_hash,base), (source_name,source_hash,base/('source-'+rev))]:\n data=incoming/name\n assert hashlib.sha256(data.read_bytes()).hexdigest()==digest\n if dest!=base: dest.mkdir(exist_ok=False)\n with tarfile.open(data) as tar: tar.extractall(dest,filter='data')\nprint(json.dumps({'zig':str(base/'zig-aarch64-linux-0.16.0'),'source':str(base/('source-'+rev))}))\n", "e3a01bbf613c1f130955b6e123d5987a4c559d18", "ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17", "mo-source-e3a01bbf613c1f130955b6e123d5987a4c559d18.tar", "feba58a9b458f3629db22f8b054614baaca38fdb6837d336c15bc03d6754a16b"], "started_et": "2026-09-19T01:13:07.692814-04:00", "finished_et": "2026-09-19T01:13:11.205474-04:00", "exit_code": 0, "remaining_group": []}
+{"step": "version", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "30", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "root", "/opt/mo-harness/zig-aarch64-linux-0.16.0/zig", "version"], "started_et": "2026-09-19T01:13:11.205806-04:00", "finished_et": "2026-09-19T01:13:11.319684-04:00", "exit_code": 0, "remaining_group": []}
+{"step": "build", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "950", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "root", "systemd-run", "--wait", "--pipe", "--collect", "--unit=mo-toolchain-build-r01", "--working-directory=/opt/mo-harness/source-e3a01bbf613c1f130955b6e123d5987a4c559d18/toolchain", "--property=RuntimeMaxSec=900s", "--property=TimeoutStopSec=5s", "--property=KillMode=control-group", "--property=MemoryMax=1536M", "--property=CPUQuota=150%", "--property=TasksMax=128", "--property=PrivateNetwork=yes", "--property=NoNewPrivileges=yes", "--setenv=ZIG_GLOBAL_CACHE_DIR=/opt/mo-harness/zig-cache", "/opt/mo-harness/zig-aarch64-linux-0.16.0/zig", "build", "-j2"], "started_et": "2026-09-19T01:13:11.320009-04:00", "finished_et": "2026-09-19T01:13:21.939326-04:00", "exit_code": 1, "remaining_group": []}
+{"step": "stop-owned-build", "command": ["python3", "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py", "30", "--", "orbctl", "run", "-m", "mo-executor-r01", "-u", "root", "systemctl", "stop", "mo-toolchain-build-r01.service"], "started_et": "2026-09-19T01:13:21.939656-04:00", "finished_et": "2026-09-19T01:13:22.056480-04:00", "exit_code": 5, "remaining_group": []}
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/linux-toolchain-preparation/install-build.py", line 83, in <module>
+    run('build', 950, PREFIX + ['systemd-run', '--wait', '--pipe', '--collect', '--unit=' + service,
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--working-directory=' + directory, '--property=RuntimeMaxSec=900s', '--property=TimeoutStopSec=5s',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--property=KillMode=control-group', '--property=MemoryMax=1536M', '--property=CPUQuota=150%',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--property=TasksMax=128', '--property=PrivateNetwork=yes', '--property=NoNewPrivileges=yes',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--setenv=ZIG_GLOBAL_CACHE_DIR=/opt/mo-harness/zig-cache', zig, 'build', '-j2'])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/linux-toolchain-preparation/install-build.py", line 45, in run
+    raise RuntimeError(name + ' failed; evidence retained')
+RuntimeError: build failed; evidence retained
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/linux-toolchain-preparation/install-build.py", line 89, in <module>
+    run('stop-owned-build', 30, PREFIX + ['systemctl', 'stop', service + '.service'])
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-19/linux-toolchain-preparation/install-build.py", line 45, in run
+    raise RuntimeError(name + ' failed; evidence retained')
+RuntimeError: stop-owned-build failed; evidence retained

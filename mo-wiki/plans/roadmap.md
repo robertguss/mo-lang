@@ -21,21 +21,19 @@ decide and drive bounded harness setup, implementation and verification while
 he is AFK. Workers are fresh Astra sessions at low reasoning in Herdr panes.
 The prior implementation pause and Amp/oracle workflow are superseded.
 
-**Current checkpoint, 19 Sep 2026, 1:19 AM ET:** executor, offline provider and
-terminal-auth foundations are independently accepted. Auth's final full suite
-passed 243/243 and 5/5 steps after retained dependency/formatting failures.
-Provider clean setup, 28 parser cases and two extra controls pass. Executor
-15 unit/17 live controls, collector-death and extra signal-accounting control
-pass with cleanup and unchanged shared Docker inventory. The Mo coding-fixture
-worker is running its interpreter/native matrix; Linux trusted build preparation
-is retrying one job after the two-job service hit its memory cap.
+**Current checkpoint, 19 Sep 2026, 1:45 AM ET:** three accepted foundations are
+published at 2fc1235; wiki deployment passed. Coding fixture final matrices pass
+after cancellation/race corrections and awaits lead integration/full suite.
+Workspace live controls and regressions pass with a final correction underway.
+Trusted Mac cross-build of the Linux compiler passed after bounded native Linux
+OOM/timeout failures; Linux execution is still unverified.
 
 | board | current work |
 |---|---|
-| Now | [[mo-coding-fixture-v1]] verification; Linux toolchain preparation; isolated workspace design review |
-| Next | Persistent isolated workspace/file/command adapter and protected application checks; provider/command bridge |
+| Now | [[mo-coding-fixture-v1]] integration review; [[mo-workspace-foundation]] final verification; [[mo-provider-auth-v1]] offline implementation |
+| Next | Linux runtime verification; provider/command bridge and protected application checks |
 | Waiting on Robert's presence | Interactive subscription login when the adapter is ready; offline work continues |
-| Recently done | [[mo-executor-foundation]], [[mo-provider-foundation]], [[mo-agent-terminal-auth]] independently accepted |
+| Recently done | [[mo-executor-foundation]], [[mo-provider-foundation]], [[mo-agent-terminal-auth]] independently accepted and published |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none

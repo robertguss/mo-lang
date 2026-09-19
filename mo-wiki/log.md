@@ -821,3 +821,13 @@
 - Lead selected trusted Linux descriptor-based file handling, bounded tmpfs,
   real container feedback and protected copied snapshot identity. No candidate
   command executes on Mac; live worker tests wait for ongoing lead build.
+
+## [2026-09-19] update | Published checkpoint and next auth slice, 1:45 AM ET
+- Main 2fc1235 and wiki deployment run 35423902551 published successfully.
+- Retained native Linux OOM/timeout; positive cleanup released workspace tests.
+  Trusted Mac cross-build passed in 43 seconds; Linux execution still pending.
+- Coding fixture corrections preserve per-call usage, mark cancellation totals
+  unknown and wait for Run.Stopped. Final matrices pass; integration pending.
+- Workspace controls/regressions pass with final mode/quota rerun underway.
+- Saved intact provider bridge review; briefed separate private-store/device
+  OAuth implementation with actual pinned code and entirely offline controls.

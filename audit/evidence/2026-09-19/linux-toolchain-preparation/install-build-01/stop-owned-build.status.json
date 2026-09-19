@@ -1,0 +1,21 @@
+{
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "30",
+    "--",
+    "orbctl",
+    "run",
+    "-m",
+    "mo-executor-r01",
+    "-u",
+    "root",
+    "systemctl",
+    "stop",
+    "mo-toolchain-build-r01.service"
+  ],
+  "started_et": "2026-09-19T01:13:21.939656-04:00",
+  "finished_et": "2026-09-19T01:13:22.056480-04:00",
+  "exit_code": 5,
+  "remaining_group": []
+}

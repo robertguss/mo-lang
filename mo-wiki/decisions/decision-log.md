@@ -733,6 +733,14 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Start [[mo-workspace-foundation]] as a Python/BusyBox-only slice: bounded Linux tmpfs, descriptor-based trusted file handling, actual isolated feedback commands and frozen snapshot verification. Defer HTTP/provider/Mo-build integration. Preserve accepted fixture policy and reaper lifecycle; live tests wait for the lead build to stop while local implementation proceeds. | Astra lead, informed by fresh Astra/low read-only review | decided, semantic | mounted-workspace negative controls plus unchanged executor regressions |
 
+## Overnight continuation (19 Sep 2026, 1:45 AM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| After native Linux two-job OOM and one-job 900-second timeout, retain bounds and use a separate exact-source trusted Mac cross-build. It passed for aarch64-linux-musl in 43 seconds; Linux runtime verification remains pending. Positive native service/process cleanup released the machine to workspace tests. | Astra lead | decided, measured build only | linux-toolchain-preparation/install-build-01, build-02, cross-build-01 |
+| Cancelled terminal totals are unknown/null while recorded per-call usage is preserved. Require Run.Stopped before reporting. Correct the lead's initial zero-token inference: actual RED appended and reported 17; native race RED showed post-report append. | Astra lead; correction by GPT-6-Astra/low | decided, pending integration | coding-fixture cancel-red-2, race-before-stop-check, cancel-review-1 |
+| Start [[mo-provider-auth-v1]] separately: only new provider/auth files, actual pinned device OAuth, private store, bounded serialized mutations, synthetic credentials and denied external egress. No live login or bridge/Mo edits in this slice. | Astra lead, informed by bounded Astra/low source review | decided | fixed offline controls and later independent lead acceptance |
+
 ## Related
 
 - [[session-05]]

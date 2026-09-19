@@ -22,56 +22,61 @@ confirmed in its startup UI. Its read-only executor review is retained under
 `audit/evidence/2026-09-19/executor-readiness/`; its pane was closed after
 receipt. Rediscover pane IDs before further work.
 
-### Active work, 19 Sep 2026, 1:19 AM ET
+### Active work, 19 Sep 2026, 1:45 AM ET
 
-Three foundations are independently accepted on integrated main `e3a01bb`:
+Main and origin/main are `2fc1235bd1f44ae7897ed059ece8cb9b30ce307d` before
+this documentation checkpoint. The three accepted foundations were pushed;
+Publish the wiki run 35423902551 completed successfully. Executor 15 unit/17
+live plus collector-loss/exit-137, provider clean setup/28 parser/two extras,
+and auth final full suite 243/243, 5/5 are independently accepted. Results and
+retained failures are in the three plans and lead evidence bundles. No live
+OAuth/inference or full candidate application acceptance is claimed.
 
-- Executor: 15 unit, 17 live, collector-death and extra exit-137 controls passed.
-  Cleanup empty; all five shared Mac Docker IDs/states unchanged across lead run.
-  Source tips `dfed32f`/`4227a89` integrated `cf21525`/`4b6c3c0`; worker closed.
-- Provider: tips `6081981`/`7ae1eed` integrated `432beb4`/`1661dad`. Fresh setup
-  initially failed missing cache; corrected clean-copy reproduction passed,
-  seven generated records match, 28 parser cases plus two extra controls pass.
-  No tracked provider bytes changed. No OAuth/credentials/live inference.
-- Auth: tips through `ebbf86c` integrated through `e3a01bb`. Lead 18-case matrix
-  and six controls pass; final full suite 243/243, 5/5, exit 0 at 1:17 AM ET.
-  Prior 241/243 dependency and 242/243 formatter failures retained. Exact final
-  comparison: 62 changed auth files match worker tip, shared recipe unchanged.
+Active Astra/low workers, separate worktrees:
 
-Evidence: `audit/evidence/2026-09-19/harness-integration/` and
-`audit/evidence/2026-09-19/agent-terminal-auth/`. Each plan has numbers/limits.
+- `mo-coding-fixture`, branch `harness/coding-fixture-v1`, base `5f87021`:
+  final corrected matrices 22/22 interpreter and compiled, plus two boundary
+  groups. Lead review found cancellation reporting issues. Real HTTP RED
+  recorded a late 17-token model step; native execution reproduced a log append
+  after the report. Corrections retain per-call 17, mark cancelled totals
+  unknown/null, wait for Run.Stopped and consume grace via Deadline.remaining.
+  Seven review controls and 49 verification commands pass. Worker is preparing
+  its commit. Its retained full-suite 242/243 failure was its own faults0
+  simulation tally; corrected boundary sim100 uses 5% faults. Lead must inspect
+  the final patch, integrate onto green main, repeat focused checks/full suite.
+  No Book/Transcript/Model/compiler body edits authorized.
+- `mo-workspace`, branch `harness/workspace-foundation-v1`, base `2fc1235`:
+  26 local tests and 20 live workspace controls passed; existing 17 live and
+  collector-loss control passed. A final exact-mode snapshot correction and
+  failed-import quota control are being verified. Worker exclusively owns the
+  dedicated machine until it reports final positive cleanup. No /opt changes.
+- Next fresh worker: `mo-provider-auth-v1`, exact brief in the matching plan.
+  Own only new provider/auth/, actual pinned device OAuth plus private store,
+  synthetic credentials/offline egress controls. No live login or ambient store
+  access. The provider bridge review is saved under provider-bridge-readiness/;
+  review worker closed after intact receipt. No Mo bridge implementation yet.
 
-Active implementation: Astra/low `mo-coding-fixture`, separate worktree/branch
-`harness/coding-fixture-v1` at base `5f87021`, exact brief in
-`mo-wiki/plans/mo-coding-fixture-v1.md`. Authorized module filename correction:
-exact-edit.mo, command-adapter.mo, coding-fixture.mo. It has a real interpreter
-scripted repair and is running 24-case matrices/boundaries. Its inherited auth
-formatting baseline is known; no worker auth edits. Integrate owned changes onto
-green main and repeat acceptance. Command text remains inert fixture data.
+Linux compiler preparation: exact trusted source e3a01bb and official Zig
+0.16.0 remain installed inside mo-executor-r01. Native two-job build hit 1.5 GiB
+OOM; one-job retry hit its independent 900-second deadline. Both failures and
+positive unit/Zig-process cleanup are retained. Machine was explicitly released
+to the workspace worker afterward. Resource caps were not increased.
 
-Fresh read-only Astra/low `mo-workspace-design` completed its review and was
-closed after receipt. `mo-wiki/plans/mo-workspace-foundation.md` authorizes the
-next bounded Python/BusyBox implementation: persistent files, real feedback
-commands and frozen snapshots. HTTP/provider/Mo-build integration is deferred.
-Start a fresh Astra/low worker; it may implement locally while the lead Linux
-build runs, but must wait for lead machine-release before live tests.
+Separate trusted Mac cross-build succeeded in 43 seconds:
+`zig build -j1 -Dtarget=aarch64-linux-musl`, private exact-source copy/cache,
+peak process-group RSS 3,353,706,496 bytes, guard 900, no remaining members.
+Binary 15,923,616 bytes, SHA-256
+`4d14520aaf25403396e14501efbab2f5cd3d7f29bba4ad7c124155c06c806c72`.
+Path recorded in linux-toolchain-preparation/cross-build-01/result.json.
+It has not been transferred or executed in Linux. Wait for workspace machine
+release, then verify trusted Linux execution before claiming runtime readiness.
+Candidate command text continues to execute only inside isolation.
 
-Linux: official Zig 0.16.0 arm64 is hash-verified and installed under
-`/opt/mo-harness/zig-aarch64-linux-0.16.0` in `mo-executor-r01`. Exact source
-`e3a01bb` is under `/opt/mo-harness/source-e3a01bbf613c1f130955b6e123d5987a4c559d18`.
-First trusted build (j2, 1.5 GiB/1.5 CPU/128 tasks/private network/900 s) hit OOM;
-follow-up cleanup command targeted an already removed unit and also failed.
-Both retained. `build-retry.py` is running j1 with the same bounds, checking unit
-and Zig-process absence. This is not candidate execution. Do not change machine
-configuration while it runs. Evidence is under linux-toolchain-preparation/.
-
-Rediscover Herdr IDs. Current lead w4:p1; coding worker w4:p15/run w4:p16;
-Linux build w4:p1D. Workspace review, auth/provider workers and completed
-auth/provider run panes are closed after receipts and idle proof.
-Historical worktrees stay. Main integrations/docs are local; no push yet.
-Next: checkpoint accepted foundations, finish coding fixture and Linux build,
-then bounded real workspace/command/provider integration. Step 39 remains
-unaccepted, Darwin full-sync unmet, Program 7 suspended.
+Rediscover Herdr IDs: lead w4:p1; coding worker w4:p15; workspace w4:p1F;
+lead idle run pane w4:p1D. Preserve historical worktrees. Next: review/integrate
+coding/workspace commits, independent acceptance, Linux execution, offline auth
+and versioned provider/command bridge. Step 39 remains unaccepted, Darwin
+full-sync unmet, Program 7 suspended.
 
 ## Historical checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
 

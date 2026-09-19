@@ -1,0 +1,32 @@
+{
+  "source_commit": "e3a01bbf613c1f130955b6e123d5987a4c559d18",
+  "source_sha256": "feba58a9b458f3629db22f8b054614baaca38fdb6837d336c15bc03d6754a16b",
+  "source_copy": "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-trusted-cross-e2a7hp23",
+  "command": [
+    "python3",
+    "/Users/robertguss/Projects/startups/mo-lang/toolchain/bench/step36/guard.py",
+    "900",
+    "--",
+    "/opt/homebrew/bin/zig",
+    "build",
+    "-j1",
+    "-Dtarget=aarch64-linux-musl"
+  ],
+  "cwd": "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-trusted-cross-e2a7hp23/toolchain",
+  "zig": "/opt/homebrew/bin/zig",
+  "target": "aarch64-linux-musl",
+  "trusted_compiler_build": true,
+  "candidate_execution": false,
+  "started_et": "2026-09-19T01:32:12.423856-04:00",
+  "exit_code": 0,
+  "stop_reason": null,
+  "peak_group_rss": 3353706496,
+  "cleanup_before": [],
+  "cleanup_after": [],
+  "finished_et": "2026-09-19T01:32:55.434126-04:00",
+  "binary": {
+    "path": "/var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/mo-trusted-cross-e2a7hp23/toolchain/zig-out/bin/mo",
+    "bytes": 15923616,
+    "sha256": "4d14520aaf25403396e14501efbab2f5cd3d7f29bba4ad7c124155c06c806c72"
+  }
+}

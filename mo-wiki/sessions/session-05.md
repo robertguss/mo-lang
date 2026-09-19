@@ -125,6 +125,17 @@ tip; shared recipe bytes stay unchanged. Earlier 241/243 and 242/243 failures
 remain, alongside 18 HTTP cases and six extra lead controls. Three local
 foundations are accepted; coding-fixture and Linux build work continue.
 
+## Published checkpoint and continued integration — 19 Sep 2026, 1:45 AM ET
+
+Three foundations were pushed at 2fc1235 and wiki run 35423902551 succeeded.
+Coding fixture review reproduced a native report-before-last-step race and
+positive-token cancellation; corrected local matrices pass, integration pending.
+Workspace controls and lifecycle regressions pass; final correction is running.
+Native Linux builds reached memory/time bounds with positive cleanup; a trusted
+Mac cross-build passed but Linux execution is still unverified. A fresh bounded
+[[mo-provider-auth-v1]] slice will prepare private device OAuth using fixtures.
+No live credentials, application acceptance or retired audit gate is implied.
+
 ## Related
 - [[session-04]]
 - [[decision-log]]

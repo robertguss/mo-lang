@@ -145,6 +145,8 @@ type: index
   and JSONL before isolated workspace/provider integration.
 - [[mo-workspace-foundation]] — bounded persistent Linux workspace, real feedback
   commands and protected snapshot identity; next executor slice
+- [[mo-provider-auth-v1]] — private harness credential store and pinned device
+  OAuth, independently tested with synthetic credentials before live login
 - [[mo-provider-foundation]] — pinned provider-only turns, synthetic SSE controls
   and usage/error distinctions before the Mo bridge or live authentication.
 - [[mo-agent-terminal-auth]] — versioned Agent-specific terminal-401 policy,

@@ -24,7 +24,7 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 1:19 AM ET, three foundations accepted.
+**Last updated:** 19 Sep 2026, 1:45 AM ET, published foundations; integration continues.
 
 Robert has authorized Astra to lead continuously while he sleeps and make the
 necessary decisions. Fresh Astra workers run at low reasoning in Herdr panes,
@@ -43,13 +43,20 @@ after correcting generated dependency records and formatter output. The earlier
 241/243 and 242/243 failures remain in evidence. These acceptances cover local
 foundations, not a full candidate application repair or live provider session.
 
-The coding-fixture worker is verifying the existing Mo loop, exact edits, inert
-HTTP command responses and structured JSONL. A fresh read-only worker is
-reviewing the next isolated workspace boundary. Official Linux Zig is installed
-inside the dedicated machine; its first two-job trusted build hit a 1.5 GiB
-limit, and one-job retry keeps the same bound. No credentials were read, login
-started or live inference performed. Language value and the Pi comparison remain
-unmeasured.
+The coding fixture now has corrected interpreter/native matrices after a real
+cancellation report race: Book could record a delayed model step after the
+report. The worker waits for Run.Stopped and makes cancelled totals unknown,
+while preserving recorded per-call usage. Final integration remains pending.
+Workspace file/command/snapshot controls and executor regressions pass; its
+last correction is still under test. [[mo-provider-auth-v1]] starts separately
+with synthetic credentials and actual pinned device OAuth, before live login.
+
+Trusted native Linux compiler builds hit the fixed memory/deadline bounds;
+cleanup was confirmed before releasing the machine to workspace tests. An
+exact-source Mac cross-build for aarch64-linux-musl passed in 43 seconds but
+has not yet run in Linux. Published main checkpoint 2fc1235 and its wiki CI
+passed. No real credentials were read or live inference performed. Language
+value and the Pi comparison remain unmeasured.
 
 Historical worktrees and the private transfer package are present, and the
 arrival auditor pointer check found zero new records. Arrival/setup observations
