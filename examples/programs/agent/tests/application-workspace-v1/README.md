@@ -43,7 +43,8 @@ lead-gated and were not run.
   the outer deadline and shared by the final reads. Schema
   `mo-application-workspace-v1`: a profile line of fixed caps, then the steps
   and the terminal. A Book still running after Run stopped, a recording failure,
-  or a transcript over 256 KiB each give a `reporting_error` with `persistence`.
+  or a transcript over the report cap (23068672 bytes, derived from the profile)
+  each give a `reporting_error` with `persistence`.
 
 ## Acceptance groups (24)
 
@@ -137,9 +138,18 @@ python3 $T/scope.py [MANIFEST_NAME]
    before the outer deadline, so the answer can still arrive. It asks Run first,
    and the Book only once Run has stopped. A Run blocked in a command, which
    times out a Look, is not an end.
-10. **Report cap (toolchain defect).** A report renders at most 256 KiB of
-    transcript, and a larger one is a proved `transcript_too_large` error. See
-    `evidence/toolchain-defect-01.md`.
+10. **Report cap.** A report renders at most `report_cap()` bytes of
+    transcript: the budget's 16 steps times the request and response caps
+    (851968 + 524288), plus the runtime's 1 MiB bound on a model reply, which is
+    23068672 bytes. The profile line reports it as `report_bytes`. A larger
+    transcript is a proved `transcript_too_large` error. No run of this profile
+    can reach the cap, because the 64 KiB context bound ends a run at its first
+    model request over it. The largest transcript a run can make is 3669468
+    bytes (`matrix.py report-largest`), and it renders whole in both runtimes.
+    The cap is shown at the bound itself with an operator-written Book
+    (`drivers.py report-at-cap`, `report-past-cap`). The runtime defect behind
+    the old 256 KiB cap (`evidence/toolchain-defect-01.md`) is fixed in both
+    runtimes; see `REPORT-CAP.md`.
 11. **Persistence field.** `reporting_error` payloads carry
     `persistence: proved|uncertain`. A recording failure and a Book still
     running after Run stopped are uncertain.
@@ -154,9 +164,10 @@ python3 $T/scope.py [MANIFEST_NAME]
 
 ## Limitations
 
-- **Toolchain defect, not fixed.** Large application reports make native print
-  raw memory and make the interpreter panic. The cap avoids that path; the root
-  cause is open.
+- **Toolchain defect, since fixed.** Large application reports made native
+  print raw memory and made the interpreter panic. The toolchain fix (an
+  `answer` packs when it runs) removed the cause, and the report cap no longer
+  refers to it (`REPORT-CAP.md`).
 - **No machine or real core.** Local controls use a strict bridge double and the
   accepted local `test_owner` double. There is no isolation, cleanup or
   real-core claim.

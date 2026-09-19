@@ -44,12 +44,18 @@ fn margin_ms() : Int64
   500
 end
 
-# The most transcript bytes a report renders; a larger transcript is a reporting error. Rendering
-# about 0.7 MB corrupted the native report and about 1.6 MB aborted the interpreter in this
-# profile (a toolchain defect retained in the slice's evidence), so the cap keeps a wide margin.
-# Legitimate transcripts stay far below it: the context bound is 64 KiB and core results are small.
+# The most bytes a model reply can be: the runtime's HTTP body limit, past which a reply is
+# TooLarge and never becomes a step.
+fn model_reply_cap() : UInt64
+  1_048_576
+end
+
+# The most transcript bytes a report renders: every step the budget allows carrying a whole
+# request and a whole response, and a whole model reply besides. A run of this profile stays far
+# below it, since the context bound ends a run at its first model request over 64 KiB, so a
+# larger transcript is not one this profile made and is a reporting error, not a report.
 fn report_cap() : UInt64
-  262_144
+  application_order("").budget.steps * (request_cap() + response_cap()) + model_reply_cap()
 end
 
 fn application_order(goal: String) : Order
