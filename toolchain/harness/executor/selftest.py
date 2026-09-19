@@ -95,7 +95,7 @@ def executed(script, checks, outcome='completed', passed=True, seconds=5, action
         if outcome != 'completed': assert all(c['passed'] for c in result['checks']), result['checks']
         if assertion: assertion(result)
         (r.directory / 'after.json').write_text(json.dumps(assert_clean(r), indent=2))
-        return {'status': observation['status'], 'exit_code': observation['exit_code'], 'check_count': len(result['checks'])}
+        return cases.Fields(status=observation['status'], exit_code=observation['exit_code'], check_count=len(result['checks']))
 
 
 def died(mode, *, root, name):
@@ -132,7 +132,7 @@ def died(mode, *, root, name):
         result = r.collect()
         assert not result['passed']
         if mode == 'supervisor': assert result['observation']['status'] == 'infrastructure_failure'
-        return dict(record, status=result['observation']['status'], check_count=len(result['checks']))
+        return cases.Fields(record, status=result['observation']['status'], check_count=len(result['checks']))
 
 
 def completion_control(run):

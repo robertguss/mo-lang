@@ -310,3 +310,31 @@ under `guarded.py`, with the same command lines as before:
 The live owner (`live_owner.py`) now starts through
 `Bridge.start(owner_module=…)` instead of a `Popen` patch; `live.py`'s
 `startup-failure` and `frontend-death` groups cover that path.
+
+### Follow-up: the `scratch-fresh` regression (commit `94f3dfa5`)
+Your live rerun found `application/controls.py` `scratch-fresh` failing in the runner: `ValueError: dictionary update sequence element #0 has length 15; 2 is required`. Its action returned a tuple of two command results, and `Cases.one` merged any truthy return into the record.
+
+**Five more rows had a quieter version of the same bug.** Auditing every action found that `hello-cold-build`, `logstat-cold-build`, `failed-build-no-stale`, `source-noexec` and `image-root-immutable` each returned a whole command result. The runner merged it without complaint, so they passed with `stdout`, `manifest` and `observation` inside their records. Every other action in the five tables returns `None`, except selftest's two actions that return record fields on purpose.
+
+**The contract.** An action returns `None`, or `cases.Fields(...)` for record fields it adds on purpose. Any other value fails that case with `TypeError: case action returned <type>; return None, or cases.Fields(...) for record fields`. So does a field named like one of the runner's own (the key, `ok`, `error`, `elapsed_seconds`). selftest's `executed` and `died` now return `Fields`, with the same keys as before. The six application rows now return nothing. Every script string in `controls.py` is byte-identical (checked by AST).
+
+**Why a static check, and what the new tests do.** The offline stand-in can't catch this, because every case fails before it returns. `test_cases.py` gains four tests:
+- **Every action, from source.** All 100 actions in the five tables (`local.py` is unittest and has no actions) are read from their source. Every return path, followed through module functions, closure cells and partials, must end in `None` or `Fields`. Any call the walk can't resolve counts as a value, so it errs toward flagging.
+- **The walk can fail.** A self-test shows it flags a tuple or a helper's result leaked through an `own()`-style closure, and passes a quiet one.
+- **Stubbed success.** The application rows built only on `success()` and `lifecycle()` run through the runner with both stubbed to succeed and to return what the real ones return (a command result; `None`). Each record must be `ok`.
+- **The contract itself.** A tuple, a plain dict and a clashing field each fail with the `TypeError`; `Fields` is merged.
+
+I checked this against the pre-fix `controls.py`, with the new tests and runner: `Ran 14 tests` / `FAILED (failures=7)`, exit 1. The static walk flagged exactly the six rows (for `scratch-fresh`: a tuple at line 169), and the stubbed run failed them with `TypeError: case action returned dict`. On the fix:
+
+| suite | result | exit |
+|---|---|---|
+| executor discover | `Ran 110 tests` / `OK` (106 + 4) | 0 |
+| application | `Ran 25 tests` / `OK` | 0 |
+| `local.py` | `Ran 22 tests` / `OK` | 0 |
+| `recovery/local_suite.py` | `Ran 71 tests` / `OK` | 0 |
+
+**To rerun on the machine:**
+- `application/controls.py`: all 23 controls. The six fixed rows changed shape but not their scripts.
+- `selftest.py`: its actions now return `Fields`.
+
+The other suites' actions all return `None`, as the new test proves. The runner change only adds the return check, so they don't need a rerun for this.

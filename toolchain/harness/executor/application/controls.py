@@ -86,9 +86,25 @@ def success(w, script, expected=None, seconds=120):
     return result
 
 
+def expect(*steps):
+    """A control whose scripts must each succeed with exactly the given stdout."""
+    def control(w):
+        for script, expected in steps:
+            success(w, script, expected)
+    return control
+
+
 def own(control):
     """A control that gets its own small workspace, named after it."""
     return lambda s, name: control(s.new(name, {'answer.txt': b'wrong\n'}))
+
+
+def hello_cold_build(s, name):
+    success(s.app, build('hello.mo', '/build/zig-out/mo-build/hello/hello Ada'), 'Hello, Ada!\n')
+
+
+def logstat_cold_build(s, name):
+    success(s.app, LOG_SCRIPT, s.expected)
 
 
 def snapshot_rebuild(s, name):
@@ -160,18 +176,18 @@ def memory_enforcement(w):
 
 
 TABLE = [
-    ('hello-cold-build', lambda s, name: success(s.app, build('hello.mo', '/build/zig-out/mo-build/hello/hello Ada'), 'Hello, Ada!\n')),
-    ('logstat-cold-build', lambda s, name: success(s.app, LOG_SCRIPT, s.expected)),
+    ('hello-cold-build', hello_cold_build),
+    ('logstat-cold-build', logstat_cold_build),
     ('snapshot-rebuild', snapshot_rebuild),
-    ('failed-build-no-stale', own(lambda w: success(w, 'set -eu; test -z "$(ls -A /build)"; cd /build; '
+    ('failed-build-no-stale', own(expect(('set -eu; test -z "$(ls -A /build)"; cd /build; '
         'if mo build /workspace/missing.mo >/build/failure 2>&1; then exit 1; fi; '
-        'test ! -e /build/zig-out/mo-build/logstat/logstat; echo no-stale', 'no-stale\n'))),
-    ('scratch-fresh', own(lambda w: (success(w, 'touch /build/marker; echo first', 'first\n'),
-        success(w, 'test ! -e /build/marker && test -z "$(ls -A /build)" && echo fresh', 'fresh\n')))),
-    ('source-noexec', own(lambda w: success(w, 'cp /bin/busybox /workspace/probe; chmod 755 /workspace/probe; '
-        'if /workspace/probe true; then exit 1; fi; rm /workspace/probe; echo noexec', 'noexec\n'))),
-    ('image-root-immutable', own(lambda w: success(w, 'if echo bad >/opt/mo/mo; then exit 1; fi; '
-        'if echo bad >/result.json; then exit 1; fi; echo denied', 'denied\n'))),
+        'test ! -e /build/zig-out/mo-build/logstat/logstat; echo no-stale', 'no-stale\n')))),
+    ('scratch-fresh', own(expect(('touch /build/marker; echo first', 'first\n'),
+        ('test ! -e /build/marker && test -z "$(ls -A /build)" && echo fresh', 'fresh\n')))),
+    ('source-noexec', own(expect(('cp /bin/busybox /workspace/probe; chmod 755 /workspace/probe; '
+        'if /workspace/probe true; then exit 1; fi; rm /workspace/probe; echo noexec', 'noexec\n')))),
+    ('image-root-immutable', own(expect(('if echo bad >/opt/mo/mo; then exit 1; fi; '
+        'if echo bad >/result.json; then exit 1; fi; echo denied', 'denied\n')))),
     ('snapshot-immutable', lambda s, name: require(s.frozen().verify(
         'if echo bad >> hello.mo; then exit 1; fi; echo denied', [check('denied\n')])['passed'])),
     ('output-bound', own(output_bound)),
