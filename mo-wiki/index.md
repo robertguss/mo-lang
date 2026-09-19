@@ -137,6 +137,8 @@ type: index
 ## Plans
 - [[report-claim-check]] — proposed TypeSafe triage of worker report claims
   against raw evidence; never acceptance; not built (18 Sep 2026)
+- [[mo-harness-step-1-executor]] — brief: the two high executor defects fixed, duplicate Python machinery deleted
+- [[mo-harness-step-8-agent]] — brief: the Mo agent's review findings, tests that can fail, one budget rule
 - [[mo-harness-in-mo]] — the harness moved into Mo: the capabilities Mo gains, the target shape, nine steps
 - [[mo-first-coding-harness]] — selected Mo-written coding application; headless
   first slice, protected verification, matched Pi comparison; implementation authorized
