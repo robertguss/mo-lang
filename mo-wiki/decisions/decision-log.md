@@ -867,6 +867,12 @@ direction separately from the lead's conservative execution interpretation.
 | The fix is its own small toolchain step, [[interpreter-step-43]], RED first, with a sweep of every number the compiler reads from source; it runs beside step 42 and the lead accepts the merge work. Default range for a mailbox bound: 1 to 4,294,967,295, 0 refused unless the spec gives it a meaning. **For Robert**: the language's sentence "overflow is never implicit" was false for literals until this lands. | Fable lead | decided | step 43's RED tests |
 | A reproducible compiler and corpus CI gate is still owed (the auditor's standing concern 2, first raised 18 Sep), and the suite writing generated files into the source tree is part of it: two runs cannot share a tree. It follows steps 42 and 43. | Fable lead | decided | the gate's first run on a pull request |
 
+## 19 Sep 2026 — Few Opus workers at once, 1:33 PM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Robert: going forward, do not spin up too many Opus workers. The lead's working limit is two at a time until he names a number; briefs queue. Three were in flight when he said it (end to end, step 41, step 43); none is stopped, and nothing new launches until fewer than two remain. | Robert; the number is the Fable lead's | decided | the next launch |
+
 ## Related
 
 - [[session-05]]
