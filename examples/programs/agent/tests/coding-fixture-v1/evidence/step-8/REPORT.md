@@ -317,3 +317,129 @@ were.
 - **Ownership note.** This report is the only file under
   `tests/coding-fixture-v1/evidence/`, which the brief left outside my write
   scope; it is here because the lead asked for it here.
+
+---
+
+## Part 6 resumed: the lead's decision carried out (commit `109e8685`)
+
+The lead decided:
+
+- **(a)** "steps" keeps its two written meanings, chosen once as one explicit value;
+- **(b)** the token bound takes the legacy reading for every run, with a control
+  sitting exactly on the bound in both counting modes.
+
+Both are done. Book and Record serialization are untouched: the value lives in the
+Run's state, not in Order, Budget or Record.
+
+### What changed
+
+- **`steps.mo`:**
+  - A new `enum Counting` with `ModelCalls` and `RecordedSteps`.
+  - `asks?`, `uses?` and `budget_end` take it, and one helper `fits?` says whether
+    one more step of a kind fits the steps budget. Under `ModelCalls` only a model
+    step counts (`taken`); under `RecordedSteps` every step does (`n`).
+  - `uses?` keeps `tokens <= budget` and `asks?` keeps `tokens < budget` for every
+    run.
+  - `budget_end` names the wall first, then steps as the run counts them, then
+    tokens.
+- **`run.mo`:**
+  - The Run's state holds `counting: Counting = ModelCalls`. `ConfigureFixture` and
+    `ConfigureApplication` set it to `RecordedSteps`, the one place a run is
+    configured.
+  - The steps gate in `thinking` and the duplicate steps-and-tokens gate in
+    `acting` are gone. This also removes the early `tokens >= budget` check.
+  - `thinking` now takes the same `Turn` as `acting`. Adding the value pushed it to
+    seven parameters, past Mo's limit of six (MO0303).
+- **What `profiled` still does in `run.mo`:** it now does only two things.
+  - It chooses the step's start time (`asked`/`using`). That is timing, not budget.
+  - It gates the 64 KiB `context_bytes` check. That was open item 3, which the
+    decision did not cover, so it stays as it was, the one budget check left
+    outside `steps.mo`.
+
+  One ordering edge moves as a result: a profiled run past both its steps and its
+  context bound now ends `context_bytes` instead of `steps`. No golden or matrix
+  case reaches both at once.
+
+### The control on the token bound
+
+**The test:**
+`boundaries.mo` "a model call that spends exactly the token budget still has its
+tool used, and the next ask is refused". Budget 17 tokens; the one model reply
+names `read_file` and spends 17. It runs twice, configured as a fixture run
+(`RecordedSteps`) and as a plain run (`ModelCalls`). An end on the token bound must
+have exactly 2 steps: the model step and an unrefused `read_file` tool step. There
+is at most one model call and never Done.
+
+**Against the old code**
+(the committed `run.mo` and `steps.mo` put back, `m8-oldbudget.py.txt`):
+- exit 1; the fixture run ended over budget before the tool step
+  (`assert seen.steps.size == 2 and tools.size == 1 ... failed`);
+- the plain-run mode alone passes on the old code (exit 0). Legacy already had
+  this reading, so that half guards it rather than failing first.
+
+**After the change:** 4 passed, exit 0. Under `--sim 100`:
+"3 held under faults, 0 passed only without faults". The native test build also
+passes it ("4 passed").
+
+**One loosening, found by the simulator:** the first version asserted that every
+over-budget end was "tokens". Under faults, seed 5698025395551875501 ended
+`wall_ms` (a faulted model call running late past the wall budget). So the test
+now allows `tokens` or `wall_ms`, and requires the tool step whenever the end is
+"tokens".
+
+`steps.mo` also has a new unit test covering both modes:
+- after one model and one tool step (budget 2), ModelCalls may ask and
+  RecordedSteps may not;
+- a tool may run at n=1 in both modes, but at n=2 only under ModelCalls;
+- a tool may run at exactly the token budget and not past it;
+- the next ask is refused at the bound, and `budget_end` names "tokens".
+
+It passes (8 passed).
+
+### Why strings: unchanged
+
+Every coding-fixture case's terminal payload, exit code and event sequence was
+compared with the matrices before the change: identical in all 24 cases on both
+runtimes. The budget cases still end `steps`, `tokens` and `context_bytes`.
+The legacy goldens, including `agent.expected:48,62` (r_5, `"error": "steps"`,
+`steps_taken: 2`), pass 12 of 12.
+
+### Numbers (every process under `guard.py`)
+
+- **`verify.py`:** exit 0.
+  - fmt and writes: all exit 0;
+  - `steps.mo` "8 passed";
+  - `run.mo` "2 passed; 2 held under faults";
+  - coding-fixture `boundaries.mo` "4 passed; 3 held under faults";
+  - native build: exit 0;
+  - `legacy.py`: 12 of 12, exit 0;
+  - native tests: boundaries 4, main 5, record 14, tools 5, steps 8, run 2,
+    registry 0, transcript 5 (all exit 0).
+
+  The tree was unchanged afterwards. Evidence: `m8-verify.jsonl`.
+- **Coding-fixture matrix:** interpreter 24 of 24, `run.py` exit 0; compiled 24 of
+  24, exit 0. Evidence: `m8-matrix-interpreter.jsonl`, `m8-matrix-compiled.jsonl`.
+- **Application workspace:**
+  - `controls.py` 8 of 8, exit 0;
+  - `matrix.py interpreter` 33 of 33 rows, exit 0;
+  - `matrix.py native` 34 of 34 rows, exit 0.
+
+  The output was moved out of that suite's `evidence/`: `m8-app-*.jsonl`.
+- **Every verified line was regenerated** with the real `mo test --write` in
+  dependency order, `--sim 100` where the line records it. All exit 0.
+- **Not run:** the full `zig build test`, `drivers.py`, `real_bridge.py`.
+
+**Mo source lines, before → after:**
+
+| File | Lines |
+|---|---|
+| `steps.mo` | 365 → 417 |
+| `run.mo` | 392 → 392 |
+| `boundaries.mo` | 292 → 352 |
+
+### Still open
+
+- **Item 3, the context bound.** `context_bytes` is still checked in `run.mo` for
+  profiled runs only. Moving it into `asks?`/`budget_end` for every run would
+  change no current golden, but it gives plain runs a new over-budget reason, so
+  it is left for the lead.

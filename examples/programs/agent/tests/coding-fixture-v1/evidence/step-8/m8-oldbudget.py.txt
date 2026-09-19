@@ -1,0 +1,5 @@
+"""Put the committed (pre-change) run.mo and steps.mo back into the temp copy: the old budget rule."""
+import sys, subprocess
+for f in ['run.mo', 'steps.mo']:
+    old = subprocess.run(['git', '-C', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-step-8-agent', 'show', '0222cca1:examples/programs/agent/' + f], capture_output=True, text=True, check=True).stdout
+    open(sys.argv[1] + '/' + f, 'w').write(old)
