@@ -87,7 +87,7 @@ enum {
     MO_N_UNSUPPORTED, MO_N_NOT_TEXT, MO_N_ACCEPTED, MO_N_LINE, MO_N_IDLE, MO_N_NO_PROCESS, MO_N_UNPARSED,
     MO_N_READ_ONLY, MO_N_MAILBOX_FULL, MO_N_UPDATED, MO_N_STARTED, MO_N_ENDED, MO_N_RESTARTED, MO_N_CRASHED,
     MO_N_OVERFLOWED, MO_N_TIMED_OUT, MO_N_SOURCE_PAUSED, MO_N_SOURCE_RESUMED, MO_N_SENT, MO_N_PAUSED,
-    MO_N_RESUMED, MO_N_FILE, MO_N_FOLDER, MO_N_DROPPED, MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_UNTRUSTED, MO_N_FIXED
+    MO_N_RESUMED, MO_N_FILE, MO_N_FOLDER, MO_N_DROPPED, MO_N_BAD_PEM, MO_N_HANDSHAKE, MO_N_UNTRUSTED, MO_N_LINK, MO_N_FIXED
 };
 
 /* types.Tag, in its order. */
@@ -540,7 +540,7 @@ MO_ROW(mo_r_Time_since); MO_ROW(mo_r_Duration_ms); MO_ROW(mo_r_Duration_seconds)
 MO_ROW(mo_r_Clock_now); MO_ROW(mo_r_Clock_fixture);
 MO_ROW(mo_r_Fs_read); MO_ROW(mo_r_Fs_read_lines); MO_ROW(mo_r_Fs_read_bytes); MO_ROW(mo_r_Fs_fold_lines); MO_ROW(mo_r_Fs_size); MO_ROW(mo_r_Fs_list);
 MO_ROW(mo_r_Fs_scoped); MO_ROW(mo_r_Fs_read_only); MO_ROW(mo_r_Fs_write); MO_ROW(mo_r_Fs_append);
-MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_mkdir); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
+MO_ROW(mo_r_Fs_remove); MO_ROW(mo_r_Fs_rename); MO_ROW(mo_r_Fs_mkdir); MO_ROW(mo_r_Fs_replace); MO_ROW(mo_r_Fs_kind_of); MO_ROW(mo_r_Fs_fixture); MO_ROW(mo_r_Fs_fixture_delay);
 MO_ROW(mo_r_Events_emit); MO_ROW(mo_r_Events_fixture); MO_ROW(mo_r_Ledger_fixture);
 MO_ROW(mo_r_Ledger_find_charge); MO_ROW(mo_r_Ledger_save_charge);
 MO_ROW(mo_r_Platform_args); MO_ROW(mo_r_Platform_env); MO_ROW(mo_r_Platform_stdout); MO_ROW(mo_r_Platform_stderr);

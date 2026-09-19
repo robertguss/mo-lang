@@ -47,6 +47,8 @@ pub const fmt = @import("fmt.zig");
 pub const fix = @import("fix.zig");
 pub const diff = @import("diff.zig");
 pub const errors = @import("errors.zig");
+/// Step 40's controls: a scope that holds against links, `Fs.kind_of`, and `Fs.replace`.
+pub const fs_scope = @import("fs_scope.zig");
 /// The crypto brick (step 35): both runtimes call its exports.
 pub const crypto_brick = @import("bricks/crypto.zig");
 /// The TLS brick (step 36): a TLS 1.3 server as an engine over bytes, driven by both runtimes.

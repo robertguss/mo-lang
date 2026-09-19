@@ -802,7 +802,7 @@ const Caps = struct {
     /// The Fs rows that change the file system.
     fn writesFiles(row: prelude.Fn) bool {
         if (!std.mem.eql(u8, row.recv, "Fs")) return false;
-        for ([_][]const u8{ "write", "append", "remove", "rename", "mkdir" }) |name| {
+        for ([_][]const u8{ "write", "append", "remove", "rename", "mkdir", "replace" }) |name| {
             if (std.mem.eql(u8, row.name, name)) return true;
         }
         return false;
@@ -1304,6 +1304,15 @@ test "a write through an Fs narrowed to read_only, where the function can see it
         \\  wrote and kept and gone and moved
         \\end
     , &.{ "MO0404", "MO0404" });
+    // Step 40: replace writes, so a read-only Fs refuses it as it refuses write.
+    try expectCodes(
+        \\module T.ReadOnlyReplace
+        \\fn save(fs: Fs, text: String) : Bool
+        \\  replaced = fs.read_only.replace("a.txt", text, within: 1.minute) is Ok(_)
+        \\  asked = fs.read_only.kind_of("a.txt", within: 1.minute) is Ok(_)
+        \\  replaced and asked
+        \\end
+    , &.{"MO0404"});
 }
 
 test "a read-only Fs handed to a function that writes through it, or through a scope of it further down, is refused at the call" {

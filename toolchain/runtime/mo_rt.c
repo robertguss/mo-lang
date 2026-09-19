@@ -78,7 +78,8 @@ static void placed(uint32_t id, uint32_t k, bool quiet_event);
 static bool take_free_id(uint32_t k, uint32_t *id);
 static void reset_free_ids(void);
 static void nonblocking(int fd);
-static bool blocking_write(const char *path, const char *bytes, size_t len, bool append);
+static bool blocking_write(int fd, const char *bytes, size_t len);
+static bool blocking_replace(int dir, const char *name, const char *bytes, size_t len);
 
 _Noreturn static void out_of_memory(void) {
     fputs("mo: out of memory\n", stderr);
@@ -3293,7 +3294,9 @@ static char *path_join(const char *folder, const char *name) {
 
 /* ---- files: Mo.Server's scopes */
 
-typedef struct { char *base; char *root; bool read_only, empty; } Scope;
+/* anchor: the folder every path's walk starts from (step 40; server.zig, Scope.anchor), the one
+ * platform.fs.scoped named, opened as the operator named it; NULL for platform.fs itself. */
+typedef struct { char *base; char *root; bool read_only, empty; char *anchor; } Scope;
 static Scope *scopes;
 static size_t nscopes, capscopes;
 
@@ -3308,33 +3311,117 @@ static uint32_t add_scope(Scope s) {
 
 static bool late(int64_t t0, int64_t within_ms) { return awake_ns() - t0 > (__int128)within_ms * 1000000; }
 
-/* The real path of `path` under the scope, or NULL when it is outside or not there. */
-static char *real_scoped(const Scope *scope, const char *path, size_t n) {
-    if (scope->empty) return NULL;
+/* Where a path is in a scope (server.zig, Place): the open folder its last name is in, and that
+ * name, "" for the scope's folder itself; `follow` for platform.fs, whose last name the system
+ * resolves. */
+typedef struct { int dir; char *name; bool follow; } Place;
+
+static void place_close(Place *at) {
+    close(at->dir);
+    free(at->name);
+}
+
+static char *name_dup(const char *s, size_t n) {
+    char *out = xmalloc(n + 1);
+    memcpy(out, s, n);
+    out[n] = 0;
+    return out;
+}
+
+/* A folder opened by `name` in `dir`, following a link only when `follow`, or -1. */
+static int open_folder(int dir, const char *name, bool follow) {
+    return openat(dir, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | (follow ? 0 : O_NOFOLLOW));
+}
+
+/* Where `path` is in the scope (step 40; server.zig, place): each folder on the way opened from the
+ * last with O_NOFOLLOW | O_DIRECTORY, from the scope's folder, so a link at any of them is refused
+ * and nothing is looked up by path again. False when the path leaves the scope, holds a NUL, or a
+ * folder on the way is not there or is a link. The scope's folder is opened as the operator named
+ * it; platform.fs, never narrowed, has its paths resolved by the system, links and all. */
+static bool scope_place(const Scope *scope, const char *path, size_t n, Place *at) {
+    if (scope->empty || memchr(path, 0, n)) return false;
     char *full = path_resolve(scope->base, path, n);
-    char *real = NULL;
-    if (within_root(scope->root, full)) {
-        char *real_root = realpath(scope->root, NULL);
-        if (real_root) {
-            real = realpath(full, NULL);
-            if (real && !within_root(real_root, real)) {
-                free(real);
-                real = NULL;
-            }
-            free(real_root);
+    bool ok = false;
+    if (!within_root(scope->root, full)) goto done;
+    if (!scope->anchor) {
+        char *folder = path_dirname(full);
+        at->dir = open_folder(AT_FDCWD, folder ? folder : "/", true);
+        at->name = strdup(folder ? strrchr(full, '/') + 1 : "");
+        at->follow = true;
+        free(folder);
+        ok = at->dir >= 0;
+        if (!ok) free(at->name);
+        goto done;
+    }
+    int dir = open_folder(AT_FDCWD, scope->anchor, true);
+    if (dir < 0) goto done;
+    char *name = NULL;
+    for (const char *p = full + strlen(scope->anchor);;) {
+        while (*p == '/') p++;
+        if (!*p) break;
+        const char *end = strchr(p, '/');
+        size_t len = end ? (size_t)(end - p) : strlen(p);
+        if (name) {
+            int inner = open_folder(dir, name, false);
+            close(dir);
+            free(name);
+            name = NULL;
+            if (inner < 0) goto done;
+            dir = inner;
+        }
+        name = name_dup(p, len);
+        p += len;
+    }
+    *at = (Place){dir, name ? name : strdup(""), false};
+    ok = true;
+done:
+    free(full);
+    return ok;
+}
+
+/* The name at a place, stat'ed without following it (or following it, for platform.fs); the folder
+ * itself when the place is the scope's folder. */
+static bool stat_at(const Place *at, bool follow, struct stat *st) {
+    if (!at->name[0]) return fstat(at->dir, st) == 0;
+    return fstatat(at->dir, at->name, st, follow ? 0 : AT_SYMLINK_NOFOLLOW) == 0;
+}
+
+/* A regular file at `path`, for remove and rename. */
+static bool file_at(const Scope *scope, const char *path, size_t n, Place *at) {
+    if (!scope_place(scope, path, n, at)) return false;
+    struct stat st;
+    if (at->name[0] && stat_at(at, false, &st) && S_ISREG(st.st_mode)) return true;
+    place_close(at);
+    return false;
+}
+
+enum { OPEN_READ, OPEN_WRITE, OPEN_APPEND };
+
+/* A regular file inside the scope, opened (server.zig, openScoped): O_NOFOLLOW refuses a link at
+ * the last name, O_NONBLOCK keeps a FIFO from blocking the open and O_NOCTTY a terminal from becoming
+ * ours, and the descriptor must then be a regular file, so a FIFO or a device is refused before a
+ * byte moves. -1 for anything else. */
+static int open_scoped(const Scope *scope, const char *path, size_t n, int how) {
+    Place at;
+    if (!scope_place(scope, path, n, &at)) return -1;
+    int fd = -1;
+    if (at.name[0]) {
+        int flags = O_NONBLOCK | O_NOCTTY | O_CLOEXEC | (at.follow ? 0 : O_NOFOLLOW) | (how == OPEN_READ ? O_RDONLY : O_WRONLY | O_CREAT) | (how == OPEN_APPEND ? O_APPEND : 0);
+        fd = openat(at.dir, at.name, flags, 0666);
+        struct stat st;
+        if (fd >= 0 && (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || (how == OPEN_WRITE && ftruncate(fd, 0) != 0))) {
+            close(fd);
+            fd = -1;
         }
     }
-    free(full);
-    return real;
+    place_close(&at);
+    return fd;
 }
 
 #define READ_LIMIT ((size_t)64 << 20)
 
 static char *read_scoped(const Scope *scope, const char *path, size_t n, size_t *len) {
-    char *real = real_scoped(scope, path, n);
-    if (!real) return NULL;
-    int fd = open(real, O_RDONLY);
-    free(real);
+    int fd = open_scoped(scope, path, n, OPEN_READ);
     if (fd < 0) return NULL;
     size_t cap = 4096, got = 0;
     char *text = xmalloc(cap);
@@ -3361,44 +3448,6 @@ static char *read_scoped(const Scope *scope, const char *path, size_t n, size_t 
     }
     *len = got;
     return text;
-}
-
-
-/* Where a write to `path` lands, when its folder is inside the scope and a name already
- * there, which may be a link, leads inside it too. */
-static char *target_scoped(const Scope *scope, const char *path, size_t n) {
-    if (scope->empty) return NULL;
-    char *full = path_resolve(scope->base, path, n);
-    char *target = NULL;
-    char *real_root = NULL, *folder = NULL, *real_folder = NULL;
-    if (!within_root(scope->root, full) || strcmp(full, scope->root) == 0) goto done;
-    if (!(real_root = realpath(scope->root, NULL))) goto done;
-    if (!(folder = path_dirname(full))) goto done;
-    if (!(real_folder = realpath(folder, NULL))) goto done;
-    if (!within_root(real_root, real_folder)) goto done;
-    target = path_join(real_folder, strrchr(full, '/') + 1);
-    char *real = realpath(target, NULL);
-    if (real && !within_root(real_root, real)) {
-        free(target);
-        target = NULL;
-    }
-    free(real);
-done:
-    free(full);
-    free(real_root);
-    free(folder);
-    free(real_folder);
-    return target;
-}
-
-static char *file_scoped(const Scope *scope, const char *path, size_t n) {
-    char *real = real_scoped(scope, path, n);
-    struct stat st;
-    if (real && (stat(real, &st) != 0 || !S_ISREG(st.st_mode))) {
-        free(real);
-        real = NULL;
-    }
-    return real;
 }
 
 /* ---- files: an Fs.fixture()'s, in memory (stdlib.zig FixtureFs) */
@@ -3739,37 +3788,32 @@ static void reset_fixtures(void) {
     nout_fixtures = 0;
 }
 
-enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_LIST_KINDS, FS_FOLD_LINES, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR };
-static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "list_kinds", "fold_lines", "write", "append", "remove", "rename", "mkdir"};
+/* The rows from FS_WRITE on write: a read-only Fs refuses them. */
+enum { FS_READ, FS_READ_LINES, FS_READ_BYTES, FS_SIZE, FS_LIST, FS_LIST_KINDS, FS_FOLD_LINES, FS_KIND_OF, FS_WRITE, FS_APPEND, FS_REMOVE, FS_RENAME, FS_MKDIR, FS_REPLACE };
+static const char *const fs_row_names[] = {"read", "read_lines", "read_bytes", "size", "list", "list_kinds", "fold_lines", "kind_of", "write", "append", "remove", "rename", "mkdir", "replace"};
 
-/* Names sorted byte by byte, each folder flag moving with its name. */
-static void sort_listing(char **names, bool *folders, size_t n) {
-    for (size_t i = 1; i < n; i++) {
-        char *name = names[i];
-        bool folder = folders[i];
-        size_t j = i;
-        for (; j > 0 && strcmp(names[j - 1], name) > 0; j--) {
-            names[j] = names[j - 1];
-            folders[j] = folders[j - 1];
-        }
-        names[j] = name;
-        folders[j] = folder;
-    }
+/* A name a listing holds: its EntryKind (step 40: a link is a Link), its hard link count, and its
+ * setuid bit (server.zig, Listed). */
+enum { KIND_FILE, KIND_FOLDER, KIND_LINK };
+typedef struct { char *name; int kind; uint64_t links; bool setuid; } Listed;
+
+static int listed_cmp(const void *x, const void *y) { return strcmp(((const Listed *)x)->name, ((const Listed *)y)->name); }
+
+/* Names sorted byte by byte. */
+static void sort_listing(Listed *items, size_t n) { qsort(items, n, sizeof(Listed), listed_cmp); }
+
+/* An `Entry` of `Fs.list_kinds` (step 28) and `Fs.kind_of` (step 40; stdlib.zig, entryOf). */
+static MoValue entry_of(const char *name, int kind, uint64_t links, bool setuid) {
+    MoValue f[4] = {heap_string(name, strlen(name)), mo_variant(kind == KIND_FOLDER ? MO_N_FOLDER : kind == KIND_LINK ? MO_N_LINK : MO_N_FILE, 0, NULL), mo_u64(links), mo_bool(setuid)};
+    return mo_record(mo_entry_decl, 4, f);
 }
 
-/* An `Entry` of `Fs.list_kinds` (step 28; stdlib.zig, entryOf). */
-static MoValue entry_of(const char *name, bool folder) {
-    MoValue f[2] = {heap_string(name, strlen(name)), mo_variant(folder ? MO_N_FOLDER : MO_N_FILE, 0, NULL)};
-    return mo_record(mo_entry_decl, 2, f);
-}
-
-static MoValue string_list(char **names, size_t n);
+static int kind_of_mode(mode_t mode) { return S_ISDIR(mode) ? KIND_FOLDER : S_ISLNK(mode) ? KIND_LINK : KIND_FILE; }
 
 /* The names of a listing, sorted, as strings or, for list_kinds, as entries. */
-static MoValue listed_of(char **names, bool *folders, size_t n, bool kinds) {
-    if (!kinds) return string_list(names, n);
+static MoValue listed_of(Listed *items, size_t n, bool kinds) {
     MoValue *out = mo_alloc_values(n);
-    for (size_t i = 0; i < n; i++) out[i] = entry_of(names[i], folders[i]);
+    for (size_t i = 0; i < n; i++) out[i] = kinds ? entry_of(items[i].name, items[i].kind, items[i].links, items[i].setuid) : heap_string(items[i].name, strlen(items[i].name));
     return mo_list(out, (uint32_t)n);
 }
 
@@ -3846,16 +3890,10 @@ static void feed_end(LineFeed *l) {
     free(l->partial.p);
 }
 
-static MoValue string_list(char **names, size_t n) {
-    MoValue *out = mo_alloc_values(n);
-    for (size_t i = 0; i < n; i++) out[i] = heap_string(names[i], strlen(names[i]));
-    return mo_list(out, (uint32_t)n);
-}
-
 static MoValue fixture_files(int which, const MoValue *a) {
     FixScope scope = fix_scope_of(a[0]);
     bool lists = which == FS_LIST || which == FS_LIST_KINDS;
-    int64_t within = lists ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
+    int64_t within = lists ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_REPLACE ? a[3].as.i : a[2].as.i;
     MoValue path = lists ? mo_str(".", 1) : a[1];
     bool writes = which >= FS_WRITE;
     if (writes && scope.read_only) mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
@@ -3873,8 +3911,7 @@ static MoValue fixture_files(int which, const MoValue *a) {
         if (scope.empty) return missing(path);
         char *prefix = strcmp(scope.folder, "/") == 0 ? strdup("/") : path_join(scope.folder, "");
         size_t plen = strlen(prefix);
-        char **names = xmalloc((sys->n ? sys->n : 1) * sizeof(char *));
-        bool *folders = xmalloc((sys->n ? sys->n : 1) * sizeof(bool));
+        Listed *items = xmalloc((sys->n ? sys->n : 1) * sizeof(Listed));
         size_t count = 0;
         /* A folder is there when a file is under it or mkdir made it; the root always is. */
         bool there = strcmp(scope.folder, "/") == 0;
@@ -3889,29 +3926,24 @@ static MoValue fixture_files(int which, const MoValue *a) {
             if (len == 0) continue;
             bool seen = false;
             for (size_t k = 0; k < count; k++) {
-                if (strlen(names[k]) != len || strncmp(names[k], rest, len) != 0) continue;
+                if (strlen(items[k].name) != len || strncmp(items[k].name, rest, len) != 0) continue;
                 seen = true;
-                folders[k] = folders[k] || slash != NULL;
+                if (slash) items[k].kind = KIND_FOLDER;
             }
             if (seen) continue;
-            names[count] = xmalloc(len + 1);
-            memcpy(names[count], rest, len);
-            names[count][len] = 0;
-            folders[count] = slash != NULL;
-            count++;
+            /* A fixture has no links: a file or a folder, one link each, never setuid (step 40). */
+            items[count++] = (Listed){name_dup(rest, len), slash ? KIND_FOLDER : KIND_FILE, 1, false};
         }
         free(prefix);
         /* As the real Fs answers a scope that is not a readable folder (step 22). */
         if (!there) {
-            free(names);
-            free(folders);
+            free(items);
             return missing(path);
         }
-        sort_listing(names, folders, count);
-        MoValue listed = listed_of(names, folders, count, which == FS_LIST_KINDS);
-        for (size_t k = 0; k < count; k++) free(names[k]);
-        free(names);
-        free(folders);
+        sort_listing(items, count);
+        MoValue listed = listed_of(items, count, which == FS_LIST_KINDS);
+        for (size_t k = 0; k < count; k++) free(items[k].name);
+        free(items);
         return ok_of(listed);
     }
     if (!sys) return missing(path);
@@ -3938,7 +3970,23 @@ static MoValue fixture_files(int which, const MoValue *a) {
         if (which == FS_SIZE) return ok_of(mo_u64(f->text.aux));
         return read_result(which, f->text);
     }
-    case FS_WRITE: fix_put(sys, full, a[2]); break;
+    /* A fixture has no partial files, so a replace is a write (design: section 2). */
+    case FS_WRITE:
+    case FS_REPLACE: fix_put(sys, full, a[2]); break;
+    case FS_KIND_OF: {
+        /* A file, or a folder: a file is under it or mkdir made it, or it is the root (step 40). */
+        bool file = fix_find(sys, full) != NULL;
+        bool folder = strcmp(full, "/") == 0;
+        char *under = path_join(full, "");
+        for (size_t i = 0; !file && !folder && i < sys->n; i++) folder = strncmp(sys->files[i].path, under, strlen(under)) == 0;
+        free(under);
+        free(full);
+        if (!file && !folder) return missing(path);
+        char *name = name_dup(path.as.s, path.aux);
+        MoValue entry = entry_of(name, file ? KIND_FILE : KIND_FOLDER, 1, false);
+        free(name);
+        return ok_of(entry);
+    }
     case FS_APPEND: {
         FixFile *f = fix_find(sys, full);
         Buf b = {0};
@@ -3993,7 +4041,7 @@ static MoValue server_files(int which, const MoValue *a) {
     const Scope *scope = &scopes[mo_cap_handle(a[0])];
     bool lists = which == FS_LIST || which == FS_LIST_KINDS;
     MoValue path = lists ? mo_str(".", 1) : a[1];
-    int64_t within = lists ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND ? a[3].as.i : a[2].as.i;
+    int64_t within = lists ? a[1].as.i : which == FS_FOLD_LINES ? a[4].as.i : which == FS_RENAME || which == FS_WRITE || which == FS_APPEND || which == FS_REPLACE ? a[3].as.i : a[2].as.i;
     if (which >= FS_WRITE && scope->read_only) {
         mo_fail(MO_R_OTHER, fs_row_names[which], "fs.%s(\"%.*s\") writes through an Fs narrowed to read_only, which only reads", fs_row_names[which], (int)path.aux, path.as.s);
     }
@@ -4014,9 +4062,7 @@ static MoValue server_files(int which, const MoValue *a) {
         return read_result(which, s);
     }
     case FS_FOLD_LINES: {
-        char *real = real_scoped(scope, S(path));
-        int fd = real ? open(real, O_RDONLY) : -1;
-        free(real);
+        int fd = open_scoped(scope, S(path), OPEN_READ);
         if (fd < 0) return late(t0, within) ? timed_out() : missing(path);
         /* The deadline is checked before each read; lines already handed stay handed. A line
          * longer than a whole read may be is Missing, as that file is to read. */
@@ -4040,21 +4086,37 @@ static MoValue server_files(int which, const MoValue *a) {
         else free(l.partial.p);
         return ended == DONE ? ok_of(l.acc[0]) : ended == LATE ? timed_out() : missing(path);
     }
-    case FS_SIZE: {
-        char *real = real_scoped(scope, S(path));
+    case FS_SIZE:
+    case FS_KIND_OF: {
+        /* size: a regular file's bytes. kind_of (step 40): the name's Entry, a link never followed. */
+        Place at;
         struct stat st;
-        bool found = real && stat(real, &st) == 0 && S_ISREG(st.st_mode);
-        free(real);
+        bool found = false;
+        if (scope_place(scope, S(path), &at)) {
+            found = stat_at(&at, which == FS_SIZE && at.follow, &st) && (which == FS_KIND_OF || S_ISREG(st.st_mode));
+            place_close(&at);
+        }
         if (late(t0, within)) return timed_out();
         if (!found) return missing(path);
-        return ok_of(mo_u64((uint64_t)st.st_size));
+        if (which == FS_SIZE) return ok_of(mo_u64((uint64_t)st.st_size));
+        char *name = name_dup(path.as.s, path.aux);
+        MoValue entry = entry_of(name, kind_of_mode(st.st_mode), (uint64_t)st.st_nlink, (st.st_mode & S_ISUID) != 0);
+        free(name);
+        return ok_of(entry);
     }
     case FS_LIST:
     case FS_LIST_KINDS: {
-        char *real = real_scoped(scope, ".", 1);
-        DIR *dir = real ? opendir(real) : NULL;
-        char **names = NULL;
-        bool *folders = NULL;
+        /* Everything in the scope's folder, links included; with kinds, each name stat'ed without
+         * following it (server.zig, listScoped). */
+        Place at;
+        int fd = -1;
+        if (scope_place(scope, ".", 1, &at)) {
+            fd = at.name[0] ? open_folder(at.dir, at.name, at.follow) : fcntl(at.dir, F_DUPFD_CLOEXEC, 0);
+            place_close(&at);
+        }
+        DIR *dir = fd >= 0 ? fdopendir(fd) : NULL;
+        if (!dir && fd >= 0) close(fd);
+        Listed *items = NULL;
         size_t count = 0, cap = 0;
         if (dir) {
             struct dirent *e;
@@ -4062,64 +4124,91 @@ static MoValue server_files(int which, const MoValue *a) {
                 if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
                 if (count == cap) {
                     cap = cap ? 2 * cap : 16;
-                    names = xrealloc(names, cap * sizeof(char *));
-                    folders = xrealloc(folders, cap * sizeof(bool));
+                    items = xrealloc(items, cap * sizeof(Listed));
                 }
-                /* A link counts as what it points at (server.zig, listScoped). */
+                Listed item = {strdup(e->d_name), KIND_FILE, 1, false};
                 struct stat st;
-                char *full = path_join(real, e->d_name);
-                folders[count] = stat(full, &st) == 0 && S_ISDIR(st.st_mode);
-                free(full);
-                names[count++] = strdup(e->d_name);
+                if (which == FS_LIST_KINDS && fstatat(dirfd(dir), e->d_name, &st, AT_SYMLINK_NOFOLLOW) == 0) {
+                    item.kind = kind_of_mode(st.st_mode);
+                    item.links = (uint64_t)st.st_nlink;
+                    item.setuid = (st.st_mode & S_ISUID) != 0;
+                }
+                items[count++] = item;
             }
             closedir(dir);
-            sort_listing(names, folders, count);
+            sort_listing(items, count);
         }
-        free(real);
-        MoValue result = late(t0, within) ? timed_out() : !dir ? missing(path) : ok_of(listed_of(names, folders, count, which == FS_LIST_KINDS));
-        for (size_t k = 0; k < count; k++) free(names[k]);
-        free(names);
-        free(folders);
+        MoValue result = late(t0, within) ? timed_out() : !dir ? missing(path) : ok_of(listed_of(items, count, which == FS_LIST_KINDS));
+        for (size_t k = 0; k < count; k++) free(items[k].name);
+        free(items);
         return result;
     }
     case FS_WRITE:
     case FS_APPEND: {
-        char *target = target_scoped(scope, S(path));
+        int fd = open_scoped(scope, S(path), which == FS_APPEND ? OPEN_APPEND : OPEN_WRITE);
         bool wrote = false;
-        if (target) {
-            /* The write and its sync run on the blocking pool (step 30): under processes the caller waits
-             * holding no scheduler, and the answer comes once the text is on disk. */
-            wrote = blocking_write(target, a[2].as.s, a[2].aux, which == FS_APPEND);
-            free(target);
+        if (fd >= 0) {
+            /* The write and its sync run on the blocking pool (step 30) on the descriptor opened here:
+             * under processes the caller waits holding no scheduler, and the answer comes once the
+             * text is on disk. */
+            wrote = blocking_write(fd, a[2].as.s, a[2].aux);
+            close(fd);
         }
         if (late(t0, within)) return timed_out();
         if (!wrote) return missing(path);
         return ok_none();
     }
+    case FS_REPLACE: {
+        /* The text swapped in whole (step 40; blocking.zig, replaceNow); a link or anything but a
+         * regular file at the name is refused. */
+        Place at;
+        bool swapped = false;
+        if (scope_place(scope, S(path), &at)) {
+            struct stat st;
+            if (at.name[0] && (!stat_at(&at, false, &st) || S_ISREG(st.st_mode))) swapped = blocking_replace(at.dir, at.name, a[2].as.s, a[2].aux);
+            place_close(&at);
+        }
+        if (late(t0, within)) return timed_out();
+        if (!swapped) return missing(path);
+        return ok_none();
+    }
     case FS_MKDIR: {
-        char *target = target_scoped(scope, S(path));
-        struct stat st;
-        bool made = target && (mkdir(target, 0777) == 0 || (errno == EEXIST && stat(target, &st) == 0 && S_ISDIR(st.st_mode)));
-        free(target);
+        Place at;
+        bool made = false;
+        if (scope_place(scope, S(path), &at)) {
+            struct stat st;
+            made = at.name[0] && (mkdirat(at.dir, at.name, 0777) == 0 || (errno == EEXIST && stat_at(&at, at.follow, &st) && S_ISDIR(st.st_mode)));
+            place_close(&at);
+        }
         if (late(t0, within)) return timed_out();
         if (!made) return missing(path);
         return ok_none();
     }
     case FS_REMOVE: {
-        char *real = file_scoped(scope, S(path));
-        bool gone = real && unlink(real) == 0;
-        free(real);
+        Place at;
+        bool gone = false;
+        if (file_at(scope, S(path), &at)) {
+            gone = unlinkat(at.dir, at.name, 0) == 0;
+            place_close(&at);
+        }
         if (late(t0, within)) return timed_out();
         if (!gone) return missing(path);
         return ok_none();
     }
     default: {
+        /* rename: a regular file at `from`, to a name that is not there or is a regular file. */
         MoValue to = a[2];
-        char *real = file_scoped(scope, S(path));
-        char *target = real ? target_scoped(scope, S(to)) : NULL;
-        MoValue missed = !real ? path : !target || rename(real, target) != 0 ? to : MO_NONE_V;
-        free(real);
-        free(target);
+        Place old, new;
+        MoValue missed = path;
+        if (file_at(scope, S(path), &old)) {
+            missed = to;
+            if (scope_place(scope, S(to), &new)) {
+                struct stat st;
+                if (new.name[0] && (!stat_at(&new, false, &st) || S_ISREG(st.st_mode)) && renameat(old.dir, old.name, new.dir, new.name) == 0) missed = MO_NONE_V;
+                place_close(&new);
+            }
+            place_close(&old);
+        }
         if (late(t0, within)) return timed_out();
         if (missed.tag != MO_NONE) return missing(missed);
         return ok_none();
@@ -4141,6 +4230,8 @@ MO_ROW(mo_r_Fs_append) { HOLD_RUNTIME(); (void)kind; return files(FS_APPEND, a);
 MO_ROW(mo_r_Fs_remove) { HOLD_RUNTIME(); (void)kind; return files(FS_REMOVE, a); }
 MO_ROW(mo_r_Fs_rename) { HOLD_RUNTIME(); (void)kind; return files(FS_RENAME, a); }
 MO_ROW(mo_r_Fs_mkdir) { HOLD_RUNTIME(); (void)kind; return files(FS_MKDIR, a); }
+MO_ROW(mo_r_Fs_replace) { HOLD_RUNTIME(); (void)kind; return files(FS_REPLACE, a); }
+MO_ROW(mo_r_Fs_kind_of) { HOLD_RUNTIME(); (void)kind; return files(FS_KIND_OF, a); }
 
 /* `fs.scoped(path)` and `fs.read_only`: a new scope, never a wider one. */
 static MoValue narrow(MoValue fs, bool read_only, MoValue path) {
@@ -4151,8 +4242,10 @@ static MoValue narrow(MoValue fs, bool read_only, MoValue path) {
         } else {
             char *full = path_resolve(scope.base, S(path));
             scope.base = full;
-            if (within_root(scope.root, full)) scope.root = full;
-            else scope.empty = true;
+            if (within_root(scope.root, full)) {
+                scope.root = full;
+                if (!scope.anchor) scope.anchor = full;
+            } else scope.empty = true;
         }
         return mo_cap(MO_CAP_FS, add_scope(scope), 0);
     }
@@ -8290,11 +8383,15 @@ static void nonblocking(int fd) {
 
 #define BLOCKING_THREADS 4
 
+/* A write to a file the caller opened (step 40: the scope resolved it, so the pool never looks a path
+ * up), or a replace of a name in a folder the caller opened (blocking.zig, Job). */
 typedef struct BlockingJob {
-    const char *path;
+    bool replace;
+    int fd;
+    const char *name;
     const char *bytes;
     size_t len;
-    bool append, ok;
+    bool ok;
     _Atomic bool done;
     int read_fd, write_fd;
     struct BlockingJob *next;
@@ -8305,30 +8402,60 @@ static pthread_cond_t blocking_cond = PTHREAD_COND_INITIALIZER;
 static BlockingJob *blocking_head, *blocking_tail;
 static bool blocking_started;
 
-/* The write and its sync, on this thread. */
-static bool write_now(const char *path, const char *bytes, size_t len, bool append) {
-    int fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC | (append ? O_APPEND : O_TRUNC), 0666);
-    if (fd < 0) return false;
-    bool wrote = true;
+static bool write_all(int fd, const char *bytes, size_t len) {
     size_t done = 0;
     while (done < len) {
         ssize_t w = write(fd, bytes + done, len - done);
         if (w < 0 && errno == EINTR) continue;
-        if (w <= 0) {
-            wrote = false;
-            break;
-        }
+        if (w <= 0) return false;
         done += (size_t)w;
     }
-    if (wrote) {
-        int rc;
-        do rc = fsync(fd);
-        while (rc != 0 && errno == EINTR);
-        wrote = rc == 0;
-    }
-    close(fd);
-    return wrote;
+    return true;
 }
+
+/* fsync, as write has always synced (step 39 part F owes F_FULLFSYNC on macOS). */
+static bool sync_fd(int fd) {
+    int rc;
+    do rc = fsync(fd);
+    while (rc != 0 && errno == EINTR);
+    return rc == 0;
+}
+
+/* The write and its sync, on this thread, to a file already open for writing. */
+static bool write_now(int fd, const char *bytes, size_t len) { return write_all(fd, bytes, len) && sync_fd(fd); }
+
+/* The replace, on this thread (blocking.zig, replaceNow): the text is written to a new name in the
+ * same folder, unpredictable and created exclusively with mode 0600, synced, renamed over `name`, and
+ * the folder synced, so a reader sees the old file or the new one, never a part. Any failure before
+ * the rename removes the temporary name and leaves `name` as it was; a folder sync that fails after it
+ * is false too, as a write whose sync fails is. */
+static bool replace_now(int dir, const char *name, const char *bytes, size_t len) {
+    /* The temporary name is its own fixed length, not built from `name`, so every name a folder can
+     * hold can be replaced (blocking.zig, replaceNow). */
+    char temp[64];
+    int fd = -1;
+    for (int k = 0; k < 8 && fd < 0; k++) {
+        uint8_t nonce[12];
+        if (mo_crypto_random(nonce, sizeof nonce) != MO_CRYPTO_OK) return false;
+        char hex[2 * sizeof nonce + 1];
+        for (size_t i = 0; i < sizeof nonce; i++) snprintf(hex + 2 * i, 3, "%02x", nonce[i]);
+        int n = snprintf(temp, sizeof temp, ".mo-replace-%s", hex);
+        if (n < 0 || (size_t)n >= sizeof temp) return false;
+        fd = openat(dir, temp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+        if (fd < 0 && errno != EEXIST && errno != EINTR) return false;
+    }
+    if (fd < 0) return false;
+    bool written = write_all(fd, bytes, len) && sync_fd(fd);
+    close(fd);
+    if (!written || renameat(dir, temp, dir, name) != 0) {
+        unlinkat(dir, temp, 0);
+        return false;
+    }
+    /* The rename is on disk once its folder is. */
+    return sync_fd(dir);
+}
+
+static bool job_now(const BlockingJob *job) { return job->replace ? replace_now(job->fd, job->name, job->bytes, job->len) : write_now(job->fd, job->bytes, job->len); }
 
 static void *blocking_worker(void *arg) {
     (void)arg;
@@ -8339,7 +8466,7 @@ static void *blocking_worker(void *arg) {
         blocking_head = job->next;
         if (!blocking_head) blocking_tail = NULL;
         pthread_mutex_unlock(&blocking_mutex);
-        job->ok = write_now(job->path, job->bytes, job->len, job->append);
+        job->ok = job_now(job);
         atomic_store(&job->done, true);
         uint64_t one = 1;
 #ifdef __linux__
@@ -8374,15 +8501,14 @@ static bool blocking_start(void) {
 
 /* Writes and syncs `path`: under a program's processes on the pool while the caller waits holding no
  * scheduler, else on this thread. True once it is on disk. */
-static bool blocking_write(const char *path, const char *bytes, size_t len, bool append) {
-    if (!turns_on) return write_now(path, bytes, len, append);
-    BlockingJob job = {path, bytes, len, append, false, false, -1, -1, NULL};
+static bool blocking_run(BlockingJob job) {
+    if (!turns_on) return job_now(&job);
 #ifdef __linux__
     job.read_fd = job.write_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-    if (job.read_fd < 0) return write_now(path, bytes, len, append);
+    if (job.read_fd < 0) return job_now(&job);
 #else
     int fds[2];
-    if (pipe(fds) != 0) return write_now(path, bytes, len, append);
+    if (pipe(fds) != 0) return job_now(&job);
     nonblocking(fds[0]);
     nonblocking(fds[1]);
     job.read_fd = fds[0];
@@ -8391,7 +8517,7 @@ static bool blocking_write(const char *path, const char *bytes, size_t len, bool
     if (!blocking_start()) {
         close(job.read_fd);
         if (job.write_fd != job.read_fd) close(job.write_fd);
-        return write_now(path, bytes, len, append);
+        return job_now(&job);
     }
     pthread_mutex_lock(&blocking_mutex);
     if (blocking_tail) blocking_tail->next = &job;
@@ -8404,6 +8530,17 @@ static bool blocking_write(const char *path, const char *bytes, size_t len, bool
     close(job.read_fd);
     if (job.write_fd != job.read_fd) close(job.write_fd);
     return job.ok;
+}
+
+/* Writes and syncs the open file `fd`: under a program's processes on the pool while the caller waits
+ * holding no scheduler, else on this thread. True once it is on disk. */
+static bool blocking_write(int fd, const char *bytes, size_t len) {
+    return blocking_run((BlockingJob){.fd = fd, .bytes = bytes, .len = len, .read_fd = -1, .write_fd = -1});
+}
+
+/* Fs.replace (step 40): `name` in the open folder `dir` swapped for `bytes`, on the pool as a write. */
+static bool blocking_replace(int dir, const char *name, const char *bytes, size_t len) {
+    return blocking_run((BlockingJob){.replace = true, .fd = dir, .name = name, .bytes = bytes, .len = len, .read_fd = -1, .write_fd = -1});
 }
 
 /* Every connection, connected or accepted, sends each write at once (TCP_NODELAY, step 38): with
