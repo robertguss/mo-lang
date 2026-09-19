@@ -1,0 +1,5 @@
+lead-smoke-native-01 exit 0
+lead-smoke-interpreter-01 exit 0
+lead-logstat-native-01 exit 0
+lead-negatives-interpreter-01 exit 0
+inventory exit 0

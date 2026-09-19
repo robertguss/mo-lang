@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "examples/programs/agent/tests/end-to-end-v1/driver.py",
+    "negatives",
+    "interpreter",
+    "lead-negatives-interpreter-01",
+    "--only",
+    "service-killed,candidate-limit"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-e2e",
+  "seconds": 1200,
+  "head": "94023380f48dbc2a1b3af4bc8f16c85e159fa0ed",
+  "dirty": [
+    "?? .lead-build.log",
+    "?? .lead-e2e.log",
+    "?? .lead-e2e.sh",
+    "?? .lead-exits",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-logstat-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-smoke-interpreter-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/guard/lead-smoke-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/lead-logstat-native-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/lead-logstat-native-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/lead-smoke-interpreter-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/lead-smoke-interpreter-01/",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/lead-smoke-native-01.jsonl",
+    "?? examples/programs/agent/tests/end-to-end-v1/evidence/lead-smoke-native-01/"
+  ]
+}
