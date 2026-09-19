@@ -1,0 +1,73 @@
+run	exe	runtime	row	calls	best_process_ms	per_call_us	load_1m_min	load_1m_max
+1	before	mo run	none	0	26.4	0.00	11.14	11.14
+1	before	mo run	read	2000	84.0	28.77	11.14	11.14
+1	before	mo run	deep	2000	128.6	51.07	10.33	11.14
+1	before	mo run	size	2000	64.0	18.80	9.90	10.33
+1	before	mo run	write	300	48.4	73.41	9.90	9.90
+1	before	mo run	append	300	45.2	62.76	9.90	9.90
+1	before	mo run	fold	1	45.5	19033.25	9.90	9.90
+1	before	mo run	list	30	162.5	4537.21	9.16	9.90
+1	before	mo run	list_kinds	30	174.4	4932.02	7.35	8.51
+1	before	binary	none	0	25.5	0.00	11.14	11.14
+1	before	binary	read	2000	78.1	26.30	11.14	11.14
+1	before	binary	deep	2000	120.7	47.60	10.33	11.14
+1	before	binary	size	2000	59.1	16.78	9.90	10.33
+1	before	binary	write	300	47.2	72.29	9.90	9.90
+1	before	binary	append	300	42.1	55.33	9.90	9.90
+1	before	binary	fold	1	37.2	11710.67	9.90	9.90
+1	before	binary	list	30	2170.9	71512.95	8.51	9.35
+1	before	binary	list_kinds	30	2184.3	71959.36	7.00	8.51
+1	after	mo run	none	0	26.4	0.00	11.14	11.14
+1	after	mo run	read	2000	66.4	19.99	11.14	11.14
+1	after	mo run	deep	2000	376.9	175.25	10.33	10.33
+1	after	mo run	size	2000	48.6	11.10	9.90	10.33
+1	after	mo run	write	300	44.0	58.72	9.90	9.90
+1	after	mo run	append	300	40.1	45.70	9.90	9.90
+1	after	mo run	fold	1	45.4	19023.17	9.90	9.90
+1	after	mo run	list	30	162.8	4547.19	8.51	9.35
+1	after	mo run	list_kinds	30	512.1	16189.17	7.00	8.51
+1	after	binary	none	0	25.4	0.00	11.14	11.14
+1	after	binary	read	2000	64.4	19.53	11.14	11.14
+1	after	binary	deep	2000	378.3	176.45	10.33	10.33
+1	after	binary	size	2000	45.3	9.98	9.90	10.33
+1	after	binary	write	300	43.0	58.69	9.90	9.90
+1	after	binary	append	300	40.3	49.94	9.90	9.90
+1	after	binary	fold	1	37.2	11870.08	9.90	9.90
+1	after	binary	list	30	150.6	4175.70	8.51	9.35
+1	after	binary	list_kinds	30	395.7	12343.25	7.00	8.51
+2	before	mo run	none	0	26.0	0.00	5.59	5.59
+2	before	mo run	read	2000	83.3	28.69	5.30	5.30
+2	before	mo run	deep	2000	126.9	50.47	4.96	5.30
+2	before	mo run	size	2000	63.5	18.75	4.96	4.96
+2	before	mo run	write	300	51.1	83.80	4.96	4.96
+2	before	mo run	append	300	45.5	65.31	4.96	4.96
+2	before	mo run	fold	1	47.4	21459.54	4.80	4.96
+2	before	mo run	list	30	168.4	4746.73	4.80	7.22
+2	before	mo run	list_kinds	30	174.1	4938.63	5.76	6.65
+2	before	binary	none	0	25.3	0.00	5.59	5.59
+2	before	binary	read	2000	78.0	26.35	5.30	5.30
+2	before	binary	deep	2000	119.7	47.18	4.96	5.30
+2	before	binary	size	2000	58.1	16.40	4.96	4.96
+2	before	binary	write	300	49.1	79.20	4.96	4.96
+2	before	binary	append	300	45.3	66.54	4.96	4.96
+2	before	binary	fold	1	38.4	13117.42	4.80	4.96
+2	before	binary	list	30	2275.8	75017.26	4.80	7.22
+2	before	binary	list_kinds	30	2178.2	71761.95	5.76	6.65
+2	after	mo run	none	0	26.0	0.00	5.59	5.59
+2	after	mo run	read	2000	66.7	20.34	5.30	5.30
+2	after	mo run	deep	2000	378.7	176.35	4.96	5.30
+2	after	mo run	size	2000	47.6	10.82	4.96	4.96
+2	after	mo run	write	300	46.0	66.68	4.96	4.96
+2	after	mo run	append	300	40.8	49.27	4.96	4.96
+2	after	mo run	fold	1	47.6	21582.42	4.80	4.96
+2	after	mo run	list	30	169.8	4794.27	4.80	7.22
+2	after	mo run	list_kinds	30	511.3	16175.04	5.76	6.65
+2	after	binary	none	0	25.4	0.00	5.30	5.59
+2	after	binary	read	2000	63.7	19.15	5.30	5.30
+2	after	binary	deep	2000	374.2	174.39	4.96	5.30
+2	after	binary	size	2000	45.2	9.88	4.96	4.96
+2	after	binary	write	300	43.9	61.75	4.96	4.96
+2	after	binary	append	300	39.3	46.25	4.96	4.96
+2	after	binary	fold	1	38.8	13417.33	4.80	4.96
+2	after	binary	list	30	156.1	4355.62	4.80	7.22
+2	after	binary	list_kinds	30	400.2	12493.83	5.46	6.65
