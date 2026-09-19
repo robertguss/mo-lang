@@ -1,0 +1,59 @@
+{
+  "all20_snapshot_files_unchanged": true,
+  "agent": {
+    "id": "cli:agent:get",
+    "result": {
+      "agent": {
+        "agent": "codex",
+        "agent_status": "done",
+        "cwd": "/private/tmp/mo-workspace-http-review-75680f31",
+        "focused": false,
+        "foreground_cwd": "/private/tmp/mo-workspace-http-review-75680f31",
+        "interactive_ready": true,
+        "name": "mo-http-source-review",
+        "pane_id": "w4:p2B",
+        "revision": 28,
+        "state_change_seq": 322,
+        "tab_id": "w4:t1",
+        "terminal_id": "term_65bd20f013eb554",
+        "terminal_title": "Review bridge protocol defects | mo-workspace-http-rev...",
+        "terminal_title_stripped": "Review bridge protocol defects | mo-workspace-http-rev...",
+        "workspace_id": "w4"
+      },
+      "type": "agent_info"
+    }
+  },
+  "pane": {
+    "id": "cli:pane:process_info",
+    "result": {
+      "process_info": {
+        "foreground_process_group_id": 79284,
+        "foreground_processes": [
+          {
+            "argv": [
+              "codex",
+              "--model",
+              "gpt-6-astra",
+              "-c",
+              "model_reasoning_effort=\"low\"",
+              "--sandbox",
+              "read-only",
+              "--ask-for-approval",
+              "never",
+              "--no-alt-screen"
+            ],
+            "argv0": "codex",
+            "cmdline": "codex --model gpt-6-astra -c model_reasoning_effort=\"low\" --sandbox read-only --ask-for-approval never --no-alt-screen",
+            "cwd": "/private/tmp/mo-workspace-http-review-75680f31",
+            "name": "codex",
+            "pid": 79284
+          }
+        ],
+        "pane_id": "w4:p2B",
+        "shell_pid": 79083
+      },
+      "type": "pane_process_info"
+    }
+  },
+  "findings": "two source findings assigned for retained reproduction; no runtime review claim"
+}

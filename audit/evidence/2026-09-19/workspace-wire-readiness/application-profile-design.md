@@ -102,6 +102,24 @@ recorded positive per-call usage remains. Longer synchronous command wait can
 increase cancellation latency. Run.Stopped proves Mo dispatch completion only;
 operator cleanup/verifier receipt separately proves external cleanup.
 
+## Existing deadline-driven watcher seam
+
+No loop syntax or compiler feature is required. The accepted example
+examples/processes/deferred-reply.mo:7-46 demonstrates keeping reply_to in a
+state field, scheduling a delayed self-message, and answering the held Reply
+from a later update. The application process can keep its Start reply and outer
+Deadline, poll Book/Run through delayed self-messages, and answer once terminal
+Book plus Run.Stopped permits the final reread. Use existing Reply(Output) state
+and send(delay:) rules; do not introduce a900s-derived iteration counter.
+
+Keep reply capture unconditional in the Start arm: the accepted deferral rule
+is chosen for the whole arm, so a startup-error branch must also eventually
+answer the saved reply rather than silently relying on an ignored arm value.
+Failure and success both retire the saved reply. The watcher must stop scheduling
+once its deadline or terminal response is reached. Exact compiled/simulator
+behavior still needs the future worker's tests; this note does not assert an
+unimplemented watcher passes. No new Book/Transcript or compiler write scope.
+
 ## Required later checks
 
 - Both interpreter/native: six actual remote tools, on-disk Book prefix before

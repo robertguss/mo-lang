@@ -915,3 +915,7 @@
   proof. Independent frontend/projection review continues; acceptance pending.
 - Recovery wiki deployment35432372898 succeeded at68e50ed6. Mo profile source
   readiness confirms existing HTTP framing and keeps token/Book binding separate.
+- Independent immutable HTTP source review found post-response drain closing a
+  healthy run and deadline paths returning200 owner_unknown instead of504 timeout.
+  Assigned retained reproductions/narrow fixes after current frozen attempt;
+  no acceptance inferred from worker BusyBox22 green. Review pane closed.

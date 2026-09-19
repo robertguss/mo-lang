@@ -68,8 +68,11 @@ p2A is closed. Brief clarifies admission lease, cleanup after in-flight work,
 outcome persistence before bounded IPC notification and terminal late-result handling. The lead retains application-profile-design.md
 as readiness only, awaiting frozen/accepted HTTP schema before Mo implementation.
 HTTP intermediate checkpoint75680f31 has local22/inherited59 green; exact20-file
-snapshot is /private/tmp/mo-workspace-http-review-75680f31. Fresh read-only
-mo-http-source-review p2B/process79284 examines bridge.py/protocol.py there;
+snapshot is /private/tmp/mo-workspace-http-review-75680f31. Fresh read-only frontend/projection review found two bridge defects:
+successful-response drain expiry wrongly closes run, and IPC/lease timeout can
+return200 owner_unknown instead of504 response_timeout. Worker is assigned
+retained local reds/narrow correction after current frozen attempt; no edits to
+running source. Source-review-75680f31.md retains exact report. p2B is closed;
 lead owner/API review is retained. Worker continues local boundary hardening and
 released real controls from immutable per-attempt sources. Lead never edits
 workspace_http/. Private tokens must stay out of Book/model/log evidence. See retained source reviews
