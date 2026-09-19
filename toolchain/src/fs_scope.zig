@@ -369,6 +369,10 @@ test "corpus: step 40, Fs.replace swaps a file whole, private to its owner, and 
         \\  show(out, "replace sub", said(work.replace("sub", "x", within: 1.minute)))
         \\  show(out, "replace fifo", said(work.replace("fifo", "x", within: 1.minute)))
         \\  show(out, "replace ../outside.txt", said(work.replace("../outside.txt", "x", within: 1.minute)))
+        \\  long = "l".repeat(255)
+        \\  show(out, "replace a 255-byte name", said(work.replace(long, "long", within: 1.minute)))
+        \\  show(out, "read it", text(work.read(long, within: 1.minute)))
+        \\  show(out, "remove it", said(work.remove(long, within: 1.minute)))
         \\  show(out, "list", names(work.list(within: 1.minute)))
         \\  show(out, "list sub", names(work.scoped("sub").list(within: 1.minute)))
         \\end
@@ -395,6 +399,9 @@ test "corpus: step 40, Fs.replace swaps a file whole, private to its owner, and 
         \\replace sub: missing sub
         \\replace fifo: missing fifo
         \\replace ../outside.txt: missing ../outside.txt
+        \\replace a 255-byte name: ok
+        \\read it: ok long
+        \\remove it: ok
         \\list: a.txt, dirlink, dirout_link, fifo, fresh.txt, hard, in_link, out_link, sub, t.txt
         \\list sub: b.txt
         \\
