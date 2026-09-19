@@ -61,11 +61,11 @@ a worker uses the host.
 Mo wherever possible, Python/JS at their minimum, Astra's verbosity cut
 (decision-log row). An Opus design map of the non-Mo code is running; its
 result decides the migration briefs and replaces the plain fix queue above
-where a module moves to Mo anyway. Robert answered at 8:20 AM ET: yes, Mo gains a
+where a module moves to Mo anyway. Robert answered at 8:11 AM ET: yes, Mo gains a
 scoped child-process capability (decision-log row); the lead writes its design
 page next, from the design map.
 
-**Plan of record, 8:35 AM ET:** `mo-wiki/plans/mo-harness-in-mo.md` (nine steps;
+**Plan of record, 8:13 AM ET:** `mo-wiki/plans/mo-harness-in-mo.md` (nine steps;
 replaces the plain fix queue above). Lead-verified on the way: `Fs.scoped` is
 lexical only, so a symlink inside a scope escapes it; fixing that is the first
 toolchain step. Next lead actions: accept the rebuilt application workspace

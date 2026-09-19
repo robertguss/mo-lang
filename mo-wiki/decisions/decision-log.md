@@ -818,7 +818,7 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Fix every finding of the overnight review, and refactor the harness so that as much as possible is written in Mo, with Python and JavaScript cut to the minimum their roles need (OS isolation; provider auth over maintained TLS) and Astra's verbose code simplified. Resolves the previous section's proposed row. The fix batches are folded into this refactor where a module is moving anyway, so nothing is fixed and then thrown away; the two high executor defects are fixed regardless. A read-only Opus design map (must stay, can move now, needs a new Mo capability) comes first. **For Robert** (his instruction). | Robert | decided | the design map, then one brief per migration step, each leaving a working system |
 
-## 19 Sep 2026 — Mo gains a scoped child-process capability, 8:20 AM ET
+## 19 Sep 2026 — Mo gains a scoped child-process capability, 8:11 AM ET
 
 | decision | who | status | first tested by |
 |---|---|---|---|

@@ -3,7 +3,7 @@ title: "The harness in Mo: migration and the capabilities it needs"
 created: 2026-09-19
 updated: 2026-09-19
 type: plan
-tags: [agents, tooling, capabilities, processes]
+tags: [agents, tooling, security, stdlib]
 sources: [plans/mo-first-coding-harness.md]
 status: in-progress
 ---
@@ -15,7 +15,7 @@ status: in-progress
 Robert, 19 Sep 2026: fix every finding of the overnight review, write as much of
 the harness in Mo as possible "to really test Mo", keep Python and JavaScript at
 the minimum their roles need, and cut Astra's verbosity. He also decided Mo
-gains a scoped child-process capability ([[decision-log]], 8:20 AM ET). This
+gains a scoped child-process capability ([[decision-log]], 8:11 AM ET). This
 page is the map and the order; each step below gets its own brief and a fresh
 Opus worker. Every step leaves a working system.
 
