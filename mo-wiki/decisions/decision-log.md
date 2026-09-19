@@ -812,6 +812,12 @@ direction separately from the lead's conservative execution interpretation.
 | Fix order: first the two high executor defects (a slow `docker rm` powers off the machine; pre-claim refusals crash the controller) and workspace HTTP's run-ending behaviours (2 s file-op teardown, half-close, fd reuse, large output as `output_encoding`, missing keys as success), because the application workspace and Logstat slices run on them. Then the Mo agent's tests that cannot fail. The provider's live blockers (5 s deadline cap, 64 KiB cap, usage field) wait for the live-provider slice. | Fable lead | decided, semantic | [[mo-application-workspace-v1]] acceptance on the fixed services |
 | The plan's "narrow trusted adapter" outside Mo is now about 8,800 lines of Python and JavaScript against about 900 lines of new Mo. Kept for now since isolation and provider auth belong outside Mo, but the harness's Mo share is tracked from here and new non-Mo code needs a reason in its brief. **For Robert**: say if you want more of it moved into Mo. | Fable lead | proposed | the Logstat slice's brief |
 
+## 19 Sep 2026 — Harness to be Mo-first in fact, 8:55 AM ET
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Fix every finding of the overnight review, and refactor the harness so that as much as possible is written in Mo, with Python and JavaScript cut to the minimum their roles need (OS isolation; provider auth over maintained TLS) and Astra's verbose code simplified. Resolves the previous section's proposed row. The fix batches are folded into this refactor where a module is moving anyway, so nothing is fixed and then thrown away; the two high executor defects are fixed regardless. A read-only Opus design map (must stay, can move now, needs a new Mo capability) comes first. **For Robert** (his instruction). | Robert | decided | the design map, then one brief per migration step, each leaving a working system |
+
 ## Related
 
 - [[session-05]]

@@ -57,6 +57,14 @@ the live-provider slice. Check the rebuilt adapter against H4 and H5 at
 acceptance. The lead's own full-suite run on `main` is still owed; not run while
 a worker uses the host.
 
+**Robert, 8:55 AM ET:** fix all review findings, and refactor so the harness is
+Mo wherever possible, Python/JS at their minimum, Astra's verbosity cut
+(decision-log row). An Opus design map of the non-Mo code is running; its
+result decides the migration briefs and replaces the plain fix queue above
+where a module moves to Mo anyway. Open question put to Robert: whether Mo may
+gain a child-process capability, which the harness plan's "no compiler
+changes" rule currently forbids.
+
 ## Historical: Astra's overnight instruction and final state, 19 Sep 2026, 12:10 AM to 7:01 AM ET
 
 Robert clarified the workflow: **Astra remains lead in this continuing Mac
