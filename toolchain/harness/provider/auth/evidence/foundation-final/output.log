@@ -1,0 +1,33 @@
+resolved executables: {"node": "/Users/robertguss/.local/share/mise/installs/node/24/bin/node", "npm": "/Users/robertguss/.local/share/mise/installs/node/24/bin/npm"}
+node=v24.20.0
+npm=11.19.0
+ok 1 - final text and complete positive cache accounting
+ok 2 - tool result next turn and native signatures
+ok 3 - multiple calls rejected
+ok 4 - non-string wire arguments rejected
+ok 5 - argument shape cannot coerce number to string
+ok 6 - malformed argument JSON rejected
+ok 7 - complete reported zero
+ok 8 - missing usage unknown
+ok 9 - partial usage unknown
+ok 10 - negative usage unknown
+ok 11 - invalid cache sum unknown
+ok 12 - missing cache-write presence unknown
+ok 13 - HTTP 401 one attempt and secret isolation
+ok 14 - HTTP 503 no retry
+ok 15 - upstream SSE error sanitization
+ok 16 - caller cancellation
+ok 17 - finite deadline
+ok 18 - stream truncation
+ok 19 - upstream incomplete distinct
+ok 20 - malformed SSE
+ok 21 - 64 KiB response limit
+ok 22 - unexpected network paths rejected
+ok 23 - legacy unknown usage fails
+ok 24 - uncooperative transport still has finite deadline
+ok 25 - unknown tool rejected
+ok 26 - JSON array arguments rejected
+ok 27 - upstream cancelled distinct
+ok 28 - native tool schema changes rejected before egress
+PASS 28 fixed cases; unexpected egress rejected=3; Node=v24.20.0
+owned-command-exit=0

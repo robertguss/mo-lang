@@ -1,0 +1,29 @@
+{
+  "source_revision": "36b60d2e8985899743c4cf5bd5f8929832a3f05d",
+  "runtime": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-provider-auth-v1/toolchain/harness/provider/auth/.cache/prepared-01/.cache/runtime",
+  "runtime_file_count": 220,
+  "auth_runtime_hashes": {
+    "auth/context.ts": "03101bfa711fad214af111e25328b6f607d6b0a7ebfe289af58a89cd55baf639",
+    "auth/credential-store.ts": "50ebde56b80b5862025e031719006ea303edd9aa80fec780fbc64319bb9e2847",
+    "auth/helpers.ts": "2799858cc159794451870b86d2e2f50e2bd9453900f31b8ab50bb4ed8ca4a5fc",
+    "auth/oauth/anthropic.ts": "8bf457ab5f0e7756898bff324d54d7ad9e4d4977c1053cb744791ac024945810",
+    "auth/oauth/device-code.ts": "b402bbbf66d693ee7dd6c5e2c4e45544050722d5bfa3668b100df76284a4fb37",
+    "auth/oauth/github-copilot.ts": "72b771b1aacb75707eb5b89eff4999762301f75d0fec0cbc22aa9b9e279fa9ba",
+    "auth/oauth/kimi-coding.ts": "5461cc78e6bf118061b67ba2bb26109217863f332904f0601b6da85309ea3657",
+    "auth/oauth/load.ts": "2efc92129803bd2eddacaaedfc4328c24c694b2d1916b30606fcc4fceeceacef",
+    "auth/oauth/oauth-page.ts": "f58b133d271be4ff47352947fd4e55ab66230dc2647b7cbc7c79a574a93de632",
+    "auth/oauth/openai-codex.ts": "757c6cff2bc67d89df30ad175eead549519e1d3756397b5b4189460ac9dbcaba",
+    "auth/oauth/openrouter.ts": "3215ff89c9e4615d3b205455225f87763ef02973380abce070aced81bbe1fbed",
+    "auth/oauth/pkce.ts": "33835111577490103dbb7509b7687db1643691d7b425845428f3cbeb873fe9cf",
+    "auth/oauth/radius.ts": "a4c520d7ea0f605da1cb4499e8532c5e058cb9fda4d162bd347526bd66351801",
+    "auth/oauth/xai.ts": "d78bc70b7031326d51bf1348266fcd576e77590ceefdea9a4ed962e403444a78",
+    "auth/resolve.ts": "08dfcdcbd74dbae5b011b105b9b335321fea816ce262758729a2b29a630bd1b9",
+    "auth/types.ts": "82e2209fd3291978afd7f77b10d81d8d411fd82d0e3ac52121cb41f735946ba5"
+  },
+  "archive_sha256": {
+    "source.tgz": "c2a574794f1fc26510729f2341c4c4990cfa385caf47b011bdca19afa3d22903",
+    "artifact.tgz": "af7d11986179445ce6fe88b37d57de22f823c0ffd3a65cae31c555b7f5e99253"
+  },
+  "dependency_count": 92,
+  "source_preparation": "offline fresh copy; no registry fetch or install"
+}
