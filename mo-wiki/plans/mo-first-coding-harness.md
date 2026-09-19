@@ -21,6 +21,13 @@ Mo-first coding harness in Mo, initially maintaining existing Mo applications.
 This brief prepares that work; it is not a worker launch or an experiment seal.
 Implementation still needs a bounded start approval and lead readiness.
 
+Robert's subsequent worker instruction: use Amp orbs, Astra as lead, fresh
+threads for every worker/new work unit/phase, `medium` worker mode and
+`a1.xxlarge` orb size. This supersedes Herdr/Opus launch mechanics, not role
+ownership or audit rules. Transfer exact code between thread checkouts; no
+worker has launched. The lead model choice does not select the harness's
+reference model.
+
 The useful result is: **task + isolated checkout → candidate patch + independent
 behavioral verdict**, with command outcomes, time, usage and failures recorded.
 Two questions stay separate: is Mo useful for implementing this developer tool,
@@ -102,6 +109,38 @@ that adapter and its dependencies: this is not an end-to-end zero-dependency
 claim. Its exact transport, provider and implementation require a readiness
 decision.
 
+**Provider candidate identified; readiness incomplete (18 Sep 2026):** Robert
+requires independent OpenAI subscription OAuth for the harness. At the Pi pin
+above, `packages/ai/src/auth/oauth/openai-codex.ts` implements device and
+browser login, and `providers/openai-codex.ts` selects the dedicated
+subscription Responses transport. The lead/oracle recommend a pinned `pi-ai`
+adapter for authentication and inference only; Mo retains tool dispatch and the
+agent loop. Do not invoke the full Pi/Codex agent as a substitute or reuse Amp
+credentials.
+
+Prefer device login: forward the real verification link and short-lived code
+through an operator-only channel when an authorized flow starts. It avoids the
+orb/laptop localhost callback mismatch. If needed, browser fallback must accept
+the complete redirect through private input, check the expected callback and
+nonempty matching state, and never ask for tokens or redirect URLs in chat.
+
+Keep a harness-specific credential store inaccessible to candidate processes,
+not merely outside the checkout; preserve serialized refresh/deletion and atomic
+replacement. Pi's default AI credential store is in-memory; its coding-agent
+file store is permission-restricted plaintext, not a keychain. Pi login returns
+credentials and some upstream errors include raw response bodies: expose only
+allowlisted auth status fields, never raw results/errors in transcripts. Local
+logout deletes the credential; server-side revocation is not established.
+
+The code demonstrates Pi's use of the Codex OAuth registration and subscription
+backend, not blanket authorization for independent client reuse. Resolve client
+identity/support expectations, account eligibility, reference-model access and
+network/storage policy before live integration. OpenAI's
+[authentication guidance](https://developers.openai.com/codex/auth) recommends
+API keys for programmatic Codex workflows; that does not establish either a ban
+or permission for this personal third-party subscription integration. No login
+or entitlement test has occurred. Subscription allowance is not API dollar cost.
+
 Record completed model/tool results before subsequent work. Interrupted runs
 fail explicitly; no automatic replay of commands with uncertain outcomes. A
 timeout does not prove a command did nothing. Report usage from trusted
@@ -168,8 +207,10 @@ finishes with its full attempt ledger, not when a preferred outcome appears.
 
 Before a worker brief is ready, the lead must resolve and record:
 
-- Provider/model and maintained TLS/auth adapter; permitted network boundary.
-- Executor and worker environment, resource limits and protected storage.
+- Pi provider candidate: resolve registration/support, account/model access and
+  maintained TLS/auth adapter contract; permitted network boundary.
+- Amp orb worker configuration is selected; verify executor isolation, resource
+  limits, credential separation and protected storage before readiness.
 - Exact code write scopes, command/API feasibility and acceptance ownership.
 - Versioned first-task policy and recipe relationship, budgets and trial plan.
 - Required environment restoration and instrument repairs; any omitted legacy

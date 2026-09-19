@@ -2,6 +2,23 @@
 
 ## Current instruction: prepare the Mo-first harness brief; no worker launch
 
+**Worker configuration, Robert's latest instruction (18 Sep 2026, 11:01 PM
+ET):** use Amp orbs, Astra as lead, and a separate fresh thread for every worker
+and every new work unit/phase. Worker mode is `medium`; orb size is
+`a1.xxlarge`. These choices supersede the old Herdr/Opus launch mechanics below
+and in the lead skill, not the code ownership, verification or audit rules. Do
+not inherit the lead's model for workers. No thread/model switch or worker
+launch occurred. Transfer unpushed state explicitly between threads; never
+assume shared trees.
+
+Robert requires the Mo harness itself to use his OpenAI subscription via its own
+OAuth login, not an API key or borrowed Amp credentials. Pi's pinned
+provider/auth package supports device login suitable for an orb. The lead/oracle
+recommend a thin provider adapter, keeping Mo's agent/tool loop; registration
+support, account/model access and credential isolation are not yet verified. The
+brief records details. No live login request was made; generate and relay the
+actual verification link/code only when a real authorized flow starts.
+
 Robert approved the lead's choice of a Mo-first coding harness written in Mo,
 initially maintaining existing Mo applications, on 18 Sep 2026. The bounded
 brief is `mo-wiki/plans/mo-first-coding-harness.md`: thin headless CLI,
