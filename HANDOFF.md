@@ -25,6 +25,24 @@ Source review of Astra's night: `audit/evidence/2026-09-19/fable-overnight-revie
 In flight since 9:05 AM ET, each in its own Herdr tab, Opus 5 with bypass permissions, both based on `31ad3ba9`: `step2-tables-opus` (tab `w4:tS`, pane `w4:p2Q`, branch `harness/step-2-live-tables`, brief `mo-wiki/plans/mo-harness-step-2-live-tables.md`) and `rawmem-toolchain-opus` (tab `w4:tT`, pane `w4:p2R`, branch `toolchain/raw-memory-report`, brief `mo-wiki/plans/toolchain-raw-memory-report.md`). Each commits a report file its brief names. Neither may use the machine or run the full suite. Workers go in
 their own Herdr tab, never a split of the lead's tab, with bypass permissions.
 
+**Update, 9:25 AM ET.** The raw-memory defect is found and fixed by
+`rawmem-toolchain-opus` (`44a4da08`, merged locally at `9304fc65`, tab closed):
+an `answer` to a kept ask held a bare value into the process's region until the
+update committed; a returning frame past the 1 MiB frame budget compacted the
+region first, so the asker received freed memory (native: raw bytes on stdout;
+interpreter: the union-field panic, really at `vm.zig:1606` in `main`). Both
+runtimes now pack the answer when `answer` runs, as `send` always did. Report:
+`toolchain/STEP-RAW-MEMORY-REPORT.md`; new corpus program
+`examples/programs/deferred-large.mo` and a focused test with a native
+`MO_STRESS` build that compacts at every safe point. Lead checks so far: build
+exit 0, focused test 2 of 2 exit 0, and the reduction correct from 9 bytes to
+12 MB in both runtimes at four sizes the worker did not name. **Not accepted
+until the lead's full suite**, which runs once step 2 is merged too. Then lift
+the agent's 256 KiB report cap (a small brief). `step40-scope-opus` launched
+9:25 AM ET in its own tab (pane `w4:p2S`, branch `toolchain/step-40-scope`,
+based on `9304fc65`, brief `mo-wiki/plans/interpreter-step-40.md`).
+`step2-tables-opus` still running.
+
 **Plan of record:** `mo-wiki/plans/mo-harness-in-mo.md` (the harness moved into
 Mo, nine steps) and `mo-wiki/plans/mo-capabilities-for-the-harness.md` (the
 design: `scoped` made to hold against symlinks, `Fs.replace`, `Exec`).
