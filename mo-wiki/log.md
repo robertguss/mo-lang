@@ -694,3 +694,24 @@
   256 pages with 25 inherited review/size notices and no structural/raw-drift
   errors. Evidence checks confirmed the 5/8/9 PASS records, retained failures,
   final script syntax and SHA-256. No Mo build/test rerun for this docs handoff.
+
+## [2026-09-18] maintain | Mac arrival inspected
+
+- 11:58 PM ET checkpoint: Codex (GPT-6) continued the handoff with read-only
+  arrival checks. Main was clean at the already-integrated handoff commit,
+  equal to origin after fetch. Native M3 Max/arm64 Zig 0.16.0 and OrbStack's
+  Docker endpoint are verified. No named Linux machine exists; executor and
+  Linux toolchain remain unverified.
+- Preserved 68 registered worktree paths, 70 local branches, the private
+  transfer package and existing receiver ledger. Presence is not archive or
+  historical content verification. Auditor pointer check: zero new records;
+  no auditor reading or hidden suite opened.
+- Recorded command evidence at `audit/evidence/2026-09-18/mac-arrival/` and
+  updated handoff/status/brief pages. The session lacks Amp oracle/native
+  thread tools; Robert's lead/review workflow choice is pending. No setup,
+  authentication, worker, experiment or implementation started. Step 39 remains
+  unaccepted and Program 7 suspended.
+- Validation: wiki lint checked 256 pages with the same 25 inherited
+  review/size notices and no structural/raw-source-drift errors;
+  `git diff --check` passed. All 14 recorded inspection commands exited 0.
+  Documentation only; no Mo build or runtime acceptance run.

@@ -2,6 +2,16 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Mac arrival inspection — 18 Sep 2026, 11:58 PM ET
+
+- Verified the clean handoff checkout, native Zig 0.16.0 and OrbStack Docker
+  endpoint. Historical worktree paths, branches, transfer package and receiver
+  ledger are present; auditor pointer check found zero new records.
+- No named Linux machine exists. Dedicated execution remains unverified;
+  Codex lacks the requested Amp oracle/thread tools and the workflow choice is
+  pending. Recorded arrival evidence and current readiness without starting
+  setup, authentication, workers or implementation.
+
 ## Mac lead handoff and executor feasibility — 18 Sep 2026, 11:44 PM ET
 
 - Robert directs the Astra lead to move to his Mac with OrbStack; workers stay

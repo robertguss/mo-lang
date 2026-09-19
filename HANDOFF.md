@@ -1,6 +1,31 @@
-# Mo Lang — Move the lead to Robert's Mac; implementation paused
+# Mo Lang — Mac arrival inspected; implementation paused
 
-## Current instruction: Mac handoff, 18 Sep 2026, 11:44 PM ET
+## Current checkpoint: Mac arrival, 18 Sep 2026, 11:58 PM ET
+
+Robert asked this Codex (GPT-6) session to continue the handoff. Read-only
+arrival checks are recorded in `audit/evidence/2026-09-18/mac-arrival/`.
+This checkout was clean on `main` at handoff commit
+`3b6c75360a1d76721be62080f6771d871d2abd40`, equal to fetched `origin/main`;
+no integration or restoration was needed. All 68 registered worktree paths,
+70 local branches, the private transfer package and existing auditor ledger
+are present. This verifies presence, not archive integrity or historical
+worktree contents. The pointer-only auditor check found zero new records.
+
+Native Mac: M3 Max, arm64, 96 GiB, Zig 0.16.0. OrbStack 2.2.3 and its Docker
+29.4.0 Linux backend are reachable through the existing `orbstack` context.
+There are no named OrbStack Linux machines; no dedicated test boundary, Linux
+checkout or Linux Zig binary is verified. Existing Docker containers are from
+other projects. No service, container, Docker context or resource setting was
+changed. Do not replay the orb probes on this shared daemon.
+
+**Workflow clarification pending:** this Codex session has no callable Amp
+oracle or native Amp thread tools. Robert has been asked whether to adapt the
+lead/review workflow to Codex with a separate reviewer or preserve Amp. No
+substantive design decision, worker, setup, login or experiment has started.
+Continue with that workflow choice and the harness brief's bounded readiness
+items. Step 39 stays unaccepted; Program 7 stays suspended.
+
+## Prior instruction: Mac handoff, 18 Sep 2026, 11:44 PM ET
 
 Robert confirms OrbStack works on his Mac and explicitly wants **the Astra lead
 to move there too**, not merely use it as a remote executor. This supersedes the

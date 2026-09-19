@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-18
+updated: 2026-09-19
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -24,13 +24,16 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 18 Sep 2026, 11:44 PM ET, Mac lead handoff prepared.
+**Last updated:** 18 Sep 2026, 11:58 PM ET, Mac arrival inspected.
 
-**Lead moving to the Mac:** Robert confirms OrbStack is available and wants the
-Astra lead there, not just a remote executor. Fresh medium/xxlarge orb worker
-threads remain the rule. No relocation or Mac verification has happened in this
-orb; `HANDOFF.md` tells the arriving lead how to preserve local work, inspect
-the destination and continue readiness without launching workers.
+**Lead on the Mac:** this Codex (GPT-6) session inspected the clean handoff
+checkout, native Zig 0.16.0 and reachable OrbStack Docker backend. All 68
+historical worktree paths, 70 local branches and the private transfer package
+are present; the existing auditor ledger was retained and the pointer check
+found zero new records. No named OrbStack Linux machine exists, so a dedicated
+test boundary and Linux toolchain remain unverified. The session lacks Amp's
+oracle/native thread tools; Robert's lead/review workflow choice is pending.
+Evidence: `audit/evidence/2026-09-18/mac-arrival/`; next steps: `HANDOFF.md`.
 
 **Executor feasibility, not harness acceptance:** separately authorized,
 credential-free orb probes ended with nine passing checks after correcting two
@@ -38,7 +41,7 @@ probe failures. Raw outputs and the final script are preserved under
 `audit/evidence/2026-09-18/executor-feasibility/`. The checks exercised
 restricted containers, effective resource limits and cleanup, not a Mo executor
 or a protected behavioral verdict. Temporary Docker/services and all controller
-changes were removed/restored. Mac/OrbStack still needs its own verification;
+changes were removed/restored. Mac/OrbStack execution still needs verification;
 the host's outer VM isolation does not protect credentials from code inside it.
 OAuth remains provisional and untested. No implementation worker has started.
 

@@ -1,0 +1,253 @@
+{
+  "started_at_et": "2026-09-18T23:58:50.100562-04:00",
+  "purpose": "Read-only Mac arrival inspection; no executor or Mo acceptance run",
+  "repository": "/Users/robertguss/Projects/startups/mo-lang",
+  "host": {
+    "system": "Darwin",
+    "release": "25.6.0",
+    "architecture": "arm64"
+  },
+  "tools": {
+    "git": "/opt/homebrew/bin/git",
+    "zig": "/opt/homebrew/bin/zig",
+    "docker": "/Users/robertguss/.local/bin/docker",
+    "orbctl": "/Users/robertguss/.local/bin/orbctl",
+    "amp": "/Users/robertguss/.local/bin/amp",
+    "gh": "/opt/homebrew/bin/gh"
+  },
+  "docker_overrides": {
+    "DOCKER_CONTEXT": null,
+    "DOCKER_HOST": null
+  },
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.101291-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.108463-04:00",
+      "exit_code": 0,
+      "stdout": "3b6c75360a1d76721be62080f6771d871d2abd40\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--short",
+        "--branch"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.108484-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.123311-04:00",
+      "exit_code": 0,
+      "stdout": "## main...origin/main\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "rev-list",
+        "--left-right",
+        "--count",
+        "HEAD...origin/main"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.123340-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.130513-04:00",
+      "exit_code": 0,
+      "stdout": "0\t0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sysctl",
+        "-n",
+        "machdep.cpu.brand_string"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.130543-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.133894-04:00",
+      "exit_code": 0,
+      "stdout": "Apple M3 Max\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sysctl",
+        "-n",
+        "hw.memsize"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.133927-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.137069-04:00",
+      "exit_code": 0,
+      "stdout": "103079215104\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "zig",
+        "version"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.137096-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.165181-04:00",
+      "exit_code": 0,
+      "stdout": "0.16.0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "orbctl",
+        "version"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.165208-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.172652-04:00",
+      "exit_code": 0,
+      "stdout": "Version: 2.2.3 (2020300)\nCommit: c83556b0ef8f1ba9a33abbb194622b6b7a1c0307 (v2.2.3)\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "orbctl",
+        "status"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.172678-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.180722-04:00",
+      "exit_code": 0,
+      "stdout": "Running\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "orbctl",
+        "list",
+        "--format",
+        "json"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.180757-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.191125-04:00",
+      "exit_code": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "context",
+        "show"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.191169-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.206589-04:00",
+      "exit_code": 0,
+      "stdout": "orbstack\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "context",
+        "inspect",
+        "orbstack",
+        "--format",
+        "{{.Name}} {{.Endpoints.docker.Host}}"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.206625-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.221567-04:00",
+      "exit_code": 0,
+      "stdout": "orbstack unix:///Users/robertguss/.orbstack/run/docker.sock\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "--context",
+        "orbstack",
+        "version",
+        "--format",
+        "Client={{.Client.Version}}/{{.Client.Arch}} Server={{.Server.Version}}/{{.Server.Arch}}"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.221596-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.252081-04:00",
+      "exit_code": 0,
+      "stdout": "Client=29.4.0/arm64 Server=29.4.0/arm64\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "--context",
+        "orbstack",
+        "info",
+        "--format",
+        "Name={{.Name}} OS={{.OperatingSystem}} Arch={{.Architecture}} Kernel={{.KernelVersion}} CPUs={{.NCPU}} Memory={{.MemTotal}} Cgroups={{.CgroupVersion}} Driver={{.CgroupDriver}} Security={{json .SecurityOptions}}"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.252120-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.330613-04:00",
+      "exit_code": 0,
+      "stdout": "Name=orbstack OS=OrbStack Arch=aarch64 Kernel=7.0.14-orbstack-00380-ga7e0a2dc9535 CPUs=14 Memory=16818978816 Cgroups=2 Driver=cgroupfs Security=[\"name=seccomp,profile=builtin\",\"name=cgroupns\"]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "--context",
+        "orbstack",
+        "ps",
+        "--all",
+        "--format",
+        "{{.State}}"
+      ],
+      "started_at_et": "2026-09-18T23:58:50.330662-04:00",
+      "finished_at_et": "2026-09-18T23:58:50.352095-04:00",
+      "exit_code": 0,
+      "stdout": "exited\nexited\nexited\nexited\nexited\n",
+      "stderr": ""
+    }
+  ],
+  "historical_worktree_inventory": {
+    "command": [
+      "git",
+      "worktree",
+      "list",
+      "--porcelain"
+    ],
+    "registered": 68,
+    "missing_path_count": 0,
+    "scope": "Path presence only; no source contents, dirty states or sealed suites read"
+  },
+  "local_branch_inventory": {
+    "command": [
+      "git",
+      "for-each-ref",
+      "--format=%(refname:short)",
+      "refs/heads/"
+    ],
+    "count": 70
+  },
+  "transfer_package": {
+    "path": "/Users/robertguss/Projects/startups/mo-lang-transfer-2026-09-18",
+    "present": true,
+    "metadata_present": {
+      "README.md": true,
+      "SHA256SUMS": true,
+      "MOVED-2026-09-18.json": true
+    },
+    "archive_integrity_checked": false
+  },
+  "auditor_receiver": {
+    "ledger_existed_before_poll": true,
+    "ledger_path": "/Users/robertguss/.mo-lead/fable-intake.json",
+    "seen_record_count": 11,
+    "earlier_poll": {
+      "command": [
+        "python3",
+        "audit/automation/fable_poll.py",
+        "check"
+      ],
+      "exit_code": 0,
+      "output_transcribed_from_tool": "checked 1 refs, 0 new record(s), 2026-09-19T03:56:16Z",
+      "observed_time_et": "2026-09-18 11:56:16 PM ET"
+    },
+    "auditor_readings_opened": false
+  },
+  "finished_at_et": "2026-09-18T23:58:50.378019-04:00"
+}

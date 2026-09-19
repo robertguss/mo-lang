@@ -1,7 +1,7 @@
 ---
 title: "Mo-first coding harness: bounded first deliverable"
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-09-19
 type: plan
 tags: [agents, tooling, verification, roadmap]
 sources:
@@ -42,6 +42,13 @@ Readiness is scoped by work unit: full model-comparison budgets need not block a
 provider-independent fixture runner, but each brief must explicitly name its
 prerequisites, bounds and remaining unmet obligations. No implementation or
 login is authorized by the completed probe approvals or this relocation.
+
+**Mac inspection, 18 Sep 2026, 11:58 PM ET:** the clean handoff checkout,
+native arm64 Zig 0.16.0 and OrbStack Docker endpoint are verified. No named
+Linux machine exists; a dedicated executor, Linux checkout/toolchain and
+protected verdict remain unverified. The Codex session lacks Amp oracle/thread
+tools; Robert's workflow choice is pending. Evidence is at
+`audit/evidence/2026-09-18/mac-arrival/`. No setup or implementation started.
 
 The useful result is: **task + isolated checkout → candidate patch + independent
 behavioral verdict**, with command outcomes, time, usage and failures recorded.

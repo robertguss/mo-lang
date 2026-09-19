@@ -1,7 +1,7 @@
 ---
 title: "Roadmap: now, next, later"
 created: 2026-09-12
-updated: 2026-09-18
+updated: 2026-09-19
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -20,14 +20,15 @@ expansion. Implementation workers remain paused. Robert subsequently approved
 bounded credential-free executor probes only; those are completed below, not
 permission for harness implementation or login.
 
-**Current checkpoint, 18 Sep 2026, 11:44 PM ET:** move the Astra lead to
-Robert's Mac, where he confirms OrbStack is working. Keep fresh medium/xxlarge
-orb workers; the move does not restore Herdr mechanics. `HANDOFF.md` gives the
-read-only arrival checks and preserves old Mac work. The orb's final executor
-probe produced nine PASS records, with earlier failed probe runs retained at
-`audit/evidence/2026-09-18/executor-feasibility/`. All temporary services and
-controller changes were cleaned up/restored. The Mac executor is unverified; no
-Mo harness has been built. See [[mo-first-coding-harness]].
+**Current checkpoint, 18 Sep 2026, 11:58 PM ET:** the Codex (GPT-6) lead
+verified this clean Mac checkout at the handoff commit, native Zig 0.16.0 and
+OrbStack's Docker endpoint. Historical worktree paths, branches and transfer
+package are present; auditor pointer check found zero new records. No named
+Linux machine exists and no Mac executor has been tested. Evidence:
+`audit/evidence/2026-09-18/mac-arrival/`. The session lacks the required Amp
+oracle/native thread tools; Robert's workflow choice is pending. Earlier orb
+probe evidence remains at `audit/evidence/2026-09-18/executor-feasibility/` and
+does not validate the Mac. See [[mo-first-coding-harness]] and `HANDOFF.md`.
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none
@@ -40,9 +41,10 @@ New upstream TLS/script edits are not acceptance evidence.
 1. Application chosen: [[mo-first-coding-harness]], written in Mo and initially
    maintaining Mo applications. Robert approved the lead/oracle recommendation.
    Pi is the practical comparator; do not build a second Elixir harness first.
-   First verify the Mac checkout and OrbStack destination; then resolve the
-   brief's provider/executor, protected verification, worker write scope and
-   budget decisions before declaring implementation readiness.
+   Mac arrival inventory is complete. Resolve the lead/review tooling mismatch
+   and dedicated execution boundary, then the brief's provider/executor,
+   protected verification, worker write scope and budget decisions before
+   declaring implementation readiness.
 2. After implementation approval: truthful instruments, one complete headless
    coding path, 401 policy calibration, then two or three bounded application
    tasks and a matched Pi comparison. Add an affordable model after calibration.

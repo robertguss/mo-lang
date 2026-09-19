@@ -1,7 +1,7 @@
 ---
 title: "Decision log"
 created: 2026-09-12
-updated: 2026-09-18
+updated: 2026-09-19
 type: decision
 tags: [meta, laws]
 sources: [spec/grammar.md, plans/model-bakeoff.md]
@@ -664,6 +664,13 @@ direction separately from the lead's conservative execution interpretation.
 | Move the Astra lead to Robert's Mac, where he confirms OrbStack is working. This supersedes keeping the lead in this orb; keep one continuing lead session after relocation and fresh medium/a1.xxlarge orb workers. Do not restore Herdr mechanics or overwrite existing Mac work.                                                                 | Robert                                                      | decided     | read-only destination and checkout verification              |
 | Bounded credential-free executor probes were separately approved, including temporary privileged Docker and reversible CPU setup. Final run: nine PASS records, exit 0; two failed probe runs retained. This is not Mo harness acceptance or Mac validation. Temporary setup removed and ancestor controller sets/numeric workload limits restored. | Amp, observed with Robert's scoped approvals                | recorded    | retained raw outputs and further destination-specific checks |
 | Preserve separate outer VM and inner candidate boundaries; use a dedicated delegated executor subtree, bounded output drain and protected external verdict. Readiness is per bounded work unit, not a waiver of unresolved provider, task or audit obligations. No implementation worker or OAuth login is authorized by relocation.                | Amp, recommendation; oracle consulted on environment choice | recommended | scoped executor design and independent controls              |
+
+## Mac arrival inspected (18 Sep 2026, 11:58 PM ET)
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Continue the handoff in this Mac checkout. Arrival checks found clean main at the handoff commit, Zig 0.16.0, reachable OrbStack Docker, 68 existing worktree paths, 70 local branches and the private transfer package. Existing receiver ledger retained; zero new audit records. No restoration or executor acceptance claimed. | Robert requests continuation; Codex (GPT-6) records observations | recorded | `audit/evidence/2026-09-18/mac-arrival/inspection.json` |
+| No named Linux machine exists; dedicated execution and Linux toolchain remain unverified. This Codex session lacks the required Amp oracle/native thread tools. Asked Robert whether to adapt lead/review work to Codex or preserve Amp; no new design decision or implementation start. | Codex (GPT-6) | open | Robert's workflow choice, then scoped readiness review |
 
 ## Related
 
