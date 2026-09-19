@@ -38,6 +38,9 @@
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
 #endif
+#if defined(__APPLE__)
+#include <spawn.h>
+#endif
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -8743,7 +8746,8 @@ static bool exec_pipe(int p[2]) {
     return true;
 }
 
-/* The child, between fork and execve: only system calls (exec.zig, child). It starts a session of its
+#if !defined(__APPLE__)
+/* The child, between fork and execve (all but Darwin): only system calls (exec.zig, child). It starts a session of its
  * own, takes the pipes as 0, 1 and 2, works in the job's folder, has every signal at its default and
  * none blocked, and closes every other descriptor but the one it reports a failure on. */
 _Noreturn static void exec_child(const ExecJob *job, int in_r, int out_w, int err_w, int report_w, int limit) {
@@ -8778,6 +8782,7 @@ bail:;
     (void)n;
     _exit(127);
 }
+#endif
 
 /* Whether the child has exited, asked without reaping it, so its id still names its group. */
 static bool exec_exited(pid_t pid) {
@@ -8821,7 +8826,44 @@ static void exec_now(ExecJob *job) {
     int in_p[2] = {-1, -1}, out_p[2] = {-1, -1}, err_p[2] = {-1, -1}, report[2] = {-1, -1};
     job->outcome = EXEC_FAILED;
     job->why = "no pipe could be made";
-    if (!exec_pipe(in_p) || !exec_pipe(out_p) || !exec_pipe(err_p) || !exec_pipe(report)) goto closed;
+    if (!exec_pipe(in_p) || !exec_pipe(out_p) || !exec_pipe(err_p)) goto closed;
+    uint32_t why = 0;
+#if defined(__APPLE__)
+    /* One posix_spawn (exec.zig, start): CLOEXEC_DEFAULT has the kernel close every descriptor the
+     * file actions do not name, where a loop to the descriptor limit cost 90 ms a run. */
+    posix_spawn_file_actions_t actions;
+    posix_spawnattr_t attr;
+    posix_spawn_file_actions_init(&actions);
+    posix_spawnattr_init(&attr);
+    sigset_t every, none;
+    sigemptyset(&every);
+    for (int sig = 1; sig < 32; sig++) {
+        if (sig != SIGKILL && sig != SIGSTOP) sigaddset(&every, sig);
+    }
+    sigemptyset(&none);
+    /* addfchdir_np is deprecated in macOS 26's SDK for addfchdir, which only macOS 26 has. */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    bool set = posix_spawn_file_actions_adddup2(&actions, in_p[0], 0) == 0 && posix_spawn_file_actions_adddup2(&actions, out_p[1], 1) == 0 &&
+               posix_spawn_file_actions_adddup2(&actions, err_p[1], 2) == 0 && posix_spawn_file_actions_addfchdir_np(&actions, job->dir) == 0 &&
+               posix_spawnattr_setsigdefault(&attr, &every) == 0 && posix_spawnattr_setsigmask(&attr, &none) == 0 &&
+               posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK) == 0;
+#pragma clang diagnostic pop
+    pid_t pid = -1;
+    int rc = set ? posix_spawn(&pid, job->path, &actions, &attr, job->argv, job->envp) : ENOMEM;
+    posix_spawn_file_actions_destroy(&actions);
+    posix_spawnattr_destroy(&attr);
+    close_one(&in_p[0]);
+    close_one(&out_p[1]);
+    close_one(&err_p[1]);
+    if (rc != 0) {
+        if (rc == ENOENT || rc == ENOTDIR) job->outcome = EXEC_MISSING;
+        else job->why = exec_why(rc);
+        goto closed;
+    }
+    (void)why;
+#else
+    if (!exec_pipe(report)) goto closed;
     struct rlimit rl;
     int limit = getrlimit(RLIMIT_NOFILE, &rl) == 0 ? (int)(rl.rlim_cur < (rlim_t)1 << 20 ? rl.rlim_cur : (rlim_t)1 << 20) : 1 << 16;
     pid_t pid = fork();
@@ -8834,7 +8876,6 @@ static void exec_now(ExecJob *job) {
     close_one(&out_p[1]);
     close_one(&err_p[1]);
     close_one(&report[1]);
-    uint32_t why = 0;
     size_t got = 0;
     while (got < sizeof why) {
         ssize_t n = read(report[0], (char *)&why + got, sizeof why - got);
@@ -8848,6 +8889,7 @@ static void exec_now(ExecJob *job) {
         else job->why = exec_why((int)why);
         goto closed;
     }
+#endif
     if (job->in_len == 0) close_one(&in_p[1]);
     else nonblocking(in_p[1]);
     struct pollfd fds[3] = {{out_p[0], POLLIN, 0}, {err_p[0], POLLIN, 0}, {in_p[1], POLLOUT, 0}};

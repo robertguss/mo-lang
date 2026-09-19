@@ -8,9 +8,9 @@
 //! real one and one past its index for an `Exec.fixture(fn)`, whose function answers every run of
 //! the commands made from it.
 //!
-//! A real run (`Job.run`) forks a child that starts its own session, so it leads its own process
-//! group and has no terminal; its standard streams are pipes; every other descriptor is closed and
-//! every signal is back to its default before `execve`; its working folder is the `Fs` scope's
+//! A real run (`Job.run`) starts a child (posix_spawn on Darwin, fork elsewhere) in a session of
+//! its own, so it leads its own process group and has no terminal; its standard streams are pipes;
+//! every other descriptor is closed and every signal is back to its default before `execve`; its working folder is the `Fs` scope's
 //! folder (`in_folder`), opened as `Fs.list` opens it, or a new empty private folder removed after
 //! the run; its environment is exactly the command's map, empty by default. The parent writes
 //! `stdin` and drains stdout and stderr as the child runs, so a child writing more than a pipe holds
@@ -318,35 +318,22 @@ pub const Job = struct {
         var in_p: [2]posix.fd_t = .{ -1, -1 };
         var out_p: [2]posix.fd_t = .{ -1, -1 };
         var err_p: [2]posix.fd_t = .{ -1, -1 };
-        var report: [2]posix.fd_t = .{ -1, -1 };
-        defer for ([_]*[2]posix.fd_t{ &in_p, &out_p, &err_p, &report }) |p| closeBoth(p);
-        for ([_]*[2]posix.fd_t{ &in_p, &out_p, &err_p, &report }) |p| {
+        defer for ([_]*[2]posix.fd_t{ &in_p, &out_p, &err_p }) |p| closeBoth(p);
+        for ([_]*[2]posix.fd_t{ &in_p, &out_p, &err_p }) |p| {
             if (!makePipe(p)) return .{ .failed = "no pipe could be made" };
         }
-        const limit = closeLimit();
-        const rc = sys.fork();
-        switch (posix.errno(rc)) {
-            .SUCCESS => {},
-            else => return .{ .failed = "no process could be made" },
-        }
-        const pid: posix.pid_t = @intCast(rc);
-        if (pid == 0) child(job, in_p[0], out_p[1], err_p[1], report[1], limit);
+        const started = start(job, in_p[0], out_p[1], err_p[1]);
         closeOne(&in_p[0]);
         closeOne(&out_p[1]);
         closeOne(&err_p[1]);
-        closeOne(&report[1]);
-        // The child writes its errno here when it could not start the program; the pipe closes
-        // without a byte when execve succeeds.
-        var why: [4]u8 = undefined;
-        const got = readAll(report[0], &why);
-        if (got == 4) {
-            _ = reap(pid);
-            const e: posix.E = @enumFromInt(std.mem.readInt(u32, &why, .little));
-            return switch (e) {
+        const pid = switch (started) {
+            .pid => |pid| pid,
+            .failed => |why| return .{ .failed = why },
+            .errno => |e| return switch (e) {
                 .NOENT, .NOTDIR => .missing,
                 else => .{ .failed = whyOf(e) },
-            };
-        }
+            },
+        };
         if (job.stdin.len == 0) closeOne(&in_p[1]) else quietWrites(in_p[1]);
         var fds = [3]posix.pollfd{
             .{ .fd = out_p[0], .events = posix.POLL.IN, .revents = 0 },
@@ -428,7 +415,70 @@ pub const Job = struct {
     }
 };
 
-/// The child, between fork and execve: only system calls, each through std's per-target
+const Started = union(enum) { pid: posix.pid_t, errno: posix.E, failed: []const u8 };
+
+/// The child started with its pipes on 0, 1 and 2 and nothing else open, in its own session, in the
+/// job's folder, every signal at its default and none blocked. On Darwin one posix_spawn does it:
+/// CLOEXEC_DEFAULT has the kernel close every descriptor the file actions do not name, however
+/// high, where a loop to the descriptor limit (here 1,048,576) cost 90 ms a run. Elsewhere the
+/// child is forked, and `close_range` closes what is left (child).
+fn start(job: *const Job, in_r: posix.fd_t, out_w: posix.fd_t, err_w: posix.fd_t) Started {
+    if (builtin.os.tag.isDarwin()) {
+        const c = std.c;
+        var actions: c.posix_spawn_file_actions_t = undefined;
+        if (c.posix_spawn_file_actions_init(&actions) != 0) return .{ .failed = "the system is out of resources" };
+        defer _ = c.posix_spawn_file_actions_destroy(&actions);
+        var attr: c.posix_spawnattr_t = undefined;
+        if (c.posix_spawnattr_init(&attr) != 0) return .{ .failed = "the system is out of resources" };
+        defer _ = c.posix_spawnattr_destroy(&attr);
+        var every = posix.sigemptyset();
+        var sig: u8 = 1;
+        while (sig < 32) : (sig += 1) {
+            if (sig != @intFromEnum(posix.SIG.KILL) and sig != @intFromEnum(posix.SIG.STOP)) posix.sigaddset(&every, @enumFromInt(sig));
+        }
+        const none = posix.sigemptyset();
+        const set = [_]c_int{
+            c.posix_spawn_file_actions_adddup2(&actions, in_r, 0),
+            c.posix_spawn_file_actions_adddup2(&actions, out_w, 1),
+            c.posix_spawn_file_actions_adddup2(&actions, err_w, 2),
+            c.posix_spawn_file_actions_addfchdir_np(&actions, job.dir),
+            spawn.posix_spawnattr_setsigdefault(&attr, &every),
+            spawn.posix_spawnattr_setsigmask(&attr, &none),
+            c.posix_spawnattr_setflags(&attr, .{ .SETSID = true, .CLOEXEC_DEFAULT = true, .SETSIGDEF = true, .SETSIGMASK = true }),
+        };
+        for (set) |rc| if (rc != 0) return .{ .failed = "the system is out of resources" };
+        var pid: posix.pid_t = 0;
+        const rc = c.posix_spawn(&pid, job.path, &actions, &attr, job.argv, job.envp);
+        if (rc != 0) return .{ .errno = @enumFromInt(rc) };
+        return .{ .pid = pid };
+    } else {
+        var report: [2]posix.fd_t = .{ -1, -1 };
+        defer closeBoth(&report);
+        if (!makePipe(&report)) return .{ .failed = "no pipe could be made" };
+        const limit = closeLimit();
+        const rc = sys.fork();
+        if (posix.errno(rc) != .SUCCESS) return .{ .failed = "no process could be made" };
+        const pid: posix.pid_t = @intCast(rc);
+        if (pid == 0) child(job, in_r, out_w, err_w, report[1], limit);
+        closeOne(&report[1]);
+        // The child writes its errno here when it could not start the program; the pipe closes
+        // without a byte when execve succeeds.
+        var why: [4]u8 = undefined;
+        if (readAll(report[0], &why) == 4) {
+            _ = reap(pid);
+            return .{ .errno = @enumFromInt(std.mem.readInt(u32, &why, .little)) };
+        }
+        return .{ .pid = pid };
+    }
+}
+
+/// What std does not declare of Darwin's posix_spawn.
+const spawn = struct {
+    extern "c" fn posix_spawnattr_setsigdefault(attr: *std.c.posix_spawnattr_t, set: *const posix.sigset_t) c_int;
+    extern "c" fn posix_spawnattr_setsigmask(attr: *std.c.posix_spawnattr_t, set: *const posix.sigset_t) c_int;
+};
+
+/// The child, between fork and execve (all but Darwin): only system calls, each through std's per-target
 /// wrapper, and no allocation. It starts a session of its own (so it leads its own process group
 /// and has no terminal), takes the pipes as 0, 1 and 2, works in the job's folder, has every signal
 /// at its default and none blocked, and closes every other descriptor but the one it reports a
