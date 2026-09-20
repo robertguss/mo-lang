@@ -1,0 +1,65 @@
+{
+  "recorded_at_et": "2026-09-19T23:05:10.048589-04:00",
+  "status": "failed; slot clear; no rerun granted",
+  "source_checkpoint": "e79e755b2d893332cb51b490bc2fee91bff5bdb6",
+  "baseline": "be64e8a5086f6a47dcb6683d1313579d1e6f35a6",
+  "outer_exit": 1,
+  "raw_log": "toolchain/bench/step42/review-fixes/corpus-measure.log",
+  "raw_exit": "toolchain/bench/step42/review-fixes/corpus-measure.exit",
+  "completed_samples": [
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "round": 1,
+      "seconds": 0.040117
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "round": 1,
+      "seconds": 0.039141
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "round": 1,
+      "seconds": 0.229378
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "round": 1,
+      "seconds": 0.187667
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "run",
+      "round": 1,
+      "seconds": 0.078998
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "run",
+      "round": 1,
+      "seconds": 0.077778
+    }
+  ],
+  "sample_loads": [
+    15.07,
+    8.54,
+    5.58
+  ],
+  "failure": "guard could not launch missing work/build-before/zig-out/mo-build/main/main; spread/main.mo compiles to spread/spread",
+  "naming_authority": "toolchain/src/cbuild.zig defaultName, lines88-96",
+  "authorization": "static shared Tree.build name derivation correction only; same API/callers; new named-path checkpoint required",
+  "rerun_evidence_prefix": "toolchain/bench/step42/review-fixes/corpus-measure-rerun-01",
+  "conclusions": "six partial samples only, no best-of-five or causal performance conclusion; no spread native runtime failure",
+  "worker_cleanup_receipt": "no owned matches, fresh exact-be64 detached baseline removed only after provenance/evidence retained; historical trees untouched",
+  "isolation": "both workers on runtime hold pending corrected checkpoint/rerun grant"
+}

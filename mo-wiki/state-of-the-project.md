@@ -31,8 +31,9 @@ Lead review found blocking-job lifetime, ASan fiber integration and incomplete
 retained-value typing in step42; fresh `step42-fix-sol` owns corrections.
 Step44's final report at `9ad0162a` required correction; its idle regression
 now has worker RED/GREEN (9/9), while TLS/binary/ownership proof and independent
-acceptance remain. Step42-fix has completed focused checkpoints and owns the
-serialized corpus measurement slot at frozen `e79e755b`; step44-fix holds.
+acceptance remain. Step42-fix completed focused checkpoints; its first corpus
+measurement stopped after six samples on a driver naming bug. The shared fix
+at `65b3dd37` is reviewed and an isolated rerun granted; step44-fix holds.
 Three completed worker panes and verified process leftovers were removed,
 with all evidence/worktrees preserved. Workers own code; Astra reviews and
 independently verifies. Last accepted Darwin suite: 268 of 268. Linux, live

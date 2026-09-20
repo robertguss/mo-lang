@@ -1,0 +1,85 @@
+{
+  "recorded_at_et": "2026-09-19T23:06:51.750901-04:00",
+  "status": "rerun granted; no results yet",
+  "worker": "step42-fix-sol",
+  "pane": "w4:p39",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-42-review-fixes",
+  "before": "be64e8a5086f6a47dcb6683d1313579d1e6f35a6",
+  "after": "65b3dd37c4b2acc74bbdc425a723a163b69e50f8",
+  "comparison": "review corrections versus prior unaccepted step42 delivery; not whole-step cost versus accepted pre-step42",
+  "command": [
+    "python3",
+    "toolchain/bench/step36/guard.py",
+    "7200",
+    "--",
+    "python3",
+    "toolchain/bench/step38/measure.py",
+    "--best-of",
+    "5",
+    "--parts",
+    "corpus",
+    "--worktree",
+    "before=be64e8a5086f6a47dcb6683d1313579d1e6f35a6",
+    "--trees",
+    "after=toolchain",
+    "--out",
+    "toolchain/bench/step42/review-fixes/corpus-measure-rerun-01.txt"
+  ],
+  "guards_seconds": {
+    "outer": 7200,
+    "baseline_compiler_build": 1800,
+    "native_build": 900,
+    "workload": 900
+  },
+  "memory_guard": "4GB",
+  "workloads": [
+    {
+      "name": "deferred-large",
+      "source": "examples/programs/deferred-large.mo",
+      "args": [
+        "400000"
+      ],
+      "expected": "examples/programs/deferred-large-2.expected"
+    },
+    {
+      "name": "spread",
+      "source": "examples/programs/spread/main.mo",
+      "args": [
+        "2000"
+      ],
+      "expected": "examples/programs/spread/spread.expected"
+    },
+    {
+      "name": "duplex",
+      "source": "examples/effects/duplex.mo",
+      "args": [],
+      "expected": "examples/effects/duplex.expected"
+    }
+  ],
+  "runtimes": [
+    "mo run",
+    "native binary"
+  ],
+  "samples_per_combination": 5,
+  "expected_sample_count": 60,
+  "ordering": "interleaved trees; runtime/workload/tree order reverses across rounds",
+  "evidence": {
+    "log": "toolchain/bench/step42/review-fixes/corpus-measure-rerun-01.log",
+    "exit": "toolchain/bench/step42/review-fixes/corpus-measure-rerun-01.exit",
+    "structured": "toolchain/bench/step42/review-fixes/corpus-measure-rerun-01.txt"
+  },
+  "isolation": "step44-fix explicitly confirmed static-only since idle cleanup, no owned process started; all its runtime/formatter commands remain held",
+  "constraints": [
+    "source/tests/driver unchanged at checkpoint through measurements",
+    "same current-tree source and expected output files for both toolchains",
+    "verify reused baseline tree/build provenance",
+    "preserve all samples, failures and loads; no silent retries",
+    "no unfiltered suite, exhaustive stress/ASan, other benchmarks, debugger, formatter, Linux or machine work",
+    "cleanup owned descendants including detached helpers; preserve historical worktrees",
+    "never capture or commit unrelated process credentials",
+    "report slot clearance and hold after measurements",
+    "no acceptance implied"
+  ],
+  "prior_failed_attempt": "step42-correction-measurement-failed-01.json",
+  "reviewed_change": "shared default_name matches cbuild.defaultName; Tree.build API/callers unchanged"
+}

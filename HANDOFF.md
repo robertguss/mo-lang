@@ -195,6 +195,29 @@ debugger, formatter, Linux or machine work in this slot. Cleanup, report
 explicit slot clearance, then hold. Source review/integrated acceptance,
 exhaustive checks and full-suite timings remain owed.
 
+**Step42 measurement failed; slot clear:** granted attempt exited 1 after
+six samples. Before the first spread native invocation, the driver sought
+`mo-build/main/main`; the compiler's `defaultName` emits `spread/spread`
+for `programs/spread/main.mo`. Lead read the raw failure and naming rule.
+No runtime failure or completed best-of-five result. Original samples/logs
+preserved; source remained `e79e755b`. Worker verified and removed only its
+fresh exact-`be64e8a5` temporary baseline after retaining provenance, reports
+owned cleanup clear. Authorized only a static shared `Tree.build` naming
+fix matching `cbuild.defaultName`, not a spread-specific exception; preserve
+existing callers. New checkpoint and fresh `corpus-measure-rerun-01.*`
+outputs required before an explicit rerun grant. Both workers hold runtime
+work. Partial evidence:
+`audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-failed-01.json`.
+
+**Corrected rerun granted:** lead reviewed the complete driver-only patch at
+`65b3dd37c4b2acc74bbdc425a723a163b69e50f8`: shared `default_name` matches
+`cbuild.defaultName`, all `Tree.build` callers unchanged. Source/tests/driver
+frozen at this checkpoint; same baseline, 60-sample corpus scope, ordering
+and guards. New `corpus-measure-rerun-01.log/.exit/.txt`; original failed
+attempt remains untouched. Step44 stays held. Exact grant:
+`audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-rerun-01-grant.json`.
+Report results/owned cleanup, then hold; no acceptance implied.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
