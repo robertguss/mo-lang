@@ -24,20 +24,20 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Current, 19 Sep 2026, evening:** Robert authorized resuming the Mo server's
-part A and step 42 memory safety after recording an OMP workflow: Astra leads
-in the existing pane; every worker assignment starts a fresh clean Sol/high
-session. Both new workers acknowledged and began their assignments in separate
-worktrees/tabs. Workers own code; Astra reviews and independently runs acceptance
-builds/tests. Their saved WIP is not accepted. The last accepted Darwin suite
-is 268 of 268; Linux remains owed. The live provider, model-driven task and Pi
-comparison are still ahead. [[roadmap]] and `HANDOFF.md` carry current status.
+**Current, 19 Sep 2026, evening:** Astra leads in the existing OMP pane;
+every worker assignment starts a fresh clean Sol/high session. Server part A
+and the original step42 worker filed reports, not accepted implementations.
+Lead review found blocking-job lifetime, ASan fiber integration and incomplete
+retained-value typing in step42; fresh `step42-fix-sol` owns corrections.
+Step44 is active on bounded binary connection input. Workers own code; Astra
+reviews and independently verifies. Last accepted Darwin suite: 268 of 268;
+Linux, live provider, model-driven task and Pi comparison remain ahead.
 
 The server's unchanged-wire blocker F1 is now filed at `8b0ff352`: its client
 times out before the line-only API supplies the 155-byte body.
 [[interpreter-step-44]] is the bounded byte-source unblock, not an HTTP
-rewrite. The server continues independent work; full wire acceptance waits
-for the capability and its integration. Step 42 remains separately in flight.
+rewrite. Server full-wire acceptance waits for the capability and a fresh
+consumer-integration assignment. Step42 corrective work remains isolated.
 
 The account below preserves the earlier checkpoints.
 

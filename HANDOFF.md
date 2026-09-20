@@ -109,6 +109,13 @@ Further requirements and exact references are in the step42 brief's review
 addendum. A fresh corrective worker must finish them before integration.
 Unfiltered suite/timings and independent integrated acceptance remain owed.
 No Linux/machine acceptance. Server continuation also needs a fresh worker.
+Fresh corrective worker `step42-fix-sol` is live in tab `w4:t18`, pane
+`w4:p39`, worktree/branch `toolchain-step-42-review-fixes` /
+`toolchain/step-42-review-fixes`, exact clean base
+`be64e8a5086f6a47dcb6683d1313579d1e6f35a6`. New Sol/high session, no imported
+conversation; all six review corrections acknowledged. Static/source-test
+preparation only until a focused validation slot is granted. Step44 retains
+focused-check permission. Original completed worker branches remain intact.
 
 ### Next, in order
 
