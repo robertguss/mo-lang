@@ -233,6 +233,15 @@ suite remain lead-owned after corrections. Keep the original -8.69%/-0.97%
 throughput observations; neither a causal regression size nor zero overhead
 has been established.
 
+**Independent gate, 20 Sep 2026, 6:53 AM ET:** corrective code/evidence
+02833a52 and reviewed final report3036b0f3 are integrated only in
+`lead/verify-step44` at c49d1821. Build0; focused chunks checks3/4, exit1:
+the exact-message-shape test fails parsing its four inline assignment arms
+before reaching checker assertions. Narrow multiline fixture repair is
+authorized; no parser/checker/runtime change. Require explicit4/4 before
+resuming independent verification. Full suite and longer line comparison
+have not run. Raw outputs: `audit/evidence/2026-09-20/step44-integration/`.
+
 ## Related
 
 - [[mo-workspace-server-4a]]

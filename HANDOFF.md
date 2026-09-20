@@ -483,6 +483,29 @@ report and failures. Runtime slot released/HOLD. Final delivery is awaited;
 independent separate integration, full suite/timing, longer/interleaved line
 measurements and deferred Linux remain owed. No code accepted on main.
 
+**20 Sep, 6:53 AM ET — independent integration blocked on checker fixture:**
+received code/evidence02833a52, reportb6a54926 and factual report correction
+3036b0f3; lead reviewed the correction diff and corrected report. Merged only
+into new `lead/verify-step44` at c49d1821, based on main68551e8c. No accepted
+toolchain/examples delta since common base c4462935. Owned verification
+terminal w4:p3B/t1A, separate worktree/build output; main unchanged.
+
+Independent `zig build` exit0 (36.60s). Guard600 focused
+`zig build test -Dtest-filter=chunks --summary all` exit1 (5.08s), 3/4:
+`Conn.chunks requires the exact byte message shape` fails in the parser
+before checker assertions because four embedded Mo case arms use forbidden
+inline assignments. Full suite did not start. Lead terminal returned to
+prompt; scoped integrated mo/test pgrep exit1/empty.
+
+Worker authorized only multiline repair of those fixture arms in check.zig,
+then one guard600 focused run requiring explicit4/4, code/evidence commit and
+report-last update; parser, checker implementation and runtime frozen.
+Lead runtime HOLD pending repair. Raw build/focused logs and exits plus
+integration/grant/stop records are under
+`audit/evidence/2026-09-20/step44-integration/`. A fresh detached
+`lead-step44-lines-base` worktree at c4462935 was prepared, but no baseline
+build or measurement ran. All acceptance/performance obligations remain.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

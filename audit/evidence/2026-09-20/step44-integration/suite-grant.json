@@ -1,0 +1,25 @@
+{
+  "recorded_at_et": "2026-09-20T06:51:07.799366-04:00",
+  "revision": "c49d182174a1fc4f1fb1cb101e2affece8e222a7",
+  "build": {
+    "exit": 0,
+    "real_seconds": 36.6,
+    "user_seconds": 66.39,
+    "sys_seconds": 1.21
+  },
+  "commands": [
+    {
+      "name": "focused-zig-01",
+      "guard_seconds": 600,
+      "command": "zig build test -Dtest-filter=chunks --summary all"
+    },
+    {
+      "name": "full-suite-01",
+      "guard_seconds": 2400,
+      "command": "zig build test --summary all"
+    }
+  ],
+  "order": "Serial; full suite only iff focused0",
+  "capture": "/usr/bin/time -p; pipefail/tee; PIPESTATUS[0] exit file; 4GB guard",
+  "status": "Suite sequence started; no results yet"
+}

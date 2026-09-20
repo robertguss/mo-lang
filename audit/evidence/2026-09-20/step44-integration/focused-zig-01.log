@@ -1,0 +1,56 @@
+test
++- run test 3 pass, 1 fail (4 total)
+error: 'check.test.Conn.chunks requires the exact byte message shape' failed:
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:282:9: 0x1024ba93f in failAt (test)
+               return error.Rejected;
+               ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:277:9: 0x1024ba773 in fail (test)
+               return p.failAt(p.tok, code, what, why);
+               ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:1036:45: 0x1024bf85f in parseArm (test)
+                       .eq, .plus_eq, .minus_eq => return p.fail("MO0101", arm_assignment, why_token),
+                                                   ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:1007:24: 0x1024bd937 in parseCase (test)
+                   try p.push(try p.parseArm());
+                              ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:995:22: 0x1024bd453 in parseCaseStmt (test)
+               const node = try p.parseCase(.case_stmt);
+                            ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:1597:22: 0x1024d491b in parseUpdate (test)
+               const body = try p.parseCaseStmt();
+                            ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:1525:24: 0x1024d2da3 in parseProcess (test)
+               const update = try p.parseUpdate();
+                              ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:517:9: 0x1024c9d33 in parseDecl (test)
+               return switch (p.peek()) {
+               ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:410:54: 0x1024b9d17 in parseModule (test)
+                   while (isDeclStart(p.peek())) try p.push(try p.parseDecl());
+                                                            ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:150:5: 0x1024b893f in parseModules (test)
+           try p.parseModule();
+           ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/parser.zig:136:5: 0x1024df577 in parseProgram (test)
+           return parseModules(gpa, source, tokens, diags, true);
+           ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/check.zig:4394:18: 0x1024df13b in expectProgramCodes (test)
+           const tree = try parser.parseProgram(arena, source.items, tokens, &diags);
+                        ^
+       /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/src/check.zig:4682:5: 0x1024df4c7 in test.Conn.chunks requires the exact byte message shape (test)
+           try expectProgramCodes(&.{
+           ^
+failed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/zig-out/bin/mo ./.zig-cache/o/94c4d86d140e2fd888beaaed35ab5c93/test --cache-dir=./.zig-cache --seed=0x185a786b --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 3/4 tests passed (1 failed)
+test transitive failure
++- run test 3 pass, 1 fail (4 total)
+   +- compile test Debug native success 4s MaxRSS:717M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 66ms MaxRSS:35M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/03ae733854564e8804c8e7cb3798e788/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0x185a786b -Z7f143fc2911169d9 test -Dtest-filter=chunks --summary all
+real 5.08
+user 4.55
+sys 0.43

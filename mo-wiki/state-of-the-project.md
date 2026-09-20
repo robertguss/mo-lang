@@ -40,9 +40,11 @@ oracle drivers, exact-byte probes and full-width bounds pass in both runtimes.
 Pending-reader and late-TLS refusals pass in both runtimes. After bounded
 receive-window preparation, blocked-writer probes also pass in both runtimes:
 exact input consumed with actual Conn.write waiting before and afterward.
-All three corrective groups now have worker-focused evidence; frozen final
-code/evidence and report-last packaging is authorized. Independent integration,
-full-suite/timing and longer line measurements remain owed; no acceptance.
+All three corrective groups have worker-focused evidence and a reviewed final
+report. Isolated integration builds, but independent focused checks are 3/4:
+the byte-message checker test fails parsing four invalid inline fixture arms.
+A fixture-only repair is authorized; full suite has not started. Independent
+verification/timing and longer line measurements remain owed; no acceptance.
 The mislocated --surface diagnostic remains unfixed. Step42
 remains runtime HOLD/static preparation; its
 exhaustive normal/raw-ASan sweeps,
