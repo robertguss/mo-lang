@@ -30,8 +30,8 @@ and the original step42 worker filed reports, not accepted implementations.
 Lead review found blocking-job lifetime, ASan fiber integration and incomplete
 retained-value typing in step42; fresh `step42-fix-sol` owns corrections.
 Step44's final report is filed at `9ad0162a`, but review found a line-idle
-regression and inadequate TLS/binary/ownership evidence; a fresh corrective
-session is being assigned. Workers own code; Astra reviews and independently
+regression and inadequate TLS/binary/ownership evidence; fresh
+`step44-fix-sol` is preparing corrections. Workers own code; Astra reviews and independently
 verifies. Last accepted Darwin suite: 268 of 268. Linux, live provider,
 model-driven task and Pi comparison remain ahead.
 

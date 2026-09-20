@@ -143,9 +143,14 @@ no owned processes and temporary baseline removed. Integration is blocked:
 fixture line idle falls through to `unreachable` after a deleted return;
 the TLS positive oracle accepts ordinary errors; binary count/sum is not
 exact-byte evidence, and named ownership/blocked-writer controls remain.
-The current step44 brief has the full corrective requirements. Preserve the
-original worker/worktree; assign a fresh Sol/high correction session from
-this final commit, initially static-only while step42-fix validates.
+The current step44 brief has the full corrective requirements. Original
+worker/worktree preserved. Fresh `step44-fix-sol` is live in tab `w4:t19`,
+pane `w4:p3A`, branch/worktree `toolchain/step-44-review-fixes` /
+`toolchain-step-44-review-fixes`, exact base `9ad0162a` above. Startup showed
+Sol/no recent sessions with `--thinking high`; lead observed all three
+corrective groups tracked and static source inspection begun. Initially
+static-only while step42-fix validates. Exact assignment/launch receipts:
+`audit/evidence/2026-09-19/omp-resumption/step44-fix-launch.json`.
 Full suite, longer/interleaved measurements and both acceptances remain owed.
 
 ### Next, in order
