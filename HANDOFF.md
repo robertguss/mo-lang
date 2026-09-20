@@ -218,6 +218,31 @@ attempt remains untouched. Step44 stays held. Exact grant:
 `audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-rerun-01-grant.json`.
 Report results/owned cleanup, then hold; no acceptance implied.
 
+**Step42 corpus rerun complete:** exit 0 at frozen `65b3dd37` against prior
+unaccepted `be64e8a5`; all 60 interleaved samples retained. Lead read raw
+log/table/exit, checked five samples per tree/workload/runtime and computed
+the six best-of-five elapsed deltas:
+
+| Workload | Interpreter | Native |
+|---|---:|---:|
+| deferred-large | +0.89% | -1.56% |
+| spread | +0.32% | +0.29% |
+| duplex | +2.79% | +1.07% |
+
+Correction-only comparison, not whole-step overhead or acceptance. Initial
+uptime load was 15.06/8.45/6.13; sample one-minute loads ranged 10.21–12.91.
+Raw table headings incorrectly call the final/report-time 10.21/7.98/6.06
+triple "at the start"; per-row loads remain intact. Original failed attempt
+is untouched. Worker reports fresh baseline provenance, removal of only
+that temporary baseline after retaining evidence, and filtered cleanup
+exit 0 with no owned runtime/test/debugserver matches. Slot clear; step42
+runtime HOLD. Requested its static remaining-evidence inventory and
+step44's exact next focused commands; no new runtime grant yet.
+Raw `.log/.txt/.exit` copies: `audit/evidence/2026-09-19/omp-resumption/step42-corpus-rerun-01.*`.
+Structured result/provenance: `audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-complete.json`.
+Exhaustive stress/ASan obligations, final corrective reports, independent
+source review/integration and full-suite verification remain owed.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
