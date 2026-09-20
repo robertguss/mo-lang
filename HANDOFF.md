@@ -177,6 +177,24 @@ terminals, all worktrees, commits, logs and saved sessions. Receipt:
 Future debugger cleanup must include owned detached helpers (`--setsid`),
 not only mo/guard names. Close completed worker panes after evidence retention.
 
+**Step42 corrective corpus measurement slot granted:** focused checkpoints
+reported complete with no owned process left. Lead read the final blocking,
+retained-value, event and opt-in ASan GREEN summaries (each 2/2), plus the
+fiber-hooks-removed RED exposing the raw `__asan_handle_no_return` warning.
+Source/tests/driver frozen at `e79e755b2d893332cb51b490bc2fee91bff5bdb6`;
+baseline `be64e8a5086f6a47dcb6683d1313579d1e6f35a6` is the prior unaccepted
+delivery. This measures the correction delta, not whole-step overhead against
+accepted main. Step44 explicitly confirmed static-only/no owned process and
+remains held. Driver reviewed: deferred-large 400000, spread 2000, duplex;
+both runtimes, five samples each, interleaved/reversed order (60 samples).
+Outer guard 7200s, baseline compiler build 1800s, native builds/workloads
+900s; retain all samples, loads, failures and real exit. Exact grant:
+`audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-grant.json`.
+No source changes, other benchmarks, full suite, exhaustive stress/ASan,
+debugger, formatter, Linux or machine work in this slot. Cleanup, report
+explicit slot clearance, then hold. Source review/integrated acceptance,
+exhaustive checks and full-suite timings remain owed.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
