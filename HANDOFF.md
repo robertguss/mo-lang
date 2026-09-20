@@ -122,6 +122,11 @@ Lead read the raw failure/GREEN/cleanup logs under
 Step44 explicitly resumed focused checks/formatting. Step42-fix continues
 static preparation of remaining corrections until its next validation grant.
 No full sweep/suite/benchmark authorization. Original branches remain intact.
+**Step44 measurement slot requested, not yet granted:** fixed-volume chunks
+on the current checkpoint and unchanged lines before/after, both runtimes,
+best of five, guarded/sequential. Await fresh step42-fix clearance; it must
+hold runtime/check/formatter work through the slot. Exact checkpoints and
+all samples/loads/exits are required. No unfiltered suite permission.
 
 ### Next, in order
 
