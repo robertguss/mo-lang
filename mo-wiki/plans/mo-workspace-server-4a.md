@@ -95,6 +95,16 @@ option in `local.py`, and no change to what any test expects. No other harness
 file, no toolchain, no wiki, no `audit/`, `HANDOFF.md`; no machine, Docker or
 `/opt`; no push. Never use `tr`; `ls` is aliased, use `/bin/ls`.
 
+The real `mo test --write --sim 200` module checks also update shared
+`examples/programs/.mo.ids` (worker reported 397 added lines). That parent
+sidecar is outside this scope: do not commit it. Restore only check-generated
+changes, preserving any pre-existing edits; retain tool-generated `verified:`
+lines within owned modules and file the exact commands/results in the report.
+After integration, the lead regenerates the shared sidecar with real module
+checks in the separate verification worktree and verifies source/ID consistency
+before acceptance. That regeneration remains owed; no handwritten IDs or
+acceptance based only on retained annotations.
+
 ## Design requirements (each becomes a test before its code)
 
 1. **The wire, unchanged.** Same request and response shapes, limits, status

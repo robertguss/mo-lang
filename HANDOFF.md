@@ -84,6 +84,14 @@ Fixture half-close is internal model/test support only; public fixtures
 still expose full close, and real sockets prove public half-close. Launch
 receipt/assignment: `audit/evidence/2026-09-19/omp-resumption/step44-launch.json`.
 
+**Server integration obligation:** real `mo test --write --sim 200` on the
+server modules also updates shared `examples/programs/.mo.ids` (397 added
+lines reported). Worker scope excludes this parent sidecar: restore only
+its check-generated delta, preserve earlier work, retain owned modules'
+tool-generated verified lines, and file exact commands. Lead must regenerate
+the sidecar and verify source/ID consistency in the separate integration
+verification worktree before acceptance; do not hand-edit IDs.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
