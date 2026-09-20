@@ -21,17 +21,17 @@ Astra leading in the existing OMP pane and fresh OMP/Sol/high workers.
 The lead reviews and independently runs acceptance checks; workers write
 implementation code. The Claude Code/Opus workflow is superseded.
 
-**Current checkpoint, 19 Sep 2026, evening:** resumption authorized, not a new
-acceptance. Last accepted Darwin full suite: 268 of 268. Linux remains owed;
-the live provider, first model-driven task and Pi comparison remain ahead.
+**Current checkpoint, 20 Sep 2026, 8:30 AM ET:** Step44 accepted on Darwin,
+main db515f9b; last accepted full suite **272/272**. Step42 and server remain
+unaccepted. Linux, live provider, model-driven task and Pi comparison remain owed.
 
 | board | current work |
 |---|---|
-| Now | 20 Sep, 8:10 AM ET: Step44 independent build0/focused5/5; full-suite02 failed271/272 only at stale generated error catalog. Catalog regenerated (two rows), isolatedcdf1e966 runs full-suite03 under guard2400/owned sleep prevention. All12 fixture controls/every oracle retained; behavior/line measurements unrun. Step42 static drafts need real delayed/waiter paths, raw-stderr/missing-file fixes and test-only reclamation observability proposal; runtime HOLD, all7 obligations unwaived. No code accepted |
+| Now | Step42 static evidence revision: real delayed/waiter paths, raw-stderr/missing-file fixes and private reclamation observability proposal. Source frozen65b3dd37; no runtime grant, all7 obligations unwaived. Step44 accepted after independent full272/272 and30 CLI/socket checks; measured line cost disclosed |
 | Done today | Accepted on `main`: the rebuilt [[mo-application-workspace-v1]]; [[mo-harness-in-mo]] steps 1, 8 and 2; the raw-memory runtime fix ([[toolchain-raw-memory-report]]); [[interpreter-step-40]] (a scope that holds against links, `Fs.replace`); [[interpreter-step-43]] (the auditor's PR 15: every number in source held to its range, accepted 1:59 PM ET). [[mo-harness-end-to-end-v1]] (the Mo agent end to end on the machine with the scripted Logstat repair, accepted 2:20 PM ET). [[mo-agent-report-cap]] (the report cap and defect D1, accepted 3:06 PM ET); the [[report-claim-check]] calibration. [[interpreter-step-41]] (`Exec`, accepted on macOS 3:33 PM ET, full suite 268 of 268). the first x86_64 Linux full suite 249 of 249 on step 40's tree |
-| Next | In order: [[ci-gate]] (briefed, after step 42); the Mo six-tool server ([[mo-harness-in-mo]] step 4): part A briefed as [[mo-workspace-server-4a]], part B (`command` through `Exec`, the machine, cutover) after it; plan steps 5 to 7; provider live blockers with Robert's login; the first model-driven task; the Pi comparison |
+| Next | Fresh [[mo-workspace-server-4a]] consumer assignment on accepted chunks, separately verified without changed clients or weakened half-close/operator predicates; finish Step42 and then [[ci-gate]]; server part B (`command` through `Exec`, machine, cutover); plan steps5–7; provider login, first model-driven task, Pi comparison |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |
-| Recently done | [[mo-workspace-http-v1]], [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]], plus the three original foundations |
+| Recently done | [[interpreter-step-44]], accepted20 Sep8:30AM ET: bounded byte source, full272/272,30 controls,20 interleaved line samples; Linux owed. Earlier: [[mo-workspace-http-v1]], [[mo-workspace-recovery-v1]], [[mo-application-build-v1]], [[mo-provider-bridge-v1]], [[mo-coding-fixture-v1]], [[mo-workspace-foundation]], [[mo-provider-auth-v1]] |
 
 **Program 7 is on hold; its superiority thesis and runtime-claim retirement
 framing are superseded.** Its sealed specs and evidence remain historical; none
@@ -191,6 +191,7 @@ Rewritten 15 Sep 2026 after program 6, when Robert asked for the forest and agre
 
 | phase | status | briefs left, roughly |
 |---|---|---|
+| **Step44, bounded byte input** ([[interpreter-step-44]]) | accepted20 Sep on Darwin: full272/272 and independent socket/CLI controls; line measurements disclose observed cost, not zero overhead | server adoption separately; Linux owed |
 | The design, the corpus, the interpreter milestone (sessions 1–5) | done | — |
 | The toolchain under real programs (steps 5–28): formatter, stdlib, `Net`, `Http`, the C backend, fibers, the runtime surface, the derived deadline, the delayed send, the one-line `if`, the keywords as names, a `never` at rest, a map written in place | done | — |
 | Programs 1–6: jobq, logstat, kv, notes, agent, ledger | done; each found two to four toolchain bugs and several gaps | — |
@@ -225,6 +226,7 @@ The Next table at the top is the order; the rows here are the phases' record.
 
 | step | what | evidence |
 |---|---|---|
+| 44 | bounded owned Conn.chunks, existing source backpressure, exact binary input and half-close reply | [[interpreter-step-44]]; independent272/272,30 controls and20 larger line samples; accepted on Darwin20 Sep2026 |
 | 1–3 (sessions 1–3) | the wiki, design v0, the grammar, 13 comparisons | `mo-wiki/` |
 | 4 (session 5) | the corpus, 52 programs, three-model bake-off | [[corpus]], [[model-bakeoff]] |
 | 5.1–5.4 (session 5) | lexer, parser, tier-1 checker, VM, tier-2 contracts, test runner, processes, supervisors, `Mo.Sim` scheduler: **the milestone** | [[interpreter-step-1]] … [[interpreter-step-4]], `08-milestone.md` |

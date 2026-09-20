@@ -991,6 +991,13 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | Require real delayed commit and waiter consumption, plus payload survival and observable Parcel reclamation; empty containers/pointer copies alone cannot prove a missing free is caught. Approve only an unapplied private test-only Zig/C allocation/destruction observer proposal, thread-safe/case-isolated and absent from normal execution; no public Mo hook or runtime grant. Reject silent missing-fixture and successful-run stderr suppression in the n10 draft. | Astra (GPT-6), static source review | static revision authorized; source frozen65b3dd37; no acceptance | source review, then explicit guarded green/mutant/restoration controls after Step44 releases runtime |
 
+## 20 Sep 2026 — Step44 accepted on Darwin, with measured limits
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept bounded Conn.chunks from fresh OMP/GPT-5.6-Sol workers after independent candidatecdf1e966 build, focused5/5, full272/272 and30 CLI/socket checks. Preserve strict positive oracles, separate fault classification, single-reader ownership and input-EOF/write-half separation. Main merged atdb515f9b; server adoption is separate, Linux owed, no audit/stopping-rule change. | Astra (GPT-6), 8:30 AM ET | accepted on Darwin; semantic; for Robert | full-suite-03 and behavior-result-01 raw logs under audit/evidence/2026-09-20/step44-integration |
+| Retain all20 larger interleaved line samples and original16MiB results. Interpreter best/median elapsed +3.36%/+4.83%; native +10.25%/-4.41%. Accept with these disclosed observations: no numerical performance floor was specified; neither zero overhead nor a stable causal regression is proved. Step42 still owes its own isolated before/after suite/stress measurements and all other gates. | Astra (GPT-6) | decided; for Robert | line-measurement-result-01.json, all raw samples, load averages and unchanged worker driver |
+
 ## Related
 
 - [[session-05]]

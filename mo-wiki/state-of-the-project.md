@@ -24,52 +24,43 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Current, 19 Sep 2026, evening:** Astra leads in the existing OMP pane;
-every worker assignment starts a fresh clean Sol/high session. Server part A
-and the original step42 worker filed reports, not accepted implementations.
-Lead review found blocking-job lifetime, ASan fiber integration and incomplete
-retained-value typing in step42; fresh `step42-fix-sol` owns corrections.
-Step44's final report at `9ad0162a` required correction; its idle regression
-now has worker RED/GREEN (9/9), while TLS/binary/ownership proof and independent
-acceptance remain. Step42-fix completed its correction-only corpus rerun at
-`65b3dd37`: exit0, all60 samples, elapsed minima deltas -1.56% to +2.79%
-against the prior unaccepted delivery. No whole-step overhead or acceptance
-claim. Step44 now has worker native idle9/9, strict interpreter/native TLS2/2
-each and a separate fault target held over40 seeds at20%. Both forced-positive
-oracle drivers, exact-byte probes and full-width bounds pass in both runtimes.
-Pending-reader and late-TLS refusals pass in both runtimes. After bounded
-receive-window preparation, blocked-writer probes also pass in both runtimes:
-exact input consumed with actual Conn.write waiting before and afterward.
-All three corrective groups have worker-focused evidence and reviewed reports.
-The independent parser-fixture failure is repaired. The first full suite
-finished270/271, exit1/1142.19s, because11 strict controls conflicted with the
-ordinary corpus's fault-holding gate. All12 controls now remain automatic in
-toolchain testdata: strict100-seed faults0, separate100-seed faults20,
-canonical formatting and successful interpreter/native agreement. No positive
-oracle or ordinary corpus assertion was weakened.
-Corrected codeb7a21af7/report040da131 passed independent build/focused5/5.
-The second full suite finished271/272 at3bc0b508: stale generated diagnostic
-catalog only. Regeneration changed MO0209/MO0223; isolatedcdf1e966 now runs
-the third guard2400 full suite with observed sleep prevention. Runtime/test
-sources are unchanged by that repair. Behavior/line measurements remain unrun;
-no acceptance.
-The mislocated --surface diagnostic remains unfixed. Step42's static review
-requires missing-fixture/raw-stderr fixes, real delayed commit/waiter controls
-and an unapplied test-only reclamation observable proposal. Source/runtime
-remain frozen65b3dd37, with no execution grant. Its
-exhaustive normal/raw-ASan sweeps,
-current stale-answer mutants, packed lifecycle controls and hot-path report
-remain owed, alongside lead-owned suite timings and independent integration.
-Three completed worker panes and verified process leftovers were removed,
-with all evidence/worktrees preserved. Workers own code; Astra reviews and
-independently verifies. Last accepted Darwin suite: 268 of 268. Linux, live
-provider, model-driven task and Pi comparison remain ahead.
+**Current, 20 Sep 2026, 8:30 AM ET:** Astra leads this OMP session; every
+code assignment starts a fresh Sol/high worker in a separate worktree.
+[[interpreter-step-44]] is accepted on Darwin, merged locally at **db515f9b**
+after independent verification of cdf1e966: build, focused5/5, **272/272**
+full-suite tests (exit0,629.86s), and30 additional CLI/socket commands.
 
-The server's unchanged-wire blocker F1 is now filed at `8b0ff352`: its client
-times out before the line-only API supplies the 155-byte body.
-[[interpreter-step-44]] is the bounded byte-source unblock, not an HTTP
-rewrite. Server full-wire acceptance waits for the capability and a fresh
-consumer-integration assignment. Step42 corrective work remains isolated.
+`Conn.chunks` delivers bounded owned binary messages through existing runtime
+sources. Both runtimes preserve exact bytes and half-close replies, refuse
+conflicting readers/late TLS, and make input progress while a write remains
+blocked. The unchanged HTTP client receives200 before newline/shutdown; an
+unfinished oversized header receives431. Strict TLS success and its negative
+control stay separate from the seeded-fault oracle. All12 fixture controls
+remain automatic in toolchain testdata; ordinary corpus fault gates are intact.
+Earlier full-suite failures270/271 (classification) and271/272 (generated
+catalog) remain filed, not hidden.
+
+Twenty larger interleaved line measurements show interpreter elapsed
+best/median **+3.36%/+4.83%**, native **+10.25%/-4.41%**. The interpreter is
+slower in this run; native best and median disagree. All samples/load averages
+and original16MiB measurements are retained. No zero-overhead or causal claim.
+The existing --surface diagnostic line offset remains unfixed.
+
+Step42 remains unaccepted at frozen65b3dd37. Its fresh static-only worker must
+repair missing-fixture/raw-stderr false greens, exercise real delayed commits
+and waiter consumption, and propose private allocation/destruction observability.
+All seven obligations remain: current normal/raw-ASan exhaustive sweeps,
+small ASan and ordinary stale-answer mutants, packed lifecycle/reclamation proof,
+hot-path analysis, and lead-owned best-of-five suite timings. Its60 corrected
+runtime samples compare two unaccepted checkpoints, not the whole step's cost.
+Independent integration and the required stress timings are still owed.
+
+The source capability unblocks a fresh server-adoption assignment, not acceptance
+of the six-tool server. Its original F1 timeout remains historical evidence;
+full-wire and operator-cleanup predicates are not weakened. Linux remains
+deferred. Step39, Program7, full-sync durability and catch claims are unchanged.
+No live-provider/model-driven task/Pi-comparison acceptance. Nothing pushed or
+published to the auditor by this acceptance.
 
 The account below preserves the earlier checkpoints.
 

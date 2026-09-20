@@ -1,0 +1,25 @@
+{
+  "recorded_at_et": "2026-09-20T08:30:03.628242-04:00",
+  "decision": "Accepted on Darwin and merged locally; no push or audit publication.",
+  "lead": "Astra GPT-6",
+  "workers": "Fresh OMP GPT-5.6-Sol high sessions; latest worker code b7a21af7/report040da131",
+  "tested_candidate": "cdf1e9660f51623d71cfb7fffd6ceef8d8a99078",
+  "main_merge": "db515f9b299e4591b51223bc3bac1d6d706b8d90",
+  "raw_evidence_commit": "295ede24",
+  "verification": {
+    "build": "exit0",
+    "focused": "5/5",
+    "full_suite": "272/272, exit0, real629.86s",
+    "independent_commands": "30/30 outer0, real positive and negative outcomes retained",
+    "line_samples": "20/20 inner0, five per revision/runtime,256MiB each"
+  },
+  "limits": [
+    "Linux deferred",
+    "Observed interpreter line slowdown; native best/median disagree; no zero-overhead or causal attribution",
+    "Step42 not accepted; all seven obligations remain",
+    "Workspace server adoption and full-wire acceptance separate",
+    "Existing --surface diagnostic line offset remains unfixed",
+    "Step39/Program7/full-sync/catch claims unchanged"
+  ],
+  "cleanup": "Clean verification worktree; owned runtime processes gone except retained idle shell48917; historical worktrees/probes/evidence retained"
+}

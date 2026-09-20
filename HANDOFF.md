@@ -1,11 +1,11 @@
 # Mo Lang — Astra lead and fresh OMP/Sol workers (read START HERE)
 
-## START HERE: independent Step44 verification, 20 Sep 2026
+## START HERE: Step44 accepted; Step42 evidence continues, 20 Sep 2026
 
 Robert's Claude Code subscription is unavailable. Astra leads in this existing
 OMP session; workers use OMP with GPT Sol at high reasoning. Robert explicitly
 authorized resuming both saved units below after recording the new workflow.
-The afternoon pause is superseded for that work. No new code is accepted.
+The afternoon pause is superseded. Step44 is accepted; Step42/server remain open.
 
 Load `mo-lead`, then this section and `mo-wiki/SCHEMA.md`. Run the auditor check
 (`git fetch origin && python3 audit/automation/fable_poll.py check`; this
@@ -13,21 +13,22 @@ session's check at 7:36 PM ET found 0 new records). PRs 15 and 16 are merged.
 The lead owns briefs, reviews, records and acceptance; it may run independent
 builds/tests, but workers write all implementation and code, including probes.
 
-### Current ownership — 20 Sep, 8:10 AM ET
+### Current ownership — 20 Sep, 8:30 AM ET
 
-- **Lead runtime slot:** `lead/verify-step44` at **`cdf1e966`**, separate
-  worktree `.../lead-verify-step44`. Independent build0 and focused5/5 passed.
-  Full-suite02 at3bc0b508 finished **271/272, exit1/622.91s**: generated
-  `spec/errors.md` was stale (MO0209/MO0223). Guarded `zig build errors` repaired
-  only those two rows; no runtime/test source changed. **Full-suite03** now
-  runs under guard2400 in an OMP-owned background job with caffeinate97514's
-  sleep-prevention assertion observed. Terminal **w4:p3B / w4:t1A** is idle.
-  Earlier fixture-classification failure270/271 is preserved; all12 controls
-  remain automatic with strict positive and separate fault assertions.
-  Behavior/performance plans remain unrun. No Step44 code is on main.
+- **Step44 accepted on Darwin:** tested candidate **cdf1e966**, merged locally
+  to main at **db515f9b**. Independent build0, focused5/5, full **272/272**,
+  exit0/629.86s, then **30/30** independent CLI/socket commands passed.
+  Strict9/2, separate fault control, exact binary bytes/half-close, unchanged
+  HTTP client, ownership refusals and real blocked-writer progress are proved.
+  All12 fixture controls remain automatic; original corpus gates unchanged.
+  Earlier270/271 and271/272 failures remain filed. Catalog repair regenerated
+  only MO0209/MO0223. Runtime slot is now idle; no worker runtime grant implied.
+  Twenty256MiB line samples are complete: interpreter best/median elapsed
+  +3.36%/+4.83%; native +10.25%/-4.41%. No zero-overhead or causal claim.
+  Owned processes are gone except idle shell48917 in **w4:p3B / w4:t1A**.
 - **Step44 worker:** `step44-fix-sol`, **w4:p3A / w4:t19**, HOLD.
-  Corrected code/evidence **b7a21af7**, report-last **040da131** integrated only
-  in the lead verification tree. All11 worker commands exit0, strict9+2 under
+  Corrected code/evidence **b7a21af7**, report-last **040da131** now accepted
+  through main db515f9b. All11 worker commands exit0, strict9+2 under
   100 fault-free seeds, distinct fault1 under100/20%, both negative oracles,
   focused5/5. Latest two commits' attribution repaired without code/evidence
   changes; old pointers preserved. Ordinary corpus gates remain unchanged.
@@ -44,10 +45,11 @@ builds/tests, but workers write all implementation and code, including probes.
   not instructions to reuse their pane IDs or start from their old WIP.
   Server integration remains blocked; Linux remains deferred.
 
-Current evidence: `audit/evidence/2026-09-20/step44-integration/` and
-`audit/evidence/2026-09-20/step42-static-continuation.json`. Main holds lead
-records/specification only; the stdlib chunks row explicitly says acceptance
-is pending. No final acceptance or new accepted full-suite result is claimed.
+Current evidence: `audit/evidence/2026-09-20/step44-integration/README.md`
+and its acceptance/measurement records; Step42 static review remains separate.
+Main holds accepted Step44 code and lead records; no push or audit publication.
+Last accepted Darwin suite is272/272. Server consumption needs a fresh bounded
+assignment; Linux remains owed. Step42's seven obligations are not waived.
 
 ### Standing instructions learned today (in force)
 
@@ -578,6 +580,8 @@ Step 41: `-Dtest-filter="step 41"` and the full suite at `main` (first run, at
 `0b0f494b`: build 0, focused 5 of 6, the failure a test predicate fixed in
 `ba7fa7ac`; the fork child runs only on Linux). Every toolchain step accepted
 after it. VM access and the clone rule are in the lead skill, step 4.
+Step44: build, full suite, chunks-focused fixture gate and both-runtime socket
+controls on Linux; the Darwin acceptance atdb515f9b does not discharge these.
 
 ### Waiting on Robert (rows on the decision log, 19 Sep)
 

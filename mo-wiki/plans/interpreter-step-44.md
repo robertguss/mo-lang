@@ -5,7 +5,7 @@ updated: 2026-09-20
 type: plan
 tags: [runtime, stdlib, verification, processes]
 sources: [plans/mo-workspace-server-4a.md, plans/interpreter-step-20.md, plans/interpreter-step-38.md, spec/design-v0/09-stdlib.md]
-status: in-progress
+status: done
 ---
 
 # Step 44: bounded byte chunks from Conn
@@ -317,6 +317,44 @@ catalog was stale after the checker changes. The lead's guarded
 tree as cdf1e966. Runtime/test source is unchanged; no redundant focused run.
 Full-suite03 now runs under guard2400 with owned sleep prevention. All raw
 failures remain filed; this is not acceptance or a runtime regression claim.
+
+## Result — accepted on Darwin, 20 Sep 2026, 8:30 AM ET
+
+Astra (GPT-6) accepts the fresh OMP/GPT-5.6-Sol implementation and corrections
+after independent verification of cdf1e966; local main merge **db515f9b**.
+Build0, focused5/5, full **272/272**, exit0/629.86s, and30 independent
+CLI/socket commands passed. Raw evidence and exact commands:
+`audit/evidence/2026-09-20/step44-integration/README.md`.
+Earlier fixture-classification and stale-catalog failures remain preserved.
+
+Both runtimes pass strict chunks9/9 and TLS2/2, exact ordered binary bytes,
+half-close/reverse reply, unchanged HTTP client200 without newline/shutdown,
+unfinished-header431, full-width bound refusals, actual pending-reader/late-TLS
+refusals, and input progress while Conn.write remains waiting before and after.
+Novel bounds2/65535 pass. Seed41/40 runs: chunks9 without faults; separate TLS
+target held1 under20% faults, fault-free-only0. Forced handshake errors make
+the positive TLS test fail in both runtimes; they are not accepted as success.
+
+Longer line measurements use the unchanged worker driver,256MiB/4096-byte
+records, order A B B A A B B A A B, five samples per revision/runtime:
+
+| runtime | baseline best/median seconds | current best/median seconds | elapsed change best/median |
+|---|---|---|---|
+| interpreter | .142138 / .142983 | .146916 / .149886 | +3.36% / +4.83% |
+| native | .144516 / .171854 | .159326 / .164277 | +10.25% / -4.41% |
+
+Interpreter throughput best/median is -3.25%/-4.61%; native -9.30%/+4.61%.
+All20 samples/exits and load averages are retained, including broad native
+baseline variation. This is an observed interpreter slowdown, not zero cost;
+native best and median disagree. Changing host load and subsecond windows
+limit causal inference. Original16MiB results and worker chunks68.740/194.214
+MB/s remain separate. No numerical performance floor was specified.
+
+Verification tree clean; no owned runtime process remains except the retained
+idle shell. Historical worktrees/probes are evidence, not discarded scaffolding.
+Linux is owed. The existing --surface diagnostic offset remains unfixed.
+Server adoption/full-wire acceptance, Step42, Step39, Program7, full-sync
+durability and catch claims are not accepted by this step. Nothing pushed.
 
 ## Related
 
