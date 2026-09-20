@@ -1,0 +1,17 @@
+$ python3 toolchain/bench/step36/guard.py 180 -- /private/tmp/mo-step44-base-c4462935/toolchain/zig-out/bin/mo build /Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-conn-chunks/toolchain/bench/step44/lines_throughput.mo -o step44-base-c4462935-lines
+zig-out/mo-build/step44-base-c4462935-lines/step44-base-c4462935-lines
+load_average_start=5.26,5.34,5.26
+label=base-c4462935 mode=lines payload_bytes=16777216 payload_sha256=6bb102b33c34bab0a6f26a93213745b23bf6edcddf5a7b587b4e46e73c61fc8e record_bytes=4096 best_of=5
+sample runtime=run n=1 seconds=0.010954 MBps=1531.577 exit=0
+sample runtime=run n=2 seconds=0.010423 MBps=1609.634 exit=0
+sample runtime=run n=3 seconds=0.010673 MBps=1571.961 exit=0
+sample runtime=run n=4 seconds=0.010590 MBps=1584.245 exit=0
+sample runtime=run n=5 seconds=0.011251 MBps=1491.236 exit=0
+best runtime=run seconds=0.010423 MBps=1609.634
+sample runtime=binary n=1 seconds=0.016652 MBps=1007.545 exit=0
+sample runtime=binary n=2 seconds=0.010061 MBps=1667.577 exit=0
+sample runtime=binary n=3 seconds=0.009756 MBps=1719.763 exit=0
+sample runtime=binary n=4 seconds=0.009879 MBps=1698.342 exit=0
+sample runtime=binary n=5 seconds=0.009870 MBps=1699.891 exit=0
+best runtime=binary seconds=0.009756 MBps=1719.763
+load_average_end=5.26,5.34,5.26

@@ -1,0 +1,28 @@
+../examples/step44/chunks-tls-faults.mo:2:22: MO0323 Step44.ChunksTls is not a module of this program: there is no step44/chunks-tls.mo under the program root.
+  use Step44.ChunksTls{Sink, tried, successful?, faulted?}
+                       ^
+  why: A program is a tree of files: A.B is a/b.mo under the program root, the nearest directory holding a mo.root file, else the main file's own directory (grammar, Session 5). A use names a module of the program.
+../examples/step44/chunks-tls-faults.mo:7:9: MO0201 there is no tried in scope
+    got = tried(Tls.fixture(), Net.fixture(), Sink.start(), ["step44/1"], ["step44/1"])
+          ^
+  why: A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.
+../examples/step44/chunks-tls-faults.mo:7:45: MO0201 there is no variant named Sink
+    got = tried(Tls.fixture(), Net.fixture(), Sink.start(), ["step44/1"], ["step44/1"])
+                                              ^
+  why: A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.
+../examples/step44/chunks-tls-faults.mo:8:10: MO0201 there is no successful? in scope
+    assert successful?(got) or faulted?(got)
+           ^
+  why: A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.
+../examples/step44/chunks-tls-faults.mo:8:30: MO0201 there is no faulted? in scope
+    assert successful?(got) or faulted?(got)
+                               ^
+  why: A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.
+../examples/step44/chunks-tls-faults.mo:9:11: MO0201 there is no faulted? in scope
+    assert !faulted?(Ok(false)) and !faulted?(Error(BadPem))
+            ^
+  why: A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.
+../examples/step44/chunks-tls-faults.mo:9:36: MO0201 there is no faulted? in scope
+    assert !faulted?(Ok(false)) and !faulted?(Error(BadPem))
+                                     ^
+  why: A name is a binding in scope, a parameter, or a function or variant declared in this module, named on one of its use lines, or in the prelude (toolchain/PRELUDE.md). Nothing else exists. reply_by is the asker's deadline and reply_to is the asker itself, both bound only in an update arm for a message that carries a reply; elsewhere a call takes a Duration, and there is no asker to keep.

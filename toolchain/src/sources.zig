@@ -1,15 +1,18 @@
-//! The loops the runtime owns (design-v0/09, Net and Http; step 20). A process never loops
-//! around a call that waits: `listener.serve(into: p, idle: d)`, `conn.lines(into: p, idle:
-//! d)`, and `http_listener.serve(into: p, idle: d)` make the runtime accept or read from that
-//! call on and send each result to `p` as a message `p` declares, as Erlang's active sockets
-//! do. The scheduler is the loop.
+//! The loops the runtime owns (design-v0/09, Net and Http; steps 20 and 44). A process never
+//! loops around a call that waits: `listener.serve(into: p, idle: d)`,
+//! `conn.lines(into: p, idle: d)`, `conn.chunks(into: p, max_bytes: n, idle: d)`, and
+//! `http_listener.serve(into: p, idle: d)` make the runtime accept or read from that call on and
+//! send each result to `p` as a message `p` declares, as Erlang's active sockets do. The
+//! scheduler is the loop.
 //!
 //! - `Listener.serve`: `Accepted(conn: Conn)` per connection, and `Idle` whenever no
 //!   connection came for `idle`; the listener goes on being served.
 //! - `Conn.lines`: `Line(text: String)` per line, `LineTooLong` for a line over 64 KiB (the
 //!   next starts after it), `Closed` at the end of the stream (a last line with no newline
 //!   first), and `Idle` when no line came for `idle`, after which the connection is closed.
-//!   A connection this side closes stops being read, with no message.
+//! - `Conn.chunks`: nonempty `Chunk(bytes: List(UInt8))` pieces bounded by `max_bytes`,
+//!   `Closed` after buffered input at EOF, and `Idle` after no bytes for `idle`.
+//!   A connection this side closes stops either reader with no message.
 //! - `HttpListener.serve`: `Accepted(exchange: Exchange)` per whole request, and `Idle` as
 //!   `Listener.serve` sends it. Each connection's request is read on its own, so a slow client
 //!   holds up no other; one not whole within `idle` is closed, and one that is not HTTP is
@@ -45,19 +48,21 @@ const Value = vm_mod.Value;
 const Error = vm_mod.Error;
 const Turns = turns_mod.Turns;
 
-pub const Kind = enum { serve, lines, http_serve, request };
+pub const Kind = enum { serve, lines, chunks, http_serve, request };
 
 /// The messages each row sends, for the checker (check.zig, MO0223): each name, and its one
 /// field's name as the spec writes it and its type, or none.
 pub const Sent = struct { name: []const u8, field: ?[]const u8 = null, type: ?[]const u8 = null };
 pub const serve_messages = [_]Sent{ .{ .name = "Accepted", .field = "conn", .type = "Conn" }, .{ .name = "Idle" } };
 pub const lines_messages = [_]Sent{ .{ .name = "Line", .field = "text", .type = "String" }, .{ .name = "LineTooLong" }, .{ .name = "Closed" }, .{ .name = "Idle" } };
+pub const chunks_messages = [_]Sent{ .{ .name = "Chunk", .field = "bytes", .type = "List(UInt8)" }, .{ .name = "Closed" }, .{ .name = "Idle" } };
 pub const http_messages = [_]Sent{ .{ .name = "Accepted", .field = "exchange", .type = "Exchange" }, .{ .name = "Idle" } };
 
 /// The messages of the row `recv.name`, or null when it is not a source row.
 pub fn messagesOf(recv: []const u8, name: []const u8) ?[]const Sent {
     if (std.mem.eql(u8, recv, "Listener") and std.mem.eql(u8, name, "serve")) return &serve_messages;
     if (std.mem.eql(u8, recv, "Conn") and std.mem.eql(u8, name, "lines")) return &lines_messages;
+    if (std.mem.eql(u8, recv, "Conn") and std.mem.eql(u8, name, "chunks")) return &chunks_messages;
     if (std.mem.eql(u8, recv, "HttpListener") and std.mem.eql(u8, name, "serve")) return &http_messages;
     return null;
 }
@@ -73,8 +78,10 @@ const refused_retry_ms: i64 = 100;
 
 pub const Source = struct {
     kind: Kind,
-    /// The listener's handle (serve, http_serve) or the connection's (lines, request).
+    /// The listener's handle (serve, http_serve) or the connection's (lines, chunks, request).
     handle: u32,
+    /// A chunks source's maximum payload size; zero for every other source.
+    max_bytes: usize = 0,
     /// The process each message goes to.
     to: u32,
     idle_ms: i64,
@@ -131,14 +138,20 @@ fn crash(vm: *Vm, within: []const u8, clause: []const u8) Error {
     return error.Crash;
 }
 
-/// A source row: `a` is the receiver, then `into:`, then `idle:`.
+/// A source row: `a` is the receiver, then its named arguments in prelude order.
 pub fn row(vm: *Vm, kind: Kind, a: []const Value) Error!Value {
     const label = switch (kind) {
         .serve => "Listener.serve",
         .lines => "Conn.lines",
+        .chunks => "Conn.chunks",
         .http_serve => "HttpListener.serve",
         .request => unreachable,
     };
+    const max_bytes: usize = if (kind == .chunks) blk: {
+        const n = a[2].int;
+        if (n < 1 or n > 65_536) return crash(vm, label, "Conn.chunks max_bytes must be from 1 through 65,536");
+        break :blk @intCast(n);
+    } else 0;
     const sim = vm.sim orelse return crash(vm, label, "a source runs only under mo run or mo test");
     const h = a[0].cap.handle;
     var since: i64 = elapsed(sim);
@@ -150,10 +163,12 @@ pub fn row(vm: *Vm, kind: Kind, a: []const Value) Error!Value {
                 if (l.served) return crash(vm, label, "this listener is already served: a listener is served into one process");
                 l.served = true;
             },
-            .lines => {
+            .lines, .chunks => {
                 const c = n.conns.items[h];
-                if (c.lining) return crash(vm, label, "this connection's lines already go to a process: a connection is read into one process");
+                if (c.lining) return crash(vm, label, "this connection's input already goes to a process: a connection has one reader");
+                if (c.reading) return crash(vm, label, "Conn.read_line is already waiting on this connection: a connection has one reader");
                 c.lining = true;
+                if (c.used.len == 0) c.used = label;
             },
             .request => unreachable,
         }
@@ -166,15 +181,17 @@ pub fn row(vm: *Vm, kind: Kind, a: []const Value) Error!Value {
                 if (l.served) return crash(vm, label, "this listener is already served: a listener is served into one process");
                 l.served = true;
             },
-            .lines => {
+            .lines, .chunks => {
                 const c = &f.conns.items[h];
-                if (c.lining) return crash(vm, label, "this connection's lines already go to a process: a connection is read into one process");
+                if (c.lining) return crash(vm, label, "this connection's input already goes to a process: a connection has one reader");
                 c.lining = true;
+                if (c.used.len == 0) c.used = label;
             },
             .request => unreachable,
         }
     }
-    _ = try add(sim, .{ .kind = kind, .handle = h, .to = a[1].handle, .idle_ms = @max(a[2].duration, 0), .since = since });
+    const idle = a[if (kind == .chunks) 3 else 2].duration;
+    _ = try add(sim, .{ .kind = kind, .handle = h, .max_bytes = max_bytes, .to = a[1].handle, .idle_ms = @max(idle, 0), .since = since });
     return .none;
 }
 
@@ -219,6 +236,7 @@ pub fn rowLabel(kind: Kind) []const u8 {
         .serve => "Listener.serve",
         .lines => "Conn.lines",
         .http_serve, .request => "HttpListener.serve",
+        .chunks => "Conn.chunks",
     };
 }
 
@@ -240,6 +258,12 @@ fn text(sim: *Sim, line: []const u8) Error!Value {
     return .{ .string = try vm_mod.rawDupe(sim.vm.heap, u8, line) };
 }
 
+fn byteList(sim: *Sim, bytes: []const u8) Error!Value {
+    const out = try vm_mod.rawAlloc(sim.vm.heap, Value, bytes.len);
+    for (bytes, out) |byte, *v| v.* = .{ .int = byte };
+    return .{ .list = out };
+}
+
 // ---- Mo.Sim
 
 /// One message from each source that has one and room for it; true when one went.
@@ -257,6 +281,7 @@ pub fn pumpFixture(sim: *Sim) Error!bool {
         const went = switch (s.kind) {
             .serve, .http_serve => try serveFixture(sim, s),
             .lines => try linesFixture(sim, s),
+            .chunks => try chunksFixture(sim, s),
             .request => unreachable,
         };
         if (went) progressed = true;
@@ -292,7 +317,7 @@ fn serveFixture(sim: *Sim, s: *Source) Error!bool {
         return true;
     }
     const c = &f.conns.items[h];
-    const peer_closed = f.conns.items[c.peer].closed;
+    const peer_closed = f.peerEnded(h);
     switch (http.parse(c.inbound.items[c.start..], peer_closed, .request)) {
         .whole => |m| {
             l.head += 1;
@@ -317,7 +342,7 @@ fn serveFixture(sim: *Sim, s: *Source) Error!bool {
         },
         .failed => |why| {
             l.head += 1;
-            if (http.refusal(why)) |refused| if (!peer_closed) try f.conns.items[c.peer].inbound.appendSlice(sim.gpa, refused);
+            if (http.refusal(why)) |refused| if (!f.conns.items[c.peer].closed) try f.conns.items[c.peer].inbound.appendSlice(sim.gpa, refused);
             c.closed = true;
             return true;
         },
@@ -350,7 +375,7 @@ fn linesFixture(sim: *Sim, s: *Source) Error!bool {
     const start = if (tls) &c.clear_start else &c.start;
     const bytes = if (tls) c.clear.items else c.inbound.items;
     var skipping = c.skipping;
-    const taken, const what = net.scanLine(bytes[start.*..], f.conns.items[c.peer].closed, &skipping);
+    const taken, const what = net.scanLine(bytes[start.*..], f.peerEnded(s.handle), &skipping);
     if (what == .more) {
         start.* += taken;
         c.skipping = skipping;
@@ -379,6 +404,56 @@ fn linesFixture(sim: *Sim, s: *Source) Error!bool {
     }
     start.* += taken;
     c.skipping = skipping;
+    compactInbound(c);
+    s.since = elapsed(sim);
+    return true;
+}
+
+fn chunksFixture(sim: *Sim, s: *Source) Error!bool {
+    const f = &sim.fixture;
+    if (f.conns.items[s.handle].closed) {
+        s.done = true;
+        return false;
+    }
+    if (!sim.procs.items[s.to].up) {
+        f.conns.items[s.handle].closed = true;
+        s.done = true;
+        return false;
+    }
+    if (f.conns.items[s.handle].tls != null and !try f.pumpTls(sim.gpa, s.handle)) {
+        if (!room(sim, s, 0)) return false;
+        try send(sim, s.to, "Closed", &.{});
+        f.conns.items[s.handle].closed = true;
+        s.done = true;
+        return true;
+    }
+    const c = &f.conns.items[s.handle];
+    const tls = c.tls != null;
+    const start = if (tls) &c.clear_start else &c.start;
+    const bytes = if (tls) c.clear.items else c.inbound.items;
+    const pending = bytes[start.*..];
+    if (pending.len == 0 and !f.peerEnded(s.handle)) {
+        if (elapsed(sim) - s.since < s.idle_ms or !room(sim, s, 0)) return false;
+        try send(sim, s.to, "Idle", &.{});
+        c.closed = true;
+        s.done = true;
+        return true;
+    }
+    if (!room(sim, s, 0)) return false;
+    if (sim.fault(.closed, s.idle_ms)) |fault| {
+        try send(sim, s.to, if (fault == .timeout) "Idle" else "Closed", &.{});
+        c.closed = true;
+        s.done = true;
+        return true;
+    }
+    if (pending.len == 0) {
+        try send(sim, s.to, "Closed", &.{});
+        s.done = true;
+        return true;
+    }
+    const n = @min(pending.len, s.max_bytes);
+    try send(sim, s.to, "Chunk", &.{try byteList(sim, pending[0..n])});
+    start.* += n;
     compactInbound(c);
     s.since = elapsed(sim);
     return true;
@@ -442,6 +517,7 @@ pub fn pumpServer(sim: *Sim, t: *Turns) Error!void {
         switch (s.kind) {
             .serve, .http_serve => try serveServer(sim, t, s, now),
             .lines => try linesServer(sim, t, s, now),
+            .chunks => try chunksServer(sim, t, s, now),
             .request => try requestServer(sim, t, s, now),
         }
         if (s.done) continue;
@@ -581,6 +657,66 @@ fn linesServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
             .again => break,
             .broke => {
                 // The stream broke: the other side's end, as far as the process can tell.
+                n.close(c);
+                try send(sim, s.to, "Closed", &.{});
+                return retire(sim, t, s);
+            },
+        }
+    }
+    if (now - s.since >= s.idle_ms) {
+        try send(sim, s.to, "Idle", &.{});
+        n.close(c);
+        return retire(sim, t, s);
+    }
+    c.giveBack();
+    watch(t, s, c.fd());
+}
+
+fn chunksServer(sim: *Sim, t: *Turns, s: *Source, now: i64) Error!void {
+    const n = &sim.server.?.sockets;
+    const c = n.conns.items[s.handle];
+    if (c.closed) {
+        n.release(c);
+        return retire(sim, t, s);
+    }
+    if (!sim.procs.items[s.to].up) {
+        n.close(c);
+        return retire(sim, t, s);
+    }
+    while (true) {
+        while (room(sim, s, 0)) {
+            if (c.start < c.end) {
+                const len = @min(c.end - c.start, s.max_bytes);
+                const payload = try byteList(sim, c.buf[c.start .. c.start + len]);
+                c.start += len;
+                if (c.start == c.end) {
+                    c.start = 0;
+                    c.end = 0;
+                }
+                try send(sim, s.to, "Chunk", &.{payload});
+                s.since = now;
+                continue;
+            }
+            if (c.eof) {
+                try send(sim, s.to, "Closed", &.{});
+                return retire(sim, t, s);
+            }
+            break;
+        }
+        c.giveBack();
+        if (s.paused) {
+            s.since = now;
+            return;
+        }
+        _ = try c.roomToRead(@min(net.buffer_initial, s.max_bytes), s.max_bytes);
+        switch (n.readInto(c)) {
+            .done => |k| if (k == 0) {
+                c.eof = true;
+            } else {
+                c.end += k;
+            },
+            .again => break,
+            .broke => {
                 n.close(c);
                 try send(sim, s.to, "Closed", &.{});
                 return retire(sim, t, s);

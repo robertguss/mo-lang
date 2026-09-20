@@ -1,0 +1,50 @@
+command=['python3', 'bench/step36/guard.py', '60', '--', 'zig-out/bin/mo', 'check', '../examples/step44/chunks.mo']
+wall_seconds=0.029548
+../examples/step44/chunks.mo:55:10: MO0208 Conn has no field or function named chunks
+    server.chunks(into: collector, max_bytes: 8, idle: 1.minute)
+           ^
+  why: x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.
+../examples/step44/chunks.mo:55:17: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 8, idle: 1.minute)
+                  ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:55:34: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 8, idle: 1.minute)
+                                   ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:55:48: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 8, idle: 1.minute)
+                                                 ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:71:10: MO0208 Conn has no field or function named chunks
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+           ^
+  why: x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.
+../examples/step44/chunks.mo:71:17: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+                  ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:71:34: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+                                   ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:71:48: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+                                                 ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:83:10: MO0208 Conn has no field or function named chunks
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+           ^
+  why: x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.
+../examples/step44/chunks.mo:83:17: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+                  ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:83:34: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+                                   ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.
+../examples/step44/chunks.mo:83:48: MO0209 a named argument appears only inside a call's parentheses
+    server.chunks(into: collector, max_bytes: 2, idle: 1.minute)
+                                                 ^
+  why: Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.

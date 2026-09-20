@@ -31,7 +31,7 @@ pub const buffer_initial = 16 << 10;
 /// Connections the kernel queues for a listener before `accept` takes them.
 const backlog = 128;
 
-pub const Row = enum { listen, connect, accept, port, read_line, write, close, serve, lines };
+pub const Row = enum { listen, connect, accept, port, read_line, write, close, serve, lines, chunks };
 
 /// NetError's variants, by name.
 pub const Failure = enum { Timeout, Refused, Closed, LineTooLong, Busy };
@@ -163,7 +163,7 @@ pub const Conn = struct {
     /// done, so a record is never cut by another (a read's KeyUpdate answer, an alert); the
     /// engine seals each record whole into one queue, in order, under the runtime's lock.
     flushing: bool = false,
-    /// `lines` gave its reading to the runtime (sources.zig): a read_line on it is Busy.
+    /// `lines` or `chunks` gave its reading to the runtime: a read_line on it is Busy.
     lining: bool = false,
     /// The listener that accepted it, or no_listener: a wait on that listener can hear from
     /// a process holding it only after that process acts (sim.zig, held sends).
@@ -171,7 +171,7 @@ pub const Conn = struct {
     /// The TLS engine behind it (step 36, bricks/tls.zig), or null for a plain socket. With
     /// one, `fill` reads ciphertext off the socket and gives the plaintext the records held,
     /// and `writeAll` puts the engine's ciphertext on the socket; `buf`, `read_line`, `write`,
-    /// `lines`, and the NetErrors are the same either way.
+    /// `lines`, `chunks`, and the NetErrors are the same either way.
     tls: ?*brick.Conn = null,
     /// The row that first read or wrote on it: `TlsServer.accept` takes only a connection
     /// nothing has used, and names this row in its crash when one has.
@@ -331,7 +331,7 @@ pub const Net = struct {
                 break :blk .none;
             },
             // The runtime's loops (sources.zig); vm.zig sends them there.
-            .serve, .lines => unreachable,
+            .serve, .lines, .chunks => unreachable,
         };
     }
 
@@ -923,10 +923,13 @@ pub const Fixture = struct {
         inbound: std.ArrayList(u8) = .empty,
         start: usize = 0,
         closed: bool = false,
+        /// This end has stopped producing input for its peer but remains open for replies.
+        /// Public `Conn.close` is still a full close; fixture source tests use this direction.
+        write_closed: bool = false,
         skipping: bool = false,
         /// The listener whose backlog it went into, or no_listener for a client's end.
         listener: u32 = no_listener,
-        /// `lines` gave its reading to the runtime (sources.zig): a read_line on it is Busy.
+        /// `lines` or `chunks` gave its reading to the runtime: a read_line on it is Busy.
         lining: bool = false,
         /// The TLS engine behind it (step 36), or null. With one, `inbound` holds the peer's
         /// ciphertext and `clear` the plaintext the records gave up, which is what a line is
@@ -937,6 +940,12 @@ pub const Fixture = struct {
         /// The row that first read or wrote on it (`TlsServer.accept` takes neither).
         used: []const u8 = "",
     };
+
+    /// Whether no more input can arrive at `h`, independently of whether its peer can receive.
+    pub fn peerEnded(f: *const Fixture, h: u32) bool {
+        const peer = f.conns.items[f.conns.items[h].peer];
+        return peer.closed or peer.write_closed;
+    }
 
     /// The plaintext a fixture connection has, after every record its peer wrote is read.
     /// Nothing waits here: a simulated call cannot wait for bytes that have not been written.
@@ -994,7 +1003,7 @@ pub const Fixture = struct {
                 _ = try f.pumpTls(sim.gpa, peer);
                 if (f.conns.items[h].inbound.items.len > before) continue;
             }
-            if (f.conns.items[peer].closed and f.conns.items[h].inbound.items.len == 0) break .Closed;
+            if (f.peerEnded(h) and f.conns.items[h].inbound.items.len == 0) break .Closed;
             if (try sim.deliverRound(&delivered)) continue;
             sim.wait(@max(since + ms - sim.deadlineNow(), 0));
             break .Timeout;
@@ -1061,7 +1070,7 @@ pub const Fixture = struct {
                         return fail(vm, .Closed);
                     }
                     const c = &f.conns.items[h];
-                    const taken, const what = scanLine(c.clear.items[c.clear_start..], f.conns.items[c.peer].closed, &c.skipping);
+                    const taken, const what = scanLine(c.clear.items[c.clear_start..], f.peerEnded(h), &c.skipping);
                     c.clear_start += taken;
                     const got = try lineResult(vm, what) orelse {
                         sim.wait(within);
@@ -1074,7 +1083,7 @@ pub const Fixture = struct {
                     return got;
                 }
                 const c = &f.conns.items[h];
-                const taken, const what = scanLine(c.inbound.items[c.start..], f.conns.items[c.peer].closed, &c.skipping);
+                const taken, const what = scanLine(c.inbound.items[c.start..], f.peerEnded(h), &c.skipping);
                 c.start += taken;
                 const got = try lineResult(vm, what) orelse {
                     sim.wait(within);
@@ -1123,7 +1132,7 @@ pub const Fixture = struct {
                 f.conns.items[h].closed = true;
                 return .none;
             },
-            .serve, .lines => unreachable,
+            .serve, .lines, .chunks => unreachable,
         }
     }
 

@@ -83,7 +83,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .mismatch = .{ .code = "MO0206", .category = .types, .what = "expected <Type>, found <Type>", .why = "Mo has no implicit conversion: a value is used only where its type is expected. Named conversions cross types.", .fixes = &.{} },
     .arity = .{ .code = "MO0207", .category = .types, .what = "<function> takes <n> arguments, found <m>", .why = "Every parameter is passed at every call, and nothing else is: there are no defaults and no optional arguments.", .fixes = &.{} },
     .no_member = .{ .code = "MO0208", .category = .types, .what = "<Type> has no field or function named <name>", .why = "x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.", .fixes = &.{} },
-    .bad_named_arg = .{ .code = "MO0209", .category = .types, .what = "<function> takes its arguments by position; <label>: is not one of them", .why = "Construction names every field exactly once; functions take their arguments by position, and only the prelude's within:, into:, and delay: are named.", .fixes = &.{} },
+    .bad_named_arg = .{ .code = "MO0209", .category = .types, .what = "<function> takes its arguments by position; <label>: is not one of them", .why = "Construction names every field exactly once; ordinary functions take arguments by position, while prelude rows declare their permitted labels explicitly.", .fixes = &.{} },
     .bad_try = .{ .code = "MO0210", .category = .types, .what = "try applies to a Result or an Option; this is <Type>", .why = "try passes an Error or a None up to the caller, so it applies to a Result or an Option inside a function that returns the same kind.", .fixes = &.{} },
     .try_variants = .{ .code = "MO0211", .category = .types, .what = "try passes up <Enum>.<Variant>, but <Enum> has no variant <Variant>", .why = "try re-tags an error, it never converts one: every variant of the error it passes up must exist in the function's error type with the same name and fields.", .fixes = &.{} },
     .bad_pattern = .{ .code = "MO0212", .category = .types, .what = "<pattern> cannot match <Type>", .why = "A pattern matches the shape of its subject's type: a one-field variant positionally, a variant with more fields by name, a tuple by position.", .fixes = &.{} },
@@ -91,7 +91,7 @@ pub const catalog = std.enums.EnumArray(Code, Entry).init(.{
     .misplaced = .{ .code = "MO0214", .category = .types, .what = "<form> <does what>, so it appears only in <place>", .why = "Some forms belong to one place: result and old to contracts, assert to tests, any to properties, T.all and flows to never, break to a for, return to a function body.", .fixes = &.{} },
     .not_assignable = .{ .code = "MO0215", .category = .types, .what = "<name> is not a var, so it cannot be assigned; bind a new name or make it var <name>", .why = "Only var, inout, and state places change; a name bound with = is bound once, and an inout argument must be a var the caller holds.", .fixes = &.{} },
     .impl_mismatch = .{ .code = "MO0216", .category = .types, .what = "impl <Trait> for <Type> is missing <function>", .why = "An impl keeps the trait's promise exactly: every function the trait lists, with Self replaced by the implementing type, and nothing else.", .fixes = &.{} },
-    .source_messages = .{ .code = "MO0223", .category = .types, .what = "<Process> is sent the messages of <row> but declares no <Message>; add message <Message> to it, with no reply.", .why = "Listener.serve, Conn.lines, and HttpListener.serve make the runtime accept or read from that call on and send each result to the process into: names (design-v0/09, Net and Http; step 20). A process's message lines are its whole protocol, so the runtime sends only what the process declares it takes: every message the row sends, each with the one field type the row gives it, and no reply, since nobody waits for one.", .fixes = &.{} },
+    .source_messages = .{ .code = "MO0223", .category = .types, .what = "<Process> is sent the messages of <row> but declares no <Message>; add message <Message> to it, with no reply.", .why = "Listener.serve, Conn.lines, Conn.chunks, and HttpListener.serve make the runtime accept or read from that call on and send each result to the process into: names (design-v0/09, Net and Http; steps 20 and 44). A process's message lines are its whole protocol, so the runtime sends only what the process declares it takes: every message the row sends, each with the one field type the row gives it, and no reply, since nobody waits for one.", .fixes = &.{} },
     .unnamed_fields = .{ .code = "MO0222", .category = .types, .what = "<Type> is built by naming its fields: <Type>(<field>: ...)", .why = "Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values.", .fixes = &.{} },
     .literal_range = .{ .code = "MO0217", .category = .types, .what = "<literal> does not fit in <Type>", .why = "Integers are sized; a literal must fit the type it is given, and overflow is never implicit.", .fixes = &.{} },
     .body_lines = .{ .code = "MO0301", .category = .laws, .what = "<function> has a body of <n> lines and the limit is 70; split it into named functions.", .why = "A function body is at most 70 lines (chapter 2, shape laws), so a whole function is read at once. The fix is named helper functions.", .fixes = &.{} },
@@ -3259,7 +3259,7 @@ const Checker = struct {
                 const fields = c.fields.items[v.fields.start..v.fields.end];
                 if (m.type) |ty| {
                     var env: Env = .{};
-                    break :blk fields.len == 1 and c.pool.resolve(fields[0].type) == c.pool.resolve(try c.parseTs(ty, &env));
+                    break :blk fields.len == 1 and std.mem.eql(u8, fields[0].name, m.field.?) and c.pool.unify(fields[0].type, try c.parseTs(ty, &env));
                 }
                 break :blk fields.len == 0;
             } else false;
@@ -3669,18 +3669,18 @@ const Checker = struct {
 
 pub fn primitive(name: []const u8) ?Id {
     const table = [_]struct { []const u8, Id }{
-        .{ "Int8", types.int(.i8) },         .{ "Int16", types.int(.i16) },   .{ "Int32", types.int(.i32) },
-        .{ "Int64", types.int(.i64) },       .{ "UInt8", types.int(.u8) },    .{ "UInt16", types.int(.u16) },
-        .{ "UInt32", types.int(.u32) },      .{ "UInt64", types.int(.u64) },  .{ "Float32", types.float32 },
-        .{ "Float64", types.float64 },       .{ "Bool", types.bool_ },        .{ "String", types.string },
-        .{ "Time", types.time },             .{ "Duration", types.duration }, .{ "Deadline", types.deadline }, .{ "Clock", types.cap(.clock) },
-        .{ "Fs", types.cap(.fs) },           .{ "Events", types.cap(.events) }, .{ "Ledger", types.cap(.ledger) },
-        .{ "Platform", types.cap(.platform) }, .{ "Env", types.cap(.env) },     .{ "Out", types.cap(.out) },
-        .{ "Net", types.cap(.net) },         .{ "Listener", types.cap(.listener) }, .{ "Conn", types.cap(.conn) },
-        .{ "Http", types.cap(.http) },       .{ "HttpListener", types.cap(.http_listener) }, .{ "Exchange", types.cap(.exchange) },
-        .{ "Runtime", types.cap(.runtime) },   .{ "Random", types.cap(.random) },
+        .{ "Int8", types.int(.i8) },           .{ "Int16", types.int(.i16) },            .{ "Int32", types.int(.i32) },
+        .{ "Int64", types.int(.i64) },         .{ "UInt8", types.int(.u8) },             .{ "UInt16", types.int(.u16) },
+        .{ "UInt32", types.int(.u32) },        .{ "UInt64", types.int(.u64) },           .{ "Float32", types.float32 },
+        .{ "Float64", types.float64 },         .{ "Bool", types.bool_ },                 .{ "String", types.string },
+        .{ "Time", types.time },               .{ "Duration", types.duration },          .{ "Deadline", types.deadline },
+        .{ "Clock", types.cap(.clock) },       .{ "Fs", types.cap(.fs) },                .{ "Events", types.cap(.events) },
+        .{ "Ledger", types.cap(.ledger) },     .{ "Platform", types.cap(.platform) },    .{ "Env", types.cap(.env) },
+        .{ "Out", types.cap(.out) },           .{ "Net", types.cap(.net) },              .{ "Listener", types.cap(.listener) },
+        .{ "Conn", types.cap(.conn) },         .{ "Http", types.cap(.http) },            .{ "HttpListener", types.cap(.http_listener) },
+        .{ "Exchange", types.cap(.exchange) }, .{ "Runtime", types.cap(.runtime) },      .{ "Random", types.cap(.random) },
         .{ "Tls", types.cap(.tls) },           .{ "TlsServer", types.cap(.tls_server) }, .{ "TlsClient", types.cap(.tls_client) },
-        .{ "Exec", types.cap(.exec) },         .{ "Program", types.cap(.program) },     .{ "Command", types.cap(.command) },
+        .{ "Exec", types.cap(.exec) },         .{ "Program", types.cap(.program) },      .{ "Command", types.cap(.command) },
     };
     for (table) |e| if (std.mem.eql(u8, e[0], name)) return e[1];
     return null;
@@ -4427,7 +4427,8 @@ const lib_module =
 ;
 
 test "use brings in the types and functions a module exposes, by bare name" {
-    try expectProgramCodes(&.{ lib_module,
+    try expectProgramCodes(&.{
+        lib_module,
         \\module A.App
         \\expose doubled, dark?
         \\
@@ -4449,14 +4450,16 @@ test "use brings in the types and functions a module exposes, by bare name" {
 }
 
 test "a private name, a bare use, and a module the program does not hold" {
-    try expectProgramCodes(&.{ lib_module,
+    try expectProgramCodes(&.{
+        lib_module,
         \\module A.App
         \\use A.Lib{Pair, helper}
         \\fn f(p: Pair) : UInt32
         \\  helper(p.x)
         \\end
     }, &.{ "MO0322", "MO0201" });
-    try expectProgramCodes(&.{ lib_module,
+    try expectProgramCodes(&.{
+        lib_module,
         \\module A.App
         \\use A.Lib
         \\fn f() : UInt32
@@ -4673,6 +4676,48 @@ test "a source row's into: names a process that declares every message the row s
     // The worker lacks LineTooLong and gives Idle a reply; the second serve's worker lacks
     // Accepted, and its Idle has a reply.
     try std.testing.expectEqualStrings("MO0223 MO0223 MO0223 MO0223 ", codes.items);
+}
+
+test "Conn.chunks requires the exact byte message shape" {
+    try expectProgramCodes(&.{
+        \\module T.ChunkMessages
+        \\process Good()
+        \\  state
+        \\    bytes: UInt64
+        \\  end
+        \\  message Chunk(bytes: List(UInt8))
+        \\  message Closed
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Chunk(bytes): state.bytes += bytes.size
+        \\      Closed | Idle: state.bytes += 0
+        \\    end
+        \\  end
+        \\end
+        \\process Wrong()
+        \\  state
+        \\    bytes: UInt64
+        \\  end
+        \\  message Chunk(data: List(UInt8))
+        \\  message Closed
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Chunk(data): state.bytes += data.size
+        \\      Closed | Idle: state.bytes += 0
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Top
+        \\  child Good, restart: :always
+        \\  child Wrong, restart: :always
+        \\end
+        \\fn registered(conn: Conn, good: Handle(Good), wrong: Handle(Wrong))
+        \\  conn.chunks(into: good, max_bytes: 1, idle: 1.ms)
+        \\  conn.chunks(into: wrong, max_bytes: 1, idle: 1.ms)
+        \\end
+    }, &.{"MO0223"});
 }
 
 test "an invariant that reads old(state) needs a test rejects that starts or messages its process" {
