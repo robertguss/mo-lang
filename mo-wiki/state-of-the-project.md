@@ -34,8 +34,11 @@ now has worker RED/GREEN (9/9), while TLS/binary/ownership proof and independent
 acceptance remain. Step42-fix completed its correction-only corpus rerun at
 `65b3dd37`: exit0, all60 samples, elapsed minima deltas -1.56% to +2.79%
 against the prior unaccepted delivery. No whole-step overhead or acceptance
-claim. Slot clear; its remaining evidence inventory and step44's focused
-command review are next. Exhaustive checks and independent integration remain owed.
+claim. Step44's native idle tests now pass9/9, but strict TLS stopped at a
+checker syntax error before dispatch. Static syntax and probe-oracle corrections
+are next; both workers runtime HOLD. Step42's exhaustive normal/raw-ASan sweeps,
+current stale-answer mutants, packed lifecycle controls and hot-path report
+remain owed, alongside lead-owned suite timings and independent integration.
 Three completed worker panes and verified process leftovers were removed,
 with all evidence/worktrees preserved. Workers own code; Astra reviews and
 independently verifies. Last accepted Darwin suite: 268 of 268. Linux, live

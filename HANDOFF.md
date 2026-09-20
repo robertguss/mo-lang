@@ -243,6 +243,38 @@ Structured result/provenance: `audit/evidence/2026-09-19/omp-resumption/step42-c
 Exhaustive stress/ASan obligations, final corrective reports, independent
 source review/integration and full-suite verification remain owed.
 
+**Latest focused handoff:** step44 received only proposed commands 1–3:
+native idle build/test (guards 180s/120s), then strict TLS `mo test --write`
+(120s). Build exit 0; native tests **9 passed, 0 failed, 0 skipped**,
+including the line-idle terminal regression. TLS command exited 1 in the
+checker: MO0102 at `chunks-tls.mo:149:100`, a multiline `if` ending after
+`and`. No TLS test dispatched or metadata regenerated. Lead read both raw
+logs. Worker stopped, reported scoped cleanup clear and restored runtime
+HOLD; commands 4–20 never ran. Static syntax correction only, alongside
+preflight corrections, before a fresh command proposal.
+
+Preflight found two false-pass risks in later probes: negative-result
+helpers accept any nonzero plus expected text, including a later watchdog
+kill; full-width bound parsing falls back to zero. Require explicit expected
+termination, strict parsing and proof the actual bound equals the requested
+value. Clarify fault simulation selection/separation without weakening the
+strict TLS positive oracle. Exact proposal, limited grant and results:
+`audit/evidence/2026-09-19/omp-resumption/step44-focused-validation-grant-01.json`
+and `step44-focused-validation-result-01.json`; native/TLS raw logs retained
+beside them. No further runtime grant.
+
+**Step42 inventory received; nothing waived.** Current evidence still owed:
+exhaustive normal stress; exhaustive raw-ASan corpus; current n=10/45-byte
+ASan stale-answer mutant; ordinary interpreter/native stress-poison mutants;
+packed retaining-boundary transfer/drop/timeout/crash/cleanup; hot-path
+analysis; lead-owned unfiltered suite timing. Historical stress/mutant logs
+do not cover the current ownership/fiber corrections. Inventory retained as
+`audit/evidence/2026-09-19/omp-resumption/step42-review-obligations-inventory.txt`.
+Step42 may statically prepare scoped test/probe drafts, exact commands and
+hot-path notes; runtime implementation and measured driver remain frozen.
+No runtime/build/test/formatter grant. Final report stays blocked; Linux
+remains deferred. Both workers now runtime HOLD.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
