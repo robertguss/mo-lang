@@ -1,0 +1,46 @@
+{
+  "recorded_at": "2026-09-20T11:24:59.337258-04:00",
+  "status": "stopped on lead command error; runtime released",
+  "cause": "Lead grant incorrectly used mo fmt --write. main.zig215 reserves --write for test; fmt writes by default. No compiler defect or source failure inferred.",
+  "attempt": "chunks2-connection-format-01",
+  "command": {
+    "argv": [
+      "python3",
+      "toolchain/bench/step36/guard.py",
+      "30",
+      "--",
+      "toolchain/zig-out/bin/mo",
+      "fmt",
+      "--write",
+      "examples/programs/workspace-server/connection.mo"
+    ],
+    "cwd": "repository root"
+  },
+  "output": "usage: mo check [--recipe Module.Recipe] <file.mo> [--json]\n       mo test [--all | --write] [--sim [N]] [--seed S] [--faults P] [--until F] <file.mo> [--json]\n       mo run [--clock ISO-8601] [--events N] [--crashes N] [--surface PORT] <file.mo> [--json] [-- args...]\n       mo build <file.mo> [-o name] [--no-contracts] [--tests] [--target triple] [--surface] [--json]\n       mo fmt [--check | --stdout] <file.mo> [--json]\n       mo fix [--dry-run] <file.mo> [--json]\n",
+  "exit": 2,
+  "elapsed_seconds_reported": 0.0,
+  "unrun_modules": [
+    "connection",
+    "operator",
+    "server",
+    "main",
+    "double",
+    "f1_repro",
+    "hostile_fs",
+    "strict"
+  ],
+  "unchanged_subtotal": 27,
+  "worker_reported_sidecar": {
+    "entries": 7,
+    "sha256": "4e0a9120d4ac6d78bd5e52c9579e7fbe570000bc8c41057d5d23cc84a828eb35",
+    "staged": false
+  },
+  "worker_reported_clearance": {
+    "protected_files_unchanged": true,
+    "evidence_kib": 664,
+    "owned_processes": 0,
+    "temporary_files": 0,
+    "runtime_released": true,
+    "compiler_cache_preserved": true
+  }
+}

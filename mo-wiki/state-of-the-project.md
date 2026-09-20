@@ -49,8 +49,8 @@ The existing --surface diagnostic line offset remains unfixed.
 Step42 remains unaccepted. Frozen65b3dd37 is input to a provisional
 accepted-main4e0bfc0e composition; source conflicts are resolved, not verified.
 Revised lifetime controls expose paired counts and complete payloads. A known
-enqueue error-ownership hole now blocks AFTER freeze; static repair design
-and one private patch-context rebase remain. No composed runtime proof.
+enqueue error-ownership hole blocks AFTER freeze. The private patch context
+is rebased; reviewed four-file ownership repair is source-only. No runtime proof.
 All seven obligations remain: current normal/raw-ASan exhaustive sweeps,
 small ASan and ordinary stale-answer mutants, packed lifecycle/reclamation proof,
 hot-path analysis, and lead-owned best-of-five suite timings. Its60 corrected
@@ -69,9 +69,11 @@ combines accepted main with saved serverd689b441. Its shared formatter repair
 passed a fresh build, focused2/2, original strict smoke and full15/15 matrix.
 Missing server verification records then blocked tests; promoted generation
 proved27 tests in seven modules and recorded their provenance before
-connection.mo's three nesting-depth diagnostics. Runtime is released for
-a static connection-only refactor. Remaining eight metadata targets and the
-full42-test gates are unproved. Strict7 retains its separate zero-fault gate;
+connection.mo's three nesting-depth diagnostics. Those cleared, but grant07
+stopped before tests at MO0303: the new auth helper exceeded six parameters.
+Runtime is released for a guarded-arm refactor that removes the helper.
+Grant06's lead fmt flag error is retained; full42-test gates remain unproved.
+Strict7 retains its separate zero-fault gate;
 the three tolerant controls remain ordinary. Parent metadata stays unstaged.
 Step42 is static-only, and all memory runtime/mutant/timing proof remains owed.
 The completed Step44 pane is retired; evidence and worktrees are preserved.

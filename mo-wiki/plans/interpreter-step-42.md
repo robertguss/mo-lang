@@ -363,6 +363,18 @@ allocation-failure proof before production edits. AFTER remains unfrozen.
 `audit/evidence/2026-09-20/step42-composition-review-05.json` preserves the
 source witnesses and exact static-only scope.
 
+Composition review06 independently checked the rebased private patch: all195
+changed rows match the frozen original; applicability0, unapplied. The
+four-file source repair is now authorized without runtime. Keep existing
+markRunnable: reserve queues/trace first, then its fallible resize/publication,
+then an infallible commit under the runtime lock. No split scheduler API is
+needed. Use prefix cursors, not per-slot sentinels, for error-only batch cleanup;
+cover already-owned emits/answers if an earlier commit phase fails. Adjacent
+answer-map and mailbox-to-log ownership seams are explicitly in scope.
+Three permanent allocation-failure behavior controls plus private parcel
+controls are authorized as source, not execution. Review06 records the exact
+limits; normal, ASan, mutant, reclamation and timing proof are still withheld.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]

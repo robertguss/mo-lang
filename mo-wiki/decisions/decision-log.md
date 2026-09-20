@@ -1041,6 +1041,13 @@ direction separately from the lead's conservative execution interpretation.
 | Use exact strict summary fields:7 tests and7 simulated at faults0, held_under_faults0 and fault_free_only0. Earlier “7 held” wording described success informally, not the held-under-faults counter; the existing corpus gate is authoritative and unchanged. | Astra (GPT-6), source correction | clarified; no strict run claimed | corpus checkContractFixture and later real strict summary |
 | Do not freeze composed Step42 with the known enqueue ownership hole. Require success-only ownership transfer with failure-atomic publication and audit caller cleanup, including partially transferred batches. A source-send errdefer alone can double-free after enqueue's post-insertion failure. Permit only a static repair proposal and private context-only test-patch rebase first. | Astra (GPT-6), composition review05 | static-only; no acceptance | bounded source/caller review and allocation-failure controls under a later grant |
 
+## 20 Sep 2026 — Bound ownership implementation and correct the formatter grant
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Authorize the reviewed four-file Step42 ownership repair as source only. Retain markRunnable's API; pre-reserve mailbox/trace, call its fallible resize/publish under the runtime lock, then commit infallibly. Prefer prefix cursors to sentinel stores, cover all already-owned commit buffers on failure, and include the explicitly reviewed answer/log seams. No native change, production audit instrumentation or AFTER freeze. | Astra (GPT-6), composition review06 | implementation authorized, runtime withheld | source/caller review and three permanent plus private allocation-failure controls |
+| Own grant06's invalid mo fmt --write invocation as a lead command error, not a compiler failure. Preserve exit2 and untouched seven-record/27-test subtotal. Grant07 uses the existing default fmt invocation followed by only the remaining eight generators; no first-seven repeat or broader runtime grant. | Astra (GPT-6) | corrected bounded grant; no new pass claimed | correctness-result06 and grant07 |
+
 ## Related
 
 - [[session-05]]

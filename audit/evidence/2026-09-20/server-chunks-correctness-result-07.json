@@ -1,0 +1,60 @@
+{
+  "recorded_at": "2026-09-20T11:28:42.580507-04:00",
+  "status": "formatter passed; generator stopped on MO0303 before tests; runtime released",
+  "attempts": [
+    {
+      "name": "chunks2-connection-format-02",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "30",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "fmt",
+          "examples/programs/workspace-server/connection.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "",
+      "exit": 0
+    },
+    {
+      "name": "chunks2-write-connection-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/connection.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "examples/programs/workspace-server/connection.mo:388:4: MO0303 head_transition takes 9 parameters and the limit is 6; group them in a struct.\n  fn head_transition(conn: Conn, identity: Identity, gate: Handle(Gate), runner: Handle(Runner),\n     ^\n  why: A function takes at most 6 parameters (chapter 2, shape laws); past that, the values belong together in a struct.\n",
+      "exit": 1
+    }
+  ],
+  "unchanged_subtotal": 27,
+  "unchanged_sidecar_entries": 7,
+  "worker_reported_evidence_kib": 684,
+  "protected_files_reported_unchanged": true,
+  "worker_reported_clearance": true,
+  "static_correction_directive": "Grant07 stopped correctly: default fmt passed; connection generator reports MO0303 because head_transition has9 parameters, maximum6. No test or metadata result from connection. Runtime is released. This helper must be removed, not hidden behind a bag-of-fields struct or weakened shape law. Static connection.mo edit only; preserve every assertion and prior successful metadata.\n\nSmallest source-grounded repair: keep guarded outer Chunk(bytes) if reading?(phase). In inner case step.1 use a HeadDone(head: parsed, reading: body) arm guarded by gate.ask(Check(offered: parsed.offered), within:1_000.ms)==Ok(true), with the original authorized phase/body/next_phase/ids updates directly in its body. Follow it with an unguarded HeadDone fallback that calls the existing401 refusal and retains current reading/ids. Guard executes once only after HeadDone matches; fallback never asks again. This keeps case/case/inline-if depth3, eliminates the9-argument helper/return tuple, and avoids a new allocation or generic context struct. Lead inspected check.zig2500\u20132501: case guards are ordinary Bool expressions, not pure-only guards. Inspect capabilities/compiler guard handling if needed; report any genuine contraindication instead of inventing one.\n\nRemove now-unused head_transition and its helper-only comment, retaining a concise auth comment at the guarded arm if useful. Keep head_result/scanned and all non-Chunk paths unchanged. No compiler, test, footer, sidecar or other source edit. NO runtime, formatter, write, build, check, probe, benchmark, commit or report. Return exact connection-only diff, <=6-parameter/<=3-depth reasoning, and preserve all failed attempt directories. Await a separate runtime grant.",
+  "directive_delivery": {
+    "text": "{\"id\":\"cli:agent:prompt\",\"result\":{\"agent\":{\"agent\":\"omp\",\"agent_status\":\"idle\",\"cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"focused\":false,\"foreground_cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"interactive_ready\":true,\"name\":\"server-chunks-sol\",\"pane_id\":\"w4:p3D\",\"revision\":59397,\"state_change_seq\":916,\"tab_id\":\"w4:t1C\",\"terminal_id\":\"term_65be97259188e85\",\"terminal_title\":\"\u03c0 > Run Final Connection Release Validation\",\"terminal_title_stripped\":\"\u03c0 > Run Final Connection Release Validation\",\"workspace_id\":\"w4\"},\"type\":\"agent_prompted\"}}\n\n\nWall time: 0.37 seconds",
+    "details": {
+      "timeoutSeconds": 300,
+      "wallTimeMs": 371.68479100614786
+    }
+  }
+}

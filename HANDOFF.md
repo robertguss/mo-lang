@@ -36,10 +36,10 @@ builds/tests, but workers write all implementation and code, including probes.
   Revised lifetime controls are reviewed at source level, not runtime proof.
   Separate `lead-step42-composed-4e0bfc0e` combines accepted-main4e0bfc0e
   with frozen65b3dd37; corpus/sim conflicts are resolved, preserving Step44.
-  **Static follow-up only:** rebase one private test-patch context and propose
-  failure-atomic enqueue ownership repair. Enqueue can fail after insertion;
-  adding source-send cleanup alone risks double-free. AFTER is not frozen.
-  Original drafts remain frozen; no audit/mutant patches or tests run.
+  **Static source repair only:** the private patch context is rebased with195
+  unchanged changed-lines; apply-check0, never applied. Reviewed enqueue and
+  adjacent retained-owner failure repairs are now authorized in four files.
+  AFTER is not frozen; original drafts stay frozen and no memory proof ran.
 - **Fresh server worker:** `server-chunks-sol`, **w4:p3D / w4:t1C**,
   OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
   `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
@@ -49,8 +49,9 @@ builds/tests, but workers write all implementation and code, including probes.
   Original command4 then found missing provenance: no server sidecar entries.
   Promoted command7 generated seven records and proved27 tests before
   connection.mo hit three MO0304 nesting limits, before tests/write there.
-  **Static connection-only refactor; runtime released.** Seven completed
-  modules do not rerun unchanged; remaining eight await a reviewed grant.
+  Nesting diagnostics cleared; grant07 formatting passed, then generator
+  stopped before tests at MO0303: the new helper had9 parameters, limit6.
+  **Runtime released; static guarded-auth refactor removes that helper.**
   Parent metadata is generated, unstaged and lead-integrated. Strict's exact
   counters are7 passed/simulated, held_under_faults0/fault_free_only0 at faults0.
   Full42, later correctness, benchmarks/suite/commits/report remain withheld.

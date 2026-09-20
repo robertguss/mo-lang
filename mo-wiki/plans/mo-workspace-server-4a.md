@@ -229,6 +229,27 @@ are tests7/simulated7, held_under_faults0/fault_free_only0 at faults0; earlier
 informal “7 held” wording is not a counter requirement. Raw result04/05,
 grant04/05 and nesting-review01 records are under the same evidence directory.
 
+Nesting correction source review accepted equivalent marker cases, one
+coalesced-header helper and one authenticated transition helper. A second
+review removed the remaining fourth-level phase/ids expressions by guarding
+the Chunk case arm; the fallback still closes only a running connection.
+Runtime proof remains outstanding. Grant06 failed immediately, exit2/0.0s:
+the lead incorrectly supplied fmt --write. The CLI reserves --write for test;
+plain fmt writes by default. No source/footer/sidecar changed, no generator
+ran; seven records/27 tests remain. Evidence664KiB and runtime clearance were
+reported. Preserve this command-error RED. Grant07 corrects only the formatter
+invocation, then permits the eight unrun generators under the same stop,
+protected-byte, real-counter and resource rules. Server alone owns runtime.
+
+Grant07's default formatter passed and rewrote connection.mo. The first
+generator then stopped before tests at MO0303: head_transition had9 parameters,
+over the limit6. Nesting diagnostics no longer appeared; no new verification
+record was written. Subtotal remains27/seven records; protected hashes matched,
+evidence684KiB, runtime released. The bounded static correction removes the
+helper and places the existing gate Check in a HeadDone guard, followed by an
+unauthorized fallback. This preserves one ask and depth3 without a context
+bag or extra transition tuple. The other seven targets remain unrun.
+
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
 Step 44 stays unchanged. `Closed` reports input termination, not whether the
