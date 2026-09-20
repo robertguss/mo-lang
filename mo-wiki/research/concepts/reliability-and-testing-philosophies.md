@@ -1,7 +1,7 @@
 ---
 title: "Reliability and testing philosophies"
 created: 2026-09-13
-updated: 2026-09-19
+updated: 2026-09-20
 type: concept
 tags: [research, verification, tooling]
 sources: [raw/research-runs/2026-09-13-manifestos-safety-reliability.pplx.md]
@@ -123,6 +123,8 @@ Judgment: combined with Ravenscar's ban on relative delays, the evidence favours
 17 Sep 2026: the only other change today was adding the Hermes link below.
 
 ## Related
+
+- [[hermes-daily-2026-09-20]] — Hermes follow-up on process heap limits, cgroup containment and observed cleanup boundaries.
 
 - [[hermes-daily-2026-09-19]] — Hermes follow-up on timeout outcomes, retry identity and independent cleanup evidence.
 

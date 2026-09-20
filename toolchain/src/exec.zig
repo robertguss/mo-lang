@@ -234,7 +234,7 @@ fn doneOf(vm: *Vm, job: Job) Error!Value {
     fields[2] = try bytesOf(vm, job.stderr.items);
     fields[3] = .{ .bool = job.truncated };
     fields[4] = .{ .duration = job.took_ms };
-    return .{ .record = .{ .decl = vm.program.checked.preludeStruct("Done").?, .fields = fields } };
+    return .{ .record = .{ .decl = vm.program.prelude_decls.done, .fields = fields } };
 }
 
 fn bytesOf(vm: *Vm, bytes: []const u8) Error!Value {

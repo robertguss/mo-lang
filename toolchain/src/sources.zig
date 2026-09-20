@@ -375,7 +375,7 @@ fn linesFixture(sim: *Sim, s: *Source) Error!bool {
     const start = if (tls) &c.clear_start else &c.start;
     const bytes = if (tls) c.clear.items else c.inbound.items;
     var skipping = c.skipping;
-    const taken, const what = net.scanLine(bytes[start.*..], f.peerEnded(s.handle), &skipping);
+    const taken, const what = net.scanLine(bytes[start.*..], 0, f.peerEnded(s.handle), &skipping);
     if (what == .more) {
         start.* += taken;
         c.skipping = skipping;

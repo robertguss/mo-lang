@@ -3465,7 +3465,8 @@ static char *read_scoped(const Scope *scope, const char *path, size_t n, size_t 
 static int64_t sim_waited;
 
 typedef struct { char *path; MoValue text; } FixFile;
-typedef struct { FixFile *files; size_t n, cap; } FixSystem;
+/* The files in order (list shows them so), and a table by path: slot i holds a file's index + 1. */
+typedef struct { FixFile *files; size_t n, cap; uint32_t *slots; size_t mask; } FixSystem;
 typedef struct { int32_t system; char *folder; bool read_only, empty; int64_t delay; } FixScope;
 static FixSystem *fix_systems;
 static size_t nfix_systems, capfix_systems;
@@ -3523,11 +3524,34 @@ static char *fix_path_in(const FixScope *scope, const char *name, size_t n) {
     return NULL;
 }
 
-static FixFile *fix_find(FixSystem *sys, const char *path) {
-    for (size_t i = 0; i < sys->n; i++) {
-        if (strcmp(sys->files[i].path, path) == 0) return &sys->files[i];
+static uint64_t hash_path(const char *path) {
+    uint64_t h = 1469598103934665603ULL;
+    for (const unsigned char *p = (const unsigned char *)path; *p; p++) h = (h ^ *p) * 1099511628211ULL;
+    return h;
+}
+
+/* The slot `path` is at, or the empty slot it goes in. */
+static uint32_t *fix_slot(FixSystem *sys, const char *path) {
+    for (size_t i = (size_t)hash_path(path) & sys->mask;; i = (i + 1) & sys->mask) {
+        if (sys->slots[i] == 0 || strcmp(sys->files[sys->slots[i] - 1].path, path) == 0) return &sys->slots[i];
     }
-    return NULL;
+}
+
+/* The table rebuilt over the files, sized so it is at most half full. */
+static void fix_reindex(FixSystem *sys) {
+    size_t cap = 16;
+    while (cap < 2 * sys->n + 2) cap *= 2;
+    free(sys->slots);
+    sys->slots = calloc(cap, sizeof(uint32_t));
+    if (!sys->slots) out_of_memory();
+    sys->mask = cap - 1;
+    for (size_t i = 0; i < sys->n; i++) *fix_slot(sys, sys->files[i].path) = (uint32_t)(i + 1);
+}
+
+static FixFile *fix_find(FixSystem *sys, const char *path) {
+    if (sys->n == 0) return NULL;
+    uint32_t slot = *fix_slot(sys, path);
+    return slot ? &sys->files[slot - 1] : NULL;
 }
 
 /* A path's text set, keeping its place when it is there, else last. */
@@ -3545,6 +3569,8 @@ static void fix_put(FixSystem *sys, char *path, MoValue text) {
         sys->files = xrealloc(sys->files, sys->cap * sizeof(FixFile));
     }
     sys->files[sys->n++] = (FixFile){path, mo_str(copy, text.aux)};
+    if (!sys->slots || 2 * sys->n + 2 > sys->mask + 1) fix_reindex(sys);
+    else *fix_slot(sys, path) = (uint32_t)sys->n;
 }
 
 static bool fix_remove(FixSystem *sys, const char *path) {
@@ -3553,6 +3579,7 @@ static bool fix_remove(FixSystem *sys, const char *path) {
     size_t i = (size_t)(f - sys->files);
     memmove(sys->files + i, sys->files + i + 1, (sys->n - i - 1) * sizeof(FixFile));
     sys->n--;
+    fix_reindex(sys);
     return true;
 }
 
@@ -3990,7 +4017,8 @@ static MoValue fixture_files(int which, const MoValue *a) {
         bool file = fix_find(sys, full) != NULL;
         bool folder = strcmp(full, "/") == 0;
         char *under = path_join(full, "");
-        for (size_t i = 0; !file && !folder && i < sys->n; i++) folder = strncmp(sys->files[i].path, under, strlen(under)) == 0;
+        size_t under_len = strlen(under);
+        for (size_t i = 0; !file && !folder && i < sys->n; i++) folder = strncmp(sys->files[i].path, under, under_len) == 0;
         free(under);
         free(full);
         if (!file && !folder) return missing(path);
@@ -4280,7 +4308,7 @@ static MoValue fixture_fs(int64_t delay) {
         capfix_systems = capfix_systems ? 2 * capfix_systems : 8;
         fix_systems = xrealloc(fix_systems, capfix_systems * sizeof(FixSystem));
     }
-    fix_systems[nfix_systems++] = (FixSystem){NULL, 0, 0};
+    fix_systems[nfix_systems++] = (FixSystem){NULL, 0, 0, NULL, 0};
     return add_fix_scope((FixScope){(int32_t)(nfix_systems - 1), "/", false, false, delay});
 }
 
@@ -4699,9 +4727,51 @@ static void values_push(Values *v, MoValue x) {
     v->xs[v->n++] = x;
 }
 
+/* A name -> ordinal table over the keys of a `Values` of key/value pairs being built up, so a
+ * repeated key is found without a scan: open-addressed as the map index is (slot = ordinal + 1,
+ * 0 empty), doubled when half full. */
+typedef struct { uint32_t *slots; size_t cap; } KeyIndex;
+
+static void key_index_rebuild(KeyIndex *ix, const Values *entries, size_t cap) {
+    free(ix->slots);
+    ix->slots = xrealloc(NULL, cap * sizeof(uint32_t));
+    memset(ix->slots, 0, cap * sizeof(uint32_t));
+    ix->cap = cap;
+    size_t mask = cap - 1;
+    for (size_t o = 0; o < entries->n / 2; o++) {
+        size_t i = (size_t)hash_value(entries->xs[o * 2]) & mask;
+        while (ix->slots[i] != 0) i = (i + 1) & mask;
+        ix->slots[i] = (uint32_t)(o + 1);
+    }
+}
+
+/* Where `key` sits in `entries` (its key's offset), or SIZE_MAX when it is new, in which case the
+ * caller pushes key then value next and the table already points at that ordinal. */
+static size_t key_index_slot(KeyIndex *ix, const Values *entries, MoValue key) {
+    size_t keys = entries->n / 2;
+    if (2 * (keys + 1) > ix->cap) key_index_rebuild(ix, entries, ix->cap ? 2 * ix->cap : 16);
+    size_t mask = ix->cap - 1;
+    size_t i = (size_t)hash_value(key) & mask;
+    for (;; i = (i + 1) & mask) {
+        uint32_t slot = ix->slots[i];
+        if (slot == 0) break;
+        size_t at = (size_t)(slot - 1) * 2;
+        if (mo_equal(entries->xs[at], key)) return at;
+    }
+    ix->slots[i] = (uint32_t)(keys + 1);
+    return SIZE_MAX;
+}
+
+static void key_index_free(KeyIndex *ix) {
+    free(ix->slots);
+    *ix = (KeyIndex){NULL, 0};
+}
+
 /* Scratch that a failed decode leaves behind, freed when the decode ends. */
 static _Thread_local Values *json_scratch;
 static _Thread_local size_t njson_scratch, capjson_scratch;
+static _Thread_local KeyIndex *json_indexes;
+static _Thread_local size_t njson_indexes, capjson_indexes;
 static _Thread_local Buf json_texts;
 
 static Values *json_values(void) {
@@ -4713,12 +4783,22 @@ static Values *json_values(void) {
     return &json_scratch[njson_scratch++];
 }
 
+static KeyIndex *json_key_index(void) {
+    if (njson_indexes == capjson_indexes) {
+        capjson_indexes = capjson_indexes ? 2 * capjson_indexes : 16;
+        json_indexes = xrealloc(json_indexes, capjson_indexes * sizeof(KeyIndex));
+    }
+    json_indexes[njson_indexes] = (KeyIndex){NULL, 0};
+    return &json_indexes[njson_indexes++];
+}
+
 static MoValue json_read(Decoder *d, uint32_t depth) {
     json_space(d);
     if (d->i >= d->n || depth > JSON_MAX_DEPTH) json_bad(d, d->i);
     char c = d->s[d->i];
     if (c == '{') {
         Values *entries = json_values();
+        KeyIndex *ix = json_key_index();
         d->i++;
         json_space(d);
         if (d->i < d->n && d->s[d->i] == '}') {
@@ -4732,7 +4812,7 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
                 if (d->i >= d->n || d->s[d->i] != ':') json_bad(d, d->i);
                 d->i++;
                 MoValue v = json_read(d, depth + 1);
-                size_t k = index_of(entries->xs, entries->n, 2, key);
+                size_t k = key_index_slot(ix, entries, key);
                 if (k != SIZE_MAX) {
                     entries->xs[k + 1] = v;
                 } else {
@@ -4801,6 +4881,8 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
 static void json_scratch_free(void) {
     for (size_t k = 0; k < njson_scratch; k++) free(json_scratch[k].xs);
     njson_scratch = 0;
+    for (size_t k = 0; k < njson_indexes; k++) key_index_free(&json_indexes[k]);
+    njson_indexes = 0;
 }
 
 /* json.to_i64: the whole number a Number holds when it is below 2^53 either side of 0, so it reads
@@ -10320,36 +10402,37 @@ static HttpParsed http_parse(const char *bytes, size_t n, bool eof, bool respons
 
 /* Sets `key` in `entries` (a map's, key then value), or when it is there already joins `value` to
  * its value with ", " (a repeated header) or replaces it (a repeated query key). */
-static void http_set_entry(Values *entries, MoValue key, MoValue value, bool join) {
-    for (size_t i = 0; i < entries->n; i += 2) {
-        MoValue k = entries->xs[i];
-        if (k.aux != key.aux || (key.aux && memcmp(k.as.s, key.as.s, key.aux) != 0)) continue;
-        if (join) {
-            MoValue old = entries->xs[i + 1];
-            size_t len = (size_t)old.aux + 2 + value.aux;
-            char *p = mo_alloc_bytes(len);
-            if (old.aux) memcpy(p, old.as.s, old.aux);
-            memcpy(p + old.aux, ", ", 2);
-            if (value.aux) memcpy(p + old.aux + 2, value.as.s, value.aux);
-            entries->xs[i + 1] = mo_str(p, (uint32_t)len);
-        } else {
-            entries->xs[i + 1] = value;
-        }
+static void http_set_entry(Values *entries, KeyIndex *ix, MoValue key, MoValue value, bool join) {
+    size_t at = key_index_slot(ix, entries, key);
+    if (at == SIZE_MAX) {
+        values_push(entries, key);
+        values_push(entries, value);
         return;
     }
-    values_push(entries, key);
-    values_push(entries, value);
+    if (join) {
+        MoValue old = entries->xs[at + 1];
+        size_t len = (size_t)old.aux + 2 + value.aux;
+        char *p = mo_alloc_bytes(len);
+        if (old.aux) memcpy(p, old.as.s, old.aux);
+        memcpy(p + old.aux, ", ", 2);
+        if (value.aux) memcpy(p + old.aux + 2, value.as.s, value.aux);
+        entries->xs[at + 1] = mo_str(p, (uint32_t)len);
+    } else {
+        entries->xs[at + 1] = value;
+    }
 }
 
-static MoValue http_map(Values *entries) {
+static MoValue http_map(Values *entries, KeyIndex *ix) {
     MoValue m = map_value(MO_MAP, entries->n ? map_of(dupe_values(entries->xs, entries->n), entries->n, 2) : NULL);
     free(entries->xs);
+    key_index_free(ix);
     return m;
 }
 
 /* The header lines as a map, names lower-cased. */
 static MoValue http_headers_value(const char *headers, size_t n) {
     Values entries = {0};
+    KeyIndex ix = {NULL, 0};
     size_t at = 0;
     while (at < n) {
         const char *nl = memchr(headers + at, '\n', n - at);
@@ -10357,10 +10440,10 @@ static MoValue http_headers_value(const char *headers, size_t n) {
         http_field(headers + at, without_cr(headers + at, (size_t)(nl - (headers + at))), &f);
         char *name = mo_alloc_bytes(f.name_len);
         for (size_t i = 0; i < f.name_len; i++) name[i] = (char)http_lower((unsigned char)f.name[i]);
-        http_set_entry(&entries, mo_str(name, (uint32_t)f.name_len), heap_string(f.value, f.value_len), true);
+        http_set_entry(&entries, &ix, mo_str(name, (uint32_t)f.name_len), heap_string(f.value, f.value_len), true);
         at = (size_t)(nl - headers) + 1;
     }
-    return http_map(&entries);
+    return http_map(&entries, &ix);
 }
 
 /* A query key or value as it was before it was sent: + is a space, %XX its byte. */
@@ -10387,6 +10470,7 @@ static MoValue http_request_value(const char *bytes, size_t n) {
     http_request_line(m.start, m.start_len, &line);
     const char *q = memchr(line.target, '?', line.target_len);
     Values query = {0};
+    KeyIndex ix = {NULL, 0};
     if (q) {
         const char *p = q + 1, *end = line.target + line.target_len;
         for (;;) {
@@ -10396,7 +10480,7 @@ static MoValue http_request_value(const char *bytes, size_t n) {
                 const char *eq = memchr(p, '=', (size_t)(stop - p));
                 MoValue key = http_decode(p, (size_t)((eq ? eq : stop) - p));
                 MoValue value = eq ? http_decode(eq + 1, (size_t)(stop - eq - 1)) : mo_str("", 0);
-                http_set_entry(&query, key, value, false);
+                http_set_entry(&query, &ix, key, value, false);
             }
             if (!amp) break;
             p = amp + 1;
@@ -10405,7 +10489,7 @@ static MoValue http_request_value(const char *bytes, size_t n) {
     MoValue fields[5];
     fields[0] = heap_string(line.method, line.method_len);
     fields[1] = heap_string(line.target, q ? (size_t)(q - line.target) : line.target_len);
-    fields[2] = http_map(&query);
+    fields[2] = http_map(&query, &ix);
     fields[3] = http_headers_value(m.headers, m.headers_len);
     fields[4] = heap_string(m.body, m.body_len);
     return mo_record(mo_request_decl, 5, fields);

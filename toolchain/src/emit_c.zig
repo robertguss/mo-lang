@@ -30,6 +30,7 @@ const diag = @import("diag.zig");
 const moves_mod = @import("moves.zig");
 const prelude = @import("prelude.zig");
 const program = @import("program.zig");
+const Scope = @import("scope.zig").Scope;
 const types = @import("types.zig");
 
 const Index = ast.Index;
@@ -85,8 +86,8 @@ const Builder = struct {
     value_params: std.ArrayList([]const u8) = .empty,
     /// Mo locals, declared at the top.
     locals: std.ArrayList([]const u8) = .empty,
-    names: std.ArrayList(Name) = .empty,
-    captures: std.ArrayList(Capture) = .empty,
+    names: Scope(Name) = .empty,
+    captures: Scope(Capture) = .empty,
     /// Parameter names and their C variables, for a requires or ensures report.
     params: std.ArrayList(Name) = .empty,
     /// C variables of the inout parameters and their index.
@@ -403,18 +404,14 @@ const Emitter = struct {
     /// A name in the function being written, captured from the enclosing ones when an
     /// anonymous function reads it.
     fn resolveIn(e: *Emitter, b: *Builder, name: []const u8) Error!?Name {
-        var i = b.names.items.len;
-        while (i > 0) {
-            i -= 1;
-            if (std.mem.eql(u8, b.names.items[i].name, name)) {
-                if (b.old_state) |before| b.reads_old = b.reads_old or std.mem.eql(u8, b.names.items[i].cvar, before);
-                return b.names.items[i];
-            }
+        if (b.names.find(name)) |n| {
+            if (b.old_state) |before| b.reads_old = b.reads_old or std.mem.eql(u8, n.cvar, before);
+            return n;
         }
-        for (b.captures.items, 0..) |c, k| if (std.mem.eql(u8, c.name, name)) return .{ .name = name, .cvar = try e.print("cap[{d}]", .{k}), .mutable = false };
+        if (b.captures.indexOf(name)) |k| return .{ .name = name, .cvar = try e.print("cap[{d}]", .{k}), .mutable = false };
         const parent = b.parent orelse return null;
         const outer = try e.resolveIn(parent, name) orelse return null;
-        const k = b.captures.items.len;
+        const k = b.captures.len();
         try b.captures.append(e.gpa, .{ .name = name, .outer = outer.cvar });
         return .{ .name = name, .cvar = try e.print("cap[{d}]", .{k}), .mutable = false };
     }
@@ -424,13 +421,8 @@ const Emitter = struct {
     }
 
     fn localVar(e: *Emitter, name: []const u8) ?Name {
-        var i = e.b.names.items.len;
-        while (i > 0) {
-            i -= 1;
-            const n = e.b.names.items[i];
-            if (std.mem.eql(u8, n.name, name)) return if (n.mutable) n else null;
-        }
-        return null;
+        const n = e.b.names.find(name) orelse return null;
+        return if (n.mutable) n else null;
     }
 
     // ---- functions
@@ -516,7 +508,7 @@ const Emitter = struct {
         if (b.walks) {
             try out.print(gpa, "    MoValue V_[{d}];\n    size_t *const M_[] = {{&F_", .{roots.items.len});
             for (b.loop_ids.items) |id| try out.print(gpa, ", &m{d}, &k{d}", .{ id, id });
-            try out.print(gpa, "}};\n    MoFrame FR_ = {{mo_frames, mo_depth, false, {s}, F_, 0, V_, {d}, M_, {d}}};\n", .{ if (b.captures.items.len > 0) "true" else "false", roots.items.len, 1 + 2 * b.loop_ids.items.len });
+            try out.print(gpa, "}};\n    MoFrame FR_ = {{mo_frames, mo_depth, false, {s}, F_, 0, V_, {d}, M_, {d}}};\n", .{ if (b.captures.len() > 0) "true" else "false", roots.items.len, 1 + 2 * b.loop_ids.items.len });
             try out.appendSlice(gpa, "    if (!FR_.pinned && FR_.next && FR_.next->walking && FR_.next->depth + 1 == mo_depth) {\n        FR_.base = FR_.next->base;\n        FR_.kept = FR_.next->kept;\n    }\n    mo_frames = &FR_;\n");
         }
         // A function that can hold a handle lists its locals where a sweep reads them (mo_rt.c).
@@ -602,7 +594,7 @@ const Emitter = struct {
             // main is the root supervisor: its sends are delivered before its next statement
             // runs, as a test's are.
             const body = e.tree.extraData(ast.FnBody, n.rhs);
-            const mark = b.names.items.len;
+            const mark = b.names.len();
             for (e.tree.span(body.start, body.end)) |st| {
                 try e.stmt(st);
                 try e.line("mo_settle();", .{});
@@ -633,7 +625,7 @@ const Emitter = struct {
     /// crashes naming the clause, the parameters, and for ensures the result.
     fn contract(e: *Emitter, c: Index, kind: contracts.Kind) Error!void {
         const n = e.node(c);
-        const mark = e.b.names.items.len;
+        const mark = e.b.names.len();
         e.b.contract = true;
         const v = try e.expr(n.lhs);
         e.b.contract = false;
@@ -746,7 +738,7 @@ const Emitter = struct {
             try e.generators(e.tree.span(data.gens_start, data.gens_end), data);
             if (settles) try e.line("mo_settle();", .{});
         } else {
-            const mark = b.names.items.len;
+            const mark = b.names.len();
             for (e.tree.span(n.lhs, n.rhs)) |st| {
                 try e.stmt(st);
                 if (settles) try e.line("mo_settle();", .{});
@@ -847,7 +839,7 @@ const Emitter = struct {
         const g = e.node(gens[0]);
         const loop = try e.loopBegin(g.lhs, g.main_token);
         const named = e.tree.tokens[g.main_token].kind != .underscore;
-        if (named) try binders.append(e.gpa, e.b.names.items[e.b.names.items.len - 1].cvar);
+        if (named) try binders.append(e.gpa, e.b.names.last().cvar);
         try e.neverGenerators(gens[1..], data, cl, binders);
         if (named) _ = binders.pop();
         try e.loopEnd(loop);
@@ -1010,14 +1002,14 @@ const Emitter = struct {
     // ---- statements
 
     fn blockStmts(e: *Emitter, stmts: []const u32) Error!void {
-        const mark = e.b.names.items.len;
+        const mark = e.b.names.len();
         for (stmts) |s| try e.stmt(s);
         e.b.names.shrinkRetainingCapacity(mark);
     }
 
     /// The last statement of a body is its value.
     fn blockValue(e: *Emitter, stmts: []const u32) Error![]const u8 {
-        const mark = e.b.names.items.len;
+        const mark = e.b.names.len();
         defer e.b.names.shrinkRetainingCapacity(mark);
         if (stmts.len == 0) return "MO_NONE_V";
         for (stmts[0 .. stmts.len - 1]) |s| try e.stmt(s);
@@ -1194,7 +1186,7 @@ const Emitter = struct {
         const data = e.tree.extraData(ast.If, n.rhs);
         const has_else = n.kind == .if_expr or data.else_end > data.else_start;
         const result = if (value) try e.temp("MO_NONE_V", .{}) else "MO_NONE_V";
-        const mark = e.b.names.items.len;
+        const mark = e.b.names.len();
         const c = try e.expr(n.lhs);
         try e.line("if ({s}.as.b) {{", .{c});
         e.b.indent += 1;
@@ -1234,7 +1226,7 @@ const Emitter = struct {
         for (e.spanAt(n.rhs)) |a| {
             const an = e.node(a);
             const data = e.tree.extraData(ast.Arm, an.rhs);
-            const mark = e.b.names.items.len;
+            const mark = e.b.names.len();
             var fail = e.label();
             try e.pattern(an.lhs, subject, &fail);
             if (data.guard != 0) {
@@ -1306,18 +1298,18 @@ const Emitter = struct {
     /// copies its names into the first one's.
     fn orPattern(e: *Emitter, n: ast.Node, subject: []const u8, fail: *Label) Error!void {
         const alts = e.tree.span(n.lhs, n.rhs);
-        const first = e.b.names.items.len;
+        const first = e.b.names.len();
         var first_end = first;
         var matched = e.label();
         for (alts, 0..) |alt, k| {
-            const mark = e.b.names.items.len;
+            const mark = e.b.names.len();
             const last = k + 1 == alts.len;
             var alt_fail = e.label();
             try e.pattern(alt, subject, if (last) fail else &alt_fail);
             if (k == 0) {
-                first_end = e.b.names.items.len;
+                first_end = e.b.names.len();
             } else {
-                for (e.b.names.items[mark..]) |bound| for (e.b.names.items[first..first_end]) |want| {
+                for (e.b.names.slice()[mark..]) |bound| for (e.b.names.slice()[first..first_end]) |want| {
                     if (std.mem.eql(u8, want.name, bound.name)) try e.line("{s} = {s};", .{ want.cvar, bound.cvar });
                 };
                 e.b.names.shrinkRetainingCapacity(first_end);
@@ -2114,7 +2106,7 @@ const Emitter = struct {
         e.b = parent;
         var outer: std.ArrayList([]const u8) = .empty;
         // A captured value is a second holder while the function runs.
-        for (b.captures.items) |c| {
+        for (b.captures.slice()) |c| {
             try e.line("mo_disown_in({s});", .{c.outer});
             try outer.append(e.gpa, c.outer);
         }

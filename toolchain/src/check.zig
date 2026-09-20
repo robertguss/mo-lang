@@ -430,6 +430,8 @@ const Binding = struct {
     token: u32,
     used: bool = false,
     anon_depth: u32 = 0,
+    /// The live binding of the same name this one hides, if any.
+    shadows: ?u32 = null,
 };
 
 const FrameKind = enum { module, function, test_block, never, contract, invariant, update, refinement, supervisor, anon };
@@ -507,6 +509,8 @@ const Checker = struct {
     module: u32 = 0,
 
     bindings: std.ArrayList(Binding) = .empty,
+    /// Each live name to its newest binding's index in `bindings`.
+    binding_by_name: std.StringHashMapUnmanaged(u32) = .empty,
     deferred: std.ArrayList(Deferred) = .empty,
     frame: Frame = .{},
     /// The one node allowed to be an anonymous function right now: the argument
@@ -610,27 +614,40 @@ const Checker = struct {
             if (b.used or b.kind == .param or b.kind == .inout or b.kind == .state) continue;
             try c.reportTok(.unused_binding, b.token, try c.print("{s} is bound but never used.", .{b.name}));
         }
+        c.truncateBindings(mark);
+    }
+
+    /// Drops the bindings from `mark` on, newest first, so each name resolves to what it hid.
+    fn truncateBindings(c: *Checker, mark: u32) void {
+        var i = c.bindings.items.len;
+        while (i > mark) {
+            i -= 1;
+            const b = c.bindings.items[i];
+            if (b.shadows) |prev| c.binding_by_name.getPtr(b.name).?.* = prev else _ = c.binding_by_name.remove(b.name);
+        }
         c.bindings.shrinkRetainingCapacity(mark);
+    }
+
+    fn appendBinding(c: *Checker, b: Binding) Error!void {
+        const index: u32 = @intCast(c.bindings.items.len);
+        var entry = b;
+        entry.shadows = c.binding_by_name.get(b.name);
+        try c.bindings.append(c.gpa, entry);
+        try c.binding_by_name.put(c.gpa, b.name, index);
     }
 
     fn bind(c: *Checker, name: []const u8, t: Id, kind: BindKind, token: u32) Error!void {
         // One name, one binding, across every scope of the function being checked.
         if (kind == .let or kind == .var_ or kind == .pattern) {
-            for (c.bindings.items[c.frame.scope_base..]) |b| if (std.mem.eql(u8, b.name, name)) {
+            if (c.binding_by_name.get(name)) |prev| if (prev >= c.frame.scope_base) {
                 try c.reportTok(.rebinding, token, try c.print("{s} is bound twice in one scope; make it var {s}, or pick a new name.", .{ name, name }));
-                break;
             };
         }
-        try c.bindings.append(c.gpa, .{ .name = name, .type = t, .kind = kind, .token = token, .anon_depth = c.frame.anon_depth });
+        try c.appendBinding(.{ .name = name, .type = t, .kind = kind, .token = token, .anon_depth = c.frame.anon_depth });
     }
 
     fn lookup(c: *Checker, name: []const u8) ?u32 {
-        var i = c.bindings.items.len;
-        while (i > 0) {
-            i -= 1;
-            if (std.mem.eql(u8, c.bindings.items[i].name, name)) return @intCast(i);
-        }
-        return null;
+        return c.binding_by_name.get(name);
     }
 
     fn beginFrame(c: *Checker, kind: FrameKind, name: []const u8) Frame {
@@ -2601,7 +2618,7 @@ const Checker = struct {
         try c.pattern(alts[0], subject);
         const first = try c.gpa.dupe(Binding, c.bindings.items[mark..]);
         for (alts[1..]) |alt| {
-            c.bindings.shrinkRetainingCapacity(mark);
+            c.truncateBindings(mark);
             try c.pattern(alt, subject);
             const these = c.bindings.items[mark..];
             var same = these.len == first.len;
@@ -2613,8 +2630,8 @@ const Checker = struct {
             }
             if (!same) try c.reportTok(.bad_pattern, c.node(alt).main_token, try c.print("this alternative binds {s} and the first binds {s}; every alternative of an arm binds the same names, of the same types, or none", .{ try c.boundNames(these), try c.boundNames(first) }));
         }
-        c.bindings.shrinkRetainingCapacity(mark);
-        try c.bindings.appendSlice(c.gpa, first);
+        c.truncateBindings(mark);
+        for (first) |b| try c.appendBinding(b);
     }
 
     fn boundNames(c: *Checker, bound: []const Binding) Error![]const u8 {
@@ -3167,11 +3184,12 @@ const Checker = struct {
 
     fn preludeMethod(c: *Checker, i: Index, recv: ?Index, t: Id, name: []const u8, args: []const u32) Error!?Id {
         var fallback: ?usize = null;
-        for (prelude.fns, 0..) |row, k| {
-            if (row.on_type or row.recv.len == 0 or !std.mem.eql(u8, row.name, name)) continue;
+        for (prelude.rowsNamed(name)) |k| {
+            const row = prelude.fns[k];
+            if (row.on_type or row.recv.len == 0) continue;
             if (!c.recvMatches(row.recv, t)) continue;
-            if (c.namedMatches(row, args)) return try c.preludeCall(i, recv, t, k, args);
-            fallback = k;
+            if (c.namedMatches(row, args)) return try c.preludeCall(i, recv, t, @intCast(k), args);
+            fallback = @intCast(k);
         }
         if (fallback) |k| return try c.preludeCall(i, recv, t, k, args);
         return null;
@@ -3343,9 +3361,7 @@ const Checker = struct {
                 c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
                 c.process_args -= 1;
-                for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Process")) {
-                    c.callee[i] = .{ .prelude = @intCast(k) };
-                };
+                c.callee[i] = .{ .prelude = prelude.process_start_row };
                 return decl.type;
             }
             if (decl.kind == .supervisor) {
@@ -3356,9 +3372,7 @@ const Checker = struct {
                 c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
                 c.process_args -= 1;
-                for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Supervisor")) {
-                    c.callee[i] = .{ .prelude = @intCast(k) };
-                };
+                c.callee[i] = .{ .prelude = prelude.supervisor_start_row };
                 return c.childHandles(decl);
             }
         }
@@ -3368,18 +3382,17 @@ const Checker = struct {
             } else if (!c.recordable(tname)) {
                 try c.reportTok(.never_unchecked, c.node(i).main_token, try c.print("this never cannot be checked: a run records no {s} values, only structs, enums, and primitive values.", .{tname}));
             }
-            for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Type")) {
-                c.callee[i] = .{ .prelude = @intCast(k) };
-            };
+            c.callee[i] = .{ .prelude = prelude.type_all_row };
             const d = c.type_names.get(tname) orelse return c.pool.list1(.list, primitive(tname) orelse types.unknown);
             const dt = if (c.decls.items[d].kind == .alias) try c.aliasType(d) else c.decls.items[d].type;
             return c.pool.list1(.list, dt);
         }
         var fallback: ?usize = null;
-        for (prelude.fns, 0..) |row, k| {
-            if (!row.on_type or !std.mem.eql(u8, row.recv, tname) or !std.mem.eql(u8, row.name, name)) continue;
-            if (c.namedMatches(row, args)) return c.preludeCall(i, recv, primitive(tname) orelse types.unknown, k, args);
-            fallback = k;
+        for (prelude.rowsNamed(name)) |k| {
+            const row = prelude.fns[k];
+            if (!row.on_type or !std.mem.eql(u8, row.recv, tname)) continue;
+            if (c.namedMatches(row, args)) return c.preludeCall(i, recv, primitive(tname) orelse types.unknown, @intCast(k), args);
+            fallback = @intCast(k);
         }
         if (fallback) |k| return c.preludeCall(i, recv, primitive(tname) orelse types.unknown, k, args);
         try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no function named {s}", .{ tname, name }));
@@ -3487,8 +3500,9 @@ const Checker = struct {
                         return types.bool_;
                     }
                     // A free stdlib row, such as min_of(a, b).
-                    for (prelude.fns, 0..) |row, k| {
-                        if (row.recv.len == 0 and row.only != .never and std.mem.eql(u8, row.name, name)) return c.preludeCall(i, null, types.unknown, k, args);
+                    for (prelude.rowsNamed(name)) |k| {
+                        const row = prelude.fns[k];
+                        if (row.recv.len == 0 and row.only != .never) return c.preludeCall(i, null, types.unknown, @intCast(k), args);
                     }
                 }
             },

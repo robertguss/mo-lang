@@ -1201,17 +1201,9 @@ pub const Vm = struct {
 
     /// The impl function a trait signature reaches for a value of this type.
     fn dispatch(vm: *Vm, si: u32, receiver: Value) Error!u32 {
-        const k = vm.checked();
-        const sig = k.sigs[si];
+        const sig = vm.checked().sigs[si];
         if (receiver == .record) {
-            for (k.impls) |im| {
-                if (im.trait != sig.owner) continue;
-                const t = k.pool.get(k.pool.base(im.for_type));
-                if (t.tag != .decl or t.a != receiver.record.decl) continue;
-                for (im.sigs.start..im.sigs.end) |s| {
-                    if (std.mem.eql(u8, k.sigs[s].name, sig.name)) return vm.program.fn_of_sig[s];
-                }
-            }
+            if (vm.program.impl_of.get(bytecode.Program.dispatchKey(si, receiver.record.decl))) |f| return f;
         }
         vm.report = .{ .kind = .other, .clause = try std.fmt.allocPrint(vm.reportGpa(), "no impl gives {s} for {s}", .{ sig.name, try vm.renderReport(receiver) }), .within = sig.name, .at = 0 };
         return error.Crash;
@@ -1569,7 +1561,7 @@ pub const Vm = struct {
             .ledger_call => if (try vm.fixtureFault(false, "", a[a.len - 1].duration)) |failed|
                 failed
             else if (std.mem.eql(u8, row.name, "find_charge")) blk: {
-                const decl = vm.checked().findDecl("Charge").?;
+                const decl = vm.program.prelude_decls.charge;
                 const fields = try rawAlloc(vm.heap, Value, 4);
                 fields[0] = a[1];
                 fields[1] = .{ .time = fixture_time };
@@ -1579,7 +1571,7 @@ pub const Vm = struct {
                 break :blk try vm.variant("Ok", &.{charge});
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
-                const decl = vm.checked().findDecl("Charge").?;
+                const decl = vm.program.prelude_decls.charge;
                 const fields = try rawAlloc(vm.heap, Value, 4);
                 fields[0] = .{ .string = "ch_1" };
                 fields[1] = if (row.named.len == 2) a[0] else .{ .time = fixture_time };

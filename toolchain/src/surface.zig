@@ -113,10 +113,10 @@ fn list(vm: *Vm, items: []const Value) Error!Value {
     return .{ .list = out };
 }
 
-fn record(vm: *Vm, name: []const u8, fields: []const Value) Error!Value {
+fn record(vm: *Vm, decl: u32, fields: []const Value) Error!Value {
     const out = try vm_mod.rawAlloc(vm.heap, Value, fields.len);
     @memcpy(out, fields);
-    return .{ .record = .{ .decl = vm.program.checked.preludeStruct(name).?, .fields = out } };
+    return .{ .record = .{ .decl = decl, .fields = out } };
 }
 
 fn failure(vm: *Vm, name: []const u8) Error!Value {
@@ -162,7 +162,7 @@ fn processes(vm: *Vm, sim: *Sim) Error!Value {
 fn info(vm: *Vm, sim: *Sim, id: u32) Error!Value {
     const p = sim.procs.items[id];
     const waiting = if (p.busy and p.waiting.len > 0) try vm.variant("Some", &.{str(p.waiting)}) else try vm.variant("None", &.{});
-    return record(vm, "ProcessInfo", &.{
+    return record(vm, vm.program.prelude_decls.process_info, &.{
         uint(id),
         str(sim.nameOf(id)),
         .{ .bool = p.up },
@@ -254,7 +254,7 @@ fn sourceList(vm: *Vm, sim: *Sim) Error!Value {
     for (sim.sources.list.items) |s| {
         // A request being read counts in its listener's in flight.
         if (s.done or s.kind == .request or sim.hidden(s.to)) continue;
-        try out.append(scratch, try record(vm, "SourceInfo", &.{
+        try out.append(scratch, try record(vm, vm.program.prelude_decls.source_info, &.{
             str(sources.rowLabel(s.kind)),
             uint(s.to),
             str(sim.nameOf(s.to)),
@@ -295,7 +295,7 @@ fn memory(vm: *Vm, sim: *Sim) Error!Value {
     }.larger);
     const largest = try vm_mod.rawAlloc(vm.heap, Value, @min(largest_listed, sized.items.len));
     for (largest, sized.items[0..largest.len]) |*o, s| o.* = try info(vm, sim, s.id);
-    return record(vm, "MemoryInfo", &.{
+    return record(vm, vm.program.prelude_decls.memory_info, &.{
         uint(resident()),
         uint(regions),
         uint(resident_regions),
