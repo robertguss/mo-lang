@@ -118,13 +118,13 @@ def half_close_bytes(port: int) -> None:
     with connect_socket(port) as conn:
         for part in parts:
             conn.sendall(part)
-            time.sleep(0.01)
         conn.shutdown(socket.SHUT_WR)
         status, body, _ = raw_response(conn)
-    expected = {"bytes": len(payload), "sum": sum(payload)}
-    if status != 200 or body.get("bytes") != expected["bytes"] or body.get("sum") != expected["sum"] or body.get("chunks", 0) < 1:
+    expected = list(payload)
+    if status != 200 or body.get("bytes") != expected or body.get("chunks", 0) < 1:
         raise AssertionError((status, body, expected))
-    print(f"client payload_bytes={len(payload)} byte_sum={sum(payload)} sends={len(parts)}")
+    print(f"client payload_bytes={len(payload)} sends={len(parts)}")
+    print(f"client ordered_bytes_hex={payload.hex()} server_exact_match=true")
     print("client contains_nul=true contains_invalid_utf8=true split_multibyte=true")
     print("client shutdown_write=true")
     print(f"client post_eof_response=true status=200 chunks={body['chunks']}")

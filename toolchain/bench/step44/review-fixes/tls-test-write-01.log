@@ -1,0 +1,4 @@
+../examples/step44/chunks-tls.mo:149:100: MO0102 expected an expression
+    if seen.bytes == "aéz".bytes and seen.chunks == seen.sizes.size and bounded and !seen.closed and
+                                                                                                     ^
+  why: An expression starts with a literal, a name, a type name, (, [, !, -, try, if, case, fn, old, result, or any.

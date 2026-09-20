@@ -384,6 +384,7 @@ fn linesFixture(sim: *Sim, s: *Source) Error!bool {
         try send(sim, s.to, "Idle", &.{});
         c.closed = true;
         s.done = true;
+        return true;
     }
     if (!room(sim, s, 0)) return false;
     if (sim.fault(.closed, s.idle_ms)) |fault| {

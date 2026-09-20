@@ -1,13 +1,20 @@
 module Step44.Chunks
-expose Seen, Collector, Collectors, bounded?
+expose Seen, Collector, LineSeen, LineCollector, Collectors, bounded?
 
-intent "Read exact bounded byte chunks through the runtime source: available short data is delivered while the peer stays open, retained pull-read bytes come first, and EOF follows pending bytes."
+intent "Read exact bounded byte chunks through the runtime source, and preserve Conn.lines' one-Idle terminal behavior."
 
 struct Seen
   bytes: List(UInt8)
   sizes: List(UInt64)
   closed: Bool
   idle: Bool
+end
+
+struct LineSeen
+  lines: UInt64
+  too_long: UInt64
+  closed: UInt64
+  idle: UInt64
 end
 
 process Collector() mailbox: 8
@@ -81,11 +88,75 @@ process Collector() mailbox: 8
     end
   end
 end
+process LineCollector()
+  state
+    lines: UInt64
+    too_long: UInt64
+    closed: UInt64
+    idle: UInt64
+    waiting: List(Reply(LineSeen))
+  end
+
+  message Line(text: String)
+  message LineTooLong
+  message Closed
+  message Idle
+  message Snapshot : LineSeen
+  message Await(me: Handle(LineCollector)) : LineSeen
+  message Check
+
+  fn update(state, message)
+    case message
+      Line(_):
+        state.lines += 1
+      LineTooLong:
+        state.too_long += 1
+        seen = LineSeen(lines: state.lines, too_long: state.too_long,
+          closed: state.closed, idle: state.idle)
+        for held in state.waiting
+          held.answer(seen)
+        end
+        state.waiting = []
+      Closed:
+        state.closed += 1
+        seen = LineSeen(lines: state.lines, too_long: state.too_long,
+          closed: state.closed, idle: state.idle)
+        for held in state.waiting
+          held.answer(seen)
+        end
+        state.waiting = []
+      Idle:
+        state.idle += 1
+        seen = LineSeen(lines: state.lines, too_long: state.too_long,
+          closed: state.closed, idle: state.idle)
+        for held in state.waiting
+          held.answer(seen)
+        end
+        state.waiting = []
+      Snapshot:
+        LineSeen(lines: state.lines, too_long: state.too_long, closed: state.closed,
+          idle: state.idle)
+      Await(me):
+        state.waiting = state.waiting.push(reply_to)
+        me.send(Check)
+      Check:
+        if state.idle + state.closed + state.too_long > 0
+          seen = LineSeen(lines: state.lines, too_long: state.too_long,
+            closed: state.closed, idle: state.idle)
+          for held in state.waiting
+            held.answer(seen)
+          end
+          state.waiting = []
+        end
+    end
+  end
+end
+
 
 supervisor Collectors
   child Collector, restart: :always
+  child LineCollector, restart: :always
 end
-
 fn bounded?(sizes: List(UInt64), max: UInt64) : Bool
   sizes.all?(fn(n) n > 0 and n <= max end)
 end
@@ -200,6 +271,19 @@ test "a pull read is Busy after chunks owns input"
   server.chunks(into: Collector.start(), max_bytes: 8, idle: 1.minute)
   assert server.read_line(within: 1.minute) is Error(Busy)
 end
+test "lines idle emits one Idle and retires without synthetic terminal messages"
+  runtime = Runtime.fixture()
+  net = Net.fixture()
+  assert net.listen(0, within: 1.minute) is Ok(listener)
+  assert net.connect("localhost", listener.port, within: 1.minute) is Ok(_)
+  assert listener.accept(within: 1.minute) is Ok(server)
+  collector = LineCollector.start()
+  server.lines(into: collector, idle: 0.ms)
+  want = LineSeen(lines: 0, too_long: 0, closed: 0, idle: 1)
+  assert collector.ask(Await(me: collector), within: 1.minute) == Ok(want)
+  assert runtime.sources(within: 1.minute).size == 0
+  assert collector.ask(Snapshot, within: 1.minute) == Ok(want)
+end
 
-verified: types, contracts, tests (8), property (0 seeds), sim (not run)
+verified: types, contracts, tests (9), property (0 seeds), sim (not run)
           proven: not run

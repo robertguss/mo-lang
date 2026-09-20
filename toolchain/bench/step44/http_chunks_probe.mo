@@ -67,8 +67,8 @@ fn unfinished_header_too_large?(bytes: List(UInt8)) : Bool
   end
 end
 
-fn byte_sum(bytes: List(UInt8)) : UInt64
-  bytes.reduce(0.to_u64, fn(total, byte) total + byte.to_u64 end)
+fn byte_json(bytes: List(UInt8)) : String
+  "[#{String.join(bytes.map(fn(byte) "#{byte}" end), ",")}]"
 end
 
 fn response(status: String, body: String) : String
@@ -112,7 +112,7 @@ process Reader(conn: Conn, out: Out, done: Handle(Done), mode: String)
       Closed:
         if !state.finished and mode == "eof"
           state.finished = true
-          body = "{\"bytes\":#{state.bytes.size},\"chunks\":#{state.chunks},\"sum\":#{byte_sum(state.bytes)}}"
+          body = "{\"bytes\":#{byte_json(state.bytes)},\"chunks\":#{state.chunks}}"
           out.write_line("server event=input_closed bytes=#{state.bytes.size} chunks=#{state.chunks}")
           wrote = conn.write(response("200 OK", body), within: 1.seconds) is Ok(_)
           out.write_line("server response_write=#{wrote}")

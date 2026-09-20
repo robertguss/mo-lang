@@ -1,11 +1,12 @@
-module Step44.ChunksTls
-expose Seen, Sink, Writer, Acceptor, Top
+module ChunksTls
+expose Seen, Sink, Writer, Acceptor, Top, tried, successful?, faulted?
 
-intent "Read authenticated plaintext as bounded chunks over a fixture TLS connection, and reserve the connection before a late handshake can start."
+intent "Require a fault-free TLS chunk exchange with exact bounded plaintext in both directions, and keep injected-fault evidence separate."
 
 struct Seen
   bytes: List(UInt8)
   chunks: UInt64
+  sizes: List(UInt64)
   closed: Bool
   idle: Bool
 end
@@ -14,6 +15,7 @@ process Sink()
   state
     bytes: List(UInt8)
     chunks: UInt64
+    sizes: List(UInt64)
     closed: Bool
     idle: Bool
     waiting: List(Reply(Seen))
@@ -31,10 +33,11 @@ process Sink()
     case message
       Chunk(bytes):
         state.bytes = state.bytes.concat(bytes)
+        state.sizes = state.sizes.push(bytes.size)
         state.chunks += 1
         if state.waiting.size > 0 and (state.bytes.size >= state.want_bytes or state.closed or state.idle)
-          seen = Seen(bytes: state.bytes, chunks: state.chunks, closed: state.closed,
-            idle: state.idle)
+          seen = Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes,
+            closed: state.closed, idle: state.idle)
           for waiter in state.waiting
             waiter.answer(seen)
           end
@@ -43,8 +46,8 @@ process Sink()
       Closed:
         state.closed = true
         if state.waiting.size > 0
-          seen = Seen(bytes: state.bytes, chunks: state.chunks, closed: state.closed,
-            idle: state.idle)
+          seen = Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes,
+            closed: state.closed, idle: state.idle)
           for waiter in state.waiting
             waiter.answer(seen)
           end
@@ -53,23 +56,24 @@ process Sink()
       Idle:
         state.idle = true
         if state.waiting.size > 0
-          seen = Seen(bytes: state.bytes, chunks: state.chunks, closed: state.closed,
-            idle: state.idle)
+          seen = Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes,
+            closed: state.closed, idle: state.idle)
           for waiter in state.waiting
             waiter.answer(seen)
           end
           state.waiting = []
         end
       Snapshot:
-        Seen(bytes: state.bytes, chunks: state.chunks, closed: state.closed, idle: state.idle)
+        Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes,
+          closed: state.closed, idle: state.idle)
       Await(me: me, bytes: bytes):
         state.want_bytes = bytes
         state.waiting = state.waiting.push(reply_to)
         me.send(Check)
       Check:
         if state.waiting.size > 0 and (state.bytes.size >= state.want_bytes or state.closed or state.idle)
-          seen = Seen(bytes: state.bytes, chunks: state.chunks, closed: state.closed,
-            idle: state.idle)
+          seen = Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes,
+            closed: state.closed, idle: state.idle)
           for waiter in state.waiting
             waiter.answer(seen)
           end
@@ -91,8 +95,8 @@ process Writer(conn: Conn)
 
   fn update(state, message)
     case message
-      Line(_):
-        if conn.write("aéz", within: 1.minute) is Ok(_)
+      Line(text):
+        if text == "go" and conn.write("aéz", within: 1.minute) is Ok(_)
           state.writes += 1
         else
           conn.close
@@ -133,8 +137,18 @@ supervisor Top(server: TlsServer, conn: Conn)
   child Acceptor(server), restart: :always
 end
 
+fn successful?(got: Result(Bool, TlsError)) : Bool
+  case got
+    Ok(true): true
+    Ok(false) | Error(_): false
+  end
+end
+
 fn observed(seen: Seen) : Result(Bool, TlsError)
-  if seen.bytes == "aéz".bytes and seen.chunks > 0 and !seen.closed and !seen.idle
+  exact = seen.bytes == "aéz".bytes and seen.chunks == seen.sizes.size
+  bounded = seen.sizes.all?(fn(n) n > 0 and n <= 2 end)
+  open = !seen.closed and !seen.idle
+  if exact and bounded and open
     return Ok(true)
   end
   if seen.idle
@@ -175,11 +189,12 @@ fn talked(net: Net, server: TlsServer, client: TlsClient, sink: Handle(Sink)) : 
   end
 end
 
-fn tried(tls: Tls, net: Net, sink: Handle(Sink)) : Result(Bool, TlsError)
+fn tried(tls: Tls, net: Net, sink: Handle(Sink), offered: List(String),
+    accepted: List(String)) : Result(Bool, TlsError)
   case tls.server(cert: chain_pem(), key: key_pem())
     Ok(server):
       case tls.client(trust: root_pem())
-        Ok(client): talked(net, server, client, sink)
+        Ok(client): talked(net, server.offer(accepted), client.offer(offered), sink)
         Error(why): Error(why)
       end
     Error(why): Error(why)
@@ -238,10 +253,16 @@ fn root_pem() : String
     "\n")
 end
 
-test "chunks receives authenticated plaintext without waiting for TLS EOF"
-  got = tried(Tls.fixture(), Net.fixture(), Sink.start())
-  assert got == Ok(true) or faulted?(got)
+test "fault-free TLS chunks exchange exact bounded plaintext in both directions"
+  got = tried(Tls.fixture(), Net.fixture(), Sink.start(), ["step44/1"], ["step44/1"])
+  assert successful?(got)
 end
 
-verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+test "a forced TLS handshake error fails the positive oracle"
+  got = tried(Tls.fixture(), Net.fixture(), Sink.start(), ["client-only"], ["server-only"])
+  assert got == Error(Handshake)
+  assert !successful?(got)
+end
+
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
           proven: not run

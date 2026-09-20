@@ -1,0 +1,6 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/bin/mo run toolchain/bench/step44/review-fixes/control_probe.mo -- late-tls
+late-tls registration=complete handshake=starting
+main crashed: TlsClient.connect takes a connection nothing has read or written, and Conn.chunks was called on this one
+guard_exit=70
+late_tls actual_handshake_call=true registration_refused=true
+runtime=run case=late-tls result=pass
