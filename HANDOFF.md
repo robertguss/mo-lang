@@ -275,6 +275,22 @@ hot-path notes; runtime implementation and measured driver remain frozen.
 No runtime/build/test/formatter grant. Final report stays blocked; Linux
 remains deferred. Both workers now runtime HOLD.
 
+**Step44 corrected focused sequence granted:** static preflight fixes read.
+Strict TLS now has two fault-free controls; the separate
+`chunks-tls-faults.mo` owns the single seeded-fault test (no `--all`).
+Negative-result helpers require exact test exit 1 or contract-refusal exit 70
+and expected behavior text, rejecting watchdog/signal termination. Bounds
+parse strictly and expose the actual full-width value for the driver oracle.
+Granted revised commands 3R, 4F, then 5–20, serialized with proposed guards
+and fresh log/exit names; completed native idle commands 1–2 do not rerun.
+Expect strict 2/2 in each runtime and one fault target test over 40 runs.
+Stop on first unexpected result, retain all evidence, cleanup, then HOLD.
+Source/probes frozen during execution except authorized generated metadata
+and temporary mutant copies. Step42 stays runtime HOLD/static preparation.
+Exact 18-command grant:
+`audit/evidence/2026-09-19/omp-resumption/step44-focused-validation-grant-02.json`.
+No results or acceptance claimed at grant time; no full suite/benchmark grant.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
