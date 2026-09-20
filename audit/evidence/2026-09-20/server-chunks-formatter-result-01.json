@@ -1,0 +1,59 @@
+{
+  "recorded_at": "2026-09-20T10:42:51.394315-04:00",
+  "status": "all four bounded formatter checks passed; runtime released; no code acceptance",
+  "results": {
+    "chunks2-compiler-build-02": {
+      "exit": 0,
+      "seconds": 38.4,
+      "output": "empty"
+    },
+    "chunks2-fmt-regression-01": {
+      "exit": 0,
+      "seconds": 3.8,
+      "build_steps": "5/5",
+      "tests": "2/2"
+    },
+    "chunks2-fmt-strict-01": {
+      "exit": 0,
+      "seconds": 0.0,
+      "output": "empty"
+    },
+    "chunks2-fmt-check-02": {
+      "exit": 0,
+      "seconds": 0.6,
+      "modules": 15,
+      "failures": 0
+    }
+  },
+  "raw": {
+    "chunks2-compiler-build-02": {
+      "command.json": "{\n \"argv\": [\n  \"python3\",\n  \"toolchain/bench/step36/guard.py\",\n  \"2400\",\n  \"--\",\n  \"/bin/sh\",\n  \"-c\",\n  \"cd toolchain && zig build\"\n ],\n \"cwd\": \"repository root\"\n}\n",
+      "output.log": "",
+      "exit": "0\n"
+    },
+    "chunks2-fmt-regression-01": {
+      "command.json": "{\n \"argv\": [\n  \"python3\",\n  \"toolchain/bench/step36/guard.py\",\n  \"2400\",\n  \"--\",\n  \"/bin/sh\",\n  \"-c\",\n  \"cd toolchain && zig build test -Dtest-filter=\\\"corpus: fmt check classifies imported calls and keeps dependency findings out of the requested file\\\" --summary all\"\n ],\n \"cwd\": \"repository root\"\n}\n",
+      "output.log": "test\n+- run test w\ncorpus: pure-main.mo at byte 135: MO0501 this for has a pure body; write it as map, filter, or reduce\ncorpus: stopped-pure.mo at byte 172: MO0501 this for has a pure body; write it as map, filter, or reduce\nfailed command: MO_EXE=/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo ./.zig-cache/o/08c51b9adeb1209a7676ddf8b4314c7f/test --cache-dir=./.zig-cache --seed=0x3b2a2b4f --listen=-\n\nBuild Summary: 5/5 steps succeeded; 2/2 tests passed\ntest success\n+- run test 2 pass (2 total) 462ms MaxRSS:5M\n   +- compile test Debug native success 3s MaxRSS:529M\n   +- install mo cached\n      +- compile exe mo ReleaseSafe native cached 68ms MaxRSS:35M\n\n",
+      "exit": "0\n"
+    },
+    "chunks2-fmt-strict-01": {
+      "command.json": "{\n \"argv\": [\n  \"python3\",\n  \"toolchain/bench/step36/guard.py\",\n  \"300\",\n  \"--\",\n  \"toolchain/zig-out/bin/mo\",\n  \"fmt\",\n  \"--check\",\n  \"examples/programs/workspace-server/strict.mo\"\n ],\n \"cwd\": \"repository root\"\n}\n",
+      "output.log": "",
+      "exit": "0\n"
+    },
+    "chunks2-fmt-check-02": {
+      "command.json": "{\n \"argv\": [\n  \"python3\",\n  \"toolchain/bench/step36/guard.py\",\n  \"2400\",\n  \"--\",\n  \"python3\",\n  \"-B\",\n  \"examples/programs/workspace-server/verify.py\",\n  \"--kind\",\n  \"fmt\"\n ],\n \"cwd\": \"repository root\"\n}\n",
+      "output.log": "command=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/wire.mo']\nexit=0\nmodule=wire.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/schema.mo']\nexit=0\nmodule=schema.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/envelope.mo']\nexit=0\nmodule=envelope.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/tools.mo']\nexit=0\nmodule=tools.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/journal.mo']\nexit=0\nmodule=journal.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/admission.mo']\nexit=0\nmodule=admission.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/worker.mo']\nexit=0\nmodule=worker.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo']\nexit=0\nmodule=connection.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/operator.mo']\nexit=0\nmodule=operator.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/server.mo']\nexit=0\nmodule=server.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/main.mo']\nexit=0\nmodule=main.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/double.mo']\nexit=0\nmodule=double.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/f1_repro.mo']\nexit=0\nmodule=f1_repro.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/hostile_fs.mo']\nexit=0\nmodule=hostile_fs.mo kind=fmt exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '--check', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/strict.mo']\nexit=0\nmodule=strict.mo kind=fmt exit=0\nkind=fmt modules=15 failures=0\n",
+      "exit": "0\n"
+    }
+  },
+  "clearance": {
+    "protected_sha256": "worker reports all matched preflight, including historical F1, REPORT and parent .mo.ids",
+    "evidence_total": "620KiB",
+    "owned_processes_and_listeners": "none reported",
+    "temporary_regression_directory": "removed",
+    "compiler_cache": "retained",
+    "moshi_hook_1057": "untouched"
+  },
+  "remaining": "Original4\u201324 unattempted at delivery; no suite/benchmarks/Step42/commit/report update."
+}

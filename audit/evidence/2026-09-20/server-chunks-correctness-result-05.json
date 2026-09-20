@@ -1,0 +1,81 @@
+{
+  "recorded_at": "2026-09-20T11:11:26.062839-04:00",
+  "status": "metadata generation stopped at connection nesting diagnostics; runtime released",
+  "command": "chunks2-write-01",
+  "exit": 1,
+  "seconds": 0.5,
+  "passed_modules": {
+    "wire": 5,
+    "schema": 6,
+    "envelope": 5,
+    "tools": 6,
+    "journal": 1,
+    "admission": 2,
+    "worker": 2
+  },
+  "total_tests_proved": 27,
+  "failures_skips_in_completed_modules": 0,
+  "admission_simulation": {
+    "simulated": 1,
+    "runs": 200,
+    "faults": 5,
+    "held_under_faults": 1,
+    "fault_free_only": 0
+  },
+  "failure": {
+    "module": "connection.mo",
+    "diagnostics": [
+      {
+        "line": 74,
+        "column": 33,
+        "code": "MO0304",
+        "function": "scanned"
+      },
+      {
+        "line": 130,
+        "column": 23,
+        "code": "MO0304",
+        "function": "head_step"
+      },
+      {
+        "line": 290,
+        "column": 15,
+        "code": "MO0304",
+        "function": "Connection.update"
+      }
+    ],
+    "tests_or_write_reached": false
+  },
+  "raw": {
+    "command.json": "{\n \"argv\": [\n  \"python3\",\n  \"toolchain/bench/step36/guard.py\",\n  \"2400\",\n  \"--\",\n  \"python3\",\n  \"-B\",\n  \"examples/programs/workspace-server/verify.py\",\n  \"--kind\",\n  \"write\"\n ],\n \"cwd\": \"repository root\"\n}\n",
+    "output.log": "command=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/wire.mo']\npass  test \"a whole head gives the body's length and the token offered\"\npass  test \"each departure from the request line earns its own refusal\"\npass  test \"headers: extra, repeated, unknown, missing, and bad lengths\"\npass  test \"a head is bounded in bytes, and past 32 fields it is malformed\"\npass  test \"a response carries its length and closes\"\n5 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (5), property (0 seeds), sim (not run)\n          proven: not run\nexit=0\nmodule=wire.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/schema.mo']\npass  test \"a whole call reads back\"\npass  test \"repeated keys, at the top or deeper, are malformed\"\npass  test \"not JSON, not an object, nonfinite, a lone surrogate: malformed\"\npass  test \"types, extras and IDs\"\npass  test \"another run or workspace is unbound, after the shape is whole\"\npass  test \"a command's timeout is an integer of 500 to 120,000\"\n6 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (6), property (0 seeds), sim (not run)\n          proven: not run\nexit=0\nmodule=schema.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/envelope.mo']\npass  test \"a refusal before admission names no identities and started nothing\"\npass  test \"a success carries its operation's result, or it is invalid_result\"\npass  test \"a refusal keeps its completed execution and has no result\"\npass  test \"a response past its cap is response_too_large, not truncated\"\npass  test \"command output past 65,536 bytes is cut at a character and marked truncated\"\n5 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (5), property (0 seeds), sim (not run)\n          proven: not run\nexit=0\nmodule=envelope.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/tools.mo']\npass  test \"paths are lexical: escapes and odd components are invalid_path\"\npass  test \"the five tools on a small tree\"\npass  test \"exact_edit changes nothing unless exactly one non-empty match\"\npass  test \"a file past 64 KiB is oversized, even for a write elsewhere in its tree, and a reply past the controller's cap is refused whole\"\npass  test \"search stops at 200 hits and says so; a listing is cut by its bytes\"\npass  test \"a call past its deadline is a timeout of unknown execution\"\n6 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (6), property (0 seeds), sim (not run)\n          proven: not run\nexit=0\nmodule=tools.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/journal.mo']\npass  test \"an execution with no intent before it is refused\"\n1 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (1), property (0 seeds), sim (not run)\n          proven: not run\nexit=0\nmodule=journal.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/admission.mo']\npass  test \"closed stays closed, and a lease not opened admits nothing\": 200 simulated runs\npass  test \"the pure refusal order and waits stay fixed\"\ninvariant \"no more than 16 calls are ever admitted\" in Admission: kept, and no seed's message tripped it in a test rejects\n2 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults\nverified: types, contracts, tests (2), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))\n          proven: not run\nexit=0\nmodule=admission.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/worker.mo']\npass  test \"the scripted commands are test_owner.py's\"\npass  test \"the production worker serves no command\"\n2 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (2), property (0 seeds), sim (not run)\n          proven: not run\nexit=0\nmodule=worker.mo kind=write exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '180', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '--write', '--sim', '200', '--seed', '1', '--faults', '5', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo']\n/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo:74:33: MO0304 this if is nested 4 deep in scanned; the limit is 3, so move the inner block into its own function.\n        1: if byte == 10: 2 else: if byte == 13: 1 else: 0\n                                  ^\n  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.\n/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo:130:23: MO0304 this if is nested 4 deep in head_step; the limit is 3, so move the inner block into its own function.\n                parts = if body.size == 0: [] else: [body]\n                        ^\n  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.\n/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo:290:15: MO0304 this if is nested 4 deep in Connection; the limit is 3, so move the inner block into its own function.\n                if gate.ask(Check(offered: parsed.offered), within: 1_000.ms) == Ok(true)\n                ^\n  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.\nexit=1\nmodule=connection.mo kind=write exit=1\nkind=write failed_module=connection.mo failures=1\n",
+    "exit": "1\n"
+  },
+  "generated": {
+    "rewritten_modules": [
+      "wire",
+      "schema",
+      "envelope",
+      "tools",
+      "journal",
+      "admission",
+      "worker"
+    ],
+    "byte_changes": [
+      "wire",
+      "admission",
+      "journal",
+      "worker"
+    ],
+    "sidecar": "unstaged; exactly seven corresponding workspace-server entries",
+    "connection": "unchanged mtime; no failed footer recorded"
+  },
+  "clearance": {
+    "protected_f1_and_report": "hashes unchanged",
+    "evidence_total": "652KiB",
+    "owned_processes_listeners_temp": "none",
+    "compiler_cache": "retained",
+    "moshi_hook_1057": "untouched"
+  },
+  "not_proved": "full42, remaining production8, strict7, or any later command"
+}

@@ -46,10 +46,11 @@ slower in this run; native best and median disagree. All samples/load averages
 and original16MiB measurements are retained. No zero-overhead or causal claim.
 The existing --surface diagnostic line offset remains unfixed.
 
-Step42 remains unaccepted. Frozen65b3dd37 is now input to a provisional
-accepted-main4e0bfc0e composition. Revised lifetime controls expose paired
-counts, complete native payloads and the actual empty Sink; none is runtime
-proof. Worker-owned static conflict/caller migration is in a separate tree.
+Step42 remains unaccepted. Frozen65b3dd37 is input to a provisional
+accepted-main4e0bfc0e composition; source conflicts are resolved, not verified.
+Revised lifetime controls expose paired counts and complete payloads. A known
+enqueue error-ownership hole now blocks AFTER freeze; static repair design
+and one private patch-context rebase remain. No composed runtime proof.
 All seven obligations remain: current normal/raw-ASan exhaustive sweeps,
 small ASan and ordinary stale-answer mutants, packed lifecycle/reclamation proof,
 hot-path analysis, and lead-owned best-of-five suite timings. Its60 corrected
@@ -64,15 +65,15 @@ No live-provider/model-driven task/Pi-comparison acceptance. Nothing pushed or
 published to the auditor by this acceptance.
 
 The fresh server consumer in `harness/workspace-server-chunks` at65f2eca0
-combines accepted main with saved serverd689b441. Its original correctness
-batch stopped at command3 after formatter03 passed15/15. Imported handle
-types were absent from formatter loop analysis. The shared repair now has
-a four-command exclusive fresh-build/regression/strict-smoke/full-fmt grant,
-not acceptance or permission for original commands4–24. Strict7 retains
-fixed-order coverage plus a mandatory zero-fault/native-success gate; the
-three tolerant tests stay ordinary. Source binding has an independent vector.
-Step42 remains static-only; its composed AFTER checkpoint is not yet frozen.
-All runtime, mutant and timing proof remains owed.
+combines accepted main with saved serverd689b441. Its shared formatter repair
+passed a fresh build, focused2/2, original strict smoke and full15/15 matrix.
+Missing server verification records then blocked tests; promoted generation
+proved27 tests in seven modules and recorded their provenance before
+connection.mo's three nesting-depth diagnostics. Runtime is released for
+a static connection-only refactor. Remaining eight metadata targets and the
+full42-test gates are unproved. Strict7 retains its separate zero-fault gate;
+the three tolerant controls remain ordinary. Parent metadata stays unstaged.
+Step42 is static-only, and all memory runtime/mutant/timing proof remains owed.
 The completed Step44 pane is retired; evidence and worktrees are preserved.
 
 The account below preserves the earlier checkpoints.

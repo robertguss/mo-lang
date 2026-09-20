@@ -33,27 +33,27 @@ builds/tests, but workers write all implementation and code, including probes.
 - **Step42 worker:** fresh **`step42-safety-sol`**, **w4:p3C / w4:t1B**,
   OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
   `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
-  Revised static lifetime controls are reviewed: paired counts precede balance
-  assertions; native nested payloads, retained labels and the empty Sink are
-  observed. None is runtime proof. **Static composition only** in separate
-  `lead-step42-composed-4e0bfc0e`: accepted-main4e0bfc0e plus frozen65b3dd37.
-  Worker owns corpus/sim conflict resolution and necessary Step44 caller
-  migration; original draft tree remains frozen. No audit/mutant patches or tests run.
-  Timing AFTER is not frozen; all stress/mutation/timing obligations remain.
+  Revised lifetime controls are reviewed at source level, not runtime proof.
+  Separate `lead-step42-composed-4e0bfc0e` combines accepted-main4e0bfc0e
+  with frozen65b3dd37; corpus/sim conflicts are resolved, preserving Step44.
+  **Static follow-up only:** rebase one private test-patch context and propose
+  failure-atomic enqueue ownership repair. Enqueue can fail after insertion;
+  adding source-send cleanup alone risks double-free. AFTER is not frozen.
+  Original drafts remain frozen; no audit/mutant patches or tests run.
 - **Fresh server worker:** `server-chunks-sol`, **w4:p3D / w4:t1C**,
   OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
   `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
   b0a0eea0 plus saved server d689b441). Byte-framing/controls and
-  complete coverage/command manifest reviewed twice. Compiler build0/37.9s;
-  formatter03 passed all15 after two retained syntax failures. Command3
-  fmt-check stopped at strict.mo97 MO0501 after fourteen modules passed.
-  **Exclusive formatter verification grant01:** fresh compiler, focused
-  regression, original strict-file smoke, then full15-module fmt-check.
-  Imported handle analysis now loads context; interrupted imports retain
-  requested-file checking. Static review corrected fixture final newlines
-  and a skipped-analysis false negative. Stop first surprise; original
-  commands4–24 remain unattempted. Parent metadata remains lead-integrated;
-  benchmarks/full suite/commits/report remain withheld.
+  complete coverage/command manifest reviewed. Shared formatter repair passed
+  fresh build0/38.4s, focused2/2, original strict smoke0 and full15/15 fmt.
+  Original command4 then found missing provenance: no server sidecar entries.
+  Promoted command7 generated seven records and proved27 tests before
+  connection.mo hit three MO0304 nesting limits, before tests/write there.
+  **Static connection-only refactor; runtime released.** Seven completed
+  modules do not rerun unchanged; remaining eight await a reviewed grant.
+  Parent metadata is generated, unstaged and lead-integrated. Strict's exact
+  counters are7 passed/simulated, held_under_faults0/fault_free_only0 at faults0.
+  Full42, later correctness, benchmarks/suite/commits/report remain withheld.
 - Original server/Step42/Step44 worker launch receipts below are historical,
   not instructions to reuse their pane IDs or start from their old WIP.
   Server acceptance remains blocked; Linux remains deferred.

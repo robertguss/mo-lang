@@ -206,6 +206,29 @@ ulimit/timeout proposal is replaced by existing evidence.py/guard.py capture
 with4GiB. Exact argv: `server-chunks-formatter-grant-01.json` under the same
 evidence directory. This is verification permission, not acceptance.
 
+Formatter grant01 passed all four checks: fresh build0/38.4s, focused2/2
+in3.8s, original strict smoke0 and full15-module fmt0/0.6s. Protected hashes
+matched; runtime was released. Grant04 resumed original4–24 but command4
+stopped before wire tests: MO0317, no recorded verification line. The fresh
+parent sidecar had no workspace-server entries.
+
+Grant05 promoted only the existing dependency-ordered command7 generator.
+It proved wire5/schema6/envelope5/tools6/journal1/admission2/worker2: **27**
+tests, no failures/skips. Admission's one process control held under200 seeds
+at5% faults. Seven parent records were generated unstaged; wire/admission/
+journal/worker footer bytes changed. Connection then stopped before tests or
+write at MO0304 in scanned74, head_step130 and Connection.update290.
+Protected historical files stayed byte-identical; evidence652KiB and no
+owned process/listener/temp remained.
+
+Static correction is bounded to connection.mo, preserving all assertions,
+framing/state transitions and the three-level language limit. Continue
+generation from that module only after review; do not repeat seven unchanged
+successes. Full42 and all remaining gates remain open. Exact strict counters
+are tests7/simulated7, held_under_faults0/fault_free_only0 at faults0; earlier
+informal “7 held” wording is not a counter requirement. Raw result04/05,
+grant04/05 and nesting-review01 records are under the same evidence directory.
+
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
 Step 44 stays unchanged. `Closed` reports input termination, not whether the

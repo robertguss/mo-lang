@@ -1,0 +1,33 @@
+{
+  "recorded_at": "2026-09-20T11:00:06.124008-04:00",
+  "status": "grant04 stopped on first command; runtime released",
+  "command": "chunks2-tests-01",
+  "exit": 1,
+  "seconds": 0.1,
+  "failure": "wire.mo198 MO0317 no mo test --write recorded this verified line; no test dispatched",
+  "unattempted": "original5\u201324",
+  "raw": {
+    "command.json": "{\n \"argv\": [\n  \"python3\",\n  \"toolchain/bench/step36/guard.py\",\n  \"2400\",\n  \"--\",\n  \"python3\",\n  \"-B\",\n  \"examples/programs/workspace-server/verify.py\",\n  \"--kind\",\n  \"test\"\n ],\n \"cwd\": \"repository root\"\n}\n",
+    "output.log": "command=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '120', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'test', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/wire.mo']\n/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/wire.mo:198:1: MO0317 no mo test --write recorded this verified: line; delete it and run mo test --write on this file, which writes the line.\n  verified: types, contracts, tests (5), property (0 seeds), sim (not run)\n  ^\n  why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.\nexit=1\nmodule=wire.mo kind=test exit=1\nkind=test failed_module=wire.mo failures=1\n",
+    "exit": "1\n"
+  },
+  "source_findings": {
+    "server_sidecar_entries": [],
+    "write_semantics": "main.zig353\u2013369 marks only the requested module recorded before testing, then ids.write records actual results; no footer deletion needed.",
+    "dependency_order": "existing generator order is topological for all observed WorkspaceServer imports",
+    "strict_counter_correction": {
+      "tests": 7,
+      "simulated": 7,
+      "held_under_faults": 0,
+      "fault_free_only": 0,
+      "sim_faults": 0
+    }
+  },
+  "clearance": {
+    "protected_hashes": "all match preflight, including parent .mo.ids",
+    "evidence_total": "632KiB",
+    "owned_processes_listeners_temp": "none",
+    "compiler_cache": "retained",
+    "moshi_hook_1057": "untouched"
+  }
+}

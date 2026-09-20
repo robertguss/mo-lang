@@ -342,6 +342,27 @@ Server formatter verification owns runtime; memory remains static-only.
 Exact scope, receipt and reviewed source:
 `audit/evidence/2026-09-20/step42-static-review-04.json`.
 
+### Composition review: ownership on failed enqueue
+
+The worker resolved corpus/sim conflicts while preserving both full corpus
+gates, both chunks simulator controls and the packed-event test. Individual
+applicability is30/31: the packs-true patch's last context assumes the event
+test immediately follows an older fault test; Step44 now intervenes. Only a
+private copy may receive a context-only rebase; frozen drafts stay unchanged.
+Inherited historical-log whitespace is preserved, not “cleaned.”
+
+Source review found a blocker, not a runtime result: sources.send packs
+inline before a fallible enqueue. Enqueue itself inserts the mailbox entry
+before fallible runnable marking and trace insertion; existing caller cleanup
+can therefore free a published value. A local errdefer alone is unsafe.
+Required contract: enqueue transfers ownership only on success; failure
+leaves it with the caller and publishes no mailbox/trace/runnable reference.
+The worker must propose the smallest failure-atomic change, audit fresh,
+popped and batch-held callers, preserve FIFO/synchronization, and design
+allocation-failure proof before production edits. AFTER remains unfrozen.
+`audit/evidence/2026-09-20/step42-composition-review-05.json` preserves the
+source witnesses and exact static-only scope.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]

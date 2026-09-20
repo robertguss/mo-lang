@@ -1033,6 +1033,14 @@ direction separately from the lead's conservative execution interpretation.
 | Preserve requested-file loop checking when dependency loading stops: use the existing standalone Program rather than skipping analysis or reporting dependency loops. Require canonical fixture endings and interrupted-import regressions. Grant only fresh compiler, focused regression, strict smoke and full15-module fmt-check through the existing4GiB guard; original server commands4–24 remain withheld. | Astra (GPT-6), formatter review02 | bounded exclusive verification; no acceptance | server-chunks-formatter-grant-01.json and actual retained outputs |
 | Revised Step42 lifetime oracles are ready for static composition, not evidence acceptance. Anchor BEFORE at accepted-main4e0bfc0e and merge frozen65b3dd37 only in a separate verification tree. Assign source conflict resolution and new Step44 retaining-caller migration to the same worker; do not freeze AFTER or grant runtime/timings until reviewed. | Astra (GPT-6), memory review04 | static composition authorized | resolved-source/caller review, then separately guarded composed-source proof |
 
+## 20 Sep 2026 — Generate real provenance; keep failed transfers single-owned
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| After formatter verification passes, promote the existing dependency-ordered --write generator ahead of tests because the fresh sidecar has no server records. No hand-edited/deleted verification lines. Keep generated provenance unstaged; seven modules proved27 tests before connection's nesting diagnostics. Authorize only a connection-local, behavior-preserving nesting refactor; do not rerun unchanged completed modules. | Astra (GPT-6) | partial proof; static repair; runtime released | correctness-result04/05 and nesting-review01 |
+| Use exact strict summary fields:7 tests and7 simulated at faults0, held_under_faults0 and fault_free_only0. Earlier “7 held” wording described success informally, not the held-under-faults counter; the existing corpus gate is authoritative and unchanged. | Astra (GPT-6), source correction | clarified; no strict run claimed | corpus checkContractFixture and later real strict summary |
+| Do not freeze composed Step42 with the known enqueue ownership hole. Require success-only ownership transfer with failure-atomic publication and audit caller cleanup, including partially transferred batches. A source-send errdefer alone can double-free after enqueue's post-insertion failure. Permit only a static repair proposal and private context-only test-patch rebase first. | Astra (GPT-6), composition review05 | static-only; no acceptance | bounded source/caller review and allocation-failure controls under a later grant |
+
 ## Related
 
 - [[session-05]]
