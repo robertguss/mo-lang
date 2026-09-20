@@ -3167,11 +3167,12 @@ const Checker = struct {
 
     fn preludeMethod(c: *Checker, i: Index, recv: ?Index, t: Id, name: []const u8, args: []const u32) Error!?Id {
         var fallback: ?usize = null;
-        for (prelude.fns, 0..) |row, k| {
-            if (row.on_type or row.recv.len == 0 or !std.mem.eql(u8, row.name, name)) continue;
+        for (prelude.rowsNamed(name)) |k| {
+            const row = prelude.fns[k];
+            if (row.on_type or row.recv.len == 0) continue;
             if (!c.recvMatches(row.recv, t)) continue;
-            if (c.namedMatches(row, args)) return try c.preludeCall(i, recv, t, k, args);
-            fallback = k;
+            if (c.namedMatches(row, args)) return try c.preludeCall(i, recv, t, @intCast(k), args);
+            fallback = @intCast(k);
         }
         if (fallback) |k| return try c.preludeCall(i, recv, t, k, args);
         return null;
@@ -3343,9 +3344,7 @@ const Checker = struct {
                 c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
                 c.process_args -= 1;
-                for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Process")) {
-                    c.callee[i] = .{ .prelude = @intCast(k) };
-                };
+                c.callee[i] = .{ .prelude = prelude.process_start_row };
                 return decl.type;
             }
             if (decl.kind == .supervisor) {
@@ -3356,9 +3355,7 @@ const Checker = struct {
                 c.process_args += 1;
                 try c.positionalArgs(i, try c.print("{s}.start", .{tname}), null, args, decl.params, &.{}, &.{});
                 c.process_args -= 1;
-                for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Supervisor")) {
-                    c.callee[i] = .{ .prelude = @intCast(k) };
-                };
+                c.callee[i] = .{ .prelude = prelude.supervisor_start_row };
                 return c.childHandles(decl);
             }
         }
@@ -3368,18 +3365,17 @@ const Checker = struct {
             } else if (!c.recordable(tname)) {
                 try c.reportTok(.never_unchecked, c.node(i).main_token, try c.print("this never cannot be checked: a run records no {s} values, only structs, enums, and primitive values.", .{tname}));
             }
-            for (prelude.fns, 0..) |row, k| if (std.mem.eql(u8, row.recv, "Type")) {
-                c.callee[i] = .{ .prelude = @intCast(k) };
-            };
+            c.callee[i] = .{ .prelude = prelude.type_all_row };
             const d = c.type_names.get(tname) orelse return c.pool.list1(.list, primitive(tname) orelse types.unknown);
             const dt = if (c.decls.items[d].kind == .alias) try c.aliasType(d) else c.decls.items[d].type;
             return c.pool.list1(.list, dt);
         }
         var fallback: ?usize = null;
-        for (prelude.fns, 0..) |row, k| {
-            if (!row.on_type or !std.mem.eql(u8, row.recv, tname) or !std.mem.eql(u8, row.name, name)) continue;
-            if (c.namedMatches(row, args)) return c.preludeCall(i, recv, primitive(tname) orelse types.unknown, k, args);
-            fallback = k;
+        for (prelude.rowsNamed(name)) |k| {
+            const row = prelude.fns[k];
+            if (!row.on_type or !std.mem.eql(u8, row.recv, tname)) continue;
+            if (c.namedMatches(row, args)) return c.preludeCall(i, recv, primitive(tname) orelse types.unknown, @intCast(k), args);
+            fallback = @intCast(k);
         }
         if (fallback) |k| return c.preludeCall(i, recv, primitive(tname) orelse types.unknown, k, args);
         try c.reportTok(.no_member, c.node(i).main_token, try c.print("{s} has no function named {s}", .{ tname, name }));
@@ -3487,8 +3483,9 @@ const Checker = struct {
                         return types.bool_;
                     }
                     // A free stdlib row, such as min_of(a, b).
-                    for (prelude.fns, 0..) |row, k| {
-                        if (row.recv.len == 0 and row.only != .never and std.mem.eql(u8, row.name, name)) return c.preludeCall(i, null, types.unknown, k, args);
+                    for (prelude.rowsNamed(name)) |k| {
+                        const row = prelude.fns[k];
+                        if (row.recv.len == 0 and row.only != .never) return c.preludeCall(i, null, types.unknown, @intCast(k), args);
                     }
                 }
             },
