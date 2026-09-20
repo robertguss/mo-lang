@@ -1,0 +1,20 @@
+{
+  "recorded_at_et": "2026-09-20T08:48:18.917754-04:00",
+  "base": "65b3dd37c4b2acc74bbdc425a723a163b69e50f8",
+  "status": "Static review; no application/runtime grant",
+  "improvements": [
+    "n10 missing fixture now fails; all attempted run/build diagnostics retained; green runtime stderr must be empty",
+    "Private Zig audit fields/branches conditional on builtin.is_test; native macro opt-in only, no cbuild/default sweep activation",
+    "Packed tests now exercise successful delayed commit, real ask consumption/timeout drop and update-created crashing holders"
+  ],
+  "required_revisions": [
+    "packs patch adds Relay.held but retains exact crash-state string Relay(sent: 0). Delete that incidental formatted-state assertion rather than repin wording; keep existing semantic rollback assertions.",
+    "Timeout case checks only outer Error tag. Require actual Error(Timeout), not Down or another error.",
+    "Finish focused errdefer test with installed Zig0.16 FailingAllocator API; API is locally discoverable, not an external prerequisite. Need creation succeeds/copyOut fails, underlying allocator cleanup and balanced observer; omission must fail.",
+    "Complete isolated native lifecycle controls and exact argv/expected outcomes before a mutation grant; no placeholder ACTUAL_ARGS or unsupported live=1 claim.",
+    "Clarify lifetime proof: current packs tests use arena Vm without enabled regions. They show transfer/result plus destructor balance, not source-region invalidation. Main-mode controls must use dynamic structured payloads and real safe points under both runtimes/stress; do not overclaim private counters as whole-heap leak detection.",
+    "Original Numbers requires five current stress-sweep times, not ten before/after stress tests. Pre-Step42 baseline lacks that filter. Correct manifest to five current exhaustive stress samples (both runtimes); keep ten before/after unfiltered suite samples and all normal-mode benchmark obligations.",
+    "Identify original before/after three-workload evidence with exact bases. Preserved be64-to65 sixty samples are correction-only, not whole-step before/after; do not rerun or rewrite them."
+  ],
+  "next": "Same unfinished worker revises static bundle, may inspect installed Zig metadata/source and run git apply --check only; no source application, builds/tests/formatters/benchmarks/commits."
+}

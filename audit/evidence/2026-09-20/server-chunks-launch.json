@@ -1,0 +1,29 @@
+{
+  "recorded_at_et": "2026-09-20T08:42:04.782685-04:00",
+  "lead_pane": "w4:p1",
+  "agent": "server-chunks-sol",
+  "pane": "w4:p3D",
+  "tab": "w4:t1C",
+  "root": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+  "branch": "harness/workspace-server-chunks",
+  "prepared_checkpoint": "65f2eca039c004bba0e19e965152f105196d547f",
+  "saved_server": "d689b441b967eb1f9e8143a503fbc8810d60d2e1",
+  "accepted_main": "b0a0eea0",
+  "argv": [
+    "omp",
+    "--model",
+    "openai-codex/gpt-5.6-sol",
+    "--thinking",
+    "high",
+    "--no-prewalk",
+    "--auto-approve"
+  ],
+  "identity_env": {
+    "GIT_AUTHOR_NAME": "GPT-5.6-Sol",
+    "GIT_AUTHOR_EMAIL": "noreply@openai.com",
+    "GIT_COMMITTER_NAME": "GPT-5.6-Sol",
+    "GIT_COMMITTER_EMAIL": "noreply@openai.com"
+  },
+  "prompt": "You are server-chunks-sol, a fresh OMP GPT-5.6-Sol/high implementation worker. Astra remains lead in w4:p1. Start no other agent and do not inspect or operate the lead audit inbox. Read role/safety portions of .claude/skills/mo-lead/SKILL.md, then the FULL current brief /Users/robertguss/Projects/startups/mo-lang/mo-wiki/plans/mo-workspace-server-4a.md, especially Fresh chunks adoption assignment \u2014 20 Sep. Read saved REPORT.md/WIP.md and historical evidence in your tree; the current lead brief overrides their stale holds/next steps.\n\nYour tree is /Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks, branch harness/workspace-server-chunks, prepared checkpoint65f2eca039c004bba0e19e965152f105196d547f. It combines accepted main b0a0eea0 (Step44 accepted db515f9b) with saved server d689b441. This is not server acceptance. Do not merge/copy Step42 or any other branch.\n\nImplement the bounded chunks/byte-framing adoption and its meaningful controls in ONE STATIC pass with existing patterns. Keep all original scope and acceptance obligations: actual five-file-tool production server, unchanged client, absolute deadlines, exact byte limits, EOF vs local-write vs receipt distinctions and independent operator. Preserve original F1 RED, historical evidence and known Python lifecycle-incompatibility observations. Prepare a separately named actual-server unchanged-client GREEN, not a replacement historical reproducer or double-only proof. Preserve existing test expectations. Refusal precedence and corpus classification requirements are explicit in the updated brief; map strict/fault-tolerant tests statically, do not weaken corpus gates. No toolchain/testdata/corpus source edits without separate approval. Parent examples/programs/.mo.ids regeneration is lead-owned.\n\nSTATIC ONLY. Skip all validation: no build/test/server/runtime/formatter/linter/py_compile/benchmark/debugger/machine/Linux commands. No commit or final report yet. No public API redesign, toolchain/runtime/guard changes, Python service changes beyond original target adapter scope, wiki/audit/HANDOFF writes, or nested delegation. Write only original scoped examples/programs/workspace-server/** and allowed local.py target adapter. Do not change clients, discard stderr or substitute half-close/newline for wire qualification. Preserve evidence cap; report before exceeding it.\n\nReturn reviewed-source concerns, the complete static diff, exact guarded command/expected-count/exit manifest and test classification proposal. Distinguish prepared vs executed facts. Stop HOLD for lead review and explicit runtime grant. Eventual commits must name paths and use GPT-5.6-Sol author+committer (the tab supplies identity env); eventual REPORT.md is committed last only after all assigned work and cleanup. Notify Astra with herdr agent prompt w4:p1 when static delivery or a concrete blocker is ready.",
+  "scope": "Static implementation/preparation only; no validation/runtime/commit/report grant"
+}

@@ -13,7 +13,7 @@ session's check at 7:36 PM ET found 0 new records). PRs 15 and 16 are merged.
 The lead owns briefs, reviews, records and acceptance; it may run independent
 builds/tests, but workers write all implementation and code, including probes.
 
-### Current ownership — 20 Sep, 8:30 AM ET
+### Current ownership — 20 Sep, after Step44 acceptance
 
 - **Step44 accepted on Darwin:** tested candidate **cdf1e966**, merged locally
   to main at **db515f9b**. Independent build0, focused5/5, full **272/272**,
@@ -26,30 +26,36 @@ builds/tests, but workers write all implementation and code, including probes.
   Twenty256MiB line samples are complete: interpreter best/median elapsed
   +3.36%/+4.83%; native +10.25%/-4.41%. No zero-overhead or causal claim.
   Owned processes are gone except idle shell48917 in **w4:p3B / w4:t1A**.
-- **Step44 worker:** `step44-fix-sol`, **w4:p3A / w4:t19**, HOLD.
-  Corrected code/evidence **b7a21af7**, report-last **040da131** now accepted
-  through main db515f9b. All11 worker commands exit0, strict9+2 under
-  100 fault-free seeds, distinct fault1 under100/20%, both negative oracles,
-  focused5/5. Latest two commits' attribution repaired without code/evidence
-  changes; old pointers preserved. Ordinary corpus gates remain unchanged.
+- **Step44 worker completed and retired:** `step44-fix-sol`'s owned pane
+  w4:p3A/tab19 closed after explicit clearance and normal exit; all three
+  observed owned PIDs are gone. Its worktree/session/report/evidence remain.
+  Corrected b7a21af7/report040da131 is accepted through main db515f9b.
 - **Step42 worker:** fresh **`step42-safety-sol`**, **w4:p3C / w4:t1B**,
   OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
   `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
   **Static revision only**, runtime HOLD, under
-  `toolchain/bench/step42/safety-evidence/**`. First review found a missing-file
-  false green, discarded successful-run stderr, and incomplete real delayed
-  commit/waiter paths. Revising those and drafting a private test-only Parcel
-  allocation/destruction observable; no source patch application or execution.
-  All7 obligations remain unwaived; old tree/evidence/measurements preserved.
+  `toolchain/bench/step42/safety-evidence/**`. Revised n10 raw diagnostics and
+  real delayed/ask/crash flows reviewed. Remaining: complete errdefer/native
+  fixtures, exact Timeout assertion, remove incidental crash-state text,
+  target native turns_answer's real drop path, and distinguish arena tests
+  from region-lifetime proof. Five current stress timings and ten before/after
+  suite samples remain required; correction-only60 samples are preserved.
+- **Fresh server worker:** `server-chunks-sol`, **w4:p3D / w4:t1C**,
+  OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
+  `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
+  b0a0eea0 plus saved server d689b441). Static-only byte-framing/controls and
+  complete coverage/command manifest; no validation/runtime/commit/report.
+  Current brief explicitly preserves client/EOF/operator predicates and
+  requires strict/fault-tolerant test classification before a full-suite grant.
 - Original server/Step42/Step44 worker launch receipts below are historical,
   not instructions to reuse their pane IDs or start from their old WIP.
-  Server integration remains blocked; Linux remains deferred.
+  Server acceptance remains blocked; Linux remains deferred.
 
 Current evidence: `audit/evidence/2026-09-20/step44-integration/README.md`
 and its acceptance/measurement records; Step42 static review remains separate.
 Main holds accepted Step44 code and lead records; no push or audit publication.
-Last accepted Darwin suite is272/272. Server consumption needs a fresh bounded
-assignment; Linux remains owed. Step42's seven obligations are not waived.
+Last accepted Darwin suite is272/272. Fresh server adoption is now in static
+preparation; Linux remains owed. Step42's seven obligations are not waived.
 
 ### Standing instructions learned today (in force)
 

@@ -62,6 +62,14 @@ deferred. Step39, Program7, full-sync durability and catch claims are unchanged.
 No live-provider/model-driven task/Pi-comparison acceptance. Nothing pushed or
 published to the auditor by this acceptance.
 
+The fresh server consumer is now preparing static changes in its own
+`harness/workspace-server-chunks` tree at65f2eca0, using accepted main plus
+saved serverd689b441. Step42's revised source review found a native omission
+mutant aimed at the inline path rather than main's turns_answer; it is being
+corrected with the remaining lifecycle fixtures. Both workers are static-only,
+with no execution grant. The completed Step44 pane is retired; evidence and
+worktrees are preserved.
+
 The account below preserves the earlier checkpoints.
 
 **19 Sep, the day so far.** Robert made Fable (Claude Code) the lead at 7:18 AM

@@ -267,6 +267,34 @@ execution, final report or acceptance yet. The preserved60-sample comparison
 is unchanged. Original best-of-five suite and stress timing requirements
 remain unwaived; the worker does not own the unfiltered suite.
 
+### Revised static review, after Step44 acceptance
+
+Step44 is accepted at main db515f9b; this tree remains frozen65b3dd37 with no
+source application/runtime grant. Revised n10 diagnostics and real delayed
+commit/ask/crashing-holder paths address the first review. The test-only audit
+is source-plausible, not compiled or exercised. Remaining static work:
+
+- Complete the errdefer test using the installed Zig0.16 allocator API and
+  demonstrate real allocator cleanup as well as observer balance.
+- Remove the incidental formatted crash-state assertion after Relay gained a
+  held field; retain semantic rollback checks. Require Error(Timeout), not any
+  outer Error, for the late-answer path.
+- Finish native lifecycle fixtures/argv and isolate each omission's expected
+  count. The first C drop mutant targets route_packed's no-turns path, while
+  native main delegates to turns_answer: target the actual main-mode free.
+- Arena-based packed tests do not establish producer-region invalidation.
+  State that limit and exercise dynamic payloads across real safe points in
+  main-mode controls; counters are not whole-heap LeakSanitizer.
+- Keep ten unfiltered suite samples (five before/after), but the original
+  Numbers asks five **current** exhaustive stress times, not a before/after
+  stress comparison against a baseline lacking that test. Both runtimes remain
+  included. Locate exact whole-step three-workload before/after evidence;
+  preserved be64-to65 correction samples are not that comparison.
+
+Metadata/source inspection and git apply --check are allowed, never application
+or execution. Lead readings: `audit/evidence/2026-09-20/step42-static-review-02.json`
+and `step42-native-drop-path.json`; the latter preserves all25 reviewed drafts.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]

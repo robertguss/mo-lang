@@ -1,0 +1,23 @@
+{
+  "recorded_at_et": "2026-09-20T08:42:22.975347-04:00",
+  "pane": "w4:p3A",
+  "tab": "w4:t19",
+  "worker": "step44-fix-sol",
+  "clearance": "Worker reported no writer/runtime and clean worktree/index; normal Ctrl-D exit observed as shell before pane close.",
+  "owned_before": [
+    {
+      "pid": 26696,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes"
+    },
+    {
+      "pid": 27946,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes"
+    },
+    {
+      "pid": 49991,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes"
+    }
+  ],
+  "remaining_pid_status": "",
+  "preserved": "Session/report/branch/worktree/evidence retained; no source or runtime command run during retirement"
+}
