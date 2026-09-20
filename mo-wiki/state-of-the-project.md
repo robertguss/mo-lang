@@ -41,10 +41,10 @@ Pending-reader and late-TLS refusals pass in both runtimes. After bounded
 receive-window preparation, blocked-writer probes also pass in both runtimes:
 exact input consumed with actual Conn.write waiting before and afterward.
 All three corrective groups have worker-focused evidence and a reviewed final
-report. Isolated integration builds, but independent focused checks are 3/4:
-the byte-message checker test fails parsing four invalid inline fixture arms.
-A fixture-only repair is authorized; full suite has not started. Independent
-verification/timing and longer line measurements remain owed; no acceptance.
+report. Its independent parser-fixture failure is repaired; isolated integration
+now passes focused4/4 and the guarded full suite is running. Independent
+both-runtime behavior/timing and longer interleaved line measurements remain
+pending; no code acceptance.
 The mislocated --surface diagnostic remains unfixed. Step42
 remains runtime HOLD/static preparation; its
 exhaustive normal/raw-ASan sweeps,

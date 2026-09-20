@@ -1,0 +1,10 @@
+Build Summary: 5/5 steps succeeded; 4/4 tests passed
+test success
++- run test 4 pass (4 total) 321ms MaxRSS:39M
+   +- compile test Debug native success 4s MaxRSS:707M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 30s MaxRSS:1G
+
+real 30.67
+user 34.33
+sys 1.11

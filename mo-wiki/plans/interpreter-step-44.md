@@ -242,6 +242,12 @@ authorized; no parser/checker/runtime change. Require explicit4/4 before
 resuming independent verification. Full suite and longer line comparison
 have not run. Raw outputs: `audit/evidence/2026-09-20/step44-integration/`.
 
+The fixture-only repair015164e7/report1f45e09c is reviewed and integrated at
+6aa6ca84. Worker and independent focused runs both explicitly pass4/4;
+the independent unfiltered suite has started under guard2400. The stdlib
+contract is recorded with acceptance pending. Behavior and larger interleaved
+line comparison plans are filed in the same evidence directory, not yet run.
+
 ## Related
 
 - [[mo-workspace-server-4a]]

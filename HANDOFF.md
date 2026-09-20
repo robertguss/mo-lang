@@ -506,6 +506,22 @@ integration/grant/stop records are under
 `lead-step44-lines-base` worktree at c4462935 was prepared, but no baseline
 build or measurement ran. All acceptance/performance obligations remain.
 
+**Checker fixture gate repaired:** worker code/evidence015164e7 and
+report-last1f45e09c reviewed; exactly four embedded fixture arms became
+multiline, with no implementation or expected-diagnostic change. Worker
+focused4/4/exit0 is explicit in its log. Integrated only into
+`lead/verify-step44` at 6aa6ca84. Independent focused rerun also4/4/exit0
+(30.67s including compiler rebuild); the guarded unfiltered suite is now
+running in owned terminalw4:p3B. Worker runtime remains HOLD. Full-suite,
+independent behavior and line-performance results are still pending.
+
+The stdlib specification now carries the bounded-byte contract with an
+explicit implementation-acceptance-pending marker. Existing-driver plans
+cover both-runtime behavior, novel bounds2/65535 and simulation seed41, then
+256MiB lines with five interleaved baseline/current samples per runtime;
+no measurements have started. Records remain in the integration evidence
+directory; no code has merged into main.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
