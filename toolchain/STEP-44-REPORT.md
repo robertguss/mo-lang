@@ -247,8 +247,9 @@ outer exit status.
 
 The blocked-writer proof precomputes the existing 16 MiB write payload before
 arming chunks and the cooperative observer. A writer return is logged exactly
-as `Ok` bytes or `Error` and is never success evidence. Neither passing run
-returned from the writer. The data peer requested `SO_RCVBUF=4096` before
+as `Ok` bytes or `Error` and is never success evidence. Neither passing log
+printed a writer-return diagnostic, and return was not used as success. The
+data peer requested `SO_RCVBUF=4096` before
 connect, observed 326,640 immediately after connect, reapplied the same 4,096
 request, then observed and enforced 4,096 before the proof. These are observed
 values only; no kernel-cause claim is made. The data peer remained unread
@@ -268,9 +269,9 @@ All bounded failures are retained rather than replaced:
 | `tls-positive-oracle-run-01.*` | 1 | the inner positive oracle failed correctly, but the driver matched the wrong output case; `tls-positive-oracle-run-02.*` recognizes the exact failure and exits 0 |
 | `tls-positive-oracle-native-01.*` | 1 | corrected the built executable path; `tls-positive-oracle-native-02.*` recognizes the exact inner failure and exits 0 |
 | `controls-check-01.*` | 1 | corrected the initial control probe's statement-shaped case arm; `controls-check-02.*` exits 0 |
-| `controls-native-build-01.*` | 1 | removed an invalid runtime-surface declaration form |
+| `controls-native-build-01.*` | 1 | renamed the reserved `process` parameter in `control_probe.mo` at actual 104:31; `--surface` prepending mislocated its diagnostic at `surface.mo:69:5`. The compiler diagnostic-offset defect remains recorded and unfixed; no runtime-surface edit was made |
 | `controls-native-build-02.*` | 1 | consumed Results, corrected durations, narrowed Platform capabilities and reduced nesting; `controls-native-build-03.*` exits 0 |
-| `pending-pull-run-01.*` | 1 | a single snapshot missed the active wait; the bounded cooperative observer led to `pending-pull-run-02.*` and `pending-pull-native-01.*`, both exit 0 |
+| `pending-pull-run-01.*` | 1 | 256 immediate snapshots ran in one non-yielding turn and missed the active wait; the bounded message-turn observer led to `pending-pull-run-02.*` and `pending-pull-native-01.*`, both exit 0 |
 | `controls-check-03.*` | 1 | corrected named message construction and observer nesting; `controls-check-04.*` and `controls-native-build-04.*` exit 0 |
 | `blocked-writer-run-01.*` | 1 | the writer returned before the wait was observed; process rows were retained, and the proof was changed to require exact pre-input and post-input wait observations rather than treating return as evidence |
 | `blocked-writer-run-02.*` | 1 | post-connect effective receive buffer was 326,640, above the unchanged 16,384 ceiling; the driver stopped, retained `blocked-writer returned=Error(Closed)`, then reapplied the same 4,096 request in the next authorized revision |
