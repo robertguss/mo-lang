@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-19
+updated: 2026-09-20
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -40,18 +40,23 @@ oracle drivers, exact-byte probes and full-width bounds pass in both runtimes.
 Pending-reader and late-TLS refusals pass in both runtimes. After bounded
 receive-window preparation, blocked-writer probes also pass in both runtimes:
 exact input consumed with actual Conn.write waiting before and afterward.
-All three corrective groups have worker-focused evidence and a reviewed final
-report. Its independent parser-fixture failure is repaired; isolated integration
-passes focused4/4; the guarded full suite finished270/271, exit1,1142.19s.
-Its corpus fault gate rejects the11 strict controls' fault-free-only outcomes;
-the separate seeded TLS fault control holds. A bounded static correction moves
-all12 fixture tests to toolchain testdata with permanent automatic strict,
-fault and native checks, without weakening the ordinary corpus or positive
-oracles. Independent behavior/longer line measurements remain gated and unrun;
-no code acceptance.
-The mislocated --surface diagnostic remains unfixed. Step42
-has a fresh Sol/high worker preparing static safety-evidence drafts at frozen
-65b3dd37 in a separate worktree, with no runtime authorization; its
+All three corrective groups have worker-focused evidence and reviewed reports.
+The independent parser-fixture failure is repaired. The first full suite
+finished270/271, exit1/1142.19s, because11 strict controls conflicted with the
+ordinary corpus's fault-holding gate. All12 controls now remain automatic in
+toolchain testdata: strict100-seed faults0, separate100-seed faults20,
+canonical formatting and successful interpreter/native agreement. No positive
+oracle or ordinary corpus assertion was weakened.
+Corrected codeb7a21af7/report040da131 passed independent build/focused5/5.
+The second full suite finished271/272 at3bc0b508: stale generated diagnostic
+catalog only. Regeneration changed MO0209/MO0223; isolatedcdf1e966 now runs
+the third guard2400 full suite with observed sleep prevention. Runtime/test
+sources are unchanged by that repair. Behavior/line measurements remain unrun;
+no acceptance.
+The mislocated --surface diagnostic remains unfixed. Step42's static review
+requires missing-fixture/raw-stderr fixes, real delayed commit/waiter controls
+and an unapplied test-only reclamation observable proposal. Source/runtime
+remain frozen65b3dd37, with no execution grant. Its
 exhaustive normal/raw-ASan sweeps,
 current stale-answer mutants, packed lifecycle controls and hot-path report
 remain owed, alongside lead-owned suite timings and independent integration.

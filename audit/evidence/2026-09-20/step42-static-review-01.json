@@ -1,0 +1,46 @@
+{
+  "recorded_at": "2026-09-20T08:14:57.922818-04:00",
+  "base": "65b3dd37c4b2acc74bbdc425a723a163b69e50f8",
+  "worker": "step42-safety-sol",
+  "status": "Changes requested to unapplied drafts; no runtime or source-application grant",
+  "reviewed": [
+    "MANIFEST.txt",
+    "current-stale-answer-mutant.patch",
+    "n10-focused-test.patch",
+    "packs-true-focused-tests.patch",
+    "HOT-PATH.txt"
+  ],
+  "findings": [
+    {
+      "target": "n10-focused-test.patch:23-25",
+      "finding": "FileNotFound returns success before running the required control. Must fail closed."
+    },
+    {
+      "target": "n10-focused-test.patch:38-40,49-51,66-68",
+      "finding": "Captured stderr is discarded when exit/stdout match, allowing sanitizer warnings to disappear. Print every labeled raw subrun and require expected empty runtime stderr."
+    },
+    {
+      "target": "packs-true-focused-tests.patch:44-54",
+      "finding": "External sendLater with running=null tests timer delivery, not successful outbox-to-timer commit; Boom crashes before that commit."
+    },
+    {
+      "target": "packs-true-focused-tests.patch:199-210",
+      "finding": "Manual pop/route/fetch/free is not the actual waiter consumption lifecycle."
+    },
+    {
+      "target": "packs-true-focused-tests.patch and MANIFEST.txt:122-127",
+      "finding": "Pointer identity and empty containers do not expose omitted Parcel.free calls; manual cleanup must not manufacture production success."
+    }
+  ],
+  "decision": "Draft private test-only Zig/C actual Parcel allocation/destruction accounting and one-free-omission controls; thread-safe, case-isolated, errdefer-aware; no public Mo hook/CLI or default normal/stress/ASan activation. Proposal only, under existing draft directory.",
+  "source_grounding": [
+    "vm.zig108-115,1145-1154: Parcel uses smp_allocator outside test arena; error cleanup calls free",
+    "mo_rt.c727-735,966-977: actual C object allocation/destruction sites",
+    "sim.zig738-751: exit/late-send drops release owned timer values",
+    "sim.zig1140-1194: crash frees and commit transfers retained values",
+    "sim.zig1015-1019: committed event destructor is idempotent after clearing list"
+  ],
+  "hot_path_reading": "Current65 notes grounded in native preprocessor-elided ASan calls, real normal poison/stress branches, process safe-point branch and blocking publication completion path. Empty wrapper elimination remains inference, not instruction evidence. Existing60 correction-only samples/load caveat untouched; no zero-cost claim.",
+  "timing_requirement": "Original plan104-116 explicitly keeps best-of-five suite/stress timings. No waiver; unfiltered suite remains lead-owned.",
+  "unexecuted": "All new patches/probes; no changed production source, no final report or acceptance"
+}

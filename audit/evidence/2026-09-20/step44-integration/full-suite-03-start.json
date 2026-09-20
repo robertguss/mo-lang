@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-09-20T08:09:48.181412-04:00",
+  "revision": "cdf1e9660f51623d71cfb7fffd6ceef8d8a99078",
+  "change_since_previous_full": "Generated diagnostic catalog only, MO0209/MO0223; runtime/test source unchanged",
+  "command": "caffeinate -i (capture wrapper: /usr/bin/time -p python3 bench/step36/guard.py 2400 -- zig build test --summary all)",
+  "job": "bg_5",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain",
+  "owned_caffeinate": [
+    {
+      "pid": "97514",
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain"
+    }
+  ],
+  "pmset_exit": 0,
+  "observed_owned_assertions": [
+    "   pid 97514(caffeinate): [0x00027d9300019476] 00:01:56 PreventUserIdleSystemSleep named: \"caffeinate command-line tool\"  "
+  ],
+  "status": "RUNNING; no result yet",
+  "workers": "Runtime HOLD; Step42 revises unapplied static drafts only",
+  "limits": "No behavior/performance run, main code merge or acceptance"
+}

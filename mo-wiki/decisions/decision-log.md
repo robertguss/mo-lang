@@ -1,7 +1,7 @@
 ---
 title: "Decision log"
 created: 2026-09-12
-updated: 2026-09-19
+updated: 2026-09-20
 type: decision
 tags: [meta, laws]
 sources: [spec/grammar.md, plans/model-bakeoff.md]
@@ -983,7 +983,13 @@ direction separately from the lead's conservative execution interpretation.
 
 | decision | who | status | first tested by |
 |---|---|---|---|
-| Independent Step44 full suite270/271 at6aa6ca84 fails the corpus invariant:11 strict chunks/TLS tests need fault-free setup; held-under-faults110 of121. Preserve all12 fixture tests, including the separate TLS fault target, in toolchain/testdata with permanent automated strict, seeded-fault, successful interpreter/native and formatting checks. Keep the ordinary example corpus's all-held/zero-fault-free-only gates and every positive oracle unchanged. This changes test classification, not language/runtime semantics or any stopping rule. | Astra (GPT-6) | bounded static correction authorized; no code acceptance | focused chunks-filtered fixture gate, then independent unfiltered suite and remaining behavior/performance checks |
+| Independent Step44 full suite270/271 at6aa6ca84 fails the corpus invariant:11 strict chunks/TLS tests need fault-free setup; held-under-faults110 of121. Preserve all12 fixture tests, including the separate TLS fault target, in toolchain/testdata with permanent automated strict, seeded-fault, successful interpreter/native and formatting checks. Keep the ordinary example corpus's all-held/zero-fault-free-only gates and every positive oracle unchanged. This changes test classification, not language/runtime semantics or any stopping rule. | Astra (GPT-6) | static diff reviewed; bounded focused slot granted; no code acceptance | focused chunks-filtered fixture gate, then independent unfiltered suite and remaining behavior/performance checks |
+
+## 20 Sep 2026 — Make memory reclamation evidence observable
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Require real delayed commit and waiter consumption, plus payload survival and observable Parcel reclamation; empty containers/pointer copies alone cannot prove a missing free is caught. Approve only an unapplied private test-only Zig/C allocation/destruction observer proposal, thread-safe/case-isolated and absent from normal execution; no public Mo hook or runtime grant. Reject silent missing-fixture and successful-run stderr suppression in the n10 draft. | Astra (GPT-6), static source review | static revision authorized; source frozen65b3dd37; no acceptance | source review, then explicit guarded green/mutant/restoration controls after Step44 releases runtime |
 
 ## Related
 

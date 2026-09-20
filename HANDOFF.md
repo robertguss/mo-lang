@@ -13,28 +13,33 @@ session's check at 7:36 PM ET found 0 new records). PRs 15 and 16 are merged.
 The lead owns briefs, reviews, records and acceptance; it may run independent
 builds/tests, but workers write all implementation and code, including probes.
 
-### Current ownership — 20 Sep, 7:22 AM ET
+### Current ownership — 20 Sep, 8:10 AM ET
 
-- **Lead verification:** `lead/verify-step44` at `6aa6ca84`, separate
-  worktree `.../lead-verify-step44`, owned terminal **w4:p3B / w4:t1A**.
-  Build passed; focused checks pass **4/4**. The guard2400 unfiltered suite
-  finished **270/271, exit1, real1142.19s**: the corpus expects every simulated
-  process test to hold under faults, but the9 strict chunks and2 strict TLS
-  controls require fault-free success (held110 of121). Separate TLS faults held.
-  No runtime regression or acceptance is inferred. Behavior/performance plans
-  remain unrun. Scoped clearance found only the owned idle shell, no runtime.
-- **Step44 worker:** `step44-fix-sol`, **w4:p3A / w4:t19**, static correction.
-  Latest integrated code/evidence015164e7, report1f45e09c. New bounded brief
-  moves all12 controls to toolchain testdata with permanent automatic strict,
-  seeded-fault and native checks; ordinary corpus gates/oracles stay unchanged.
-  Static diff/manifest first; no runtime grant. No Step44 code is on main.
+- **Lead runtime slot:** `lead/verify-step44` at **`cdf1e966`**, separate
+  worktree `.../lead-verify-step44`. Independent build0 and focused5/5 passed.
+  Full-suite02 at3bc0b508 finished **271/272, exit1/622.91s**: generated
+  `spec/errors.md` was stale (MO0209/MO0223). Guarded `zig build errors` repaired
+  only those two rows; no runtime/test source changed. **Full-suite03** now
+  runs under guard2400 in an OMP-owned background job with caffeinate97514's
+  sleep-prevention assertion observed. Terminal **w4:p3B / w4:t1A** is idle.
+  Earlier fixture-classification failure270/271 is preserved; all12 controls
+  remain automatic with strict positive and separate fault assertions.
+  Behavior/performance plans remain unrun. No Step44 code is on main.
+- **Step44 worker:** `step44-fix-sol`, **w4:p3A / w4:t19**, HOLD.
+  Corrected code/evidence **b7a21af7**, report-last **040da131** integrated only
+  in the lead verification tree. All11 worker commands exit0, strict9+2 under
+  100 fault-free seeds, distinct fault1 under100/20%, both negative oracles,
+  focused5/5. Latest two commits' attribution repaired without code/evidence
+  changes; old pointers preserved. Ordinary corpus gates remain unchanged.
 - **Step42 worker:** fresh **`step42-safety-sol`**, **w4:p3C / w4:t1B**,
   OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
   `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
-  **Static drafts only** under `toolchain/bench/step42/safety-evidence/**`;
-  no build/test/runtime/formatter/benchmark. Main's Step42 brief and seven
-  unwaived obligations govern. The old corrective tree and its untracked
-  review evidence remain untouched; `step42-fix-sol` is no longer registered.
+  **Static revision only**, runtime HOLD, under
+  `toolchain/bench/step42/safety-evidence/**`. First review found a missing-file
+  false green, discarded successful-run stderr, and incomplete real delayed
+  commit/waiter paths. Revising those and drafting a private test-only Parcel
+  allocation/destruction observable; no source patch application or execution.
+  All7 obligations remain unwaived; old tree/evidence/measurements preserved.
 - Original server/Step42/Step44 worker launch receipts below are historical,
   not instructions to reuse their pane IDs or start from their old WIP.
   Server integration remains blocked; Linux remains deferred.

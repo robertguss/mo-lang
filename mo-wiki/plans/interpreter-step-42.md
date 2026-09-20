@@ -1,7 +1,7 @@
 ---
 title: "Step 42: runtime memory safety, a stale region value fails loudly"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-20
 type: plan
 tags: [runtime, verification, tooling, processes]
 sources: [plans/toolchain-raw-memory-report.md, plans/interpreter-step-41.md]
@@ -237,6 +237,35 @@ Done for this stage: bounded static drafts and concrete remaining command/
 coverage manifest, source-based hot-path notes, exact prerequisites and
 changed paths reported to the lead, explicitly unexecuted; then HOLD for
 review and a serialized runtime grant. Do not write the final report yet.
+
+### Static review refinements, 20 Sep
+
+The first bundle is not ready for execution. The n10 draft must fail if its
+required fixture is missing, print actual arguments and all labeled raw
+stdout/stderr (including successful runs), and reject unexpected runtime
+stderr. It currently hides warnings when exit/stdout match. Build failures
+must expose their diagnostics. Ordinary poison may produce a recognizably
+wrong value or trap, as PartB specifies; ASan still requires use-after-poison.
+
+The delayed-send control must exercise a successful update's outbox-to-timer
+commit, not only an external sendLater call or a crashing update. Pending
+answers must reach the real waiter consumption path, not only a test's manual
+fetch/free. Crash-held values should originate in the actual crashing update.
+Container emptiness and pointer copies alone are not reclamation proof.
+
+The proposed private observable is approved for **unapplied draft only**:
+actual Parcel construction/destruction in Zig and C, including Zig's errdefer
+failure cleanup; thread-safe and case-isolated; no public Mo hook, new CLI,
+normal/stress hot-path cost or default activation in ASan sweeps. Specify
+native coverage and one-free-at-a-time mutation controls. No manual free may
+manufacture the expected production outcome. This resolves the design
+prerequisite in favor of a bounded test-only observable rather than assuming
+Apple LeakSanitizer support or a clean global-allocation baseline.
+
+All writes remain under the evidence-draft directory. No source application,
+execution, final report or acceptance yet. The preserved60-sample comparison
+is unchanged. Original best-of-five suite and stress timing requirements
+remain unwaived; the worker does not own the unfiltered suite.
 
 ## Related
 

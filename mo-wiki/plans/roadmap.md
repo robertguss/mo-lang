@@ -1,7 +1,7 @@
 ---
 title: "Roadmap: now, next, later"
 created: 2026-09-12
-updated: 2026-09-19
+updated: 2026-09-20
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -27,7 +27,7 @@ the live provider, first model-driven task and Pi comparison remain ahead.
 
 | board | current work |
 |---|---|
-| Now | 20 Sep, 7:22 AM ET: Step44 isolated integration6aa6ca84 passes focused4/4, but full suite270/271 exit1:11 strict controls conflict with corpus's universal fault-holding gate. Static fixture-classification correction preserves all12 tests and every oracle/gate; behavior/line measurements remain unrun. Fresh Step42 Sol/high drafts safety evidence at frozen65b3dd37; all7 obligations unwaived. Both workers static-only; no code accepted; server F1/capability integration blocked |
+| Now | 20 Sep, 8:10 AM ET: Step44 independent build0/focused5/5; full-suite02 failed271/272 only at stale generated error catalog. Catalog regenerated (two rows), isolatedcdf1e966 runs full-suite03 under guard2400/owned sleep prevention. All12 fixture controls/every oracle retained; behavior/line measurements unrun. Step42 static drafts need real delayed/waiter paths, raw-stderr/missing-file fixes and test-only reclamation observability proposal; runtime HOLD, all7 obligations unwaived. No code accepted |
 | Done today | Accepted on `main`: the rebuilt [[mo-application-workspace-v1]]; [[mo-harness-in-mo]] steps 1, 8 and 2; the raw-memory runtime fix ([[toolchain-raw-memory-report]]); [[interpreter-step-40]] (a scope that holds against links, `Fs.replace`); [[interpreter-step-43]] (the auditor's PR 15: every number in source held to its range, accepted 1:59 PM ET). [[mo-harness-end-to-end-v1]] (the Mo agent end to end on the machine with the scripted Logstat repair, accepted 2:20 PM ET). [[mo-agent-report-cap]] (the report cap and defect D1, accepted 3:06 PM ET); the [[report-claim-check]] calibration. [[interpreter-step-41]] (`Exec`, accepted on macOS 3:33 PM ET, full suite 268 of 268). the first x86_64 Linux full suite 249 of 249 on step 40's tree |
 | Next | In order: [[ci-gate]] (briefed, after step 42); the Mo six-tool server ([[mo-harness-in-mo]] step 4): part A briefed as [[mo-workspace-server-4a]], part B (`command` through `Exec`, the machine, cutover) after it; plan steps 5 to 7; provider live blockers with Robert's login; the first model-driven task; the Pi comparison |
 | Waiting on Robert's presence | Interactive subscription login when ready; offline work continues |

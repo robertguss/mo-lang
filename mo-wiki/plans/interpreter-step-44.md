@@ -1,7 +1,7 @@
 ---
 title: "Step 44: bounded byte chunks from Conn"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-20
 type: plan
 tags: [runtime, stdlib, verification, processes]
 sources: [plans/mo-workspace-server-4a.md, plans/interpreter-step-20.md, plans/interpreter-step-38.md, spec/design-v0/09-stdlib.md]
@@ -293,6 +293,30 @@ and exact guarded command manifest; runtime remains HOLD until lead review.
 No unfiltered worker suite, benchmarks, unrelated cleanup or Step42 changes.
 The lead will independently rerun the full suite before behavioral/performance
 acceptance. Last accepted full-suite result remains268/268; Linux is deferred.
+
+Static review passed. The additive `Built.succeeded` tally in the existing
+native differential helper is explicitly approved: the new gate requires both
+executions to exit0, not merely match. An exclusive worker slot authorizes the
+exact11 serial guarded commands in
+`audit/evidence/2026-09-20/step44-integration/corpus-gate-grant.json`, stopping
+at the first unexpected result. Targeted formatting, real-tool metadata,
+both forced-error oracles and explicit5/5 focused checks precede code/evidence
+commit and report-last. No unfiltered worker suite or acceptance is authorized.
+
+All11 worker commands passed; strict9/2, distinct fault1, both negative oracles
+and focused5/5 are in the raw logs. Corrected attribution-only
+codeb7a21af7/report040da131 preserves the tested code tree. Isolated integration
+3bc0b508 passes independent build0/36.33s and focused5/5/22.29s. The second
+guard2400 unfiltered suite is running in an owned background command with an
+observed caffeinate assertion. Both workers are runtime HOLD. No acceptance;
+behavior-plan-02 and the larger interleaved line plan remain unexecuted.
+
+Full-suite02 at3bc0b508 finished271/272, exit1/622.91s: the generated diagnostic
+catalog was stale after the checker changes. The lead's guarded
+`zig build errors` changed only MO0209/MO0223 and is committed in the isolated
+tree as cdf1e966. Runtime/test source is unchanged; no redundant focused run.
+Full-suite03 now runs under guard2400 with owned sleep prevention. All raw
+failures remain filed; this is not acceptance or a runtime regression claim.
 
 ## Related
 
