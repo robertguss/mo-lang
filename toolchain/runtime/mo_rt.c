@@ -3990,7 +3990,8 @@ static MoValue fixture_files(int which, const MoValue *a) {
         bool file = fix_find(sys, full) != NULL;
         bool folder = strcmp(full, "/") == 0;
         char *under = path_join(full, "");
-        for (size_t i = 0; !file && !folder && i < sys->n; i++) folder = strncmp(sys->files[i].path, under, strlen(under)) == 0;
+        size_t under_len = strlen(under);
+        for (size_t i = 0; !file && !folder && i < sys->n; i++) folder = strncmp(sys->files[i].path, under, under_len) == 0;
         free(under);
         free(full);
         if (!file && !folder) return missing(path);
