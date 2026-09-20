@@ -1,0 +1,12 @@
+pass  test "available short bytes arrive while the peer stays open"
+pass  test "bytes retained after read_line are delivered first"
+pass  test "pending bytes precede one Closed"
+pass  test "mailbox backpressure preserves copied chunks and one end"
+pass  test "idle closes an unread connection"
+pass  test "a local full close stops without a synthetic end message"
+pass  test "the maximum accepted chunk bound still delivers"
+pass  test "a pull read is Busy after chunks owns input"
+pass  test "lines idle emits one Idle and retires without synthetic terminal messages"
+9 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (9), property (0 seeds), sim (not run)
+          proven: not run

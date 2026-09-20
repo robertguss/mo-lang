@@ -1,0 +1,4 @@
+pass  test "chunks receives authenticated plaintext without waiting for TLS EOF"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

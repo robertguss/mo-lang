@@ -161,19 +161,23 @@ pub const structs = [_]Struct{
         .{ .name = "body", .type = "String" },
     } },
     // The runtime surface (step 23): what `Runtime.processes`, `sources`, and `memory` give.
-    .{ .name = "ProcessInfo", .origin = .stdlib, .fields = &.{
-        .{ .name = "id", .type = "UInt64" },
-        .{ .name = "name", .type = "String" },
-        .{ .name = "alive", .type = "Bool" },
-        .{ .name = "mailbox", .type = "UInt64" },
-        .{ .name = "bound", .type = "UInt64" },
-        .{ .name = "waiting_in", .type = "Option(String)" },
-        .{ .name = "restarts", .type = "UInt64" },
-        .{ .name = "region_bytes", .type = "UInt64" },
-        .{ .name = "paused", .type = "Bool" },
-        // The scheduler it runs on for its life (step 30).
-        .{ .name = "scheduler", .type = "UInt64" },
-    } },
+    .{
+        .name = "ProcessInfo",
+        .origin = .stdlib,
+        .fields = &.{
+            .{ .name = "id", .type = "UInt64" },
+            .{ .name = "name", .type = "String" },
+            .{ .name = "alive", .type = "Bool" },
+            .{ .name = "mailbox", .type = "UInt64" },
+            .{ .name = "bound", .type = "UInt64" },
+            .{ .name = "waiting_in", .type = "Option(String)" },
+            .{ .name = "restarts", .type = "UInt64" },
+            .{ .name = "region_bytes", .type = "UInt64" },
+            .{ .name = "paused", .type = "Bool" },
+            // The scheduler it runs on for its life (step 30).
+            .{ .name = "scheduler", .type = "UInt64" },
+        },
+    },
     .{ .name = "SourceInfo", .origin = .stdlib, .fields = &.{
         .{ .name = "kind", .type = "String" },
         .{ .name = "target", .type = "UInt64" },
@@ -512,6 +516,7 @@ pub const fns = [_]Fn{
     // that process declares; `idle:` is the wait's deadline. None waits itself.
     .{ .recv = "Listener", .name = "serve", .named = &.{ .{ .name = "into", .type = "Handle(P)" }, .{ .name = "idle", .type = "Duration" } }, .ret = "none", .origin = .stdlib },
     .{ .recv = "Conn", .name = "lines", .named = &.{ .{ .name = "into", .type = "Handle(P)" }, .{ .name = "idle", .type = "Duration" } }, .ret = "none", .origin = .stdlib },
+    .{ .recv = "Conn", .name = "chunks", .named = &.{ .{ .name = "into", .type = "Handle(P)" }, .{ .name = "max_bytes", .type = "UInt64" }, .{ .name = "idle", .type = "Duration" } }, .ret = "none", .origin = .stdlib },
     .{ .recv = "Net", .on_type = true, .name = "fixture", .ret = "Net", .only = .tests, .origin = .stdlib },
     // HTTP/1.1 over TCP (step 16): one request per connection; an HttpListener and an
     // Exchange are capabilities, and an Exchange closes when the process holding it stops.

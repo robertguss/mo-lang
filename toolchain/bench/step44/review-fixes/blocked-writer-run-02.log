@@ -1,0 +1,20 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/bin/mo run toolchain/bench/step44/review-fixes/control_probe.mo -- blocked-writer 57377 57378
+blocked-writer returned=Error(Closed)
+blocked-writer waiting_in=Conn.write confirmed=true
+guard_exit=1
+control_first=b'' control_second=b''
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 252, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 246, in main
+    cases[args.case](args.runtime, args.binary)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 217, in blocked_writer
+    raise failure
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 189, in blocked_writer
+    data, data_rcvbuf = connect_unread(data_port)
+                        ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 139, in connect_unread
+    raise AssertionError(("data receive buffer is not small and bounded", effective))
+AssertionError: ('data receive buffer is not small and bounded', 326640)

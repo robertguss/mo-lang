@@ -1,0 +1,13 @@
+client implementation=workspace_http.client.connect
+client body_bytes=155
+client request_ends_in_newline=false
+client shutdown_called=false
+client response_before_close=true status=200
+$ python3 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-http-chunks-probe/step44-http-chunks-probe 59541 http
+server port=59541 mode=http
+server event=accepted
+server event=request_complete bytes=342 chunks=6
+server response_write=true
+server finished=true
+server_guard_exit=0
+runtime=binary case=exact

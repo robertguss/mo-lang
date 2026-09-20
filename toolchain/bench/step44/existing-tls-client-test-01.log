@@ -1,0 +1,10 @@
+pass  test "a client that trusts the root handshakes with the server from its chain, and a line goes each way"
+pass  test "ALPN: the server's protocol that the client also offered is the one agreed"
+pass  test "ALPN: a client offering sixty-five names agrees on the last, the one the server speaks"
+pass  test "ALPN: a client offering only what the server does not speak is Handshake"
+pass  test "a client that trusts another root refuses the server's chain"
+pass  test "a client connecting for example.org refuses a leaf for localhost"
+pass  test "text with no certificate in it makes no client"
+7 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+          proven: not run

@@ -1,0 +1,20 @@
+bench/step44/review-fixes/control_probe.mo:128:23: MO0222 Check is built by naming its fields: Check(me: ...)
+          me.send(Check(me))
+                        ^
+  why: Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values.
+bench/step44/review-fixes/control_probe.mo:128:17: MO0209 Check needs me: every field is given when it is built
+          me.send(Check(me))
+                  ^
+  why: Construction names every field exactly once; ordinary functions take arguments by position, while prelude rows declare their permitted labels explicitly.
+bench/step44/review-fixes/control_probe.mo:137:17: MO0304 this waiter is nested 4 deep in PendingObserver; the limit is 3, so move the inner block into its own function.
+              for waiter in state.waiting
+                  ^
+  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.
+bench/step44/review-fixes/control_probe.mo:143:27: MO0222 Check is built by naming its fields: Check(me: ...)
+              me.send(Check(me))
+                            ^
+  why: Construction is always by named fields (grammar §6), so a reordered struct never silently swaps two values.
+bench/step44/review-fixes/control_probe.mo:143:21: MO0209 Check needs me: every field is given when it is built
+              me.send(Check(me))
+                      ^
+  why: Construction names every field exactly once; ordinary functions take arguments by position, while prelude rows declare their permitted labels explicitly.

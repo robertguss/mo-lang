@@ -1,0 +1,31 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 30 -- toolchain/zig-out/bin/mo build --tests -o step44-tls-forced-error toolchain/bench/step44/review-fixes/tls-oracle-sr4yhxqu/chunks-tls-forced-error.mo
+zig-out/mo-build/step44-tls-forced-error/step44-tls-forced-error
+guard_exit=0
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 30 -- toolchain/zig-out/mo-build/step44-tls-forced-error/step44-tls-forced-error
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step36/guard.py", line 5, in <module>
+    p = subprocess.Popen(cmd)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'toolchain/zig-out/mo-build/step44-tls-forced-error/step44-tls-forced-error'
+guard_exit=1
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/tls_oracle_probe.py", line 89, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/tls_oracle_probe.py", line 81, in main
+    require_oracle_failure(completed)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/tls_oracle_probe.py", line 57, in require_oracle_failure
+    raise AssertionError((missing, combined))
+AssertionError: (['FAIL  test "fault-free TLS chunks exchange exact bounded plaintext in both directions"', 'assert successful?(got)'], 'Traceback (most recent call last):\n  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step36/guard.py", line 5, in <module>\n    p = subprocess.Popen(cmd)\n  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                        pass_fds, cwd, env,\n                        ^^^^^^^^^^^^^^^^^^^\n    ...<5 lines>...\n                        gid, gids, uid, umask,\n                        ^^^^^^^^^^^^^^^^^^^^^^\n                        start_new_session, process_group)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: \'toolchain/zig-out/mo-build/step44-tls-forced-error/step44-tls-forced-error\'\n')
