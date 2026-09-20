@@ -29,9 +29,11 @@ every worker assignment starts a fresh clean Sol/high session. Server part A
 and the original step42 worker filed reports, not accepted implementations.
 Lead review found blocking-job lifetime, ASan fiber integration and incomplete
 retained-value typing in step42; fresh `step42-fix-sol` owns corrections.
-Step44 is active on bounded binary connection input. Workers own code; Astra
-reviews and independently verifies. Last accepted Darwin suite: 268 of 268;
-Linux, live provider, model-driven task and Pi comparison remain ahead.
+Step44's final report is filed at `9ad0162a`, but review found a line-idle
+regression and inadequate TLS/binary/ownership evidence; a fresh corrective
+session is being assigned. Workers own code; Astra reviews and independently
+verifies. Last accepted Darwin suite: 268 of 268. Linux, live provider,
+model-driven task and Pi comparison remain ahead.
 
 The server's unchanged-wire blocker F1 is now filed at `8b0ff352`: its client
 times out before the line-only API supplies the 155-byte body.

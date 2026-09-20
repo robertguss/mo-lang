@@ -179,6 +179,60 @@ on inputs not named above. The lead updates the stdlib spec and integrates
 server adoption separately. No change to TLS acceptance, Program 7 or audit
 thresholds is implied by this capability.
 
+## Lead review: corrections before acceptance
+
+19 Sep 2026, 9:43 PM ET. Final worker delivery
+`9ad0162aa1994bb67c012ee85e78503c8573043a`, original base `c4462935`,
+measured code `9c67ec1f`, evidence `b209b8be`. The report, all raw samples
+and reported clean/process-free checkpoint are preserved, not accepted.
+Static review requires the following corrections in a fresh Sol/high session.
+
+1. **Restore existing line idle behavior.** At this delivery,
+   `sources.zig:379-402` sends `Idle`, closes and marks the fixture source
+   done, but the deleted return lets `.more` fall through to `unreachable`.
+   Restore the terminal transition, not a suppression of the panic. First
+   retain a deterministic RED through the actual fixture source/dispatch
+   with no input and an elapsed idle deadline, then GREEN asserting exactly
+   one `Idle`, no `Closed`/`Line`, and retirement. Exercise both runtimes.
+   Check existing line-mode coverage; the report's unchanged-path claim
+   does not hold for this deletion. No dynamic reproduction claimed yet.
+2. **Prove successful TLS independently of allowed injected errors.**
+   `examples/step44/chunks-tls.mo:241-243` accepts ordinary handshake,
+   timeout, close and trust failures even with faults disabled. Replace or
+   separate that permissive oracle: the default positive control must
+   require successful handshake, exact plaintext, bounded chunks, no end
+   message and reverse-direction communication under both runtimes.
+   Keep seeded fault evidence distinct and genuinely sensitive to failures;
+   a forced handshake error must fail the positive control. Do not retain
+   an always-error passing test or relabel it proof of successful TLS.
+3. **Complete the named behavioral controls.** The real binary probe
+   (`socket_probe.py:115-126`, `http_chunks_probe.mo:115`) compares length
+   and sum, which permit reordered or compensating corrupted bytes.
+   Compare the complete ordered byte sequence, including the existing NUL,
+   invalid UTF-8 and split-character payload; do not assert chunk splits.
+   File both-runtime behavior for invalid/full-width bounds, registration
+   during an actually waiting pull read, and an actual TLS handshake after
+   registration, not just `used`/source-count snapshots. Prove input can
+   progress while a writer is actually blocked, with deterministic
+   coordination and bounded cleanup. These are existing Part C/Contract
+   obligations, not new APIs. Distinguish fixture and real-socket evidence.
+
+Use a separate `toolchain/step-44-review-fixes` worktree based exactly on
+`9ad0162a`. Original write scope applies; no step42/server changes or merges.
+Preserve old logs and report sections verbatim; add correction evidence
+under `toolchain/bench/step44/review-fixes/` and append a clearly separated
+report section, committed last. Tests must defend observable behavior, not
+field copies, labels or source text. Report uncovered prerequisites rather
+than substituting weaker oracles.
+
+Initially **static preparation only** while step42-fix owns focused
+validation: no build/test/runtime/probe/formatter commands until a lead
+grant. Then use bounded focused RED/GREEN checks, not unfiltered suites or
+benchmarks. Longer/interleaved lines measurements and the integrated full
+suite remain lead-owned after corrections. Keep the original -8.69%/-0.97%
+throughput observations; neither a causal regression size nor zero overhead
+has been established.
+
 ## Related
 
 - [[mo-workspace-server-4a]]

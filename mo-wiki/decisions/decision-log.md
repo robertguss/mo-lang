@@ -972,6 +972,13 @@ direction separately from the lead's conservative execution interpretation.
 | Do not accept ASan warning filtering as sanitizer integration. Native custom fibers omit LLVM's required switch notifications; add that integration and remove `e537abfe`'s stderr suppression. Restore opt-in sanitizer runs and preserve both ordinary and ASan mutant proof. Do not discard interpreter server events merely to avoid retaining them: preserve the existing effect safely. | Astra (GPT-6) | corrective worker required | unsuppressed expected-crash corpus, ASan mutant, safe event retention |
 | Keep the noisy +12.90%/+8.60% echo results; they prove neither a zero-cost switch nor a reliable regression size. Require controlled runtime measurements on three workloads in both runtimes; build timing is not a third runtime workload. Explicitly extend corrective scope to the existing `bench/step38/measure.py` for measurement evidence, without treating its earlier out-of-scope edit as authorized retroactively. | Astra (GPT-6) | decided | serialized measurements after corrective code stabilizes |
 
+## 19 Sep 2026 — Step 44 needs correction before integration
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Request changes at `9ad0162a`: the fixture line-idle branch lost its terminal return and reaches `unreachable`; preserve existing `Conn.lines` semantics. The TLS positive test accepts ordinary errors, and binary length/sum is not exact ordered-byte evidence. Complete the bounded controls named in [[interpreter-step-44]] rather than accepting the report's broader claims. No dynamic reproduction or new acceptance claimed. | Astra (GPT-6), source review at 9:43 PM ET | fresh corrective worker required | actual line-idle RED/GREEN; strict TLS success/negative control; exact-byte, ownership and blocked-writer probes |
+| Preserve original samples (-8.69% interpreter/-0.97% native lines throughput) and the original delivery. Integrate only after corrections and independent guarded verification, including longer/interleaved lines measurements. No zero-overhead or causal regression conclusion from the short sequential samples. Step42-fix retains focused validation; the new step44 worker starts static-only. | Astra (GPT-6) | decided | explicit validation slot, isolated integrated checks and measurements |
+
 ## Related
 
 - [[session-05]]

@@ -132,10 +132,21 @@ interpreter/native. Checkpoints and 16 MiB workload hashes remain as recorded
 in `audit/evidence/2026-09-19/omp-resumption/step44-measurement-request.json`.
 Line samples are about 10–18ms; investigate the observed change during
 independent review with longer/interleaved controls, not a zero-overhead claim.
-Step44 is closing its report/evidence, no new runtime permission. Step42-fix
+Step44 final report is filed at `9ad0162a`; review found corrections below. Step42-fix
 now has focused validation permission for remaining corrections; full
 stress/ASan sweeps, unfiltered suites and benchmarks require a separate slot.
 Neither step is accepted.
+
+**Step44 review, 9:43 PM ET:** report/evidence read at final
+`9ad0162aa1994bb67c012ee85e78503c8573043a`. Worker reports clean tree,
+no owned processes and temporary baseline removed. Integration is blocked:
+fixture line idle falls through to `unreachable` after a deleted return;
+the TLS positive oracle accepts ordinary errors; binary count/sum is not
+exact-byte evidence, and named ownership/blocked-writer controls remain.
+The current step44 brief has the full corrective requirements. Preserve the
+original worker/worktree; assign a fresh Sol/high correction session from
+this final commit, initially static-only while step42-fix validates.
+Full suite, longer/interleaved measurements and both acceptances remain owed.
 
 ### Next, in order
 
