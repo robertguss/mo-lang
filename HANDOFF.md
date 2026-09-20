@@ -92,6 +92,21 @@ tool-generated verified lines, and file exact commands. Lead must regenerate
 the sidecar and verify source/ID consistency in the separate integration
 verification worktree before acceptance; do not hand-edit IDs.
 
+**Exclusive Darwin measurement slot: step42-sol.** Server and step44 workers
+confirmed no owned runtime/build/test/server/probe processes remain and hold
+new checks until explicit lead release. Server report checkpoint:
+`d689b441b967eb1f9e8143a503fbc8810d60d2e1`, final guarded fmt exit 0; report is
+filed but F1 still blocks cutover. Step44's last built-runtime exact-client
+probe exited 0 (worker report), not independent acceptance.
+Step42 code checkpoint `d3273ee2335f2fbbdad3eb81dc1f8eb86870d293` may run the
+filtered step42 sweep, ASan stress sweep and best-of-five echo/duplex/jobq,
+comparing `0a4dffcd` with that checkpoint. Evidence/table under `bench/step42/`.
+Unfiltered suite, its best-of-five timings and integrated acceptance remain
+lead-owned and owed. No concurrent lead runtime workload; no Linux/machine
+runs. Release siblings only after step42 reports the slot free and owned
+processes clear. Server continuation after the filed report needs a fresh
+worker session under the standing workflow.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

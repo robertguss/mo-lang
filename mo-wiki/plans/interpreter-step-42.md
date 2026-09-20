@@ -106,6 +106,16 @@ before and after; the stress sweep's wall time; three corpus benchmarks of
 your choice in normal mode before and after, to show the switch costs nothing
 when off.
 
+Worker stress sweeps and benchmark measurements require an explicit exclusive
+lead-issued slot after sibling builds/runtime checks drain. The unfiltered
+suite and its best-of-five timing remain lead-owned; the worker's slot does
+not authorize them or replace independent integrated acceptance. Record
+exact before/after commits and commands, all five samples (not only the best),
+load averages, guards, real exits and any failed or invalid samples. Do not
+change implementation during a measured series; corrections require a new
+checkpoint and a clearly separated series. No Linux or machine runs in the
+Darwin slot. Siblings resume checks only after explicit lead release.
+
 ## Done when
 
 Every process under `guard.py`; after any kill, check for orphaned test
