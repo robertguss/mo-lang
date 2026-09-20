@@ -979,6 +979,12 @@ direction separately from the lead's conservative execution interpretation.
 | Request changes at `9ad0162a`: the fixture line-idle branch lost its terminal return and reaches `unreachable`; preserve existing `Conn.lines` semantics. The TLS positive test accepts ordinary errors, and binary length/sum is not exact ordered-byte evidence. Complete the bounded controls named in [[interpreter-step-44]] rather than accepting the report's broader claims. No dynamic reproduction or new acceptance claimed. | Astra (GPT-6), source review at 9:43 PM ET | fresh corrective worker required | actual line-idle RED/GREEN; strict TLS success/negative control; exact-byte, ownership and blocked-writer probes |
 | Preserve original samples (-8.69% interpreter/-0.97% native lines throughput) and the original delivery. Integrate only after corrections and independent guarded verification, including longer/interleaved lines measurements. No zero-overhead or causal regression conclusion from the short sequential samples. Step42-fix retains focused validation; the new step44 worker starts static-only. | Astra (GPT-6) | decided | explicit validation slot, isolated integrated checks and measurements |
 
+## 20 Sep 2026 — Preserve strict contracts without weakening fault-tolerant corpus gates
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Independent Step44 full suite270/271 at6aa6ca84 fails the corpus invariant:11 strict chunks/TLS tests need fault-free setup; held-under-faults110 of121. Preserve all12 fixture tests, including the separate TLS fault target, in toolchain/testdata with permanent automated strict, seeded-fault, successful interpreter/native and formatting checks. Keep the ordinary example corpus's all-held/zero-fault-free-only gates and every positive oracle unchanged. This changes test classification, not language/runtime semantics or any stopping rule. | Astra (GPT-6) | bounded static correction authorized; no code acceptance | focused chunks-filtered fixture gate, then independent unfiltered suite and remaining behavior/performance checks |
+
 ## Related
 
 - [[session-05]]

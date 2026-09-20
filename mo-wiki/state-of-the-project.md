@@ -42,11 +42,16 @@ receive-window preparation, blocked-writer probes also pass in both runtimes:
 exact input consumed with actual Conn.write waiting before and afterward.
 All three corrective groups have worker-focused evidence and a reviewed final
 report. Its independent parser-fixture failure is repaired; isolated integration
-now passes focused4/4 and the guarded full suite is running. Independent
-both-runtime behavior/timing and longer interleaved line measurements remain
-pending; no code acceptance.
+passes focused4/4; the guarded full suite finished270/271, exit1,1142.19s.
+Its corpus fault gate rejects the11 strict controls' fault-free-only outcomes;
+the separate seeded TLS fault control holds. A bounded static correction moves
+all12 fixture tests to toolchain testdata with permanent automatic strict,
+fault and native checks, without weakening the ordinary corpus or positive
+oracles. Independent behavior/longer line measurements remain gated and unrun;
+no code acceptance.
 The mislocated --surface diagnostic remains unfixed. Step42
-remains runtime HOLD/static preparation; its
+has a fresh Sol/high worker preparing static safety-evidence drafts at frozen
+65b3dd37 in a separate worktree, with no runtime authorization; its
 exhaustive normal/raw-ASan sweeps,
 current stale-answer mutants, packed lifecycle controls and hot-path report
 remain owed, alongside lead-owned suite timings and independent integration.

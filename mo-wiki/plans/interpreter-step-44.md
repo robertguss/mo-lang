@@ -248,6 +248,52 @@ the independent unfiltered suite has started under guard2400. The stdlib
 contract is recorded with acceptance pending. Behavior and larger interleaved
 line comparison plans are filed in the same evidence directory, not yet run.
 
+### Independent corpus gate: strict controls are not fault-tolerant applications
+
+At6aa6ca84 the unfiltered suite finished270/271, exit1, real1142.19s.
+The corpus assertion expected121 simulated tests to hold under faults but
+found110: the9 strict chunks controls and2 strict TLS controls passed only
+without faults. The separate seeded TLS fault control held. No behavioral
+or performance plan has run after this gate. This does not establish a
+runtime regression; it establishes incompatible test classification.
+
+**Bounded corrective scope, same unfinished Step44 assignment:** preserve
+all assertions and all12 Mo tests. Move the three fixture modules and their
+owned metadata together from `examples/step44/` to
+`toolchain/testdata/step44/`, the toolchain's existing testdata area.
+Keep sibling module identities/imports intact. Migrate active probe callers;
+historical logs, commands and evidence stay immutable. No compatibility copy,
+new root marker, public syntax, loader change or runtime change.
+
+Add a permanent `corpus.zig` contract-fixture test, named to match the existing
+`chunks` filter, using the existing pipeline and native differential helpers:
+
+- Require all9 chunks and2 strict TLS controls, no failures/skips, with100
+  seeded scheduling runs and explicitly zero injected faults.
+- Require the distinct TLS fault control with100 seeds and20% faults,
+  held-under-faults1 and fault-free-only0. Keep its bounded outcome oracle
+  separate; it cannot substitute for either positive control.
+- Require interpreter and native test execution to succeed for all three
+  modules, not merely agree on a failing exit. Preserve test counts and
+  interpreter/native agreement. Require canonical formatting of all three
+  moved fixtures, since they will no longer be in the examples formatter loop.
+- Keep the ordinary example corpus's stages, all-tests-held-under-faults
+  assertion and zero fault-free-only assertion unchanged. No exemption,
+  skipped target, permissive TLS branch, retry protocol or lowered assertion.
+
+This is a location/classification correction, not removal from the automated
+suite. A `# sim: --faults 0` header in examples is not a fix: the runner still
+counts these as simulated, while held-under-faults requires nonzero faults.
+
+Additional write scope is limited to the moved fixtures/owned metadata,
+the new test in `toolchain/src/corpus.zig`, active Step44 probe path references,
+and corrective evidence/report. Regenerate metadata with real Mo tooling,
+never hand-edit it. Targeted formatting only. First prepare the static diff
+and exact guarded command manifest; runtime remains HOLD until lead review.
+No unfiltered worker suite, benchmarks, unrelated cleanup or Step42 changes.
+The lead will independently rerun the full suite before behavioral/performance
+acceptance. Last accepted full-suite result remains268/268; Linux is deferred.
+
 ## Related
 
 - [[mo-workspace-server-4a]]

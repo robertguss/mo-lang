@@ -1,6 +1,6 @@
 # Mo Lang — Astra lead and fresh OMP/Sol workers (read START HERE)
 
-## START HERE: both units resumed under OMP/Sol, 19 Sep 2026
+## START HERE: independent Step44 verification, 20 Sep 2026
 
 Robert's Claude Code subscription is unavailable. Astra leads in this existing
 OMP session; workers use OMP with GPT Sol at high reasoning. Robert explicitly
@@ -12,6 +12,37 @@ Load `mo-lead`, then this section and `mo-wiki/SCHEMA.md`. Run the auditor check
 session's check at 7:36 PM ET found 0 new records). PRs 15 and 16 are merged.
 The lead owns briefs, reviews, records and acceptance; it may run independent
 builds/tests, but workers write all implementation and code, including probes.
+
+### Current ownership — 20 Sep, 7:22 AM ET
+
+- **Lead verification:** `lead/verify-step44` at `6aa6ca84`, separate
+  worktree `.../lead-verify-step44`, owned terminal **w4:p3B / w4:t1A**.
+  Build passed; focused checks pass **4/4**. The guard2400 unfiltered suite
+  finished **270/271, exit1, real1142.19s**: the corpus expects every simulated
+  process test to hold under faults, but the9 strict chunks and2 strict TLS
+  controls require fault-free success (held110 of121). Separate TLS faults held.
+  No runtime regression or acceptance is inferred. Behavior/performance plans
+  remain unrun. Scoped clearance found only the owned idle shell, no runtime.
+- **Step44 worker:** `step44-fix-sol`, **w4:p3A / w4:t19**, static correction.
+  Latest integrated code/evidence015164e7, report1f45e09c. New bounded brief
+  moves all12 controls to toolchain testdata with permanent automatic strict,
+  seeded-fault and native checks; ordinary corpus gates/oracles stay unchanged.
+  Static diff/manifest first; no runtime grant. No Step44 code is on main.
+- **Step42 worker:** fresh **`step42-safety-sol`**, **w4:p3C / w4:t1B**,
+  OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
+  `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
+  **Static drafts only** under `toolchain/bench/step42/safety-evidence/**`;
+  no build/test/runtime/formatter/benchmark. Main's Step42 brief and seven
+  unwaived obligations govern. The old corrective tree and its untracked
+  review evidence remain untouched; `step42-fix-sol` is no longer registered.
+- Original server/Step42/Step44 worker launch receipts below are historical,
+  not instructions to reuse their pane IDs or start from their old WIP.
+  Server integration remains blocked; Linux remains deferred.
+
+Current evidence: `audit/evidence/2026-09-20/step44-integration/` and
+`audit/evidence/2026-09-20/step42-static-continuation.json`. Main holds lead
+records/specification only; the stdlib chunks row explicitly says acceptance
+is pending. No final acceptance or new accepted full-suite result is claimed.
 
 ### Standing instructions learned today (in force)
 

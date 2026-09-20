@@ -187,6 +187,57 @@ this bounded scope extension. Keep benchmark corpus inputs unchanged between
 trees, and do not break existing output-path callers. Report which prior
 results no longer apply after corrective code changes.
 
+## Current safety evidence continuation
+
+20 Sep 2026. Fresh OMP/GPT Sol/high worker `step42-safety-sol`; lead Astra
+remains in w4:p1. Worktree `toolchain-step42-safety-evidence`, branch
+`toolchain/step42-safety-evidence`, exact base
+`65b3dd37c4b2acc74bbdc425a723a163b69e50f8`. The previous corrective worker is
+no longer registered. Preserve its worktree and untracked review evidence
+unchanged; no conversation resume, fork or import.
+
+**Static preparation only while Step44 owns runtime verification.** Read the
+lead inventory at
+`audit/evidence/2026-09-19/omp-resumption/step42-review-obligations-inventory.txt`
+in the main checkout. Its seven remaining obligations are not waived:
+
+1. Exhaustive normal stress sweep at the current runtime checkpoint.
+2. Exhaustive ASan corpus sweep with raw stderr; no warning suppression.
+3. Actual ASan use-after-poison from a current-representation stale-answer
+   mutant at n=10, the 45-byte boundary; print the actual input.
+4. The same stale boundary caught by ordinary interpreter and native
+   `-DMO_STRESS`, separately from ASan.
+5. Real packs=true retaining-boundary transfer, drop, absent/timed-out waiter,
+   update crash, process restart/end and committed-event cleanup outcomes.
+6. Normal-mode hot-path analysis grounded in current source and the existing
+   correction-only measurements; no zero-cost claim.
+7. Before/after unfiltered suite timing remains lead-owned, not waived;
+   Linux remains deferred.
+
+For this static stage, write only
+`toolchain/bench/step42/safety-evidence/**`: executable probe/test drafts,
+unapplied mutation or focused-test patches, and a command/coverage manifest.
+Existing runtime, source tests, build files, guards, corpus, measurement
+driver and final report stay frozen. Use existing harness conventions; do not
+invent public hooks, instrumentation or a second runner. If a production or
+test hook is necessary, name the exact prerequisite rather than applying it.
+The manifest must map every outcome to its existing or drafted control and
+exact command, expected diagnostic/count, guard, restoration and cleanup.
+Account for current ParcelValue holders and custom-fiber sanitizer hooks.
+Never read an auditor's hidden suite or operate the lead's audit inbox.
+
+No build, test, runtime/probe execution, py_compile, formatter, linter,
+benchmark, debugger, machine/Linux operation, push or merge in this stage.
+No nested delegation. Preserve historical evidence and the measured
+65b3dd37 runtime/driver checkpoint. The completed 60-sample comparison is
+against prior **unaccepted** be64e8a5, not whole-step overhead; do not rerun or
+rewrite it, including its documented load-heading error.
+
+Done for this stage: bounded static drafts and concrete remaining command/
+coverage manifest, source-based hot-path notes, exact prerequisites and
+changed paths reported to the lead, explicitly unexecuted; then HOLD for
+review and a serialized runtime grant. Do not write the final report yet.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]
