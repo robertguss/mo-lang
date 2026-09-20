@@ -155,13 +155,16 @@ Full suite, longer/interleaved measurements and both acceptances remain owed.
 
 **Step44 idle slot requested, not granted:** worker prepared static probes
 and deliberately retained the inherited source bug for RED. Lead asked
-step42-fix to finish its current focused command, start no further validation
-or formatter, then report explicit process clearance; no clearance yet.
-Static review also found the proposed immediate `Snapshot` does not drive
-fixture source delivery (`sim.askInline`/`othersRound`), so it can fail
-without reaching the bug and after the fix. Worker must use a deferred
-terminal-event wait through real dispatch before the bounded build/corpus
-RED/GREEN grant. No full suite, stress sweep, benchmark or runtime grant.
+step42-fix to finish its current focused command and start no further validation.
+A clearance was forwarded with a step44 prefix but step42 debugger paths
+(120s timeout, exit 137); the reported files were not found in the corrective
+worktree. Owner attribution is pending with step42-fix; no process rerun asked.
+The revised deferred `Await` control passed static review: real source pumping
+precedes the returned terminal counts; public source retirement and a later
+snapshot are checked. Proposed slot: 300s guarded build, 120s corpus RED;
+only after the expected `linesFixture` unreachable, restore its terminal return,
+then identical bounded build/corpus GREEN (9/9). No other commands granted.
+Still **not granted** pending explicit step42 clearance attribution.
 
 ### Next, in order
 
