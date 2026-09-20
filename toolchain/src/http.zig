@@ -134,52 +134,85 @@ fn nextField(headers: []const u8, at: *usize) ?Field {
     return field(line).?;
 }
 
+/// How far a parse got through a message's lines, so that with more bytes it goes on from
+/// there instead of over them again: each byte of the start line and the header lines is
+/// scanned once however many reads bring them.
+pub const Progress = struct {
+    /// The start line's line end, once it is found.
+    start_end: ?usize = null,
+    /// Where the header lines end (the blank line's start), once it is found.
+    headers_end: ?usize = null,
+    /// The current line's first byte; after the blank line, the body's.
+    at: usize = 0,
+    /// No line end is before it: the scan for the current line's goes on from here.
+    scanned: usize = 0,
+    content_length: ?u64 = null,
+};
+
 /// What the bytes of a stream so far hold: a whole request or response, not yet, or why not.
 /// `eof`: nothing follows `bytes`. A response with no content-length runs to the end of the
 /// stream; a request with none has no body.
 pub fn parse(bytes: []const u8, eof: bool, kind: Kind) Parsed {
-    const start_end = std.mem.indexOfScalar(u8, bytes, '\n') orelse {
-        if (bytes.len > limit + 1) return .{ .failed = .TooLarge };
-        return if (eof) .{ .failed = .Closed } else .more;
-    };
-    const start = withoutCr(bytes[0..start_end]);
-    if (start.len > limit) return .{ .failed = .TooLarge };
-    switch (kind) {
-        .request => switch (requestLine(start)) {
-            .ok => {},
-            .failed => |f| return .{ .failed = f },
-        },
-        .response => switch (statusLine(start)) {
-            .ok => {},
-            .failed => |f| return .{ .failed = f },
-        },
-    }
-    const headers_start = start_end + 1;
-    var at = headers_start;
-    var content_length: ?u64 = null;
-    const headers_end = while (true) {
-        const rest = bytes[at..];
-        const k = std.mem.indexOfScalar(u8, rest, '\n') orelse {
-            if (at - headers_start + rest.len > limit) return .{ .failed = .TooLarge };
+    var p: Progress = .{};
+    return parseFrom(bytes, eof, kind, &p);
+}
+
+/// `parse`, going on from `p`, which is fresh or an earlier call's over a prefix of `bytes`
+/// that gave `more`. The answer is the one `parse` gives over all of `bytes`.
+pub fn parseFrom(bytes: []const u8, eof: bool, kind: Kind, p: *Progress) Parsed {
+    const start_end = p.start_end orelse blk: {
+        const k = std.mem.indexOfScalarPos(u8, bytes, p.scanned, '\n') orelse {
+            p.scanned = bytes.len;
+            if (bytes.len > limit + 1) return .{ .failed = .TooLarge };
             return if (eof) .{ .failed = .Closed } else .more;
         };
-        const line = withoutCr(rest[0..k]);
-        const line_start = at;
-        at += k + 1;
-        if (line.len == 0) break line_start;
-        if (at - headers_start > limit) return .{ .failed = .TooLarge };
+        const start = withoutCr(bytes[0..k]);
+        if (start.len > limit) return .{ .failed = .TooLarge };
+        switch (kind) {
+            .request => switch (requestLine(start)) {
+                .ok => {},
+                .failed => |f| return .{ .failed = f },
+            },
+            .response => switch (statusLine(start)) {
+                .ok => {},
+                .failed => |f| return .{ .failed = f },
+            },
+        }
+        p.start_end = k;
+        p.at = k + 1;
+        p.scanned = k + 1;
+        break :blk k;
+    };
+    const start = withoutCr(bytes[0..start_end]);
+    const headers_start = start_end + 1;
+    const headers_end = p.headers_end orelse while (true) {
+        const k = std.mem.indexOfScalarPos(u8, bytes, p.scanned, '\n') orelse {
+            p.scanned = bytes.len;
+            if (bytes.len - headers_start > limit) return .{ .failed = .TooLarge };
+            return if (eof) .{ .failed = .Closed } else .more;
+        };
+        const line = withoutCr(bytes[p.at..k]);
+        const line_start = p.at;
+        p.at = k + 1;
+        p.scanned = k + 1;
+        if (line.len == 0) {
+            p.headers_end = line_start;
+            break line_start;
+        }
+        if (p.at - headers_start > limit) return .{ .failed = .TooLarge };
         const f = field(line) orelse return .{ .failed = .Malformed };
         if (std.ascii.eqlIgnoreCase(f.name, "transfer-encoding")) return .{ .failed = .Unsupported };
         if (std.ascii.eqlIgnoreCase(f.name, "content-length")) {
             if (f.value.len == 0 or f.value.len > 19) return .{ .failed = if (f.value.len == 0) .Malformed else .TooLarge };
             for (f.value) |ch| if (!std.ascii.isDigit(ch)) return .{ .failed = .Malformed };
             const n = std.fmt.parseInt(u64, f.value, 10) catch unreachable;
-            if (content_length) |prev| if (prev != n) return .{ .failed = .Malformed };
-            content_length = n;
+            if (p.content_length) |prev| if (prev != n) return .{ .failed = .Malformed };
+            p.content_length = n;
         }
     };
+    const at = p.at;
     const headers = bytes[headers_start..headers_end];
-    if (content_length) |n| {
+    if (p.content_length) |n| {
         if (n > limit) return .{ .failed = .TooLarge };
         if (bytes.len - at < n) return if (eof) .{ .failed = .Closed } else .more;
         return .{ .whole = .{ .start = start, .headers = headers, .body = bytes[at .. at + n], .len = at + n } };
@@ -471,8 +504,10 @@ fn readMessage(n: *net.Net, vm: *Vm, c: *net.Conn, kind: Kind, ms: i64) Error!Re
     if (c.closed) return .{ .failed = .Closed };
     if (c.reading) return .{ .failed = .Busy };
     const t0 = Io.Clock.Timestamp.now(n.io, .awake);
+    // `fill` moves the buffered bytes to the front, so offsets from c.start keep.
+    var progress: Progress = .{};
     while (true) {
-        switch (parse(c.buf[c.start..c.end], c.eof, kind)) {
+        switch (parseFrom(c.buf[c.start..c.end], c.eof, kind, &progress)) {
             .whole => |m| return .{ .whole = m.len },
             .failed => |f| return .{ .failed = f },
             .more => {},
@@ -685,6 +720,42 @@ test "a request is whole once its body is, and each limit and rule has its error
     try std.testing.expectEqualStrings("hi", parse("HTTP/1.1 200 OK\r\n\r\nhi", true, .response).whole.body);
     try std.testing.expect(parse("HTTP/1.1 200 OK\r\n\r\nhi", false, .response) == .more);
     try std.testing.expect(parse("HTTP/1.1 99 Low\r\n\r\n", true, .response).failed == .Malformed);
+}
+
+test "a parse that goes on from an earlier one answers as one over the whole" {
+    const cases = [_]struct { []const u8, Kind }{
+        .{ "POST /a?x=1 HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\nX: y\r\n\r\nhello", .request },
+        .{ "GET / HTTP/1.1\nHost: a\n\n", .request },
+        .{ "GET / HTTP/1.1\r\nno colon\r\n\r\n", .request },
+        .{ "POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n", .request },
+        .{ "HTTP/1.1 200 OK\r\ncontent-length: 2\r\n\r\nhi", .response },
+        .{ "HTTP/1.1 99 Low\r\n\r\n", .response },
+    };
+    for (cases) |case| {
+        const bytes, const kind = case;
+        var p: Progress = .{};
+        var i: usize = 0;
+        while (i <= bytes.len) : (i += 1) {
+            const eof = i == bytes.len;
+            const step = parseFrom(bytes[0..i], eof, kind, &p);
+            const fresh = parse(bytes[0..i], eof, kind);
+            try std.testing.expectEqual(std.meta.activeTag(fresh), std.meta.activeTag(step));
+            switch (fresh) {
+                .more => {},
+                .failed => |f| {
+                    try std.testing.expectEqual(f, step.failed);
+                    break;
+                },
+                .whole => |m| {
+                    try std.testing.expectEqualStrings(m.start, step.whole.start);
+                    try std.testing.expectEqualStrings(m.headers, step.whole.headers);
+                    try std.testing.expectEqualStrings(m.body, step.whole.body);
+                    try std.testing.expectEqual(m.len, step.whole.len);
+                    break;
+                },
+            }
+        }
+    }
 }
 
 test "a query's escapes decode, and a key or value is encoded back" {
