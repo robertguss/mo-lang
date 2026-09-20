@@ -611,6 +611,56 @@ pub const fns = [_]Fn{
     .{ .recv = "", .name = "flows", .params = &.{"T"}, .named = &.{.{ .name = "into", .type = "Capability" }}, .ret = "Bool", .only = .never },
 };
 
+fn buildByName() []const struct { []const u8, []const u16 } {
+    @setEvalBranchQuota(100_000);
+    var names: [fns.len][]const u8 = undefined;
+    var counts: [fns.len]usize = [_]usize{0} ** fns.len;
+    var indexes: [fns.len][fns.len]u16 = undefined;
+    var name_count: usize = 0;
+    for (fns, 0..) |f, k| {
+        var name_index: ?usize = null;
+        for (names[0..name_count], 0..) |name, j| {
+            if (std.mem.eql(u8, name, f.name)) {
+                name_index = j;
+                break;
+            }
+        }
+        const j = name_index orelse blk: {
+            names[name_count] = f.name;
+            name_count += 1;
+            break :blk name_count - 1;
+        };
+        indexes[j][counts[j]] = @intCast(k);
+        counts[j] += 1;
+    }
+
+    var entries: [name_count]struct { []const u8, []const u16 } = undefined;
+    for (names[0..name_count], 0..) |name, j| {
+        const idx = indexes[j];
+        entries[j] = .{ name, idx[0..counts[j]] };
+    }
+    const result = entries;
+    return result[0..];
+}
+
+pub const byName = std.StaticStringMap([]const u16).initComptime(buildByName());
+
+pub fn rowsNamed(name: []const u8) []const u16 {
+    return byName.get(name) orelse &.{};
+}
+
+fn lastRecvRow(comptime recv: []const u8) u16 {
+    var result: ?u16 = null;
+    for (fns, 0..) |f, k| {
+        if (std.mem.eql(u8, f.recv, recv)) result = @intCast(k);
+    }
+    return result orelse @compileError("prelude receiver has no matching row");
+}
+
+pub const process_start_row = lastRecvRow("Process");
+pub const supervisor_start_row = lastRecvRow("Supervisor");
+pub const type_all_row = lastRecvRow("Type");
+
 pub const Operator = struct { lhs: []const u8, op: []const u8, rhs: []const u8, result: []const u8 };
 
 /// Operators on stdlib types beyond numbers, Bool, and structural `==`.
@@ -684,4 +734,21 @@ test "every name in a prelude type string is a prelude type or a type-string wor
 
 test "every variant belongs to a prelude type" {
     for (variants) |v| try std.testing.expect(findType(v.owner) != null);
+}
+
+test "prelude function names index their rows" {
+    for (fns, 0..) |f, k| {
+        var found = false;
+        var previous: ?u16 = null;
+        for (rowsNamed(f.name)) |row| {
+            if (previous) |p| try std.testing.expect(p < row);
+            previous = row;
+            if (row == k) found = true;
+        }
+        try std.testing.expect(found);
+    }
+    try std.testing.expectEqualStrings("Process", fns[process_start_row].recv);
+    try std.testing.expectEqualStrings("Supervisor", fns[supervisor_start_row].recv);
+    try std.testing.expectEqualStrings("Type", fns[type_all_row].recv);
+    try std.testing.expectEqual(@as(usize, 0), rowsNamed("no_such_fn").len);
 }
