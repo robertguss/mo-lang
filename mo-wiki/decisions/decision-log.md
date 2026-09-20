@@ -1005,6 +1005,14 @@ direction separately from the lead's conservative execution interpretation.
 | Combine accepted Step44 with saved server deliveryd689b441 only in a fresh Sol/high worker tree. Start static-only chunks framing/coverage preparation; no runtime, source-harness change, machine or server acceptance. Preserve F1 RED and the two incompatible Python owner-exit predicates. Require complete real-server coverage and strict/fault-tolerant corpus classification before grants. | Astra (GPT-6) | authorized bounded continuation | reviewed static diff/manifest, then explicitly scheduled unchanged-client and H2/H6/D2 controls |
 | Ratify Mo refusal precedence: busy, duplicate/conflicting ID, terminal/short-lease admission,16-call limit, then journal capacity for otherwise admissible requests. CONTRACT.md lists codes/limits but no simultaneous priority; retain the existing Mo order and require overlapping-condition outcome tests. Never write an intent for an already-refused call or claim blanket H7 equivalence. | Astra (GPT-6) | decided; semantic; for Robert | actual admission outcomes with overlapping limits, without effects or counter changes |
 
+## 20 Sep 2026 — Narrow server fixture scope; withhold execution
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Authorize one strict process fixture and the corpus gate, not a separate faults fixture. Keep three fault-tolerant controls in ordinary coverage; move seven strict controls without duplicating production modules or widening APIs for tests. Any exact-path simulation exception requires mandatory positive counts, seeded zero-fault execution, native parity and formatting; ordinary and Step44 gates stay intact. | Astra (GPT-6), static review | static scope granted; runtime withheld | revised diff/manifest, then a separately granted correctness batch |
+| Bind the trusted operator's base64 source mapping with the existing sorted-key compact-JSON digest convention. Require an independent actual-journal vector and key-order invariance, not config/journal echo; do not label insertion-ordered encoding a canonical reference hash. Preserve hostile-tree readiness and the tool fence. | Astra (GPT-6) | decided; semantic; for Robert | actual-server GREEN and hostile controls after correction |
+| Withhold correctness execution until the fixture split, fresh guarded compiler-build prerequisite, exact counts/fault settings and stronger binding assertions are reviewed. Benchmarks remain separate; retain the16-call cap and disclose batched1000-call timing, with exact result oracles. | Astra (GPT-6) | no runtime owner or acceptance | server-chunks-static-review-01.json; static whitespace check0 only |
+
 ## Related
 
 - [[session-05]]

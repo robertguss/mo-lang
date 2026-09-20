@@ -44,9 +44,12 @@ builds/tests, but workers write all implementation and code, including probes.
   OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
   `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
   b0a0eea0 plus saved server d689b441). Static-only byte-framing/controls and
-  complete coverage/command manifest; no validation/runtime/commit/report.
-  Current brief explicitly preserves client/EOF/operator predicates and
-  requires strict/fault-tolerant test classification before a full-suite grant.
+  complete coverage/command manifest reviewed; no validation/runtime/commit/report.
+  Static extension now permits one strict7 fixture plus corpus gate, retaining
+  the three fault-tolerant tests in ordinary coverage. Correct source binding
+  to the existing canonical digest convention and add independent journal
+  vectors. Revised manifest must first build its own compiler; exact counts
+  and fault settings are required. Correctness/benchmarks remain withheld.
 - Original server/Step42/Step44 worker launch receipts below are historical,
   not instructions to reuse their pane IDs or start from their old WIP.
   Server acceptance remains blocked; Linux remains deferred.
@@ -54,8 +57,8 @@ builds/tests, but workers write all implementation and code, including probes.
 Current evidence: `audit/evidence/2026-09-20/step44-integration/README.md`
 and its acceptance/measurement records; Step42 static review remains separate.
 Main holds accepted Step44 code and lead records; no push or audit publication.
-Last accepted Darwin suite is272/272. Fresh server adoption is now in static
-preparation; Linux remains owed. Step42's seven obligations are not waived.
+Last accepted Darwin suite is272/272. Fresh server adoption is in static
+revision; Linux remains owed. Step42's seven obligations are not waived.
 
 ### Standing instructions learned today (in force)
 

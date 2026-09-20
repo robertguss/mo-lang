@@ -97,6 +97,44 @@ original evidence cap; request a concrete change before exceeding it. Keep every
 failed attempt and real exit. Final report remains REPORT.md, committed last
 only after all named worker work and cleanup finish; no acceptance by worker.
 
+#### Static review and bounded fixture grant — 20 Sep
+
+The first chunks diff and all three new drivers are reviewed statically;
+`git diff --check` passed. **Correctness execution remains withheld**, as do
+benchmarks, commits, final report, machine and Linux. Runtime is unassigned.
+Raw diff, new-file snapshots, manifest and decisions are preserved in
+`audit/evidence/2026-09-20/server-chunks-static-review-01.json`.
+
+Authorize static edits to **examples/programs/workspace-server/strict.mo**,
+**toolchain/src/corpus.zig**, and the existing owned validation matrix. Move
+only the seven strict process tests, importing the real production modules.
+Keep the three fault-tolerant tests in ordinary corpus coverage; do not create
+faults.mo, duplicate production modules, change the loader or add a root.
+Any generic simulation exclusion must name only this exact strict fixture,
+with a mandatory permanent gate for its exact positive count, zero skips and
+failures, zero-fault seeded simulation, successful interpreter/native parity
+and formatting. Reuse checkContractFixture and preserve ordinary/Step44 gates.
+Keep generic formatting/check/native coverage where feasible. Preserve every
+behavioral assertion; declare any count change needed to retain private pure
+checks without exporting production helpers solely for tests.
+
+Source binding uses the existing workspace_controller.digest convention over
+the base64 source mapping: SHA-256 of sorted-key, compact JSON. The operator
+remains trusted; insertion-ordered protocol.encode is not a canonical mapping
+digest. Require an independent known-vector journal check and key-order
+invariance, not journal-versus-config self-comparison. Retain hostile-tree
+readiness/refusal coverage. Drop incidental settings-field-copy and exact-error
+wording assertions; keep malformed-hash rejection behavior.
+
+The revised manifest must begin with a fresh guarded compiler build in this
+worktree, with an explicit deadline and4GiB; cloned zig-out is not proof.
+Finish and review classification before running mixed simulations. List exact
+expected counts and fault settings; stop on failure and retain every attempt.
+Benchmark preparation may retain disclosed16-call batches for1000 calls, but
+must check exact read contents/search rows, not only lengths/counts. Python's
+test owner does execute real file tools; its machine lifecycle remains scripted.
+Return the revised static diff/manifest for review before any execution grant.
+
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
 Step 44 stays unchanged. `Closed` reports input termination, not whether the
