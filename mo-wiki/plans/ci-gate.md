@@ -1,14 +1,18 @@
 ---
 title: "A CI gate: the compiler and corpus checked on every pull request"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-20
 type: plan
 tags: [verification, tooling, compiler]
 sources: [plans/interpreter-step-43.md, plans/interpreter-step-42.md]
-status: briefed
+status: parked
 ---
 
 # A CI gate
+
+**Parked, 20 Sep 2026:** Robert wants no CI for now and removed the GitHub
+Actions workflows himself. Do not launch this brief until he asks again
+(decision log, 20 Sep, "No CI for now").
 
 ## Orientation
 

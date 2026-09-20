@@ -1055,6 +1055,12 @@ direction separately from the lead's conservative execution interpretation.
 | Accept grant08's42/42 generator results as the provenance prerequisite only:15 unstaged records and protected F1 unchanged. Resume the twenty remaining correctness commands under sole server runtime ownership; no generation repeat, benchmark, full-suite or server acceptance implied. | Astra (GPT-6), raw result08 review | remaining correctness authorized | grant09 exact commands and actual gate results |
 | Compile ASan-only fiber context fields and initialization out of normal native builds; remove the field-assignment-only stress budget test rather than preserving low-value implementation assertions. Keep actual stress/mutant obligations and the blocking lifetime behavior control. These are two bounded additions to the static memory repair, not a native ownership redesign. | Astra (GPT-6), independent source review07 | source correction authorized; unexecuted | normal/ASan build and existing real stress/mutant proof under later grants |
 
+## 20 Sep 2026 — No CI for now
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| No CI for now. Robert removed the GitHub Actions workflows himself on 20 Sep. The [[ci-gate]] plan is parked, not scheduled after Step42; acceptance stays with the lead's independent local builds and full suites. Revisit only when Robert asks. | Robert | provisional | Robert asking for CI again |
+
 ## Related
 
 - [[session-05]]

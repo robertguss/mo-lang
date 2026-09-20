@@ -577,8 +577,8 @@ directory; no code has merged into main.
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
    one probe the brief did not name).
-2. The CI gate (`mo-wiki/plans/ci-gate.md`, briefed, after step 42: both edit
-   `corpus.zig`). It also brings Linux back on every pull request.
+2. ~~The CI gate~~ parked 20 Sep: Robert wants no CI for now and removed the
+   GitHub Actions workflows himself (`mo-wiki/plans/ci-gate.md`, decision log).
 3. The Linux batch (below), then part B of the server (not written: `command`
    through `Exec`, container policy and cleanup proofs on the machine, the
    cutover, D2 closed by an independent operator path).
