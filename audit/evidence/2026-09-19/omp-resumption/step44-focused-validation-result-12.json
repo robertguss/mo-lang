@@ -1,0 +1,11 @@
+{
+  "recorded_at_et": "2026-09-19T23:49:24.403629-04:00",
+  "grant": "step44-focused-validation-grant-12.json",
+  "name": "controls-check-04",
+  "exit": 0,
+  "log": "Empty, clean checker",
+  "source_review": "Both Check constructions named; single ready snapshot per turn; ready-or-exhausted one fanout clears waiters, else decrement and one self-message; finite budget and3s ask unchanged",
+  "no_behavior_or_build": true,
+  "cleanup": "Worker scoped pgrep exit1, no owned mo/guard/control-build processes, nothing killed/detached",
+  "acceptance": "Checker/source review only, runtime observation still owed"
+}

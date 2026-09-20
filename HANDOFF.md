@@ -408,6 +408,18 @@ source/checker review. Both workers runtime HOLD; step42 static work continues.
 Exact result10/grant11 and bound/pending logs retained in the same evidence
 directory. No runtime defect or acceptance conclusion from failed readiness.
 
+**Cooperative observer checker gate passed:** check03 stopped on two
+positional `Check` constructions and reply-fanout nesting. Worker corrected
+construction labels and flattened the terminal branch; check04 exited 0
+with empty output. Lead reviewed one exact readiness snapshot/message turn,
+finite budget/3s ask, false exhaustion, and clearing answered waiters.
+No behavior ran under those checker grants; scoped clearance reported.
+Granted fresh controls-native-build04 (180s), pending-pull-run02 (60s), then
+unchanged original16–20 serially. No successful bounds rerun; source/probes
+frozen, stop first surprise, cleanup/report then HOLD. Exact result11/
+result12/grant12/grant13 and checker logs retained under the same evidence
+directory. Runtime proof still pending; step42 remains runtime HOLD.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

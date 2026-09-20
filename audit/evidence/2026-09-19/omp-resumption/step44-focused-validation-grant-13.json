@@ -1,0 +1,57 @@
+{
+  "recorded_at_et": "2026-09-19T23:49:24.414145-04:00",
+  "status": "Granted; no results yet",
+  "prior_checker": "step44-focused-validation-result-12.json",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "number": "12R4",
+      "name": "controls-native-build-04",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --surface bench/step44/review-fixes/control_probe.mo -o step44-review-controls"
+    },
+    {
+      "number": "15R",
+      "name": "pending-pull-run-02",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case pending-pull"
+    },
+    {
+      "number": 16,
+      "name": "pending-pull-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case pending-pull"
+    },
+    {
+      "number": 17,
+      "name": "late-tls-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case late-tls"
+    },
+    {
+      "number": 18,
+      "name": "late-tls-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case late-tls"
+    },
+    {
+      "number": 19,
+      "name": "blocked-writer-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer"
+    },
+    {
+      "number": 20,
+      "name": "blocked-writer-native-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case blocked-writer"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "stop": "First unexpected result, nonzero, timeout, kill or diagnostic; no silent retries; retain checker failure tls-test-write-01",
+  "freeze": "Runtime/probes frozen; no corrections/retries under grant",
+  "completion": "Scoped owned cleanup/report then HOLD",
+  "other_worker": "step42 runtime HOLD",
+  "not_authorized": "Formatter, full suite, benchmark, existing-client rerun, stress, unlisted probes, step42 integration, Linux/machine work, push",
+  "acceptance": "Worker evidence only; exact waiting/refusal/byte markers required, false/timeout fails"
+}
