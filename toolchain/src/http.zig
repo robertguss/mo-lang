@@ -323,7 +323,7 @@ pub fn requestValue(vm: *Vm, bytes: []const u8) Error!Value {
     fields[2] = try mapValue(vm, query.items);
     fields[3] = try headersValue(vm, m.headers);
     fields[4] = .{ .string = try vm_mod.rawDupe(vm.heap, u8, m.body) };
-    return .{ .record = .{ .decl = vm.program.checked.preludeStruct("Request").?, .fields = fields } };
+    return .{ .record = .{ .decl = vm.program.prelude_decls.request, .fields = fields } };
 }
 
 /// The `Response` a whole response's bytes spell.
@@ -333,7 +333,7 @@ pub fn responseValue(vm: *Vm, bytes: []const u8) Error!Value {
     fields[0] = .{ .int = statusLine(m.start).ok };
     fields[1] = try headersValue(vm, m.headers);
     fields[2] = .{ .string = try vm_mod.rawDupe(vm.heap, u8, m.body) };
-    return .{ .record = .{ .decl = vm.program.checked.preludeStruct("Response").?, .fields = fields } };
+    return .{ .record = .{ .decl = vm.program.prelude_decls.response, .fields = fields } };
 }
 
 /// The reason phrase a status line gives a status; empty for one not listed.

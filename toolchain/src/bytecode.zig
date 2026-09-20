@@ -351,8 +351,35 @@ pub const Test = struct { kind: TestKind, name: []const u8, function: u32, at: u
 /// run held, and trips `clause` naming each generated value by `names`.
 pub const Never = struct { function: u32, clause: u32, names: []const []const u8 };
 
+/// Prelude struct decl indices the interpreter needs at runtime (emit_c.zig prints the same values as C constants).
+pub const PreludeDecls = struct {
+    request: u32,
+    response: u32,
+    entry: u32,
+    done: u32,
+    process_info: u32,
+    source_info: u32,
+    memory_info: u32,
+    charge: u32,
+
+    pub fn resolve(k: *const check.Checked) PreludeDecls {
+        return .{
+            .request = k.preludeStruct("Request").?,
+            .response = k.preludeStruct("Response").?,
+            .entry = k.preludeStruct("Entry").?,
+            .done = k.preludeStruct("Done").?,
+            .process_info = k.preludeStruct("ProcessInfo").?,
+            .source_info = k.preludeStruct("SourceInfo").?,
+            .memory_info = k.preludeStruct("MemoryInfo").?,
+            .charge = k.findDecl("Charge").?,
+        };
+    }
+};
+
 pub const Program = struct {
     checked: check.Checked,
+    /// Decl indices of prelude structs the runtime builds records of, resolved once here.
+    prelude_decls: PreludeDecls,
     functions: []const Function,
     constants: []const Const,
     clauses: []const Clause,
@@ -438,6 +465,7 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     }
     return .{
         .checked = checked,
+        .prelude_decls = PreludeDecls.resolve(&checked),
         .functions = l.functions.items,
         .constants = l.constants.items,
         .clauses = l.clauses.items,
