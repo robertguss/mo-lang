@@ -1,0 +1,38 @@
+{
+  "recorded_at": "2026-09-20T10:04:46.261496-04:00",
+  "grant": "server-chunks-correctness-grant-02.json",
+  "status": "stopped at resumed command2; commands3-24 unattempted",
+  "attempt": "chunks2-format-02",
+  "exit": 1,
+  "reported_seconds": 0.3,
+  "command": {
+    "argv": [
+      "python3",
+      "toolchain/bench/step36/guard.py",
+      "2400",
+      "--",
+      "python3",
+      "-B",
+      "examples/programs/workspace-server/verify.py",
+      "--kind",
+      "format"
+    ],
+    "cwd": "repository root"
+  },
+  "raw_output": "command=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/wire.mo']\nexit=0\nmodule=wire.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/schema.mo']\nexit=0\nmodule=schema.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/envelope.mo']\nexit=0\nmodule=envelope.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/tools.mo']\nexit=0\nmodule=tools.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/journal.mo']\nexit=0\nmodule=journal.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/admission.mo']\nexit=0\nmodule=admission.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/worker.mo']\nexit=0\nmodule=worker.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo']\n/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo:464:71: MO0102 expected an expression\n    assert ended(took(fresh(), \"POST /tool HTTP/1.1\\r\\n\".bytes, 9).0) ==\n                                                                        ^\n  why: An expression starts with a literal, a name, a type name, (, [, !, -, try, if, case, fn, old, result, or any.\nexit=1\nmodule=connection.mo kind=format exit=1\nkind=format failed_module=connection.mo failures=1\n",
+  "raw_exit": "1\n",
+  "applied_repair": "Exactly the three HeadDone named-field patterns authorized by grant02; no other manual source edit reported.",
+  "diagnosis": {
+    "code": "MO0102",
+    "file": "examples/programs/workspace-server/connection.mo",
+    "snapshot": "24A1",
+    "lines": [
+      464,
+      465
+    ],
+    "cause": "Assertion ends its first line at ==, outside a parenthesized continuation. Join the existing two lines, preserving the entire equality and expected malformed refusal."
+  },
+  "static_sibling_check": "The only code line ending in ==/!=/and/or in connection.mo, server.mo and strict.mo is the reported assertion; one other grep match is a comment.",
+  "clearance": "Worker reports no owned process/listener; no server command reached; existing compiler/cache remains; unrelated moshi-hook1057 unchanged.",
+  "preservation": "Historical F1/evidence/report and parent .mo.ids unchanged; all grant evidence40KiB; no guard kill."
+}

@@ -1,0 +1,514 @@
+{
+  "granted_at": "2026-09-20T09:49:54.334669-04:00",
+  "owner": "server-chunks-sol",
+  "pane": "w4:p3D",
+  "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+  "exclusive_runtime": true,
+  "source_review": "server-chunks-static-review-02.json",
+  "commands": [
+    {
+      "number": 1,
+      "attempt": "chunks2-compiler-build-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-compiler-build-01",
+        "2400",
+        "--",
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build"
+      ]
+    },
+    {
+      "number": 2,
+      "attempt": "chunks2-format-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-format-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "format"
+      ]
+    },
+    {
+      "number": 3,
+      "attempt": "chunks2-fmt-check-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-fmt-check-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "fmt"
+      ]
+    },
+    {
+      "number": 4,
+      "attempt": "chunks2-tests-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-tests-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "test"
+      ]
+    },
+    {
+      "number": 5,
+      "attempt": "chunks2-strict-zero-fault-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-strict-zero-fault-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "strict"
+      ]
+    },
+    {
+      "number": 6,
+      "attempt": "chunks2-production-faults-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-production-faults-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "sim"
+      ]
+    },
+    {
+      "number": 7,
+      "attempt": "chunks2-write-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-write-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "write"
+      ]
+    },
+    {
+      "number": 8,
+      "attempt": "chunks2-fmt-final-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-fmt-final-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "fmt"
+      ]
+    },
+    {
+      "number": 9,
+      "attempt": "chunks2-corpus-strict-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-corpus-strict-01",
+        "2400",
+        "--",
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"workspace server strict process fixture\" --summary all"
+      ]
+    },
+    {
+      "number": 10,
+      "attempt": "chunks2-corpus-step44-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-corpus-step44-01",
+        "2400",
+        "--",
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"chunks contract fixtures\" --summary all"
+      ]
+    },
+    {
+      "number": 11,
+      "attempt": "chunks2-corpus-stages-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-corpus-stages-01",
+        "2400",
+        "--",
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"corpus: every example passes every implemented stage\" --summary all"
+      ]
+    },
+    {
+      "number": 12,
+      "attempt": "chunks2-corpus-native-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-corpus-native-01",
+        "2400",
+        "--",
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"corpus: every module\" --summary all"
+      ]
+    },
+    {
+      "number": 13,
+      "attempt": "chunks2-builds-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-builds-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "build"
+      ]
+    },
+    {
+      "number": 14,
+      "attempt": "chunks2-inherited-run-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-inherited-run-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/behaviour.py",
+        "--groups",
+        "six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown",
+        "--target",
+        "python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/double.mo --"
+      ]
+    },
+    {
+      "number": 15,
+      "attempt": "chunks2-inherited-binary-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-inherited-binary-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/behaviour.py",
+        "--binary",
+        "--groups",
+        "six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown"
+      ]
+    },
+    {
+      "number": 16,
+      "attempt": "chunks2-green-run-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-green-run-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/unchanged_client_green.py",
+        "--runtime",
+        "run"
+      ]
+    },
+    {
+      "number": 17,
+      "attempt": "chunks2-green-binary-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-green-binary-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/unchanged_client_green.py",
+        "--runtime",
+        "binary"
+      ]
+    },
+    {
+      "number": 18,
+      "attempt": "chunks2-hostile-server-run-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-hostile-server-run-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_server.py",
+        "--runtime",
+        "run"
+      ]
+    },
+    {
+      "number": 19,
+      "attempt": "chunks2-hostile-server-binary-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-hostile-server-binary-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_server.py",
+        "--runtime",
+        "binary"
+      ]
+    },
+    {
+      "number": 20,
+      "attempt": "chunks2-eof-run-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-eof-run-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/eof_controls.py",
+        "--target",
+        "python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/double.mo --"
+      ]
+    },
+    {
+      "number": 21,
+      "attempt": "chunks2-eof-binary-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-eof-binary-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/eof_controls.py",
+        "--binary"
+      ]
+    },
+    {
+      "number": 22,
+      "attempt": "chunks2-hostile-direct-run-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-hostile-direct-run-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_fs.py",
+        "--runtime",
+        "run"
+      ]
+    },
+    {
+      "number": 23,
+      "attempt": "chunks2-hostile-direct-binary-01",
+      "seconds": 2400,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-hostile-direct-binary-01",
+        "2400",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_fs.py",
+        "--runtime",
+        "binary"
+      ]
+    },
+    {
+      "number": 24,
+      "attempt": "chunks2-size-01",
+      "seconds": 300,
+      "memory_gib": 4,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks",
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/evidence.py",
+        "chunks2-size-01",
+        "300",
+        "--",
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/size_table.py"
+      ]
+    }
+  ],
+  "expected": {
+    "tests_total": 42,
+    "production_tests": 35,
+    "production_simulated_and_held": 3,
+    "strict_tests_and_simulated": 7,
+    "worker_runs": 200,
+    "worker_seed": 1,
+    "strict_fault_percent": 0,
+    "production_fault_percent": 5,
+    "strict_permanent_gate_runs": 100,
+    "step44_fixtures": 3,
+    "step44_tests": 12,
+    "buildables": 3,
+    "inherited_groups_per_runtime": 11,
+    "actual_file_tools_per_runtime": 5,
+    "actual_journal_calls_per_runtime": 5,
+    "actual_hostile_cases_per_runtime": 14,
+    "eof_cases_per_runtime": 3,
+    "direct_hostile_cases_per_runtime": 14
+  },
+  "constraints": [
+    "Run only these24 commands sequentially. Inspect actual summaries/counts, not only the printed expected fields. Stop at first nonzero, guard kill, unexpected count/classification, scope change, or other surprise; retain raw output and real exit and ask lead before repair/rerun.",
+    "No benchmarks, unfiltered suite, Step42 execution, machine, Linux, commit, final report or acceptance. No implementation edits during the frozen batch beyond the approved formatters and real --write generation.",
+    "Command7 may generate this isolated worktree parent examples/programs/.mo.ids as a check artifact. Retain it unstaged and unmodified by hand for lead review; integrated regeneration/staging remains lead-owned.",
+    "Historical F1 repro/evidence and REPORT.md remain unchanged. Stop if a generator changes their bytes; do not silently restore or rewrite history.",
+    "Every attempt name is fresh. Existing evidence.py invokes guard at4GiB and the named deadline; preserve merged raw stdout/stderr, argv and real exit. Keep the existing2MiB evidence cap; request a concrete extension before exceeding it.",
+    "After completion/failure, report actual per-command results and owned process/port/build-output clearance; do not reuse a passed command as permission for an unlisted next phase."
+  ],
+  "worker_directive": "Astra/w4:p1: correctness execution GRANTED. You own the exclusive runtime slot for exactly the24 sequential commands in /Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-20/server-chunks-correctness-grant-01.json. Read that grant and the updated lead brief before starting. Reviewed source snapshots are server-chunks-static-review-02.json beside it.\n\nRun in your existing harness-workspace-server-chunks worktree. Fresh compiler build is command1. All deadlines/4GiB/evidence argv are fixed in the JSON. ONE command correction: command12 uses -Dtest-filter=\"corpus: every module\" (uniquely selects the same full native corpus gate); your displayed outer single-quoted shell command contained an unescaped apostrophe in module's. Use the grant argv, not that broken shell spelling.\n\nSTOP at first nonzero exit, unexpected actual count/classification, guard kill, scope change or other surprise. Printed expected_tests fields are not measured evidence: inspect the real compiler summaries before proceeding. No silent fix, retry or scope expansion. Retain raw output/exit for every attempted command. No implementation changes during this batch except the named formatter and real --write effects.\n\nCommand7 may generate your isolated worktree's parent examples/programs/.mo.ids as a check artifact. Retain it unstaged and never hand-edit it; lead owns integrated regeneration/staging. Historical F1 source/evidence and REPORT.md remain byte-preserved; if a generator changes them, stop and report instead of silently restoring. Keep the existing2MiB evidence cap; request a concrete extension before exceeding it.\n\nBenchmarks, unfiltered suite, Step42, machine, Linux, commits and final report are NOT granted. After completion or first failure, report per-command actual results and scoped owned-process/port/build-output clearance. This is execution permission, not acceptance. Begin command1 now.",
+  "directive_delivery": {
+    "result": "agent_prompted",
+    "pane": "w4:p3D",
+    "revision": 31534
+  }
+}

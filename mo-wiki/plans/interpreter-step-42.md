@@ -295,6 +295,30 @@ Metadata/source inspection and git apply --check are allowed, never application
 or execution. Lead readings: `audit/evidence/2026-09-20/step42-static-review-02.json`
 and `step42-native-drop-path.json`; the latter preserves all25 reviewed drafts.
 
+### Further source review: observable values and counts
+
+Review03 confirms the corrected Timeout, real native drop site, allocator
+failure draft and explicit proof limits. **All remain unapplied/unexecuted.**
+Before a private-bundle execution grant:
+
+- Print case-labeled actual allocated/destroyed/live counts on passing and
+  mutant Zig runs, before any balance assertion can stop the test. The
+  errdefer case must expose allocator counts and its audit snapshot before
+  the expected mutant failure.
+- Compare complete dynamic nested payloads, not list lengths; read the
+  Logger's retained values with its single final observation, preserving
+  the one-eviction case. Observe the supposedly untouched Sink instead of
+  claiming a check that the fixture does not perform.
+- Distinguish ten ordinary native paths from the two end_process paths
+  reached through the private quiescent production-sweep hook.
+- Frozen65 is pre-composition. The lead must freeze accepted-main-plus-Step42
+  before/after checkpoints before timing; the ten suite, five current stress
+  and60 workload sample obligations remain, with historical evidence intact.
+
+Source tags/witnesses and the delivered static-only directive are in
+`audit/evidence/2026-09-20/step42-static-review-03.json`. Server correctness
+owns the runtime slot; no memory application/execution is authorized.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]

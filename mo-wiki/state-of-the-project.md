@@ -46,9 +46,9 @@ slower in this run; native best and median disagree. All samples/load averages
 and original16MiB measurements are retained. No zero-overhead or causal claim.
 The existing --surface diagnostic line offset remains unfixed.
 
-Step42 remains unaccepted at frozen65b3dd37. Its fresh static-only worker must
-repair missing-fixture/raw-stderr false greens, exercise real delayed commits
-and waiter consumption, and propose private allocation/destruction observability.
+Step42 remains unaccepted at frozen65b3dd37. Its fresh static-only worker has
+drafted missing-fixture/raw-stderr repairs, real delayed/waiter controls and
+private allocation/destruction observability; none is runtime proof yet.
 All seven obligations remain: current normal/raw-ASan exhaustive sweeps,
 small ASan and ordinary stale-answer mutants, packed lifecycle/reclamation proof,
 hot-path analysis, and lead-owned best-of-five suite timings. Its60 corrected
@@ -62,13 +62,15 @@ deferred. Step39, Program7, full-sync durability and catch claims are unchanged.
 No live-provider/model-driven task/Pi-comparison acceptance. Nothing pushed or
 published to the auditor by this acceptance.
 
-The fresh server consumer is now preparing static changes in its own
-`harness/workspace-server-chunks` tree at65f2eca0, using accepted main plus
-saved serverd689b441. Step42's revised source review found a native omission
-mutant aimed at the inline path rather than main's turns_answer; it is being
-corrected with the remaining lifecycle fixtures. Both workers are static-only,
-with no execution grant. The completed Step44 pane is retired; evidence and
-worktrees are preserved.
+The fresh server consumer in `harness/workspace-server-chunks` at65f2eca0
+combines accepted main with saved serverd689b441. After two static reviews,
+it owns an exclusive24-command guarded correctness grant: fresh compiler first,
+first-surprise stop, no benchmarks/full suite/commits/report. Strict7 retains
+fixed-order coverage plus a mandatory zero-fault/native-success gate; the
+three tolerant tests stay ordinary. Source binding has an independent vector.
+Step42 remains static-only: its corrected real native drop/allocator proposals
+still need raw paired counts and complete dynamic payload/sink observations.
+The completed Step44 pane is retired; evidence and worktrees are preserved.
 
 The account below preserves the earlier checkpoints.
 

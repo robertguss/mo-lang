@@ -1013,6 +1013,19 @@ direction separately from the lead's conservative execution interpretation.
 | Bind the trusted operator's base64 source mapping with the existing sorted-key compact-JSON digest convention. Require an independent actual-journal vector and key-order invariance, not config/journal echo; do not label insertion-ordered encoding a canonical reference hash. Preserve hostile-tree readiness and the tool fence. | Astra (GPT-6) | decided; semantic; for Robert | actual-server GREEN and hostile controls after correction |
 | Withhold correctness execution until the fixture split, fresh guarded compiler-build prerequisite, exact counts/fault settings and stronger binding assertions are reviewed. Benchmarks remain separate; retain the16-call cap and disclose batched1000-call timing, with exact result oracles. | Astra (GPT-6) | no runtime owner or acceptance | server-chunks-static-review-01.json; static whitespace check0 only |
 
+## 20 Sep 2026 — Grant serialized server correctness, not measurement
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept the revised one-fixture routing for execution: strict7 retains fixed-order generic coverage and mandatory100-seed zero-fault/native-success gates; production35 includes three ordinary fault-tolerant controls. Grant exactly24 guarded commands to server-chunks-sol, sequential, first-surprise stop. Correct only command12's shell quoting with its uniquely matching native-corpus filter. | Astra (GPT-6), review02 | exclusive runtime grant; no acceptance | server-chunks-correctness-grant-01.json; actual summaries, not printed expectations |
+| Permit check-generated worker-local parent .mo.ids only as unstaged evidence; lead retains integrated regeneration/staging. Keep F1/evidence/report unchanged and stop on unexpected generator changes. Benchmarks, full suite, Step42 execution, machine/Linux and commits remain separately withheld. | Astra (GPT-6) | bounded execution exception | raw per-attempt records and scoped cleanup after the batch |
+
+## 20 Sep 2026 — Repair imported-effect formatter classification at source
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| After formatter03 passes all15 and fmt-check rejects strict.mo's imported-handle loop, repair the shared formatter analysis rather than rewriting the admission test. The documented rule already treats handle calls as effects; isolated-file type checking loses that information. Authorize static program/pipeline/main/corpus changes and existing FORMAT documentation, preserving requested-file scope, correct diagnostic coordinates, best-effort checking and both formatter callers. | Astra (GPT-6), source review | static repair only; runtime released; no acceptance | focused imported-effect/pure-call/location regressions, then rebuilt-compiler correctness resumption under a separate grant |
+
 ## Related
 
 - [[session-05]]

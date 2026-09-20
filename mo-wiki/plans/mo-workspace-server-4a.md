@@ -135,6 +135,61 @@ must check exact read contents/search rows, not only lengths/counts. Python's
 test owner does execute real file tools; its machine lifecycle remains scripted.
 Return the revised static diff/manifest for review before any execution grant.
 
+#### Correctness grant01 — 20 Sep
+
+Review02 accepts the revised **scope**, not server behavior. Strict7 now has
+fixed-order generic coverage plus the mandatory100-seed zero-fault gate;
+generic load/check/format/native coverage remains. The other35 tests retain
+ordinary coverage, including three fault-tolerant process tests. The known
+source vector was independently checked with system SHA-256.
+
+**server-chunks-sol owns the exclusive runtime slot for exactly24 sequential
+correctness commands** in `server-chunks-correctness-grant-01.json` under
+`audit/evidence/2026-09-20/`. Stop on the first nonzero exit, unexpected actual
+count/classification, guard kill, scope change or other surprise; no repair or
+rerun without review. Printed expected counts are not measured evidence.
+Command12 uses the uniquely matching `corpus: every module` filter to avoid
+the original shell command's unescaped apostrophe; it selects the same gate.
+
+Only the approved formatters and real --write may modify source during this
+batch. Generated worktree-local examples/programs/.mo.ids may remain as an
+unstaged check artifact for lead review; integrated generation/staging stays
+lead-owned. Historical F1/evidence and REPORT.md stay byte-preserved; stop if
+a generator changes them. Retain every attempt and real exit within the2MiB
+cap, then report owned-process/port/build-output clearance. Benchmarks,
+unfiltered suite, Step42 execution, machine, Linux, commits and final report
+remain withheld. This grant conveys no acceptance.
+
+Grant01 stopped at command2: fresh compiler build passed0/37.9s; formatter
+passed seven modules, then rejected the first of three positional HeadDone patterns
+with MO0101. No guard kill, repair, retry or commands3–24 followed; scoped
+clearance is recorded in correctness-result-01. Historical files and parent
+metadata remained unchanged. **Grant02** permits only those three patterns'
+existing head/reading labels, fresh chunks2-format-02, then unattempted
+commands3–24 under the same first-surprise rule. Reuse the passing unchanged
+compiler. No broader repair or benchmark permission is implied.
+
+Grant02 also stopped at formatting: attempt02 failed MO0102/0.3s on the
+assertion split after `==` at connection.mo464–465. The named-pattern repair
+was applied; no later command or other manual edit ran. **Grant03** permits
+only joining that assertion without changing its operands/expected refusal,
+then fresh formatter attempt03 and unattempted commands3–24. Both failed
+logs remain; scoped clearance and40KiB total evidence are recorded.
+
+Grant03 joined only that assertion. Formatter03 passed all15 modules,
+exit0/0.5s. Command3 fmt-check then failed strict.mo97 MO0501 after fourteen
+modules passed; commands4–24 remain unattempted. Protected paths are
+unchanged, no owned process/port remains, and72KiB raw evidence is retained.
+Runtime is released. Source review found that `pipeline.loopFindings` checks
+isolated source while the loop rule needs imported handle types. A static
+repair is authorized in program/pipeline/main/corpus and existing FORMAT
+documentation: load imports for typed analysis, report only the requested
+file, preserve global diagnostic/fix coordinates and one-file formatting,
+and cover imported effects versus genuinely pure loops. No assertion rewrite,
+lint suppression, runtime grant or acceptance. A rebuilt compiler and focused
+regression proof must precede any resumed batch. Exact brief and raw results:
+`audit/evidence/2026-09-20/server-chunks-formatter-review-01.json`.
+
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
 Step 44 stays unchanged. `Closed` reports input termination, not whether the

@@ -22,7 +22,7 @@ builds/tests, but workers write all implementation and code, including probes.
   HTTP client, ownership refusals and real blocked-writer progress are proved.
   All12 fixture controls remain automatic; original corpus gates unchanged.
   Earlier270/271 and271/272 failures remain filed. Catalog repair regenerated
-  only MO0209/MO0223. Runtime slot is now idle; no worker runtime grant implied.
+  only MO0209/MO0223. Step44 released runtime; current ownership is below.
   Twenty256MiB line samples are complete: interpreter best/median elapsed
   +3.36%/+4.83%; native +10.25%/-4.41%. No zero-overhead or causal claim.
   Owned processes are gone except idle shell48917 in **w4:p3B / w4:t1A**.
@@ -34,22 +34,25 @@ builds/tests, but workers write all implementation and code, including probes.
   OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
   `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
   **Static revision only**, runtime HOLD, under
-  `toolchain/bench/step42/safety-evidence/**`. Revised n10 raw diagnostics and
-  real delayed/ask/crash flows reviewed. Remaining: complete errdefer/native
-  fixtures, exact Timeout assertion, remove incidental crash-state text,
-  target native turns_answer's real drop path, and distinguish arena tests
-  from region-lifetime proof. Five current stress timings and ten before/after
-  suite samples remain required; correction-only60 samples are preserved.
+  `toolchain/bench/step42/safety-evidence/**`. Exact Timeout, native
+  turns_answer drop and allocator-failure drafts are corrected. Next static
+  revision must expose paired Zig audit counts before failing assertions,
+  check complete native nested payload/retained labels and observe the
+  untouched sink. Private sweep proves only its named destructor paths.
+  All stress/mutation/timing obligations remain; no runtime grant.
 - **Fresh server worker:** `server-chunks-sol`, **w4:p3D / w4:t1C**,
   OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
   `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
-  b0a0eea0 plus saved server d689b441). Static-only byte-framing/controls and
-  complete coverage/command manifest reviewed; no validation/runtime/commit/report.
-  Static extension now permits one strict7 fixture plus corpus gate, retaining
-  the three fault-tolerant tests in ordinary coverage. Correct source binding
-  to the existing canonical digest convention and add independent journal
-  vectors. Revised manifest must first build its own compiler; exact counts
-  and fault settings are required. Correctness/benchmarks remain withheld.
+  b0a0eea0 plus saved server d689b441). Byte-framing/controls and
+  complete coverage/command manifest reviewed twice. Compiler build0/37.9s;
+  formatter03 passed all15 after two retained syntax failures. Command3
+  fmt-check stopped at strict.mo97 MO0501 after fourteen modules passed.
+  **Runtime released; static formatter repair only.** Imported handle types
+  are missing from isolated-file loop analysis; fix shared analysis and both
+  CLI/corpus callers, preserving the admission loop and all assertions.
+  Commands4–24 remain unattempted;72KiB evidence retained. Canonical source
+  vector independently checked. Parent metadata remains lead-integrated;
+  benchmarks/full suite/commits/report remain withheld.
 - Original server/Step42/Step44 worker launch receipts below are historical,
   not instructions to reuse their pane IDs or start from their old WIP.
   Server acceptance remains blocked; Linux remains deferred.
@@ -57,8 +60,8 @@ builds/tests, but workers write all implementation and code, including probes.
 Current evidence: `audit/evidence/2026-09-20/step44-integration/README.md`
 and its acceptance/measurement records; Step42 static review remains separate.
 Main holds accepted Step44 code and lead records; no push or audit publication.
-Last accepted Darwin suite is272/272. Fresh server adoption is in static
-revision; Linux remains owed. Step42's seven obligations are not waived.
+Last accepted Darwin suite is272/272. Fresh server adoption has a bounded
+correctness grant, not acceptance; Linux and Step42 evidence remain owed.
 
 ### Standing instructions learned today (in force)
 
