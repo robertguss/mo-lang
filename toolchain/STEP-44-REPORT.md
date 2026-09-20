@@ -316,3 +316,39 @@ This worker evidence is not integrated-code acceptance. Lead integration,
 independent checks, current full-suite timing and Linux verification remain
 owed. The correction did not run the unfiltered suite and makes no claim that
 the current full suite passes.
+
+---
+
+## Checker fixture integration correction
+
+Independent lead integration `c49d1821` built successfully in 36.60 seconds,
+then `zig build test -Dtest-filter=chunks --summary all` exited 1 with 3/4
+tests passing. The fourth test, `Conn.chunks requires the exact byte message
+shape`, stopped in the parser with `MO0101` at the four inline statement
+assignments in its embedded Mo fixture. The full suite did not run because the
+lead's `&&` sequence stopped at this focused failure.
+
+Lead evidence is preserved outside this worker branch at:
+
+- `/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-20/step44-integration/focused-zig-01.log`
+- `/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-20/step44-integration/focused-zig-01.exit`
+
+The original checker success claim did not establish that this test reached the
+checker. No cause beyond the observed parser failure is inferred.
+
+Commit `015164e717828d8c93c8647c5b5c035f2a9a3db2` changes only the embedded
+fixture arms in `toolchain/src/check.zig` from inline statement assignments to
+the multiline form used by adjacent tests. It does not change the parser,
+checker implementation, expected `MO0223`, message shapes, test filter, test
+name or runtime. The intended contract remains: `Good` with `Chunk(bytes)` is
+accepted and `Wrong` with `Chunk(data)` is rejected.
+
+The one authorized worker verification,
+`zig build test -Dtest-filter=chunks --summary all`, exited 0 with the explicit
+summary `4/4 tests passed`:
+
+- `toolchain/bench/step44/review-fixes/checker-fixture-green-01.log`
+- `toolchain/bench/step44/review-fixes/checker-fixture-green-01.exit`
+
+This is focused worker evidence, not integrated-code acceptance. The lead still
+owes integration of this repair and independent focused and full-suite reruns.

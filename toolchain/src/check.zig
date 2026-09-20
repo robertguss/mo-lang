@@ -4690,8 +4690,10 @@ test "Conn.chunks requires the exact byte message shape" {
         \\  message Idle
         \\  fn update(state, message)
         \\    case message
-        \\      Chunk(bytes): state.bytes += bytes.size
-        \\      Closed | Idle: state.bytes += 0
+        \\      Chunk(bytes):
+        \\        state.bytes += bytes.size
+        \\      Closed | Idle:
+        \\        state.bytes += 0
         \\    end
         \\  end
         \\end
@@ -4704,8 +4706,10 @@ test "Conn.chunks requires the exact byte message shape" {
         \\  message Idle
         \\  fn update(state, message)
         \\    case message
-        \\      Chunk(data): state.bytes += data.size
-        \\      Closed | Idle: state.bytes += 0
+        \\      Chunk(data):
+        \\        state.bytes += data.size
+        \\      Closed | Idle:
+        \\        state.bytes += 0
         \\    end
         \\  end
         \\end
