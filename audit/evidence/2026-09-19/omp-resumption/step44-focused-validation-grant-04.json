@@ -1,0 +1,112 @@
+{
+  "recorded_at_et": "2026-09-19T23:25:57.842232-04:00",
+  "status": "Renewed grant; no results yet",
+  "prior_results": "step44-focused-validation-result-03.json",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "number": 5,
+      "name": "tls-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --tests ../examples/step44/chunks-tls.mo -o step44-review-chunks-tls-tests"
+    },
+    {
+      "number": 6,
+      "name": "tls-native-test-01",
+      "guard_seconds": 120,
+      "command": "zig-out/mo-build/step44-review-chunks-tls-tests/step44-review-chunks-tls-tests"
+    },
+    {
+      "number": 7,
+      "name": "tls-positive-oracle-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime run"
+    },
+    {
+      "number": 8,
+      "name": "tls-positive-oracle-native-01",
+      "guard_seconds": 120,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime binary"
+    },
+    {
+      "number": 9,
+      "name": "ordered-bytes-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build bench/step44/http_chunks_probe.mo -o step44-review-http-chunks"
+    },
+    {
+      "number": 10,
+      "name": "ordered-bytes-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/socket_probe.py --runtime run --case half-close"
+    },
+    {
+      "number": 11,
+      "name": "ordered-bytes-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/socket_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-http-chunks/step44-review-http-chunks --case half-close"
+    },
+    {
+      "number": 12,
+      "name": "controls-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --surface bench/step44/review-fixes/control_probe.mo -o step44-review-controls"
+    },
+    {
+      "number": 13,
+      "name": "bounds-run-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case bounds"
+    },
+    {
+      "number": 14,
+      "name": "bounds-native-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case bounds"
+    },
+    {
+      "number": 15,
+      "name": "pending-pull-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case pending-pull"
+    },
+    {
+      "number": 16,
+      "name": "pending-pull-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case pending-pull"
+    },
+    {
+      "number": 17,
+      "name": "late-tls-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case late-tls"
+    },
+    {
+      "number": 18,
+      "name": "late-tls-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case late-tls"
+    },
+    {
+      "number": 19,
+      "name": "blocked-writer-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer"
+    },
+    {
+      "number": 20,
+      "name": "blocked-writer-native-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case blocked-writer"
+    }
+  ],
+  "expected": "strict native2/2; all drivers outer0 with exact expected child exits plus behavior text",
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "stop": "First unexpected result, nonzero, timeout, kill or diagnostic; no silent retries; retain checker failure tls-test-write-01",
+  "freeze": "Runtime/probes unchanged except own temporary mutant copies",
+  "completion": "Scoped owned cleanup and results, then HOLD",
+  "other_worker": "step42 runtime HOLD",
+  "not_authorized": "Formatter, full suite, benchmark, existing-client rerun, stress, unlisted probes, step42 integration, Linux/machine work, push",
+  "acceptance": "Worker evidence only, not acceptance"
+}

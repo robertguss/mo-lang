@@ -34,9 +34,11 @@ now has worker RED/GREEN (9/9), while TLS/binary/ownership proof and independent
 acceptance remain. Step42-fix completed its correction-only corpus rerun at
 `65b3dd37`: exit0, all60 samples, elapsed minima deltas -1.56% to +2.79%
 against the prior unaccepted delivery. No whole-step overhead or acceptance
-claim. Step44's native idle tests pass9/9. Its checker syntax and probe-oracle
-fixes are reviewed; the corrected focused TLS/socket sequence is granted, with
-results still pending. Step42 remains runtime HOLD/static preparation; its
+claim. Step44 now has worker native idle9/9, strict interpreter/native TLS2/2
+each and a separate fault target held over40 seeds at20%. The forced-positive
+interpreter control now passes; its native driver stopped before launch on an
+output-path mismatch. Corrected native oracle/socket controls are granted. Step42
+remains runtime HOLD/static preparation; its
 exhaustive normal/raw-ASan sweeps,
 current stale-answer mutants, packed lifecycle controls and hot-path report
 remain owed, alongside lead-owned suite timings and independent integration.

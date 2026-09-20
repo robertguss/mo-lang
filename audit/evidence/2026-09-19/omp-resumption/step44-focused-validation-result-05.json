@@ -1,0 +1,26 @@
+{
+  "recorded_at_et": "2026-09-19T23:30:30.865665-04:00",
+  "grant": "step44-focused-validation-grant-05.json",
+  "results": [
+    {
+      "command": "7R",
+      "name": "tls-positive-oracle-run-02",
+      "outer_exit": 0,
+      "child_guard_exit": 1,
+      "behavior": "Named strict positive FAIL/assert; driver positive_oracle=failed result=pass"
+    },
+    {
+      "command": 8,
+      "name": "tls-positive-oracle-native-01",
+      "outer_exit": 1,
+      "build_child_exit": 0,
+      "execution_guard_exit": 1,
+      "native_mutant_launched": false,
+      "failure": "FileNotFoundError: build output repo-root zig-out/mo-build/NAME/NAME; BINARY pointed to toolchain/zig-out/..."
+    }
+  ],
+  "commands9_to20_ran": false,
+  "cleanup": "Worker reports no temporary source directory/owned processes; only own repo-root mutant build directory removed; nothing detached/killed",
+  "lead_read": "Native01 raw build output, erroneous launch path and rejected missing behavior text",
+  "acceptance": "Interpreter negative oracle driver passed; native path preflight failed, not runtime failure or native negative-oracle evidence"
+}

@@ -1,0 +1,45 @@
+{
+  "recorded_at_et": "2026-09-19T23:23:00.825238-04:00",
+  "grant": "step44-focused-validation-grant-02.json",
+  "results": [
+    {
+      "command": "3R",
+      "name": "tls-test-write-02",
+      "exit": 0,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "evidence_scope": "faults-disabled interpreter only",
+      "generated_verified_hash": "6942e5dcb90b68c4",
+      "generated_declarations": "45ecbc952ae3dcea"
+    },
+    {
+      "command": "4F",
+      "name": "tls-faults-test-write-01",
+      "exit": 1,
+      "stage": "checker-only",
+      "diagnostic": "MO0323 Step44.ChunksTls not found beneath standalone target root; cascading unbound helper diagnostics",
+      "tests_dispatched": false,
+      "fault_metadata_generated": false
+    }
+  ],
+  "commands5_to20_ran": false,
+  "cleanup": "Worker reports scoped process search exit1, no owned mo/guard/build/temp-mutant processes, nothing killed/detached",
+  "static_decision": {
+    "basis": "program.zig import lookup checks dependency declaration against requested name; examples/step44 is standalone directory root",
+    "changes": [
+      "module Step44.ChunksTls -> module ChunksTls",
+      "module Step44.ChunksTlsFaults -> module ChunksTlsFaults",
+      "use Step44.ChunksTls -> use ChunksTls"
+    ],
+    "unchanged": "file paths, fixture implementation, runtime/loader; no new root marker or aliases",
+    "metadata": "regenerate through later authorized --write only"
+  },
+  "next_proposed_names": [
+    "tls-test-write-03",
+    "tls-faults-test-write-02"
+  ],
+  "runtime_authorization": "None; both workers runtime HOLD pending corrected source review and renewed grant",
+  "lead_read": "Raw strict2/2 and fault-target checker logs; loader import/declaration rule",
+  "acceptance": "No seeded-fault evidence, native TLS evidence or integrated acceptance"
+}

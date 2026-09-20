@@ -1,0 +1,30 @@
+{
+  "recorded_at_et": "2026-09-19T23:24:28.391365-04:00",
+  "status": "Granted; no results yet",
+  "prior_stop": "step44-focused-validation-result-02.json",
+  "reviewed_identity_changes": [
+    "ChunksTls at examples/step44/chunks-tls.mo",
+    "ChunksTlsFaults importing ChunksTls at examples/step44/chunks-tls-faults.mo"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "name": "tls-test-write-03",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo test --write ../examples/step44/chunks-tls.mo",
+      "expected": "2 passed, 0 failed/skipped; faults disabled; regenerate identity metadata"
+    },
+    {
+      "name": "tls-faults-test-write-02",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo test --write --sim 40 --seed 1 --faults 20 ../examples/step44/chunks-tls-faults.mo",
+      "expected": "one target test;40 simulated runs held;0 failed/skipped; regenerate fault metadata; no --all"
+    }
+  ],
+  "capture": "Same reviewed pipefail/tee/PIPESTATUS wrapper, fresh names under bench/step44/review-fixes",
+  "stop": "First unexpected result, preserve all prior evidence, scoped cleanup and HOLD after both or stop",
+  "not_granted": "Commands5\u201320 and all other runtime/formatter/benchmark/suite/Linux/machine work",
+  "other_worker": "step42 runtime HOLD",
+  "scope": "Generated metadata/ids only beyond already reviewed three identity edits; no root marker, source move, duplicate fixture, alias, runtime/loader change",
+  "acceptance": "No acceptance or new results at grant time"
+}

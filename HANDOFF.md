@@ -291,6 +291,64 @@ Exact 18-command grant:
 `audit/evidence/2026-09-19/omp-resumption/step44-focused-validation-grant-02.json`.
 No results or acceptance claimed at grant time; no full suite/benchmark grant.
 
+**TLS split now has worker evidence:** first corrected strict interpreter
+check passed 2/2, then the fault target stopped in the checker (MO0323):
+`Step44.ChunksTls` did not match the standalone `examples/step44` root.
+No fault test ran in that failed attempt. Lead reviewed import/declaration
+matching and chose sibling module identities `ChunksTls` and
+`ChunksTlsFaults`, with `use ChunksTls`; no new root marker, moves,
+duplicated fixture or loader change. Generated ids/stamps were regenerated
+only through a fresh two-command `--write` grant.
+
+Fresh `tls-test-write-03` passed strict faults-disabled interpreter **2/2**.
+Separate `tls-faults-test-write-02` passed its sole target test over **40
+seeds at 20% faults**: **1 held under faults, 0 passed only without faults,
+0 failed/skipped**. No dependency tests selected. Lead read both raw logs;
+worker reported scoped process clearance. Preserved both earlier checker
+failures and the pre-rename success. Records/raw logs are under
+`audit/evidence/2026-09-19/omp-resumption/`, notably
+`step44-focused-validation-result-02.json`, `-result-03.json` and
+`step44-focused-validation-grant-03.json`.
+
+**Renewed grant 04:** original commands 5–20 now authorized serially,
+unchanged: native strict TLS, forced positive-oracle mutations, ordered
+bytes, bounds, pending-pull refusal, late-TLS refusal and blocked-writer
+input progress. Exact commands/guards in
+`step44-focused-validation-grant-04.json` beside those records. Stop first
+unexpected result; retain outputs, cleanup, then HOLD. Step42 remains
+runtime HOLD/static preparation. No native TLS or remaining-probe result,
+full-suite proof or acceptance claimed at this grant.
+
+**Native strict TLS now 2/2; oracle driver correction granted:** commands
+5–6 exited 0 (build, then native 2 passed/0 failed/0 skipped). Command 7
+stopped with outer exit 1: child exit 1 correctly failed the named positive
+test at `assert successful?(got)`, but the driver expected lowercase `fail`
+where the runner printed uppercase `FAIL`. Lead read both raw logs. Not
+a runtime failure or a passing driver control. Commands 8–20 did not run;
+worker reported temporary directory/process cleanup clear.
+Authorized only that expected-prefix literal correction, then fresh
+`tls-positive-oracle-run-02` (90s) followed by unchanged commands 8–20,
+serially and stop-on-first-surprise. Native/earlier successful checks do
+not rerun. Exact result/grant:
+`step44-focused-validation-result-04.json` and
+`step44-focused-validation-grant-05.json` in the same evidence directory.
+Step42 stays runtime HOLD; no acceptance implied.
+
+**Interpreter negative oracle passes; native driver path corrected:** fresh
+interpreter oracle driver exited 0 with intended child exit 1 and exact
+failure text. Native oracle build child exited 0, but execution never
+launched: driver `BINARY` pointed under `toolchain/zig-out`, while its
+repo-root build emitted `zig-out/mo-build/step44-tls-forced-error/...`.
+Lead read the raw build/path failure; outer exit 1 remains failed preflight,
+not native negative-oracle evidence. Commands 9–20 did not run. Worker
+reported scoped/temp cleanup clear and removed only its own mutant output.
+Authorized the shared `BINARY` constant to use the actual root-cwd output
+for execution/cleanup, then fresh `tls-positive-oracle-native-02` (120s)
+and unchanged commands 9–20 serially, stop first surprise. Other drivers'
+toolchain-relative paths remain unchanged. Exact result/grant:
+`step44-focused-validation-result-05.json` and
+`step44-focused-validation-grant-06.json` in the same evidence directory.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
