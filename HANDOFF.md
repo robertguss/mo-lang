@@ -113,16 +113,15 @@ Fresh corrective worker `step42-fix-sol` is live in tab `w4:t18`, pane
 `w4:p39`, worktree/branch `toolchain-step-42-review-fixes` /
 `toolchain/step-42-review-fixes`, exact clean base
 `be64e8a5086f6a47dcb6683d1313579d1e6f35a6`. New Sol/high session, no imported
-conversation; all six review corrections acknowledged. Static/source-test
-preparation is complete for the first blocking control. **Focused blocking
-RED/GREEN slot granted:** step44 confirmed no owned runtime/check/formatter
-processes (last guarded TLS-client check exit 0, 7 passed) and is held
-static-only. Step42-fix may correct the control, build narrowly, run the two
-mutants and restored GREEN; no full sweep/suite/benchmarks. Lead flagged a
-separate injected-error return, assertion-before-cleanup and a scheduling-racy
-negative assertion; the controls must address these before claiming proof.
-Release step44 only after source restoration and owned-process clearance.
-Original completed worker branches remain intact.
+conversation; all six review corrections acknowledged. **Blocking validation
+slot released:** worker reports restored source, no owned live processes,
+done-before-signal mutant exit 1, early-error-return mutant exit 1 (assertion
+failure and unsafe crash), and restored GREEN exit 0 (5/5 steps, 2/2 tests).
+Lead read the raw failure/GREEN/cleanup logs under
+`bench/step42/review-fixes/`; this is worker evidence, not acceptance.
+Step44 explicitly resumed focused checks/formatting. Step42-fix continues
+static preparation of remaining corrections until its next validation grant.
+No full sweep/suite/benchmark authorization. Original branches remain intact.
 
 ### Next, in order
 
