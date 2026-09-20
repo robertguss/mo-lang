@@ -153,19 +153,29 @@ static-only while step42-fix validates. Exact assignment/launch receipts:
 `audit/evidence/2026-09-19/omp-resumption/step44-fix-launch.json`.
 Full suite, longer/interleaved measurements and both acceptances remain owed.
 
-**Step44 exclusive idle validation slot granted:** lead read step42-fix's
-explicit current clearance: no owned build/test/runtime/probe/formatter/
-benchmark/background process active. This supersedes the earlier ambiguously
-attributed receipt for scheduling; its missing debugger evidence remains
-owed in the step42 report. Step42 stays static-only until explicit release.
-The reviewed deferred `Await` control drives real fixture source dispatch.
-Grant: 300s guarded build, 120s chunks corpus RED; only after the expected
-`linesFixture` unreachable, add the one terminal return, then identical
-bounded rebuild/corpus GREEN (9/9). File all four logs/exits under step44
-`review-fixes/`. Any unexpected failure/timeout/kill stops the slot.
-Only owned-process cleanup/status checks afterward; then report and hold.
-No formatter, native/TLS/socket checks, sim/faults, suite, stress or benchmark.
-No runtime acceptance; remaining correction checks need their own grant.
+**Step44 idle slot released:** initial attempts 01/02 exited 1 on checker
+errors, not runtime RED. Authorized the positional pattern repair and real
+`--write` metadata generation; RED-03 exited 134 with `unreachable` at
+optimized source dispatch. The one missing return was restored; rebuild
+exit 0, GREEN exit 0 with all 9 tests passing, real IDs/verified lines generated.
+Lead read raw RED/GREEN logs under step44 `review-fixes/`; worker reports
+no owned processes. This is focused worker evidence, not integrated acceptance.
+Step42-fix now has focused validation permission again (targeted builds/tests,
+small explicit ASan/holder/event controls and targeted formatting). No full
+suite, exhaustive stress/ASan sweep or benchmark grant. Step44-fix holds.
+
+**Pane/process cleanup completed:** closed the completed original workers
+`server4a-sol` (`w4:p36`), `step42-sol` (`w4:p37`) and `step44-sol` (`w4:p38`)
+after normal OMP shutdown and saved-session receipts. Their shell/OMP/auxiliary
+process trees have no survivors. Found and terminated two detached LLDB
+debugservers owned by step42-fix, plus an obsolete local step40 `orb` status
+poll client (TERM ineffective, KILL required); verified all three absent.
+Only the lead (`w4:p1`) and corrective workers (`w4:p39`, `w4:p3A`) remain
+in this Mo workspace. Preserved Cursor/MCP and OrbStack services, unrelated
+terminals, all worktrees, commits, logs and saved sessions. Receipt:
+`audit/evidence/2026-09-19/omp-resumption/pane-cleanup.json`.
+Future debugger cleanup must include owned detached helpers (`--setsid`),
+not only mo/guard names. Close completed worker panes after evidence retention.
 
 ### Next, in order
 
