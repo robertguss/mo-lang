@@ -1,0 +1,22 @@
+{
+  "recorded_at_et": "2026-09-20T06:41:53.918428-04:00",
+  "worker": "step44-fix-sol",
+  "status": "Static final packaging authorized, awaiting final commits/report",
+  "base": "9ad0162aa1994bb67c012ee85e78503c8573043a",
+  "scope": "Original brief paths only; freeze runtime/tests/probes; named-path code/evidence commits then append-only toolchain/STEP-44-REPORT.md commit LAST; preserve all original sections and raw failures/successes",
+  "report_requirements": [
+    "Exact base, code/evidence and final report commits; changed paths and actual tree state",
+    "All three corrective evidence groups with raw paths/statuses and separation of prior/current evidence",
+    "Observed receive-buffer before/after values without unverified kernel-cause claims",
+    "Scoped cleanup and explicit limits"
+  ],
+  "still_owed": [
+    "Lead separate integration and independent checks",
+    "Integrated full suite and timing",
+    "Longer/interleaved line performance controls",
+    "Linux deferred"
+  ],
+  "performance": "Retain original -8.69%/-0.97% observations; no causal regression-size or zero-cost claim",
+  "not_authorized": "Runtime/build/test/probe/formatter/benchmark commands, source changes, extra checks, push, merge or acceptance",
+  "completion": "Return exact commits/path manifest/status/cleanup then HOLD; preserve pane"
+}

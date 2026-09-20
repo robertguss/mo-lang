@@ -1,0 +1,33 @@
+{
+  "recorded_at_et": "2026-09-20T06:39:48.116419-04:00",
+  "status": "Granted to step44-fix-sol; no results yet",
+  "prior_result": "step44-focused-validation-result-15.json",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "name": "blocked-driver-pycompile-02",
+      "guard_seconds": 30,
+      "command": "python3 -m py_compile bench/step44/review-fixes/behavior_probe.py"
+    },
+    {
+      "name": "blocked-writer-run-03",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer"
+    },
+    {
+      "name": "blocked-writer-native-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case blocked-writer"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "bounds": "Retain child guard20, 4GB watchdog and all socket/ask/write/process deadlines",
+  "required": "Effective receive buffer in bound; actual Conn.write waiting pre/post exact input; exact control lines; input_exact/answered true; peer unread; child/outer0",
+  "stop": "First unexpected diagnostic/nonzero/timeout/kill/oracle failure; no retries or edits; retain raw outputs and prior failures",
+  "completion": "Scoped owned-process/socket cleanup and own bytecode removal, report then HOLD",
+  "freeze": "No edits after narrow correction/preflight; no Mo/runtime changes or rebuild; native build05 remains current",
+  "other_worker": "step42 runtime HOLD",
+  "not_authorized": "Previous successful controls reruns, formatter, full suite, benchmark, stress, runtime/fixture/loader edits, step42 integration, Linux/machine work, push or acceptance",
+  "write_scope": "behavior_probe.py connect_unread/logging only",
+  "correction": "Keep pre-connect SO_RCVBUF4096; after connect read value, reapply4096, read again; log requested/before/after, enforce unchanged 0<post<=16384; preserve all behavior oracles and bounds"
+}

@@ -37,9 +37,12 @@ against the prior unaccepted delivery. No whole-step overhead or acceptance
 claim. Step44 now has worker native idle9/9, strict interpreter/native TLS2/2
 each and a separate fault target held over40 seeds at20%. Both forced-positive
 oracle drivers, exact-byte probes and full-width bounds pass in both runtimes.
-Pending-reader and late-TLS refusals now pass in both runtimes. Blocked-writer
-readiness failed before input progress; controlled-backpressure probe preparation
-and checker-only preflights are authorized. Both workers remain runtime-held.
+Pending-reader and late-TLS refusals pass in both runtimes. After bounded
+receive-window preparation, blocked-writer probes also pass in both runtimes:
+exact input consumed with actual Conn.write waiting before and afterward.
+All three corrective groups now have worker-focused evidence; frozen final
+code/evidence and report-last packaging is authorized. Independent integration,
+full-suite/timing and longer line measurements remain owed; no acceptance.
 The mislocated --surface diagnostic remains unfixed. Step42
 remains runtime HOLD/static preparation; its
 exhaustive normal/raw-ASan sweeps,
