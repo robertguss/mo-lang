@@ -352,3 +352,75 @@ summary `4/4 tests passed`:
 
 This is focused worker evidence, not integrated-code acceptance. The lead still
 owes integration of this repair and independent focused and full-suite reruns.
+
+---
+
+## Independent corpus-gate classification correction
+
+Independent integration `6aa6ca84` completed 270/271 tests and exited 1 after
+1,142.19 seconds. The ordinary example-corpus gate expected all 121 simulated
+tests to hold under injected faults, but found 110: the nine strict chunks
+tests and two strict TLS tests passed only without faults, while the separate
+TLS fault control held. This evidence establishes incompatible test
+classification, not a runtime regression.
+
+The immutable independent evidence is:
+
+- `/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-20/step44-integration/full-suite-01.log`
+- `/Users/robertguss/Projects/startups/mo-lang/audit/evidence/2026-09-20/step44-integration/full-suite-01.exit`
+
+Commit `b7a21af7e76969525596d1ee0d3c9b9fc4b34131` moves the three
+Step 44 fixture modules and their tool-owned `.mo.ids` together from
+`examples/step44/` to `toolchain/testdata/step44/`. It preserves all 12 tests,
+module identities, sibling imports and assertions; no compatibility copy or
+root marker remains. The active TLS negative-oracle probe now reads the moved
+strict fixture. Historical commands and logs retain their original paths.
+
+The ordinary example-corpus stage, all-held-under-faults and zero
+fault-free-only assertions are unchanged. A permanent `chunks`-matching
+`corpus.zig` test now owns the relocated contract fixtures:
+
+- the nine chunks tests and two strict TLS tests each run under 100 scheduler
+  seeds with fault injection explicitly disabled;
+- the separate TLS fault test runs under 100 seeds at 20% faults and must be
+  held under faults, never merely fault-free-only;
+- all three modules must be canonically formatted;
+- interpreter and native test output must agree, and both executions must exit
+  successfully. The additive `Built.succeeded` tally prevents equal failures
+  from satisfying this gate.
+
+The real Mo tool regenerated all three verification lines and the moved
+`.mo.ids`; none was hand-edited.
+
+## Corpus-gate focused evidence
+
+Every command below used the bounded guard and has a paired raw `.log` and
+actual `.exit` file under `toolchain/bench/step44/review-fixes/`.
+
+| evidence stem | exit | result |
+| --- | ---: | --- |
+| `corpus-gate-zig-fmt-01` | 0 | targeted `corpus.zig` formatting |
+| `corpus-gate-build-01` | 0 | current toolchain build |
+| `corpus-gate-chunks-fmt-01` | 0 | moved chunks fixture formatting |
+| `corpus-gate-tls-fmt-01` | 0 | moved strict TLS fixture formatting |
+| `corpus-gate-tls-faults-fmt-01` | 0 | moved TLS fault fixture formatting |
+| `corpus-gate-chunks-write-01` | 0 | 9/9; 100 seeds; explicitly without faults; no skips |
+| `corpus-gate-tls-write-01` | 0 | 2/2; 100 seeds; explicitly without faults; no skips |
+| `corpus-gate-tls-faults-write-01` | 0 | 1/1; 100 seeds at 20% faults; held 1; fault-free-only 0 |
+| `corpus-gate-tls-oracle-run-01` | 0 | interpreter control recognized the intentional inner positive-oracle exit 1 |
+| `corpus-gate-tls-oracle-native-01` | 0 | native control recognized the intentional inner positive-oracle exit 1 |
+| `corpus-gate-filtered-01` | 0 | build 5/5 steps; explicit 5/5 focused tests |
+
+The focused gate's fifth test is the permanent corpus contract above; it runs
+all three fixtures through the interpreter, native differential and formatting
+checks. The fixture write evidence separately records the exact 9 + 2 + 1 test
+counts and seed/fault classification.
+
+Scoped cleanup found no owned guard, `mo`, focused Zig command or generated
+test binary process. The temporary TLS mutant directories, its native build
+directory and `toolchain/testdata/step44/zig-out` are absent.
+
+This is focused worker evidence, not integrated-code acceptance. The worker did
+not run the unfiltered suite, performance measurements, Linux verification or
+any Step 42 runtime work. Lead integration and independent focused and full
+suite reruns remain owed.

@@ -10,7 +10,7 @@
         { "id": "2e4d67fba423", "name": "intent", "hash": "66cdeec5fc0c10a7" },
         { "id": "39effd313993", "name": "test \"seeded TLS faults have a distinct bounded outcome oracle\"", "hash": "acf988cb8ee1ce87" }
       ],
-      "verified": { "hash": "1d41cb73e9d9cd3f", "declarations": "4ed2c8c4111504e8", "uses": [{ "module": "ChunksTls", "hash": "1a269b276eaa5309" }] }
+      "verified": { "hash": "7c2dd49fc03316de", "declarations": "4ed2c8c4111504e8", "uses": [{ "module": "ChunksTls", "hash": "1a269b276eaa5309" }] }
     },
     {
       "path": "chunks-tls.mo",
@@ -36,7 +36,7 @@
         { "id": "46b0c17d0f64", "name": "test \"fault-free TLS chunks exchange exact bounded plaintext in both directions\"", "hash": "2197d1c8f2d8566c" },
         { "id": "a264c68ede16", "name": "test \"a forced TLS handshake error fails the positive oracle\"", "hash": "3e5521af3c7c4312" }
       ],
-      "verified": { "hash": "6942e5dcb90b68c4", "declarations": "29d94c3ea38cfe5c" }
+      "verified": { "hash": "77f75ec5e0ab036b", "declarations": "29d94c3ea38cfe5c" }
     },
     {
       "path": "chunks.mo",
@@ -61,7 +61,7 @@
         { "id": "c3eec8041ad9", "name": "test \"a pull read is Busy after chunks owns input\"", "hash": "279694e7fa76b5d7" },
         { "id": "ccb3ec60819e", "name": "test \"lines idle emits one Idle and retires without synthetic terminal messages\"", "hash": "aa414774f0b5c8a1" }
       ],
-      "verified": { "hash": "ddf9c67437949bbb", "declarations": "6d2212d4e5ad1a20" }
+      "verified": { "hash": "d974e4254a0bf1cf", "declarations": "6d2212d4e5ad1a20" }
     }
   ]
 }

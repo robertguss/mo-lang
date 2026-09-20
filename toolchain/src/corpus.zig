@@ -421,7 +421,7 @@ pub fn checkProgram(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, root: []
 
 /// What the differential test found: files whose build matched the interpreter, and files that
 /// differ.
-pub const Built = struct { same: u32 = 0, wrong: u32 = 0 };
+pub const Built = struct { same: u32 = 0, wrong: u32 = 0, succeeded: u32 = 0 };
 
 /// A build's name: the path with its `/` and `.` as `_`, so no build is itself a .mo file.
 fn buildKey(arena: std.mem.Allocator, rel: []const u8) ![]const u8 {
@@ -457,9 +457,48 @@ pub fn checkBuiltTests(gpa: std.mem.Allocator, io: Io, mo_exe: []const u8, root:
     const binary = try std.fs.path.join(arena, &.{ abs_root, "zig-out/mo-build", key, key });
     const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "test", rel }, .cwd = .{ .path = root } });
     const compiled = try std.process.run(arena, io, .{ .argv = &.{binary}, .cwd = .{ .path = root } });
+    const interp_ok = interp.term == .exited and interp.term.exited == 0;
+    const compiled_ok = compiled.term == .exited and compiled.term.exited == 0;
+    if (interp_ok and compiled_ok) tally.succeeded += 1;
     if (sameRun(interp, compiled)) tally.same += 1 else {
         printDifference(rel, interp, compiled);
         tally.wrong += 1;
+    }
+}
+
+fn checkContractFixture(
+    gpa: std.mem.Allocator,
+    io: Io,
+    root: []const u8,
+    rel: []const u8,
+    expected_tests: u32,
+    fault_percent: u32,
+    held_under_faults: u32,
+) !void {
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var diags: diag.List = .empty;
+    const prog = try program.load(arena, io, try std.fs.path.join(arena, &.{ root, rel }), &diags);
+    const ran = try pipeline.testProgram(arena, prog, false, .{
+        .sim_runs = sim_runs,
+        .sim_seed = runner.seedOf(prog.main().source),
+        .fault_percent = fault_percent,
+    }, &diags);
+    try std.testing.expectEqual(expected_tests, ran.summary.tests);
+    try std.testing.expectEqual(@as(u32, 0), ran.summary.failures);
+    try std.testing.expectEqual(@as(u32, 0), ran.summary.skipped);
+    try std.testing.expectEqual(sim_runs, ran.summary.sim_runs);
+    try std.testing.expectEqual(fault_percent, ran.summary.sim_faults);
+    try std.testing.expectEqual(expected_tests, ran.summary.simulated);
+    try std.testing.expectEqual(held_under_faults, ran.summary.held_under_faults);
+    try std.testing.expectEqual(@as(u32, 0), ran.summary.fault_free_only);
+    try std.testing.expectEqual(@as(usize, @intCast(expected_tests)), ran.results.len);
+    for (ran.results) |result| {
+        try std.testing.expectEqual(runner.Outcome.passed, result.outcome);
+        try std.testing.expectEqual(sim_runs, result.sim_runs);
+        try std.testing.expect(result.sim_seed == null);
+        try std.testing.expect(result.fault_seed == null);
     }
 }
 
@@ -798,6 +837,53 @@ test "corpus: every module's tests and every program, built by mo build, print w
     try std.testing.expect(modules.same > 0 and programs.same > 0);
     // Every module was built and compared, the process and network modules among them.
     try std.testing.expectEqual(outside_rejects, modules.same);
+}
+
+test "corpus: chunks contract fixtures keep strict and fault targets separate under interpreter and native" {
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    const root = "testdata/step44";
+    const Fixture = struct {
+        rel: []const u8,
+        tests: u32,
+        fault_percent: u32,
+        held_under_faults: u32,
+    };
+    const fixtures = [_]Fixture{
+        .{ .rel = "chunks.mo", .tests = 9, .fault_percent = 0, .held_under_faults = 0 },
+        .{ .rel = "chunks-tls.mo", .tests = 2, .fault_percent = 0, .held_under_faults = 0 },
+        .{
+            .rel = "chunks-tls-faults.mo",
+            .tests = 1,
+            .fault_percent = 20,
+            .held_under_faults = 1,
+        },
+    };
+    for (fixtures) |fixture| {
+        try checkContractFixture(
+            gpa,
+            io,
+            root,
+            fixture.rel,
+            fixture.tests,
+            fixture.fault_percent,
+            fixture.held_under_faults,
+        );
+        try std.testing.expect(try fmtCheck(gpa, io, root, fixture.rel));
+    }
+
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    const mo_exe = try moExe(gpa, io, from_environ);
+    defer gpa.free(mo_exe);
+    defer Io.Dir.cwd().deleteTree(io, root ++ "/zig-out") catch {};
+    var built: Built = .{};
+    for (fixtures) |fixture| {
+        try checkBuiltTests(gpa, io, mo_exe, root, fixture.rel, &built);
+    }
+    try std.testing.expectEqual(@as(u32, 0), built.wrong);
+    try std.testing.expectEqual(@as(u32, fixtures.len), built.same);
+    try std.testing.expectEqual(@as(u32, fixtures.len), built.succeeded);
 }
 
 test "corpus: mo run --surface and a binary built with --surface serve the runtime's rows over HTTP" {

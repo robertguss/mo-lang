@@ -1,0 +1,5 @@
+pass  test "fault-free TLS chunks exchange exact bounded plaintext in both directions": 100 simulated runs
+pass  test "a forced TLS handshake error fails the positive oracle": 100 simulated runs
+2 passed, 0 failed, 0 skipped; 2 tests under 100 seeds without faults
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
+          proven: not run

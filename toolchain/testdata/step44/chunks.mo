@@ -88,6 +88,7 @@ process Collector() mailbox: 8
     end
   end
 end
+
 process LineCollector()
   state
     lines: UInt64
@@ -111,24 +112,24 @@ process LineCollector()
         state.lines += 1
       LineTooLong:
         state.too_long += 1
-        seen = LineSeen(lines: state.lines, too_long: state.too_long,
-          closed: state.closed, idle: state.idle)
+        seen = LineSeen(lines: state.lines, too_long: state.too_long, closed: state.closed,
+          idle: state.idle)
         for held in state.waiting
           held.answer(seen)
         end
         state.waiting = []
       Closed:
         state.closed += 1
-        seen = LineSeen(lines: state.lines, too_long: state.too_long,
-          closed: state.closed, idle: state.idle)
+        seen = LineSeen(lines: state.lines, too_long: state.too_long, closed: state.closed,
+          idle: state.idle)
         for held in state.waiting
           held.answer(seen)
         end
         state.waiting = []
       Idle:
         state.idle += 1
-        seen = LineSeen(lines: state.lines, too_long: state.too_long,
-          closed: state.closed, idle: state.idle)
+        seen = LineSeen(lines: state.lines, too_long: state.too_long, closed: state.closed,
+          idle: state.idle)
         for held in state.waiting
           held.answer(seen)
         end
@@ -141,8 +142,8 @@ process LineCollector()
         me.send(Check)
       Check:
         if state.idle + state.closed + state.too_long > 0
-          seen = LineSeen(lines: state.lines, too_long: state.too_long,
-            closed: state.closed, idle: state.idle)
+          seen = LineSeen(lines: state.lines, too_long: state.too_long, closed: state.closed,
+            idle: state.idle)
           for held in state.waiting
             held.answer(seen)
           end
@@ -152,11 +153,11 @@ process LineCollector()
   end
 end
 
-
 supervisor Collectors
   child Collector, restart: :always
   child LineCollector, restart: :always
 end
+
 fn bounded?(sizes: List(UInt64), max: UInt64) : Bool
   sizes.all?(fn(n) n > 0 and n <= max end)
 end
@@ -271,6 +272,7 @@ test "a pull read is Busy after chunks owns input"
   server.chunks(into: Collector.start(), max_bytes: 8, idle: 1.minute)
   assert server.read_line(within: 1.minute) is Error(Busy)
 end
+
 test "lines idle emits one Idle and retires without synthetic terminal messages"
   runtime = Runtime.fixture()
   net = Net.fixture()
@@ -285,5 +287,5 @@ test "lines idle emits one Idle and retires without synthetic terminal messages"
   assert collector.ask(Snapshot, within: 1.minute) == Ok(want)
 end
 
-verified: types, contracts, tests (9), property (0 seeds), sim (not run)
+verified: types, contracts, tests (9), property (0 seeds), sim (100 runs)
           proven: not run

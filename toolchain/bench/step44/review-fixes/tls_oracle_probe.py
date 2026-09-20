@@ -11,7 +11,7 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
-SOURCE = ROOT / "examples/step44/chunks-tls.mo"
+SOURCE = ROOT / "toolchain/testdata/step44/chunks-tls.mo"
 GUARD = [sys.executable, "toolchain/bench/step36/guard.py", "30", "--"]
 NAME = "step44-tls-forced-error"
 BINARY = ROOT / f"zig-out/mo-build/{NAME}/{NAME}"
