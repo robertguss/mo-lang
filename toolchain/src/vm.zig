@@ -1569,7 +1569,7 @@ pub const Vm = struct {
             .ledger_call => if (try vm.fixtureFault(false, "", a[a.len - 1].duration)) |failed|
                 failed
             else if (std.mem.eql(u8, row.name, "find_charge")) blk: {
-                const decl = vm.checked().findDecl("Charge").?;
+                const decl = vm.program.prelude_decls.charge;
                 const fields = try rawAlloc(vm.heap, Value, 4);
                 fields[0] = a[1];
                 fields[1] = .{ .time = fixture_time };
@@ -1579,7 +1579,7 @@ pub const Vm = struct {
                 break :blk try vm.variant("Ok", &.{charge});
             } else try vm.variant("Ok", &.{.none}),
             .charge_fixture => blk: {
-                const decl = vm.checked().findDecl("Charge").?;
+                const decl = vm.program.prelude_decls.charge;
                 const fields = try rawAlloc(vm.heap, Value, 4);
                 fields[0] = .{ .string = "ch_1" };
                 fields[1] = if (row.named.len == 2) a[0] else .{ .time = fixture_time };

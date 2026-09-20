@@ -937,7 +937,7 @@ pub fn entryOf(vm: *Vm, name: []const u8, kind: EntryKind, links: u64, setuid: b
     }, &.{});
     fields[2] = .{ .int = links };
     fields[3] = .{ .bool = setuid };
-    return .{ .record = .{ .decl = vm.program.checked.preludeStruct("Entry").?, .fields = fields } };
+    return .{ .record = .{ .decl = vm.program.prelude_decls.entry, .fields = fields } };
 }
 
 /// `String.grouped(n)` (step 28): the integer in Mo's own spelling, `_` between each three digits
