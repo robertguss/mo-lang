@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 from pathlib import Path
 import socket
@@ -105,7 +106,11 @@ def main() -> int:
         binary = built_binary(mo, source, f"step44-{args.label}-{args.mode}")
 
     print(f"load_average_start={','.join(f'{n:.2f}' for n in os.getloadavg())}")
-    print(f"label={args.label} mode={args.mode} payload_bytes={len(data)} best_of={args.best_of}")
+    workload = "max_bytes=65536" if args.mode == "chunks" else "record_bytes=4096"
+    print(
+        f"label={args.label} mode={args.mode} payload_bytes={len(data)} "
+        f"payload_sha256={hashlib.sha256(data).hexdigest()} {workload} best_of={args.best_of}"
+    )
     for runtime in args.runtimes.split(","):
         samples: list[float] = []
         for index in range(args.best_of):
