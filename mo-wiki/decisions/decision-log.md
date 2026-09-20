@@ -998,6 +998,13 @@ direction separately from the lead's conservative execution interpretation.
 | Accept bounded Conn.chunks from fresh OMP/GPT-5.6-Sol workers after independent candidatecdf1e966 build, focused5/5, full272/272 and30 CLI/socket checks. Preserve strict positive oracles, separate fault classification, single-reader ownership and input-EOF/write-half separation. Main merged atdb515f9b; server adoption is separate, Linux owed, no audit/stopping-rule change. | Astra (GPT-6), 8:30 AM ET | accepted on Darwin; semantic; for Robert | full-suite-03 and behavior-result-01 raw logs under audit/evidence/2026-09-20/step44-integration |
 | Retain all20 larger interleaved line samples and original16MiB results. Interpreter best/median elapsed +3.36%/+4.83%; native +10.25%/-4.41%. Accept with these disclosed observations: no numerical performance floor was specified; neither zero overhead nor a stable causal regression is proved. Step42 still owes its own isolated before/after suite/stress measurements and all other gates. | Astra (GPT-6) | decided; for Robert | line-measurement-result-01.json, all raw samples, load averages and unchanged worker driver |
 
+## 20 Sep 2026 — Fresh server adoption, explicit admission precedence
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Combine accepted Step44 with saved server deliveryd689b441 only in a fresh Sol/high worker tree. Start static-only chunks framing/coverage preparation; no runtime, source-harness change, machine or server acceptance. Preserve F1 RED and the two incompatible Python owner-exit predicates. Require complete real-server coverage and strict/fault-tolerant corpus classification before grants. | Astra (GPT-6) | authorized bounded continuation | reviewed static diff/manifest, then explicitly scheduled unchanged-client and H2/H6/D2 controls |
+| Ratify Mo refusal precedence: busy, duplicate/conflicting ID, terminal/short-lease admission,16-call limit, then journal capacity for otherwise admissible requests. CONTRACT.md lists codes/limits but no simultaneous priority; retain the existing Mo order and require overlapping-condition outcome tests. Never write an intent for an already-refused call or claim blanket H7 equivalence. | Astra (GPT-6) | decided; semantic; for Robert | actual admission outcomes with overlapping limits, without effects or counter changes |
+
 ## Related
 
 - [[session-05]]

@@ -1,7 +1,7 @@
 ---
 title: "The Mo workspace server, part A: the wire, admission, the journal and the five file tools"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-20
 type: plan
 tags: [agents, tooling, security, processes]
 sources: [plans/mo-harness-in-mo.md, plans/mo-harness-end-to-end-v1.md, research/comparisons/bend2.md]
@@ -42,8 +42,60 @@ No machine or full-suite release. Benchmark runs require lead scheduling.
 **F1 filed:** `8b0ff352`, `evidence/f1-06-exact-client/`: the unchanged client
 waits without a newline/half-close, times out, then the server receives the
 155-byte body after close. [[interpreter-step-44]] adds a bounded binary
-source; no adoption or toolchain merge in this worktree until lead release.
-Continue genuinely independent part A work. Full wire acceptance remains blocked.
+source. That capability is now accepted on Darwin; the adoption authorization
+below supersedes this dependency hold, not the server's remaining acceptance gates.
+
+### Fresh chunks adoption assignment — 20 Sep 2026
+
+Accepted main contains Step44 at db515f9b (lead records through4eb0c7a2).
+Preserve the completed server delivery d689b441/report and all historical
+evidence. A **fresh OMP/GPT-5.6-Sol high** worker owns a new worktree/branch
+combining those snapshots; do not resume the completed original session.
+The lead prepares this combination only in the worker tree, never on main.
+Step42 remains unaccepted and must not be merged or copied into this work.
+
+Initial authorization is **static implementation and command preparation only**:
+no build, test, formatter, lint, py_compile, server, benchmark, machine, Linux,
+commit or final report until the lead reviews the proposed diff and exact
+guarded manifest. Worker edits remain inside the original write scope.
+Replace the production connection's line dependence with bounded chunks and
+byte-oriented HTTP framing, using the existing contract's exact byte limits.
+Decode text only after the required complete bytes are available; reject
+oversized unfinished headers before newline/EOF. Preserve absolute deadlines,
+single connection ownership and all EOF/operator rules below. Do not rewrite
+or erase the original F1 RED reproducer/evidence; add a separately named
+unchanged-client GREEN control exercising the actual server.
+
+Prepare complete acceptance coverage, not only the framing fix: compatible
+inherited groups unchanged in both runtimes, five real file tools (not only
+the scripted double), hostile filesystem cases, H1–H7/D2, module tests/sim,
+metadata/formatting, size accounting and the original scheduled measurements.
+The two known Python owner-exit predicates remain incompatible as recorded:
+preserve their Python baseline and use the named Mo H2/H6/D2 outcomes below;
+never claim thirteen unchanged inherited groups green or rerun the known
+incompatibility merely to reconfirm it.
+
+**Refusal precedence is now explicit:** busy, duplicate/conflicting call ID,
+closed admission or less than500ms lease remaining,16-call limit, then journal
+capacity only for an otherwise admissible request. The wire contract enumerates
+these codes/limits but does not specify simultaneous-refusal priority. Preserve
+the existing Mo order; test overlapping conditions through admission outcomes.
+Do not write an intent merely to discover journal fullness for a request already
+refused. Report this policy and Python differences, not blanket H7 equivalence.
+
+**Corpus classification must be resolved before a full-suite grant.** The saved
+report already says some module simulations pass only without faults. Do not
+rerun that fact as if unknown, weaken the global all-held-under-faults gate,
+silently skip controls or make a positive oracle accept errors. Statically map
+the exact strict and fault-tolerant tests and propose reuse of the existing
+permanent-fixture gate convention where necessary. Any toolchain/testdata or
+corpus-harness edit needs a separate reviewed scope extension; no duplicate
+production modules, compatibility roots or handwritten metadata.
+
+Shared examples/programs/.mo.ids regeneration remains lead-owned. Preserve the
+original evidence cap; request a concrete change before exceeding it. Keep every
+failed attempt and real exit. Final report remains REPORT.md, committed last
+only after all named worker work and cleanup finish; no acceptance by worker.
 
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
