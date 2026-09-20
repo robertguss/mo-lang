@@ -16,6 +16,7 @@ pub const check = @import("check.zig");
 pub const caps = @import("caps.zig");
 pub const loops = @import("loops.zig");
 pub const moves = @import("moves.zig");
+pub const scope = @import("scope.zig");
 pub const bytecode = @import("bytecode.zig");
 pub const emit_c = @import("emit_c.zig");
 pub const cbuild = @import("cbuild.zig");

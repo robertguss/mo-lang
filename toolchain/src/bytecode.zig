@@ -12,6 +12,7 @@ const contracts = @import("contracts.zig");
 const moves_mod = @import("moves.zig");
 const prelude = @import("prelude.zig");
 const types = @import("types.zig");
+const Scope = @import("scope.zig").Scope;
 
 const Index = ast.Index;
 const Node = ast.Node;
@@ -679,8 +680,8 @@ const Builder = struct {
     name: []const u8,
     code: std.ArrayList(Inst) = .empty,
     locals: u32 = 0,
-    names: std.ArrayList(Name) = .empty,
-    captures: std.ArrayList(Capture) = .empty,
+    names: Scope(Name) = .empty,
+    captures: Scope(Capture) = .empty,
     param_names: std.ArrayList([]const u8) = .empty,
     inouts: std.ArrayList(u32) = .empty,
     /// Jumps to the function's exit, patched when the body is done.
@@ -882,8 +883,8 @@ const Lower = struct {
     }
 
     fn finish(l: *Lower, b: *Builder) Error!Function {
-        const captures = try l.gpa.alloc(u32, b.captures.items.len);
-        for (b.captures.items, captures) |c, *s| s.* = c.inner;
+        const captures = try l.gpa.alloc(u32, b.captures.len());
+        for (b.captures.slice(), captures) |c, *s| s.* = c.inner;
         return .{
             .name = b.name,
             .param_names = b.param_names.items,
@@ -901,12 +902,8 @@ const Lower = struct {
     /// A name in the function being lowered, captured from the enclosing ones when an
     /// anonymous function reads it.
     fn resolveIn(l: *Lower, b: *Builder, name: []const u8) Error!?Name {
-        var i = b.names.items.len;
-        while (i > 0) {
-            i -= 1;
-            if (std.mem.eql(u8, b.names.items[i].name, name)) return b.names.items[i];
-        }
-        for (b.captures.items) |c| if (std.mem.eql(u8, c.name, name)) return .{ .name = name, .slot = c.inner, .mutable = false };
+        if (b.names.find(name)) |n| return n;
+        if (b.captures.find(name)) |c| return .{ .name = name, .slot = c.inner, .mutable = false };
         const parent = b.parent orelse return null;
         const outer = try l.resolveIn(parent, name) orelse return null;
         const inner = b.locals;
@@ -920,13 +917,8 @@ const Lower = struct {
     }
 
     fn localVar(l: *Lower, name: []const u8) ?Name {
-        var i = l.b.names.items.len;
-        while (i > 0) {
-            i -= 1;
-            const n = l.b.names.items[i];
-            if (std.mem.eql(u8, n.name, name)) return if (n.mutable) n else null;
-        }
-        return null;
+        const n = l.b.names.find(name) orelse return null;
+        return if (n.mutable) n else null;
     }
 
     // ---- functions and tests
@@ -975,7 +967,7 @@ const Lower = struct {
             // main is the root supervisor: its sends are delivered before its next
             // statement runs, as a test's are (Mo.Server runs Mo.Sim's scheduler).
             const body = l.tree.extraData(ast.FnBody, n.rhs);
-            const mark = b.names.items.len;
+            const mark = b.names.len();
             for (l.tree.span(body.start, body.end)) |st| {
                 try l.stmt(st);
                 _ = try l.emit(.settle, 0, 0);
@@ -1010,7 +1002,7 @@ const Lower = struct {
     /// crashes naming the clause.
     fn contract(l: *Lower, c: Index, kind: contracts.Kind) Error!void {
         const n = l.node(c);
-        const mark = l.b.names.items.len;
+        const mark = l.b.names.len();
         l.b.contract = true;
         try l.expr(n.lhs);
         l.b.contract = false;
@@ -1103,7 +1095,7 @@ const Lower = struct {
             try l.property(n.lhs);
             if (settles) _ = try l.emit(.settle, 0, 0);
         } else {
-            const mark = b.names.items.len;
+            const mark = b.names.len();
             for (l.tree.span(n.lhs, n.rhs)) |st| {
                 try l.stmt(st);
                 if (settles) _ = try l.emit(.settle, 0, 0);
@@ -1215,7 +1207,7 @@ const Lower = struct {
         const g = l.node(gens[0]);
         const loop = try l.loopBegin(g.lhs, g.main_token);
         const named = l.tree.tokens[g.main_token].kind != .underscore;
-        if (named) try binders.append(l.gpa, l.b.names.items[l.b.names.items.len - 1].slot);
+        if (named) try binders.append(l.gpa, l.b.names.last().slot);
         try l.neverGenerators(gens[1..], data, cl, binders);
         if (named) _ = binders.pop();
         try l.loopEnd(loop);
@@ -1377,14 +1369,14 @@ const Lower = struct {
     // ---- statements
 
     fn blockStmts(l: *Lower, stmts: []const u32) Error!void {
-        const mark = l.b.names.items.len;
+        const mark = l.b.names.len();
         for (stmts) |s| try l.stmt(s);
         l.b.names.shrinkRetainingCapacity(mark);
     }
 
     /// The last statement of a body is its value.
     fn blockValue(l: *Lower, stmts: []const u32) Error!void {
-        const mark = l.b.names.items.len;
+        const mark = l.b.names.len();
         defer l.b.names.shrinkRetainingCapacity(mark);
         if (stmts.len == 0) return l.pushConst(.none);
         for (stmts[0 .. stmts.len - 1]) |s| try l.stmt(s);
@@ -1534,7 +1526,7 @@ const Lower = struct {
         _ = try l.emit(.index, 0, 0);
         const iterated = l.baseType(l.typeOf(iter));
         if (iterated.tag == .list) try l.observe(iterated.a);
-        const binder =if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
+        const binder = if (l.tree.tokens[name_tok].kind == .underscore) l.slot() else try l.bindName(l.text(name_tok), false);
         _ = try l.emit(.store, binder, 0);
         try l.b.loops.append(l.gpa, @intCast(l.b.breaks.items.len));
         return .{ .list = list, .index = index, .top = top, .exit = exit, .mark = mark, .kept = kept };
@@ -1557,7 +1549,7 @@ const Lower = struct {
         const n = l.node(s);
         const data = l.tree.extraData(ast.If, n.rhs);
         const has_else = n.kind == .if_expr or data.else_end > data.else_start;
-        const mark = l.b.names.items.len;
+        const mark = l.b.names.len();
         try l.expr(n.lhs);
         const to_else = try l.emit(.jump_if_false, 0, 0);
         const then_stmts = l.tree.span(data.then_start, data.then_end);
@@ -1585,7 +1577,7 @@ const Lower = struct {
         for (l.spanAt(n.rhs)) |a| {
             const an = l.node(a);
             const data = l.tree.extraData(ast.Arm, an.rhs);
-            const mark = l.b.names.items.len;
+            const mark = l.b.names.len();
             var fails: std.ArrayList(u32) = .empty;
             try l.pattern(an.lhs, subject, &fails);
             if (data.guard != 0) {
@@ -1654,18 +1646,18 @@ const Lower = struct {
     /// its names into the slots the first one bound, so the body reads them whichever matched.
     fn orPattern(l: *Lower, n: ast.Node, subject: u32, fails: *std.ArrayList(u32)) Error!void {
         const alts = l.tree.span(n.lhs, n.rhs);
-        const first = l.b.names.items.len;
+        const first = l.b.names.len();
         var first_end = first;
         var matched: std.ArrayList(u32) = .empty;
         for (alts, 0..) |alt, k| {
-            const mark = l.b.names.items.len;
+            const mark = l.b.names.len();
             const last = k + 1 == alts.len;
             var alt_fails: std.ArrayList(u32) = .empty;
             try l.pattern(alt, subject, if (last) fails else &alt_fails);
             if (k == 0) {
-                first_end = l.b.names.items.len;
+                first_end = l.b.names.len();
             } else {
-                for (l.b.names.items[mark..]) |bound| for (l.b.names.items[first..first_end]) |want| {
+                for (l.b.names.slice()[mark..]) |bound| for (l.b.names.slice()[first..first_end]) |want| {
                     if (!std.mem.eql(u8, want.name, bound.name)) continue;
                     _ = try l.emit(.load, bound.slot, 0);
                     _ = try l.emit(.store, want.slot, 0);
@@ -1706,7 +1698,6 @@ const Lower = struct {
             else => .{ .bool = false },
         };
     }
-
 
     fn quoteLen(raw: []const u8) u32 {
         return if (std.mem.startsWith(u8, raw, "\"\"\"")) 3 else 1;
@@ -2307,7 +2298,7 @@ const Lower = struct {
         l.b = parent;
         l.functions.items[fi] = try l.finish(&b);
         // A captured value is a second holder while the function runs.
-        for (b.captures.items) |c| _ = try l.emit(.load_shared, c.outer, 0);
-        _ = try l.emit(.closure, fi, @intCast(b.captures.items.len));
+        for (b.captures.slice()) |c| _ = try l.emit(.load_shared, c.outer, 0);
+        _ = try l.emit(.closure, fi, @intCast(b.captures.len()));
     }
 };
