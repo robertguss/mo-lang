@@ -153,6 +153,16 @@ static-only while step42-fix validates. Exact assignment/launch receipts:
 `audit/evidence/2026-09-19/omp-resumption/step44-fix-launch.json`.
 Full suite, longer/interleaved measurements and both acceptances remain owed.
 
+**Step44 idle slot requested, not granted:** worker prepared static probes
+and deliberately retained the inherited source bug for RED. Lead asked
+step42-fix to finish its current focused command, start no further validation
+or formatter, then report explicit process clearance; no clearance yet.
+Static review also found the proposed immediate `Snapshot` does not drive
+fixture source delivery (`sim.askInline`/`othersRound`), so it can fail
+without reaching the bug and after the fix. Worker must use a deferred
+terminal-event wait through real dispatch before the bounded build/corpus
+RED/GREEN grant. No full suite, stress sweep, benchmark or runtime grant.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,
