@@ -577,7 +577,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
             const h = l.backlog.items[l.head];
             l.head += 1;
             const c = &f.conns.items[h];
-            const peer_closed = f.conns.items[c.peer].closed;
+            const peer_closed = f.peerEnded(h);
             switch (parse(c.inbound.items[c.start..], peer_closed, .request)) {
                 .whole => |m| {
                     const bytes = try gpa.dupe(u8, c.inbound.items[c.start .. c.start + m.len]);
@@ -591,7 +591,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
                     return fail(vm, .Timeout);
                 },
                 .failed => |why| {
-                    if (refusal(why)) |text| if (!peer_closed) try f.conns.items[c.peer].inbound.appendSlice(gpa, text);
+                    if (refusal(why)) |text| if (!f.conns.items[c.peer].closed) try f.conns.items[c.peer].inbound.appendSlice(gpa, text);
                     f.conns.items[h].closed = true;
                     return fail(vm, why);
                 },
@@ -633,7 +633,7 @@ pub fn fixtureCall(f: *net.Fixture, vm: *Vm, sim: *sim_mod.Sim, which: Row, a: [
             const since = sim.deadlineNow();
             while (true) {
                 const c = &f.conns.items[client];
-                switch (parse(c.inbound.items[c.start..], f.conns.items[c.peer].closed, .response)) {
+                switch (parse(c.inbound.items[c.start..], f.peerEnded(client), .response)) {
                     .whole => |m| {
                         c.closed = true;
                         if (sim.fault(.closed, within)) |fault| return fail(vm, if (fault == .timeout) .Timeout else .Closed);

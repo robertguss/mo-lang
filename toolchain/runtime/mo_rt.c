@@ -8296,11 +8296,11 @@ typedef struct {
     bool flushing;
     /* The listener that accepted it, or UINT32_MAX (held sends). */
     uint32_t listener;
-    /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
+    /* lines or chunks gave its reading to the runtime: a read_line on it is Busy. */
     bool lining;
     /* The TLS engine behind it (step 36, src/bricks/tls.zig), or NULL for a plain socket. With
      * one, net_fill gives the plaintext the records held and net_write_all seals what it writes;
-     * buf, read_line, write, lines, and the NetErrors are the same either way. */
+     * buf, read_line, write, lines, chunks, and the NetErrors are the same either way. */
     MoTlsConn *tls;
     /* The row that first read or wrote on it: TlsServer.accept takes only a connection nothing
      * has used, and names this row in its crash when one has. */
@@ -9582,7 +9582,8 @@ static MoValue net_write(Conn *c, MoValue text, int64_t ms) {
 }
 
 /* ---- Net.fixture(): one network in memory per test (net.zig, Fixture). What one end writes
- * waits for the other end to read it, and a closed end is the end of the stream for the other.
+ * waits for the other end to read it. A full close is the end of the stream for the other;
+ * source tests can independently stop one end's writes while keeping its reverse path open.
  * Nothing happens while a simulated call waits, so a call with nothing to take waits its whole
  * deadline and is Timeout, as a real one would be. */
 
@@ -9593,10 +9594,14 @@ typedef struct {
     /* What the peer wrote that this end has not read: inbound[start..len]. */
     char *inbound;
     size_t len, cap, start;
-    bool closed, skipping;
+    bool closed;
+    /* This end stopped producing input for its peer but remains open for replies. Public close
+     * is a full close; fixture source tests use this direction. */
+    bool write_closed;
+    bool skipping;
     /* The listener whose backlog it went into, or UINT32_MAX for a client's end. */
     uint32_t listener;
-    /* lines gave its reading to the runtime (sources): a read_line on it is Busy. */
+    /* lines or chunks gave its reading to the runtime: a read_line on it is Busy. */
     bool lining;
     /* The TLS engine behind it (step 36), or NULL. With one, inbound holds the peer's ciphertext
      * and clear the plaintext the records gave up, which is what a line is cut from. */
@@ -9648,9 +9653,9 @@ static MoValue fix_connect(uint16_t port) {
     if (!l) return net_fail(NET_REFUSED);
     uint32_t client = (uint32_t)nfix_conns;
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client + 1, NULL, 0, 0, 0, false, false, UINT32_MAX};
+    fix_conns[nfix_conns++] = (FixConn){.peer = client + 1, .listener = UINT32_MAX};
     GROW_ARRAY(fix_conns, nfix_conns, capfix_conns);
-    fix_conns[nfix_conns++] = (FixConn){client, NULL, 0, 0, 0, false, false, (uint32_t)(l - fix_listeners)};
+    fix_conns[nfix_conns++] = (FixConn){.peer = client, .listener = (uint32_t)(l - fix_listeners)};
     GROW_ARRAY(l->backlog, l->nbacklog, l->capbacklog);
     l->backlog[l->nbacklog++] = client + 1;
     return ok_of(mo_cap(MO_CAP_CONN, client, 0));
@@ -9676,6 +9681,12 @@ static void fix_append(uint32_t to, const char *text, size_t n) {
     }
     if (n) memcpy(c->inbound + c->len, text, n);
     c->len += n;
+}
+
+/* Input at `h` has ended without implying that its peer cannot receive a reply. */
+static bool fix_peer_ended(uint32_t h) {
+    FixConn *peer = &fix_conns[fix_conns[h].peer];
+    return peer->closed || peer->write_closed;
 }
 
 /* The plaintext a fixture connection has, after every record its peer wrote is read. Nothing
@@ -9720,7 +9731,7 @@ static MoValue fix_read_line(uint32_t h, int64_t within) {
             c->closed = true;
             return net_fail(NET_CLOSED);
         }
-        Scan t = scan_line(c->clear + c->clear_start, c->clear_len - c->clear_start, fix_conns[c->peer].closed, &c->skipping);
+        Scan t = scan_line(c->clear + c->clear_start, c->clear_len - c->clear_start, fix_peer_ended(h), &c->skipping);
         c->clear_start += t.taken;
         MoValue held;
         if (!line_result(t, &held)) {
@@ -9730,7 +9741,7 @@ static MoValue fix_read_line(uint32_t h, int64_t within) {
         if (c->clear_start == c->clear_len) c->clear_start = c->clear_len = 0;
         return held;
     }
-    Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_conns[c->peer].closed, &c->skipping);
+    Scan s = scan_line(c->inbound + c->start, c->len - c->start, fix_peer_ended(h), &c->skipping);
     c->start += s.taken;
     MoValue out;
     if (!line_result(s, &out)) {
@@ -10007,7 +10018,7 @@ static int fix_handshake(uint32_t h, MoTlsConn *t, int64_t ms) {
             fix_pump_tls(peer);
             if (fix_conns[h].len > before) continue;
         }
-        if (fix_conns[peer].closed && fix_conns[h].len == fix_conns[h].start) {
+        if (fix_peer_ended(h) && fix_conns[h].len == fix_conns[h].start) {
             failed = TLS_CLOSED;
             break;
         }
@@ -10652,7 +10663,7 @@ static MoValue fix_http_accept(uint32_t lh, int64_t within) {
     }
     uint32_t h = l->backlog[l->head++];
     FixConn *c = &fix_conns[h];
-    bool peer_closed = fix_conns[c->peer].closed;
+    bool peer_closed = fix_peer_ended(h);
     HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, peer_closed, false);
     if (p.what == PARSE_WHOLE) {
         MoValue out = exchange_cap(&fix_exchanges, &nfix_exchanges, &capfix_exchanges, h, c->inbound + c->start, p.len);
@@ -10665,7 +10676,7 @@ static MoValue fix_http_accept(uint32_t lh, int64_t within) {
         return http_fail(HTTP_TIMEOUT);
     }
     const char *text = http_refusal(p.failed);
-    if (text && !peer_closed) fix_append(c->peer, text, strlen(text));
+    if (text && !fix_conns[c->peer].closed) fix_append(c->peer, text, strlen(text));
     fix_conns[h].closed = true;
     return http_fail(p.failed);
 }
@@ -10714,7 +10725,7 @@ static MoValue fix_http_send(MoValue request, MoValue host, int64_t port, int64_
     int64_t since = sim_waited;
     for (;;) {
         FixConn *c = &fix_conns[client];
-        HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, fix_conns[c->peer].closed, true);
+        HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, fix_peer_ended(client), true);
         if (p.what == PARSE_WHOLE) {
             c->closed = true;
             return ok_of(http_response_value(c->inbound + c->start, p.len));
@@ -10812,22 +10823,25 @@ static void close_held(const MoValue *args, uint32_t n) {
 
 
 /* ==== the loops the runtime owns (sources.zig) ============================================
- * listener.serve(into:, idle:), conn.lines(into:, idle:), and http_listener.serve(into:, idle:)
- * make the runtime accept or read from that call on and send each result to a process as a
- * message it declares. A source delivers while its target's mailbox holds fewer than its bound
- * less its headroom, and after stopping there starts again once the mailbox has drained to half
- * its bound. In a test every source is pumped at the start of each delivery round, in start
- * order; under main main's thread pumps only the sources that can do something (step 21): one just
- * added, one whose socket the poller reported ready, one paused at its target's bound, and one
- * whose idle time ran out, which a heap of deadlines finds. */
+ * listener.serve(into:, idle:), conn.lines(into:, idle:),
+ * conn.chunks(into:, max_bytes:, idle:), and http_listener.serve(into:, idle:) make the runtime
+ * accept or read from that call on and send each result to a process as a message it declares.
+ * A source delivers while its target's mailbox holds fewer than its bound less its headroom, and
+ * after stopping there starts again once the mailbox has drained to half its bound. In a test
+ * every source is pumped at the start of each delivery round, in start order; under main main's
+ * thread pumps only the sources that can do something (step 21): one just added, one whose socket
+ * the poller reported ready, one paused at its target's bound, and one whose idle time ran out,
+ * which a heap of deadlines finds. */
 
-enum { SRC_SERVE, SRC_LINES, SRC_HTTP_SERVE, SRC_REQUEST };
+enum { SRC_SERVE, SRC_LINES, SRC_CHUNKS, SRC_HTTP_SERVE, SRC_REQUEST };
 
 typedef struct Source {
     int kind;
-    /* The listener's handle (serve, http serve) or the connection's (lines, request). */
+    /* The listener's handle (serve, http serve) or the connection's (lines, chunks, request). */
     uint32_t handle;
     uint32_t to;
+    /* A chunks source's payload limit; zero for every other source. */
+    size_t max_bytes;
     int64_t idle_ms;
     /* When the idle time last started: simulated in a test, the wall clock under main. */
     int64_t since;
@@ -10881,12 +10895,13 @@ static void mark_dirty(Source *s) {
     dirty[ndirty++] = s;
 }
 
-static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_ms, int64_t since, Source *parent) {
+static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_ms, int64_t since, size_t max_bytes, Source *parent) {
     Source *s = calloc(1, sizeof(Source));
     if (!s) out_of_memory();
     s->kind = kind;
     s->handle = handle;
     s->to = to;
+    s->max_bytes = max_bytes;
     s->idle_ms = idle_ms;
     s->since = since;
     s->idled_at = INT64_MIN;
@@ -10906,7 +10921,7 @@ static Source *source_add(int kind, uint32_t handle, uint32_t to, int64_t idle_m
 
 /* The row a source serves, as the events and the surface name it (sources.zig, rowLabel). */
 static const char *source_label(int kind) {
-    return kind == SRC_SERVE ? "Listener.serve" : kind == SRC_LINES ? "Conn.lines" : "HttpListener.serve";
+    return kind == SRC_SERVE ? "Listener.serve" : kind == SRC_LINES ? "Conn.lines" : kind == SRC_CHUNKS ? "Conn.chunks" : "HttpListener.serve";
 }
 
 /* A source stopped or started again at its target's bound (step 23). */
@@ -10951,7 +10966,7 @@ MO_ROW(mo_r_Listener_serve) {
     bool *served = server_mode ? &listeners[h]->served : &fix_listeners[h].served;
     if (*served) mo_fail(MO_R_OTHER, "Listener.serve", "this listener is already served: a listener is served into one process");
     *served = true;
-    source_add(SRC_SERVE, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, NULL);
+    source_add(SRC_SERVE, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, 0, NULL);
     return MO_NONE_V;
 }
 
@@ -10962,7 +10977,7 @@ MO_ROW(mo_r_HttpListener_serve) {
     bool *served = server_mode ? &listeners[h]->served : &fix_listeners[h].served;
     if (*served) mo_fail(MO_R_OTHER, "HttpListener.serve", "this listener is already served: a listener is served into one process");
     *served = true;
-    source_add(SRC_HTTP_SERVE, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, NULL);
+    source_add(SRC_HTTP_SERVE, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, 0, NULL);
     return MO_NONE_V;
 }
 
@@ -10971,9 +10986,30 @@ MO_ROW(mo_r_Conn_lines) {
     (void)kind;
     uint32_t h = mo_cap_handle(a[0]);
     bool *lining = server_mode ? &conns[h]->lining : &fix_conns[h].lining;
-    if (*lining) mo_fail(MO_R_OTHER, "Conn.lines", "this connection's lines already go to a process: a connection is read into one process");
+    if (*lining) mo_fail(MO_R_OTHER, "Conn.lines", "this connection's input already goes to a process: a connection has one reader");
+    if (server_mode && conns[h]->reading) mo_fail(MO_R_OTHER, "Conn.lines", "Conn.read_line is already waiting on this connection: a connection has one reader");
     *lining = true;
-    source_add(SRC_LINES, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, NULL);
+    const char **used = server_mode ? &conns[h]->used : &fix_conns[h].used;
+    if (!*used) *used = "Conn.lines";
+    source_add(SRC_LINES, h, into_of(a[1]), max0(a[2].as.i), server_mode ? now_ms() : sim_waited, 0, NULL);
+    return MO_NONE_V;
+}
+
+MO_ROW(mo_r_Conn_chunks) {
+    HOLD_RUNTIME();
+    (void)kind;
+    __int128 max_bytes = mo_wide(a[2]);
+    if (max_bytes < 1 || max_bytes > 65536) {
+        mo_fail(MO_R_OTHER, "Conn.chunks", "Conn.chunks max_bytes must be from 1 through 65,536, not %s", i128_text(max_bytes));
+    }
+    uint32_t h = mo_cap_handle(a[0]);
+    bool *lining = server_mode ? &conns[h]->lining : &fix_conns[h].lining;
+    if (*lining) mo_fail(MO_R_OTHER, "Conn.chunks", "this connection's input already goes to a process: a connection has one reader");
+    if (server_mode && conns[h]->reading) mo_fail(MO_R_OTHER, "Conn.chunks", "Conn.read_line is already waiting on this connection: a connection has one reader");
+    *lining = true;
+    const char **used = server_mode ? &conns[h]->used : &fix_conns[h].used;
+    if (!*used) *used = "Conn.chunks";
+    source_add(SRC_CHUNKS, h, into_of(a[1]), max0(a[3].as.i), server_mode ? now_ms() : sim_waited, (size_t)max_bytes, NULL);
     return MO_NONE_V;
 }
 
@@ -10997,7 +11033,7 @@ static bool serve_fixture(Source *s) {
         return true;
     }
     FixConn *c = &fix_conns[h];
-    bool peer_closed = fix_conns[c->peer].closed;
+    bool peer_closed = fix_peer_ended(h);
     HttpParsed p = http_parse(c->inbound ? c->inbound + c->start : "", c->len - c->start, peer_closed, false);
     if (p.what == PARSE_WHOLE) {
         l->head++;
@@ -11015,7 +11051,7 @@ static bool serve_fixture(Source *s) {
     }
     l->head++;
     const char *text = http_refusal(p.failed);
-    if (text && !peer_closed) fix_append(c->peer, text, strlen(text));
+    if (text && !fix_conns[c->peer].closed) fix_append(c->peer, text, strlen(text));
     fix_conns[h].closed = true;
     return true;
 }
@@ -11060,7 +11096,7 @@ static bool lines_fixture(Source *s) {
     size_t start = tls ? c->clear_start : c->start;
     size_t len = tls ? c->clear_len : c->len;
     bool skipping = c->skipping;
-    Scan sc = scan_line(base + start, len - start, fix_conns[c->peer].closed, &skipping);
+    Scan sc = scan_line(base + start, len - start, fix_peer_ended(s->handle), &skipping);
     if (sc.what == SCAN_MORE) {
         lines_taken(c, tls, sc.taken, skipping);
         if (sim_waited - s->since < s->idle_ms || !source_room(s, 0)) return false;
@@ -11084,21 +11120,71 @@ static bool lines_fixture(Source *s) {
     return true;
 }
 
+static bool chunks_fixture(Source *s) {
+    FixConn *c = &fix_conns[s->handle];
+    if (c->closed) {
+        s->done = true;
+        return false;
+    }
+    if (!procs[s->to]->up) {
+        c->closed = true;
+        s->done = true;
+        return false;
+    }
+    if (c->tls && !fix_pump_tls(s->handle)) {
+        if (!source_room(s, 0)) return false;
+        source_send(s->to, MO_N_CLOSED, 0, NULL);
+        c->closed = true;
+        s->done = true;
+        return true;
+    }
+    c = &fix_conns[s->handle];
+    bool tls = c->tls != NULL;
+    const char *base = tls ? (c->clear ? c->clear : "") : (c->inbound ? c->inbound : "");
+    size_t start = tls ? c->clear_start : c->start;
+    size_t len = tls ? c->clear_len : c->len;
+    size_t pending = len - start;
+    if (pending == 0 && !fix_peer_ended(s->handle)) {
+        if (sim_waited - s->since < s->idle_ms || !source_room(s, 0)) return false;
+        source_send(s->to, MO_N_IDLE, 0, NULL);
+        c->closed = true;
+        s->done = true;
+        return true;
+    }
+    if (!source_room(s, 0)) return false;
+    if (pending == 0) {
+        source_send(s->to, MO_N_CLOSED, 0, NULL);
+        s->done = true;
+        return true;
+    }
+    size_t take = pending < s->max_bytes ? pending : s->max_bytes;
+    MoValue bytes = list_of_bytes((const uint8_t *)base + start, take);
+    source_send(s->to, MO_N_CHUNK, 1, &bytes);
+    if (tls) {
+        c->clear_start += take;
+        if (c->clear_start == c->clear_len) c->clear_start = c->clear_len = 0;
+    } else {
+        c->start += take;
+        if (c->start == c->len) c->start = c->len = 0;
+    }
+    s->since = sim_waited;
+    return true;
+}
+
 static bool sources_pump_fixture(void) {
     bool progressed = false;
     size_t n = nsources;
     for (size_t k = 0; k < n; k++) {
         Source *s = sources[k];
         if (s->done) continue;
-        bool went = s->kind == SRC_LINES ? lines_fixture(s) : serve_fixture(s);
+        bool went;
+        if (s->kind == SRC_LINES) went = lines_fixture(s);
+        else if (s->kind == SRC_CHUNKS) went = chunks_fixture(s);
+        else went = serve_fixture(s);
         progressed = progressed || went;
     }
     return progressed;
 }
-
-/* ---- under main */
-
-/* ---- the deadline heap */
 
 static void timer_swap(size_t a, size_t b) {
     Timer t = timers[a];
@@ -11222,7 +11308,7 @@ static void serve_server(Source *s, int64_t now) {
         } else {
             conns[h]->lining = true;
             s->inflight++;
-            source_add(SRC_REQUEST, h, s->to, s->idle_ms, now, s);
+            source_add(SRC_REQUEST, h, s->to, s->idle_ms, now, 0, s);
         }
     }
     if (s->paused) {
@@ -11376,10 +11462,61 @@ static void lines_server(Source *s, int64_t now) {
 static void request_refused(Conn *c, int failed) {
     const char *text = http_refusal(failed);
     if (text) {
+
         ssize_t r = write(c->fd, text, strlen(text));
         (void)r;
     }
     net_close(c);
+}
+static void chunks_server(Source *s, int64_t now) {
+    Conn *c = conns[s->handle];
+    if (c->closed) {
+        net_release(c);
+        return source_retire(s);
+    }
+    if (!procs[s->to]->up) {
+        net_close(c);
+        return source_retire(s);
+    }
+    for (;;) {
+        while (source_room(s, 0)) {
+            if (c->start < c->end) {
+                size_t pending = c->end - c->start;
+                size_t take = pending < s->max_bytes ? pending : s->max_bytes;
+                MoValue bytes = list_of_bytes((const uint8_t *)c->buf + c->start, take);
+                c->start += take;
+                if (c->start == c->end) c->start = c->end = 0;
+                source_send(s->to, MO_N_CHUNK, 1, &bytes);
+                s->since = now;
+                continue;
+            }
+            if (c->eof) {
+                source_send(s->to, MO_N_CLOSED, 0, NULL);
+                return source_retire(s);
+            }
+            break;
+        }
+        conn_give_back(c);
+        if (s->paused) {
+            s->since = now;
+            return;
+        }
+        size_t initial = s->max_bytes < BUFFER_INITIAL ? s->max_bytes : BUFFER_INITIAL;
+        int r = source_read(c, initial, s->max_bytes);
+        if (r == FILL_TIMEOUT) break;
+        if (r == FILL_CLOSED) {
+            net_close(c);
+            source_send(s->to, MO_N_CLOSED, 0, NULL);
+            return source_retire(s);
+        }
+    }
+    if (now - s->since >= s->idle_ms) {
+        source_send(s->to, MO_N_IDLE, 0, NULL);
+        net_close(c);
+        return source_retire(s);
+    }
+    conn_give_back(c);
+    source_watch(s, c->fd);
 }
 
 static void request_finish(Source *s) {
@@ -11449,6 +11586,7 @@ static void sources_pump_server(void) {
         s->dirty = false;
         if (s->done) continue;
         if (s->kind == SRC_LINES) lines_server(s, now);
+        else if (s->kind == SRC_CHUNKS) chunks_server(s, now);
         else if (s->kind == SRC_REQUEST) request_server(s, now);
         else serve_server(s, now);
         if (!s->done) settle_source(s);

@@ -2390,3 +2390,190 @@ test "under --faults, a connection the runtime reads finds itself Closed or wait
     }
     try std.testing.expect(closed > 0 and idled > 0);
 }
+
+test "under --faults, a chunks source closes or idles before delivering pending input by the seed" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.ChunkFaults
+        \\process Ends()
+        \\  state
+        \\    bytes: UInt64
+        \\    closed: UInt64
+        \\    idled: UInt64
+        \\  end
+        \\  message Chunk(bytes: List(UInt8))
+        \\  message Closed
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Chunk(bytes):
+        \\        state.bytes += bytes.size
+        \\      Closed:
+        \\        state.closed += 1
+        \\      Idle:
+        \\        state.idled += 1
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Top
+        \\  child Ends, restart: :always
+        \\end
+    );
+    const Run = struct {
+        fn ends(a: std.mem.Allocator, p: *const bytecode.Program, seed: u64, percent: u32) ![3]i128 {
+            var machine: Vm = .init(a, p, seed);
+            var sim: Sim = .seeded(&machine, seed, "chunk faults", percent);
+            machine.sim = &sim;
+            try sim.fixture.conns.append(a, .{ .peer = 1 });
+            try sim.fixture.conns.append(a, .{ .peer = 0 });
+            try sim.fixture.conns.items[0].inbound.appendSlice(a, "abcdef");
+            const id = try sim.start(0, &.{});
+            _ = try sources_mod.row(&machine, .chunks, &.{
+                .{ .cap = .{ .kind = .conn, .handle = 0 } },
+                .{ .handle = id },
+                .{ .int = 2 },
+                .{ .duration = 60_000 },
+            });
+            try sim.finish();
+            const f = sim.procs.items[id].state.record.fields;
+            return .{ f[0].int, f[1].int, f[2].int };
+        }
+    };
+    try std.testing.expectEqual([3]i128{ 6, 0, 0 }, try Run.ends(arena, program, 1, 0));
+    var closed: i128 = 0;
+    var idled: i128 = 0;
+    for (1..41) |seed| {
+        const got = try Run.ends(arena, program, seed, 100);
+        try std.testing.expectEqual(@as(i128, 0), got[0]);
+        try std.testing.expectEqual(@as(i128, 1), got[1] + got[2]);
+        closed += got[1];
+        idled += got[2];
+    }
+    try std.testing.expect(closed > 0 and idled > 0);
+}
+
+test "chunks drains pending fixture bytes before one directional EOF and leaves reverse writes open" {
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const program = try compile(arena,
+        \\module T.Chunks
+        \\process Ends()
+        \\  state
+        \\    bytes: List(UInt8)
+        \\    chunks: UInt64
+        \\    closed: UInt64
+        \\  end
+        \\  message Chunk(bytes: List(UInt8))
+        \\  message Closed
+        \\  message Idle
+        \\  fn update(state, message)
+        \\    case message
+        \\      Chunk(bytes):
+        \\        state.bytes = state.bytes.concat(bytes)
+        \\        state.chunks += 1
+        \\      Closed:
+        \\        state.closed += 1
+        \\      Idle:
+        \\        state.closed += 100
+        \\    end
+        \\  end
+        \\end
+        \\supervisor Top
+        \\  child Ends, restart: :always
+        \\end
+    );
+    var machine: Vm = .init(arena, program, 1);
+    var sim: Sim = .seeded(&machine, 1, "chunks directional eof", 0);
+    machine.sim = &sim;
+    sim.packs = true;
+    try sim.fixture.conns.append(arena, .{ .peer = 1 });
+    try sim.fixture.conns.append(arena, .{ .peer = 0 });
+    try sim.fixture.conns.items[0].inbound.appendSlice(arena, "abc");
+    sim.fixture.conns.items[1].write_closed = true;
+    const id = try sim.start(0, &.{});
+    for ([_]i128{ 0, 65_537, std.math.maxInt(u64) }) |bad_max| {
+        try std.testing.expectError(error.Crash, sources_mod.row(&machine, .chunks, &.{
+            .{ .cap = .{ .kind = .conn, .handle = 0 } },
+            .{ .handle = id },
+            .{ .int = bad_max },
+            .{ .duration = 60_000 },
+        }));
+        try std.testing.expect(!sim.fixture.conns.items[0].lining);
+        try std.testing.expectEqualStrings("", sim.fixture.conns.items[0].used);
+        try std.testing.expectEqual(@as(usize, 0), sim.sources.list.items.len);
+        machine.report = null;
+    }
+    _ = try sources_mod.row(&machine, .chunks, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+        .{ .handle = id },
+        .{ .int = 2 },
+        .{ .duration = 60_000 },
+    });
+    try std.testing.expectEqualStrings("Conn.chunks", sim.fixture.conns.items[0].used);
+    try std.testing.expectError(error.Crash, sources_mod.row(&machine, .chunks, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+        .{ .handle = id },
+        .{ .int = 2 },
+        .{ .duration = 60_000 },
+    }));
+    try std.testing.expectEqual(@as(usize, 1), sim.sources.list.items.len);
+    machine.report = null;
+    try std.testing.expectError(error.Crash, sources_mod.row(&machine, .lines, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+        .{ .handle = id },
+        .{ .duration = 60_000 },
+    }));
+    try std.testing.expectEqual(@as(usize, 1), sim.sources.list.items.len);
+    machine.report = null;
+    try sim.finish();
+    const state = sim.procs.items[id].state.record.fields;
+    try std.testing.expectEqual(@as(usize, 3), state[0].list.len);
+    try std.testing.expectEqual(@as(i128, 'a'), state[0].list[0].int);
+    try std.testing.expectEqual(@as(i128, 'b'), state[0].list[1].int);
+    try std.testing.expectEqual(@as(i128, 'c'), state[0].list[2].int);
+    try std.testing.expectEqual(@as(i128, 2), state[1].int);
+    try std.testing.expectEqual(@as(i128, 1), state[2].int);
+    try std.testing.expect(!try sources_mod.pumpFixture(&sim));
+
+    const wrote = try sim.fixture.call(&machine, &sim, .write, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+        .{ .string = "reply" },
+        .{ .duration = 60_000 },
+    });
+    try std.testing.expectEqualStrings("Ok", wrote.variant.name);
+    try std.testing.expectEqualStrings("reply", sim.fixture.conns.items[1].inbound.items);
+
+    try sim.fixture.conns.append(arena, .{ .peer = 3 });
+    try sim.fixture.conns.append(arena, .{ .peer = 2 });
+    const before_lines = sim.sources.list.items.len;
+    _ = try sources_mod.row(&machine, .lines, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 2 } },
+        .{ .handle = id },
+        .{ .duration = 60_000 },
+    });
+    try std.testing.expectError(error.Crash, sources_mod.row(&machine, .chunks, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 2 } },
+        .{ .handle = id },
+        .{ .int = 8 },
+        .{ .duration = 60_000 },
+    }));
+    try std.testing.expectEqual(before_lines + 1, sim.sources.list.items.len);
+    machine.report = null;
+
+    try sim.fixture.conns.append(arena, .{ .peer = 5 });
+    try sim.fixture.conns.append(arena, .{ .peer = 4 });
+    const dead = try sim.start(0, &.{});
+    _ = try sources_mod.row(&machine, .chunks, &.{
+        .{ .cap = .{ .kind = .conn, .handle = 4 } },
+        .{ .handle = dead },
+        .{ .int = 8 },
+        .{ .duration = 60_000 },
+    });
+    sim.procs.items[dead].up = false;
+    try std.testing.expect(!try sources_mod.pumpFixture(&sim));
+    try std.testing.expect(sim.fixture.conns.items[4].closed);
+    try std.testing.expect(sim.sources.list.items[sim.sources.list.items.len - 1].done);
+}
