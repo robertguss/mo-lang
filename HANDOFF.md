@@ -123,15 +123,19 @@ Step44 explicitly resumed focused checks/formatting. Step42-fix continues
 static preparation of remaining corrections until its next validation grant.
 No full sweep/suite/benchmark authorization. Original branches remain intact.
 
-**Step44 exclusive measurement slot granted:** step42-fix freshly confirmed
-no runtime/check/formatter commands since its guarded blocking cleanup and
-holds static-only until release. Baseline `c4462935` build, then lines
-baseline/current and chunks current (`9c67ec1f`), 16 MiB, both runtimes,
-best of five, guarded/sequential. Exact request/checkpoints/workload hashes:
-`audit/evidence/2026-09-19/omp-resumption/step44-measurement-request.json`.
-Keep all samples/loads/exits and source fixed; no unfiltered suite or
-Linux/machine work. Release only after step44 reports the slot free and
-owned-process cleanup.
+**Step44 measurement slot released:** all commands/samples exited 0; worker
+reports no owned processes (`pgrep` exit 1: no matches), temporary baseline
+removed after evidence retention. Lead read all three sample logs. Lines:
+baseline/current best interpreter 1609.634/1469.714 MB/s (-8.693% throughput),
+native 1719.763/1703.119 MB/s (-0.968%). Current chunks: 68.740/194.214 MB/s
+interpreter/native. Checkpoints and 16 MiB workload hashes remain as recorded
+in `audit/evidence/2026-09-19/omp-resumption/step44-measurement-request.json`.
+Line samples are about 10–18ms; investigate the observed change during
+independent review with longer/interleaved controls, not a zero-overhead claim.
+Step44 is closing its report/evidence, no new runtime permission. Step42-fix
+now has focused validation permission for remaining corrections; full
+stress/ASan sweeps, unfiltered suites and benchmarks require a separate slot.
+Neither step is accepted.
 
 ### Next, in order
 
