@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-09-20T08:19:45.640542-04:00",
+  "original_step42_base": "2f669902",
+  "accepted_pre_chunks_base": "c4462935fdbcf99d3b8b53258828d028d68594bc",
+  "command": "git diff --stat 2f669902 c4462935fdbcf99d3b8b53258828d028d68594bc -- toolchain examples",
+  "observed": "No output, exit0: toolchain/examples trees have no difference",
+  "scope": "Baseline-selection evidence only; no build/test/timing executed",
+  "after_checkpoint": "Not selected yet; must freeze exact candidate composition, report test counts and preserve required five-sample timing obligations",
+  "limit": "Do not attribute a combined Step42+Step44 timing delta solely to Step42"
+}

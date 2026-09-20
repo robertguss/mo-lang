@@ -1,0 +1,12 @@
+$ python3 toolchain/bench/step36/guard.py 180 -- /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-step44-lines-base/toolchain/zig-out/bin/mo build /Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain/bench/step44/lines_throughput.mo -o step44-line-256m-04-baseline-lines
+zig-out/mo-build/step44-line-256m-04-baseline-lines/step44-line-256m-04-baseline-lines
+load_average_start=4.09,3.96,3.92
+label=line-256m-04-baseline mode=lines payload_bytes=268435456 payload_sha256=d496cd0757cecd0e21957bcc879367edcf9a744d316710f5b69d4202f959835f record_bytes=4096 best_of=1
+sample runtime=run n=1 seconds=0.142983 MBps=1877.393 exit=0
+best runtime=run seconds=0.142983 MBps=1877.393
+sample runtime=binary n=1 seconds=0.144516 MBps=1857.477 exit=0
+best runtime=binary seconds=0.144516 MBps=1857.477
+load_average_end=4.09,3.96,3.92
+real 3.15
+user 2.96
+sys 0.33

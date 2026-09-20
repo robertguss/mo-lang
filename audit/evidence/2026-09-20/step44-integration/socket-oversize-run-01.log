@@ -1,0 +1,14 @@
+client unfinished_header_bytes=2083
+client shutdown_called=false
+client response_before_close=true status=431
+$ python3 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/bin/mo run toolchain/bench/step44/http_chunks_probe.mo -- 54814 http
+server port=54814 mode=http
+server event=accepted
+server event=header_too_large bytes=1088 chunks=17
+server response_write=true
+server finished=true
+server_guard_exit=0
+runtime=run case=oversize
+real 0.30
+user 0.08
+sys 0.03

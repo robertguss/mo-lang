@@ -1,0 +1,8 @@
+pass  test "fault-free TLS chunks exchange exact bounded plaintext in both directions"
+pass  test "a forced TLS handshake error fails the positive oracle"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+real 0.21
+user 0.01
+sys 0.01

@@ -1,0 +1,10 @@
+Build Summary: 5/5 steps succeeded
+install success
++- install mo success
+|  +- compile exe mo ReleaseSafe native success 31s MaxRSS:1G
++- install mo-bench success
+   +- compile exe mo-bench ReleaseFast native success 37s MaxRSS:1G
+
+real 37.53
+user 67.68
+sys 1.29

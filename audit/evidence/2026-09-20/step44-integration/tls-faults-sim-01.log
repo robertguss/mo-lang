@@ -1,0 +1,7 @@
+pass  test "seeded TLS faults have a distinct bounded outcome oracle": 40 simulated runs
+1 passed, 0 failed, 0 skipped; 1 test under 40 seeds with 20% faults: 1 held under faults, 0 passed only without faults
+verified: types, contracts, tests (1), property (0 seeds), sim (40 runs)
+          proven: not run
+real 0.06
+user 0.05
+sys 0.00

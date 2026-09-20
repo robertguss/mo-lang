@@ -1,0 +1,56 @@
+{
+  "recorded_at": "2026-09-20T08:23:52.759869-04:00",
+  "context": "Pre-measurement CPU snapshot only; command basenames, no arguments. CPU percentages are not an interval profile or causal explanation. Both workers on runtime hold.",
+  "highest_cpu": [
+    {
+      "pid": 67398,
+      "percent_cpu": 24.2,
+      "command_basename": "ghostty"
+    },
+    {
+      "pid": 38302,
+      "percent_cpu": 24.2,
+      "command_basename": "git"
+    },
+    {
+      "pid": 38281,
+      "percent_cpu": 23.7,
+      "command_basename": "gh"
+    },
+    {
+      "pid": 68761,
+      "percent_cpu": 23.4,
+      "command_basename": "bun"
+    },
+    {
+      "pid": 83764,
+      "percent_cpu": 17.7,
+      "command_basename": "bun"
+    },
+    {
+      "pid": 12860,
+      "percent_cpu": 12.8,
+      "command_basename": "Cursor Helper (Renderer)"
+    },
+    {
+      "pid": 7491,
+      "percent_cpu": 12.5,
+      "command_basename": "herdr"
+    },
+    {
+      "pid": 1057,
+      "percent_cpu": 9.4,
+      "command_basename": "moshi-hook"
+    },
+    {
+      "pid": 67482,
+      "percent_cpu": 5.5,
+      "command_basename": "herdr"
+    },
+    {
+      "pid": 1034,
+      "percent_cpu": 4.0,
+      "command_basename": "ContextStoreAgent"
+    }
+  ]
+}

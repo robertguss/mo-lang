@@ -1,0 +1,271 @@
+{
+  "recorded_at": "2026-09-20T08:26:19.525677-04:00",
+  "baseline_revision": "c4462935fdbcf99d3b8b53258828d028d68594bc",
+  "current_revision": "cdf1e9660f51623d71cfb7fffd6ceef8d8a99078",
+  "payload_bytes": 268435456,
+  "record_bytes": 4096,
+  "payload_sha256": "d496cd0757cecd0e21957bcc879367edcf9a744d316710f5b69d4202f959835f",
+  "order": [
+    "baseline",
+    "current",
+    "current",
+    "baseline",
+    "baseline",
+    "current",
+    "current",
+    "baseline",
+    "baseline",
+    "current"
+  ],
+  "samples": [
+    {
+      "invocation": 1,
+      "revision": "baseline",
+      "runtime": "run",
+      "seconds": 0.142299,
+      "MBps": 1886.422,
+      "log": "line-256m-01-baseline.log"
+    },
+    {
+      "invocation": 1,
+      "revision": "baseline",
+      "runtime": "binary",
+      "seconds": 0.189639,
+      "MBps": 1415.505,
+      "log": "line-256m-01-baseline.log"
+    },
+    {
+      "invocation": 2,
+      "revision": "current",
+      "runtime": "run",
+      "seconds": 0.149886,
+      "MBps": 1790.932,
+      "log": "line-256m-02-current.log"
+    },
+    {
+      "invocation": 2,
+      "revision": "current",
+      "runtime": "binary",
+      "seconds": 0.174904,
+      "MBps": 1534.76,
+      "log": "line-256m-02-current.log"
+    },
+    {
+      "invocation": 3,
+      "revision": "current",
+      "runtime": "run",
+      "seconds": 0.148791,
+      "MBps": 1804.107,
+      "log": "line-256m-03-current.log"
+    },
+    {
+      "invocation": 3,
+      "revision": "current",
+      "runtime": "binary",
+      "seconds": 0.159326,
+      "MBps": 1684.824,
+      "log": "line-256m-03-current.log"
+    },
+    {
+      "invocation": 4,
+      "revision": "baseline",
+      "runtime": "run",
+      "seconds": 0.142983,
+      "MBps": 1877.393,
+      "log": "line-256m-04-baseline.log"
+    },
+    {
+      "invocation": 4,
+      "revision": "baseline",
+      "runtime": "binary",
+      "seconds": 0.144516,
+      "MBps": 1857.477,
+      "log": "line-256m-04-baseline.log"
+    },
+    {
+      "invocation": 5,
+      "revision": "baseline",
+      "runtime": "run",
+      "seconds": 0.150544,
+      "MBps": 1783.103,
+      "log": "line-256m-05-baseline.log"
+    },
+    {
+      "invocation": 5,
+      "revision": "baseline",
+      "runtime": "binary",
+      "seconds": 0.173121,
+      "MBps": 1550.569,
+      "log": "line-256m-05-baseline.log"
+    },
+    {
+      "invocation": 6,
+      "revision": "current",
+      "runtime": "run",
+      "seconds": 0.146916,
+      "MBps": 1827.141,
+      "log": "line-256m-06-current.log"
+    },
+    {
+      "invocation": 6,
+      "revision": "current",
+      "runtime": "binary",
+      "seconds": 0.164277,
+      "MBps": 1634.039,
+      "log": "line-256m-06-current.log"
+    },
+    {
+      "invocation": 7,
+      "revision": "current",
+      "runtime": "run",
+      "seconds": 0.164439,
+      "MBps": 1632.434,
+      "log": "line-256m-07-current.log"
+    },
+    {
+      "invocation": 7,
+      "revision": "current",
+      "runtime": "binary",
+      "seconds": 0.16711,
+      "MBps": 1606.338,
+      "log": "line-256m-07-current.log"
+    },
+    {
+      "invocation": 8,
+      "revision": "baseline",
+      "runtime": "run",
+      "seconds": 0.147965,
+      "MBps": 1814.18,
+      "log": "line-256m-08-baseline.log"
+    },
+    {
+      "invocation": 8,
+      "revision": "baseline",
+      "runtime": "binary",
+      "seconds": 0.171854,
+      "MBps": 1562.001,
+      "log": "line-256m-08-baseline.log"
+    },
+    {
+      "invocation": 9,
+      "revision": "baseline",
+      "runtime": "run",
+      "seconds": 0.142138,
+      "MBps": 1888.56,
+      "log": "line-256m-09-baseline.log"
+    },
+    {
+      "invocation": 9,
+      "revision": "baseline",
+      "runtime": "binary",
+      "seconds": 0.156725,
+      "MBps": 1712.785,
+      "log": "line-256m-09-baseline.log"
+    },
+    {
+      "invocation": 10,
+      "revision": "current",
+      "runtime": "run",
+      "seconds": 0.158411,
+      "MBps": 1694.552,
+      "log": "line-256m-10-current.log"
+    },
+    {
+      "invocation": 10,
+      "revision": "current",
+      "runtime": "binary",
+      "seconds": 0.1611,
+      "MBps": 1666.266,
+      "log": "line-256m-10-current.log"
+    }
+  ],
+  "statistics": {
+    "run": {
+      "baseline": {
+        "seconds_in_execution_order": [
+          0.142299,
+          0.142983,
+          0.150544,
+          0.147965,
+          0.142138
+        ],
+        "best_seconds": 0.142138,
+        "median_seconds": 0.142983,
+        "range_seconds": [
+          0.142138,
+          0.150544
+        ],
+        "best_MBps": 1888.555178769928,
+        "median_MBps": 1877.3942077030138
+      },
+      "current": {
+        "seconds_in_execution_order": [
+          0.149886,
+          0.148791,
+          0.146916,
+          0.164439,
+          0.158411
+        ],
+        "best_seconds": 0.146916,
+        "median_seconds": 0.149886,
+        "range_seconds": [
+          0.146916,
+          0.164439
+        ],
+        "best_MBps": 1827.1356149092,
+        "median_MBps": 1790.9308140853718
+      },
+      "delta_percent": {
+        "best_seconds": 3.361521901250897,
+        "median_seconds": 4.8278466670862885,
+        "best_MBps": -3.2521985352173988,
+        "median_MBps": -4.6055001801368896
+      }
+    },
+    "binary": {
+      "baseline": {
+        "seconds_in_execution_order": [
+          0.189639,
+          0.144516,
+          0.173121,
+          0.171854,
+          0.156725
+        ],
+        "best_seconds": 0.144516,
+        "median_seconds": 0.171854,
+        "range_seconds": [
+          0.144516,
+          0.189639
+        ],
+        "best_MBps": 1857.4791441778073,
+        "median_MBps": 1561.9971371047516
+      },
+      "current": {
+        "seconds_in_execution_order": [
+          0.174904,
+          0.159326,
+          0.164277,
+          0.16711,
+          0.1611
+        ],
+        "best_seconds": 0.159326,
+        "median_seconds": 0.164277,
+        "range_seconds": [
+          0.159326,
+          0.174904
+        ],
+        "best_MBps": 1684.8188996146266,
+        "median_MBps": 1634.0416248166207
+      },
+      "delta_percent": {
+        "best_seconds": 10.248000221428754,
+        "median_seconds": -4.40897506022554,
+        "best_MBps": -9.295406901572878,
+        "median_MBps": 4.612331610633258
+      }
+    }
+  },
+  "calculation": "Derived from six-decimal printed seconds; throughput may differ slightly from driver values computed from unrounded times. MBps is decimal MB/s.",
+  "interpretation": "Observed interpreter slowdown in this run. Native best slower but median faster, with broad baseline range. No zero-overhead claim, stable causal-regression estimate, or kernel attribution. Changing host load and short0.14\u20130.19s transfer windows remain limitations. Original16MiB results retained.",
+  "acceptance_requirement": "Step44 requires disclosed best-of-five measurements, not a specified numerical performance floor."
+}
