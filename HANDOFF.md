@@ -122,11 +122,16 @@ Lead read the raw failure/GREEN/cleanup logs under
 Step44 explicitly resumed focused checks/formatting. Step42-fix continues
 static preparation of remaining corrections until its next validation grant.
 No full sweep/suite/benchmark authorization. Original branches remain intact.
-**Step44 measurement slot requested, not yet granted:** fixed-volume chunks
-on the current checkpoint and unchanged lines before/after, both runtimes,
-best of five, guarded/sequential. Await fresh step42-fix clearance; it must
-hold runtime/check/formatter work through the slot. Exact checkpoints and
-all samples/loads/exits are required. No unfiltered suite permission.
+
+**Step44 exclusive measurement slot granted:** step42-fix freshly confirmed
+no runtime/check/formatter commands since its guarded blocking cleanup and
+holds static-only until release. Baseline `c4462935` build, then lines
+baseline/current and chunks current (`9c67ec1f`), 16 MiB, both runtimes,
+best of five, guarded/sequential. Exact request/checkpoints/workload hashes:
+`audit/evidence/2026-09-19/omp-resumption/step44-measurement-request.json`.
+Keep all samples/loads/exits and source fixed; no unfiltered suite or
+Linux/machine work. Release only after step44 reports the slot free and
+owned-process cleanup.
 
 ### Next, in order
 
