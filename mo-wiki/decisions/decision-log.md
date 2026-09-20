@@ -1048,6 +1048,13 @@ direction separately from the lead's conservative execution interpretation.
 | Authorize the reviewed four-file Step42 ownership repair as source only. Retain markRunnable's API; pre-reserve mailbox/trace, call its fallible resize/publish under the runtime lock, then commit infallibly. Prefer prefix cursors to sentinel stores, cover all already-owned commit buffers on failure, and include the explicitly reviewed answer/log seams. No native change, production audit instrumentation or AFTER freeze. | Astra (GPT-6), composition review06 | implementation authorized, runtime withheld | source/caller review and three permanent plus private allocation-failure controls |
 | Own grant06's invalid mo fmt --write invocation as a lead command error, not a compiler failure. Preserve exit2 and untouched seven-record/27-test subtotal. Grant07 uses the existing default fmt invocation followed by only the remaining eight generators; no first-seven repeat or broader runtime grant. | Astra (GPT-6) | corrected bounded grant; no new pass claimed | correctness-result06 and grant07 |
 
+## 20 Sep 2026 — Advance complete provenance; keep normal builds free of audit-only storage
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept grant08's42/42 generator results as the provenance prerequisite only:15 unstaged records and protected F1 unchanged. Resume the twenty remaining correctness commands under sole server runtime ownership; no generation repeat, benchmark, full-suite or server acceptance implied. | Astra (GPT-6), raw result08 review | remaining correctness authorized | grant09 exact commands and actual gate results |
+| Compile ASan-only fiber context fields and initialization out of normal native builds; remove the field-assignment-only stress budget test rather than preserving low-value implementation assertions. Keep actual stress/mutant obligations and the blocking lifetime behavior control. These are two bounded additions to the static memory repair, not a native ownership redesign. | Astra (GPT-6), independent source review07 | source correction authorized; unexecuted | normal/ASan build and existing real stress/mutant proof under later grants |
+
 ## Related
 
 - [[session-05]]

@@ -1,0 +1,290 @@
+{
+  "recorded_at": "2026-09-20T11:38:08.012750-04:00",
+  "status": "nine commands passed; metadata prerequisite complete; runtime released; server not accepted",
+  "attempts": [
+    {
+      "name": "chunks2-connection-format-03",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "30",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "fmt",
+          "examples/programs/workspace-server/connection.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "",
+      "exit": 0
+    },
+    {
+      "name": "chunks2-write-connection-02",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/connection.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "pass  test \"a complete unchanged-wire body is whole before EOF across arbitrary chunks\"\npass  test \"body byte length, trailing bytes and UTF-8 are decided only when complete\"\npass  test \"the full header section has an exact byte cap and unfinished EOF is malformed\"\npass  test \"the gate lets four in, and compares the token in constant time\": 200 simulated runs\npass  test \"a wait past its deadline is 504 with execution unknown; an owner lost is 200 owner_unknown\"\ninvariant \"no more connections are inside than the limit\" in Gate: kept, and no seed's message tripped it in a test rejects\n5 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults\nverified: types, contracts, tests (5), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-operator-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/operator.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "pass  test \"an operator line is its token, a space, and its command\"\npass  test \"the door lets main go once, whenever it is asked\": 200 simulated runs\n2 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults\nverified: types, contracts, tests (2), property (0 seeds), sim (200 runs)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-server-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/server.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "pass  test \"settings accept a lowercase source hash and reject malformed hashes\"\n1 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (1), property (0 seeds), sim (not run)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-main-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/main.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "0 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (0), property (0 seeds), sim (not run)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-double-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/double.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "0 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (0), property (0 seeds), sim (not run)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-f1-repro-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/f1_repro.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "0 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (0), property (0 seeds), sim (not run)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-hostile-fs-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "5",
+          "examples/programs/workspace-server/hostile_fs.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "0 passed, 0 failed, 0 skipped\nverified: types, contracts, tests (0), property (0 seeds), sim (not run)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "chunks2-write-strict-01",
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "180",
+          "--",
+          "toolchain/zig-out/bin/mo",
+          "test",
+          "--write",
+          "--sim",
+          "200",
+          "--seed",
+          "1",
+          "--faults",
+          "0",
+          "examples/programs/workspace-server/strict.mo"
+        ],
+        "cwd": "repository root"
+      },
+      "output": "pass  test \"the binding is the first row, and each record rewrites the whole journal\": 200 simulated runs\npass  test \"an intent the journal could not hold with its largest reply is refused, and a repeat too\": 200 simulated runs\npass  test \"a delivery that is not known leaves delivery.json beside the journal\": 200 simulated runs\npass  test \"one call at a time: a second is busy, and after the first finishes it is admitted\": 200 simulated runs\npass  test \"overlapping refusals use busy, conflict, closed, limit, then journal capacity\": 200 simulated runs\npass  test \"a journal that cannot hold the intent refuses the call, and nothing is active\": 200 simulated runs\npass  test \"a file call runs, is journaled by the worker, and frees admission\": 200 simulated runs\n7 passed, 0 failed, 0 skipped; 7 tests under 200 seeds without faults\nverified: types, contracts, tests (7), property (0 seeds), sim (200 runs)\n          proven: not run\n",
+      "exit": 0,
+      "summary": {
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "remaining_target_totals": [
+    15,
+    0,
+    0
+  ],
+  "combined_with_prior_grant05": {
+    "passed": 42,
+    "failed": 0,
+    "skipped": 0,
+    "production": 35,
+    "production_simulated": 3,
+    "production_held_under_faults": 3,
+    "production_faults_percent": 5,
+    "strict": 7,
+    "strict_simulated": 7,
+    "strict_faults_percent": 0,
+    "strict_held_under_faults": 0,
+    "strict_fault_free_only": 0
+  },
+  "worker_reported_sidecar": {
+    "entries": 15,
+    "sha256": "450ac47d2c9a676ef1e3ac62c7b62bc1e5942c5ba14124fa846f3a6f05ea70a3",
+    "staged": false
+  },
+  "worker_reported_clearance": {
+    "protected_hashes_unchanged": true,
+    "f1_source_unchanged_after_generator": true,
+    "evidence_kib": 788,
+    "owned_processes": 0,
+    "owned_listeners": 0,
+    "temporary_artifacts": 0,
+    "runtime_released": true,
+    "compiler_cache_preserved": true
+  },
+  "classification": "--write test results, not later standalone/corpus/socket/benchmark acceptance"
+}

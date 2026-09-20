@@ -250,6 +250,21 @@ helper and places the existing gate Check in a HeadDone guard, followed by an
 unauthorized fallback. This preserves one ask and depth3 without a context
 bag or extra transition tuple. The other seven targets remain unrun.
 
+Grant08 completed all nine commands: default formatting plus the remaining
+eight generator targets. Raw remainder15/0/0 plus retained27 gives **42/0/0**:
+35 production, three simulated/held at5% faults; strict7 simulated at0% faults.
+All15 parent records now exist unstaged. Protected F1 source stayed identical
+even as a generator target; all protected hashes matched. Evidence788KiB,
+no owned process/listener/temp remained, runtime released.
+
+Grant09 resumes exactly original4–6 and8–24, twenty commands, with fresh
+standalone-test attempt02. It does not repeat generation. Actual standalone,
+strict/seeded, final-format, four corpus, three-build, inherited/unchanged-client/
+hostile/EOF/direct-filesystem and size results are still required. Server has
+the exclusive runtime slot, first surprise stops, and no benchmark/full-suite/
+memory-runtime/commit/report permission follows automatically. Raw result08
+and grant09 retain the evidence and exact argv.
+
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
 Step 44 stays unchanged. `Closed` reports input termination, not whether the

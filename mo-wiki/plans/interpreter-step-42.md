@@ -375,6 +375,16 @@ Three permanent allocation-failure behavior controls plus private parcel
 controls are authorized as source, not execution. Review06 records the exact
 limits; normal, ASan, mutant, reclamation and timing proof are still withheld.
 
+Independent frozen-source review07 read the native retained-value migration,
+fiber switching/retirement, blocking completion and region/stress changes.
+Two additional bounded corrections are authorized: compile ASan-only fiber
+context fields/initialization out of normal builds, and remove the test that
+only asserts three internal budget assignments. Real stress/mutant proof
+remains mandatory; the observable blocking lifetime/error control stays.
+No new native ownership redesign or runtime grant. The normal path still has
+runtime budget loads and a changed retained-log layout; timing proof cannot
+be replaced with a zero-cost assertion.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]
