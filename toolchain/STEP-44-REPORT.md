@@ -188,3 +188,131 @@ Raw records: `measure-base-build.log/.exit`, `measure-lines-base.log/.exit`,
   throughput driver or socket-probe process (`pgrep` exit 1). The detached
   baseline path no longer exists. Generated development-only logs were removed;
   only the named evidence set remains.
+
+---
+
+# Step 44 correction addendum: review findings
+
+This addendum is separate from the original delivery report above. The original
+delivery at `9ad0162aa1994bb67c012ee85e78503c8573043a` was not accepted. Its
+text and evidence remain verbatim for provenance; they are not represented as
+independent acceptance of the corrected tree.
+
+- Original delivery base for this correction:
+  `9ad0162aa1994bb67c012ee85e78503c8573043a`.
+- Final correction code, fixture, probe and evidence commit:
+  `02833a52219a428034bb6c81e9893b6d3421fcf6`.
+- This report-only addendum is committed after that code/evidence commit.
+- All correction build, check, test, probe and measurement commands used the
+  existing bounded guard. No unfiltered suite, formatter, benchmark, Linux run,
+  machine run, push or merge was performed.
+
+## Corrected findings
+
+1. `linesFixture` now retires immediately after sending `Idle`; it no longer
+   falls through to dispatch a closed fixture source. The deterministic
+   optimized RED reached the source-kind dispatch unreachable with exit 134
+   (`review-fixes/lines-idle-red-03.*`). The GREEN passed all 9 fixture tests in
+   the interpreter and native binary (`lines-idle-green-01.*` and
+   `idle-native-test-01.*`, both exit 0, 9/9).
+2. The strict TLS target now requires a fault-free handshake, exact plaintext in
+   both directions, bounded nonempty chunks and no premature terminal message.
+   It passes 2/2 in the interpreter and native binary
+   (`tls-test-write-03.*`, `tls-native-test-01.*`, both exit 0). Fault injection
+   is isolated in `chunks-tls-faults.mo`; `tls-faults-test-write-02.*` exits 0
+   with one test over 40 seeds at 20% faults and holds under faults.
+3. A temporary ALPN mismatch makes the strict positive TLS test fail at
+   `assert successful?(got)`. Both interpreter and native negative controls
+   recognize that intentional inner test exit 1 and themselves exit 0:
+   `tls-positive-oracle-run-02.*` and
+   `tls-positive-oracle-native-02.*`.
+4. The real-socket half-close oracle compares the complete ordered byte list,
+   not a byte count and sum. Interpreter and native both observed exact hex
+   `4100e282acf0288c2842`, including NUL, invalid UTF-8 and a split multibyte
+   sequence, then wrote the post-EOF response:
+   `ordered-bytes-run-01.*` and `ordered-bytes-native-01.*`, exit 0.
+
+All correction evidence paths below are relative to
+`toolchain/bench/step44/review-fixes/`; each named `.exit` contains the stated
+outer exit status.
+
+## Focused control proofs
+
+| control | interpreter evidence | native evidence | observed contract |
+| --- | --- | --- | --- |
+| full-width bounds | `bounds-run-01.*`, exit 0 | `bounds-native-01.*`, exit 0 | 1 and 65,536 accepted with exact bounded input; 0, 65,537 and 18,446,744,073,709,551,615 parsed without truncation and rejected by child exit 70 |
+| pending pull reader | `pending-pull-run-02.*`, exit 0 | `pending-pull-native-01.*`, exit 0 | a real `Conn.read_line` was observed at exact `waiting_in=Conn.read_line`; `chunks` registration then refused it with child exit 70 |
+| TLS after chunks | `late-tls-run-01.*`, exit 0 | `late-tls-native-01.*`, exit 0 | registration completed, the real `TlsClient.connect` call started, and the used-connection guard refused it with child exit 70 |
+| blocked writer/input overlap | `blocked-writer-run-03.*`, exit 0 | `blocked-writer-native-01.*`, exit 0 | exact `waiting_in=Conn.write` before and after exact `input-progress`; exact control lines `writer-blocked\n` then `input-progress\n`; `input_exact=true`, `answered=true`, unread data peer, child and outer exit 0 |
+
+The blocked-writer proof precomputes the existing 16 MiB write payload before
+arming chunks and the cooperative observer. A writer return is logged exactly
+as `Ok` bytes or `Error` and is never success evidence. Neither passing log
+printed a writer-return diagnostic, and return was not used as success. The
+data peer requested `SO_RCVBUF=4096` before
+connect, observed 326,640 immediately after connect, reapplied the same 4,096
+request, then observed and enforced 4,096 before the proof. These are observed
+values only; no kernel-cause claim is made. The data peer remained unread
+through both waiting observations and the exact input acknowledgement.
+
+## Preflight and driver history
+
+All bounded failures are retained rather than replaced:
+
+| evidence | status | bounded resolution |
+| --- | ---: | --- |
+| `lines-idle-red-01.*` | 1 | fixed the fixture's statement-shaped case arm |
+| `lines-idle-red-02.*` | 1 | fixed the one-field pattern and refreshed generated verification metadata |
+| `lines-idle-red-03.*` | 134 | deterministic behavioral RED: optimized source dispatch reached unreachable; the one-line source retirement fix led to `lines-idle-green-01.*` and `idle-native-test-01.*`, both exit 0 and 9/9 |
+| `tls-test-write-01.*` | 1 | fixed the split boolean expression; final strict target is `tls-test-write-03.*`, exit 0 and 2/2 |
+| `tls-faults-test-write-01.*` | 1 | corrected the fixture-root module import; `tls-faults-test-write-02.*` exits 0 over 40 seeds at 20% faults |
+| `tls-positive-oracle-run-01.*` | 1 | the inner positive oracle failed correctly, but the driver matched the wrong output case; `tls-positive-oracle-run-02.*` recognizes the exact failure and exits 0 |
+| `tls-positive-oracle-native-01.*` | 1 | corrected the built executable path; `tls-positive-oracle-native-02.*` recognizes the exact inner failure and exits 0 |
+| `controls-check-01.*` | 1 | corrected the initial control probe's statement-shaped case arm; `controls-check-02.*` exits 0 |
+| `controls-native-build-01.*` | 1 | renamed the reserved `process` parameter in `control_probe.mo` at actual 104:31; `--surface` prepending mislocated its diagnostic at `surface.mo:69:5`. The compiler diagnostic-offset defect remains recorded and unfixed; no runtime-surface edit was made |
+| `controls-native-build-02.*` | 1 | consumed Results, corrected durations, narrowed Platform capabilities and reduced nesting; `controls-native-build-03.*` exits 0 |
+| `pending-pull-run-01.*` | 1 | 256 immediate snapshots ran in one non-yielding turn and missed the active wait; the bounded message-turn observer led to `pending-pull-run-02.*` and `pending-pull-native-01.*`, both exit 0 |
+| `controls-check-03.*` | 1 | corrected named message construction and observer nesting; `controls-check-04.*` and `controls-native-build-04.*` exit 0 |
+| `blocked-writer-run-01.*` | 1 | the writer returned before the wait was observed; process rows were retained, and the proof was changed to require exact pre-input and post-input wait observations rather than treating return as evidence |
+| `blocked-writer-run-02.*` | 1 | post-connect effective receive buffer was 326,640, above the unchanged 16,384 ceiling; the driver stopped, retained `blocked-writer returned=Error(Closed)`, then reapplied the same 4,096 request in the next authorized revision |
+
+Final static preflights `controls-check-05.*`,
+`blocked-driver-pycompile-01.*` and `blocked-driver-pycompile-02.*` all exit 0
+with empty logs. `controls-native-build-05.*` exits 0 and names the native
+artifact. `blocked-writer-run-03.*` and `blocked-writer-native-01.*` are the
+subsequent passing behavior proofs. No failure was silently corrected or
+retried within its grant.
+
+## Correction changed paths
+
+- `toolchain/src/sources.zig`
+- `examples/step44/chunks.mo`
+- `examples/step44/chunks-tls.mo`
+- `examples/step44/chunks-tls-faults.mo`
+- `examples/step44/.mo.ids` (generated verification/declaration records)
+- `toolchain/bench/step44/http_chunks_probe.mo`
+- `toolchain/bench/step44/socket_probe.py`
+- `toolchain/bench/step44/review-fixes/control_probe.mo`
+- `toolchain/bench/step44/review-fixes/behavior_probe.py`
+- `toolchain/bench/step44/review-fixes/tls_oracle_probe.py`
+- `toolchain/bench/step44/review-fixes/*.log`
+- `toolchain/bench/step44/review-fixes/*.exit`
+- `toolchain/STEP-44-REPORT.md` in the final report-only commit
+
+## Performance observations, cleanup and limits
+
+The original serialized measurements remain observations: unchanged-line
+best-of-five was **-8.69%** in the interpreter and **-0.97%** native. No causal
+claim and no zero-cost claim follows. Longer and interleaved line measurements
+remain owed.
+
+Scoped cleanup after each correction group found no owned `mo`, guard, native
+probe or Python driver process. Final blocked-writer cleanup found no process
+and no socket on ports 57,434, 57,435, 57,440 or 57,441; the generated Python
+bytecode cache was removed and confirmed absent. Raw failure and success logs
+and their actual exit files remain committed.
+
+This worker evidence is not integrated-code acceptance. Lead integration,
+independent checks, current full-suite timing and Linux verification remain
+owed. The correction did not run the unfiltered suite and makes no claim that
+the current full suite passes.
