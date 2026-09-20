@@ -1,0 +1,20 @@
+{
+  "recorded_at_et": "2026-09-19T23:36:34.480436-04:00",
+  "status": "Granted; no results yet",
+  "prior_stop": "step44-focused-validation-result-07.json",
+  "static_scope": "control_probe.mo only: handle3 Results, fix3 duration suffixes, flatten dispatch, keep Platform in main/narrow parts",
+  "preserved_invariants": "Actual waiting_in coordination, strict parsed full-width marker, exact input/control bytes; unexpected normal late TLS return must not satisfy exact crash70 oracle",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "name": "controls-check-01",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo check bench/step44/review-fixes/control_probe.mo"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "stop": "One checker preflight only; no silent retries/edits after unexpected result; report changes/result/clearance and HOLD",
+  "not_authorized": "Builds, runtime/probes/tests, formatter, commands13\u201320, fixture/runtime/loader edits, weakened oracles, full suite/benchmarks/Linux/machine work",
+  "other_worker": "step42 runtime HOLD",
+  "acceptance": "Checker preflight only, no behavior or acceptance claimed"
+}

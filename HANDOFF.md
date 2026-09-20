@@ -349,6 +349,46 @@ toolchain-relative paths remain unchanged. Exact result/grant:
 `step44-focused-validation-result-05.json` and
 `step44-focused-validation-grant-06.json` in the same evidence directory.
 
+**Native negative oracle and exact bytes now pass:** native mutant driver
+exited 0 with intended child exit 1 and named positive assertion failure.
+Both real-socket byte probes exited 0 and returned exactly
+`4100e282acf0288c2842`, including NUL/invalid UTF-8/split multibyte sends,
+with response 200 after input half-close and server exit 0. Observed chunk
+count 1 is not a boundary assertion. Lead read all three logs.
+
+Controls build then stopped in the checker, not runtime. Its first error
+was actually reserved parameter `process` in `control_probe.mo:104:31`,
+byte offset 2280. The CLI prepends `surface.mo` after loading diagnostics
+without adjusting their offsets; 2280 maps exactly to its displayed
+69:5. This diagnostic-location defect is recorded, **not fixed**. After
+only renaming that parameter/references, build02 reached nine real probe
+diagnostics: three dropped Results, three invalid `1.second` suffixes,
+four-deep mode dispatch, and two Platform-outside-main violations.
+No control binary or bounds/ownership/duplex behavior ran; commands 13–20
+remain held. Worker reported scoped cleanup clear.
+
+Authorized probe-only corrections preserving actual waiting/byte/refusal
+oracles, then just guarded `controls-check-01` (120s, `mo check`).
+No native build/runtime/formatter grant; no fixture/loader/runtime edits.
+Await checker/source review before a fresh build/behavior grant. Exact
+result06/result07/grant07/grant08 JSON and raw logs are under the same
+`audit/evidence/2026-09-19/omp-resumption/` directory. Step42 stays runtime
+HOLD/static preparation. Worker evidence only, no integration acceptance.
+
+**Probe checker gate now passes:** first checker-only attempt stopped at
+an inline case-arm assignment (MO0101); the analogous two arms were moved
+to multiline assignments only. `controls-check-02` exited 0 with empty
+output. Lead reviewed explicit Result consumption/returned markers, normal
+late-TLS return code 2, corrected duration units, flat dispatch with
+Platform confined to main, and preserved waiting/full-width/byte oracles.
+No native control build or behavior ran under that checker grant.
+Worker reported scoped clearance; all earlier logs preserved.
+Granted fresh `controls-native-build-03` (180s), then original commands
+13–20 under their reviewed limits, serially, stop first surprise. Source/
+probes frozen; cleanup/report then HOLD. Exact result08/result09 and
+grant09/grant10 JSON plus checker logs retained in the same evidence
+directory. Checker success is not behavior proof or acceptance.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

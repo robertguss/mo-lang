@@ -1,0 +1,56 @@
+{
+  "recorded_at_et": "2026-09-19T23:34:29.048460-04:00",
+  "grant": "step44-focused-validation-grant-06.json",
+  "results": [
+    {
+      "command": "8R",
+      "name": "tls-positive-oracle-native-02",
+      "outer_exit": 0,
+      "build_child_exit": 0,
+      "test_child_exit": 1,
+      "behavior": "Named strict positive FAIL/assert, negative test passes; driver result=pass"
+    },
+    {
+      "command": 9,
+      "name": "ordered-bytes-native-build-01",
+      "exit": 0
+    },
+    {
+      "command": 10,
+      "name": "ordered-bytes-run-01",
+      "exit": 0,
+      "ordered_hex": "4100e282acf0288c2842",
+      "half_close_response": 200,
+      "server_guard_exit": 0
+    },
+    {
+      "command": 11,
+      "name": "ordered-bytes-native-01",
+      "exit": 0,
+      "ordered_hex": "4100e282acf0288c2842",
+      "half_close_response": 200,
+      "server_guard_exit": 0
+    },
+    {
+      "command": 12,
+      "name": "controls-native-build-01",
+      "exit": 1,
+      "stage": "checker only",
+      "displayed_diagnostic": "(the runtime surface) surface.mo:69:5 MO0101 expected a name at case id",
+      "native_control_built": false
+    }
+  ],
+  "commands13_to20_ran": false,
+  "byte_oracle_note": "Exact ordered10 bytes including NUL, invalid UTF8, split multibyte sends; observed one chunk, no split assertion",
+  "static_diagnosis": {
+    "actual_source": "control_probe.mo:104:31 reserved parameter process; also in await_pending?",
+    "byte_offset": 2280,
+    "same_offset_in_surface": "69:5",
+    "cause": "main.zig:246-249 loads source and diagnostics, then prepends surface with program.withSurface before rejection; old diagnostics retain unshifted offsets",
+    "compiler_defect": "Mislocated load diagnostics with --surface; recorded, not fixed or authorized in this grant",
+    "runtime_confirmation": "Fresh valid probe build pending"
+  },
+  "cleanup": "Worker reports no owned processes/temp-mutant artifacts; authorized strict/ordered native binaries preserved",
+  "lead_read": "Native negative-oracle, both exact-byte, failed build logs; source prepend/parser rules; computed offset match",
+  "acceptance": "Worker evidence only; no bounds/ownership/duplex control or integrated acceptance yet"
+}

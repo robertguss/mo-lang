@@ -1,0 +1,14 @@
+{
+  "recorded_at_et": "2026-09-19T23:38:51.009244-04:00",
+  "grant": "step44-focused-validation-grant-08.json",
+  "name": "controls-check-01",
+  "exit": 1,
+  "stage": "checker only",
+  "diagnostic": "MO0101 at control_probe.mo:76:44: assignment must be on its own lines below case-arm colon",
+  "analogous_prepared_arm": "BlockedWriter line93 has same shape; parser stopped before separate diagnostic",
+  "static_changes_reviewed": "Explicit Result matches/returned marker, normal late TLS returns2, durations1.seconds, flat dispatch in main/no Platform passed out, full-width marker retained",
+  "behavior_or_build_ran": false,
+  "commands13_to20_ran": false,
+  "cleanup": "Worker scoped pgrep exit1, no owned mo/guard/control-build processes, nothing killed/detached",
+  "acceptance": "No behavior proof; two multiline-arm fixes and checker retry only"
+}

@@ -1,0 +1,11 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 30 -- toolchain/zig-out/bin/mo build --tests -o step44-tls-forced-error toolchain/bench/step44/review-fixes/tls-oracle-0n_fu9fo/chunks-tls-forced-error.mo
+zig-out/mo-build/step44-tls-forced-error/step44-tls-forced-error
+guard_exit=0
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 30 -- zig-out/mo-build/step44-tls-forced-error/step44-tls-forced-error
+FAIL  test "fault-free TLS chunks exchange exact bounded plaintext in both directions": toolchain/bench/step44/review-fixes/tls-oracle-0n_fu9fo/chunks-tls-forced-error.mo:258:3: assert successful?(got) failed
+pass  test "a forced TLS handshake error fails the positive oracle"
+1 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+guard_exit=1
+runtime=binary forced_handshake=Handshake positive_oracle=failed result=pass

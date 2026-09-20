@@ -35,9 +35,11 @@ acceptance remain. Step42-fix completed its correction-only corpus rerun at
 `65b3dd37`: exit0, all60 samples, elapsed minima deltas -1.56% to +2.79%
 against the prior unaccepted delivery. No whole-step overhead or acceptance
 claim. Step44 now has worker native idle9/9, strict interpreter/native TLS2/2
-each and a separate fault target held over40 seeds at20%. The forced-positive
-interpreter control now passes; its native driver stopped before launch on an
-output-path mismatch. Corrected native oracle/socket controls are granted. Step42
+each and a separate fault target held over40 seeds at20%. Both forced-positive
+oracle drivers and exact ordered-byte socket probes now pass. Remaining controls
+probe now passes its checker gate after source corrections; fresh native build
+and bounds/ownership/duplex validation are granted, results pending.
+A mislocated --surface diagnostic is recorded, not fixed. Step42
 remains runtime HOLD/static preparation; its
 exhaustive normal/raw-ASan sweeps,
 current stale-answer mutants, packed lifecycle controls and hot-path report
