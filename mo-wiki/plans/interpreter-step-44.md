@@ -5,7 +5,7 @@ updated: 2026-09-19
 type: plan
 tags: [runtime, stdlib, verification, processes]
 sources: [plans/mo-workspace-server-4a.md, plans/interpreter-step-20.md, plans/interpreter-step-38.md, spec/design-v0/09-stdlib.md]
-status: briefed
+status: in-progress
 ---
 
 # Step 44: bounded byte chunks from Conn
@@ -103,6 +103,15 @@ message Idle
 - `Net.fixture`, both executable runtimes and `mo test --sim` implement the
   same contract. Source scheduling/faults follow the existing source rules;
   simulated peers need no extra flush, newline or EOF to deliver a chunk.
+  Fixture caveat found in the worker's adversarial review: public fixtures
+  expose full `Conn.close`, not write-half-close. Preserve that API and
+  full-close behavior. Internally model directional EOF independently from
+  full close; a runtime-level test may establish peer write shutdown and
+  drive the real fixture source/dispatch, proving buffered chunks, one
+  `Closed` and a reverse-direction reply. No synthetic event injection,
+  special test-visible Mo API or reinterpretation of `Conn.close`.
+  Prove publicly initiated half-close with real sockets in both runtimes;
+  report the internal-fixture and public-socket evidence separately.
 - Source buffers may not borrow a process-region value across a safe point.
   Pack runtime messages through the existing source send path before buffer
   reuse; the receiver's compaction must not invalidate pending chunks.

@@ -46,7 +46,7 @@ A map of content for layer 1: the process model, the failure model, the two runt
 ## Current harness-driven work
 
 - [[interpreter-step-42]] — in progress: stress compaction, poisoned memory, owned parcels and process-group cleanup
-- [[interpreter-step-44]] — briefed: bounded binary connection chunks to unblock [[mo-workspace-server-4a]] without changing clients
+- [[interpreter-step-44]] — in progress: bounded binary connection chunks to unblock [[mo-workspace-server-4a]] without changing clients
 
 ## The runtime's own row
 

@@ -64,10 +64,25 @@ clients; memory work excludes all server files. Nothing newly accepted.
 body, timeout before close, body delivered only after close. `f1-06-exact-client`
 is a successful reproduction (exit 0), not GREEN. Lead brief:
 `mo-wiki/plans/interpreter-step-44.md`, bounded binary `Conn.chunks` using
-existing runtime sources; third fresh Sol/high worker to launch separately.
+existing runtime sources; fresh `step44-sol` launched in tab `w4:t17`, pane
+`w4:p38`, branch `toolchain/step-44-conn-chunks`, matching worktree basename,
+exact clean base `c4462935fdbcf99d3b8b53258828d028d68594bc`. Startup showed
+Sol/no recent sessions; `--thinking high --no-prewalk`, new session, and
+the worker began its contract review. All three worker slots are occupied.
 Server continues only independent work until lead-approved capability
 integration. Step 42 stays isolated; lead reconciles overlapping runtime
 files, and schedules all full suites/benchmarks. No new acceptance.
+
+**Server H2/H6/D2 decision:** step 44 is unchanged. EOF after a complete
+request does not prove lost response or close admission. Preserve the
+operation, journal local write outcome separately from unknown client
+receipt, and keep the operator independent. Actual write failure/response
+timeout may close admission. The server brief names explicit Mo controls
+instead of the two incompatible Python owner-exit predicates; do not claim
+13 unchanged groups green. No client ACK or stronger runtime EOF promise.
+Fixture half-close is internal model/test support only; public fixtures
+still expose full close, and real sockets prove public half-close. Launch
+receipt/assignment: `audit/evidence/2026-09-19/omp-resumption/step44-launch.json`.
 
 ### Next, in order
 

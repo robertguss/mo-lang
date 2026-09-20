@@ -45,6 +45,46 @@ waits without a newline/half-close, times out, then the server receives the
 source; no adoption or toolchain merge in this worktree until lead release.
 Continue genuinely independent part A work. Full wire acceptance remains blocked.
 
+### EOF and delivery decision (lead, 19 Sep, evening)
+
+Step 44 stays unchanged. `Closed` reports input termination, not whether the
+peer kept its read half open. `Conn.write` success is local completion, not
+proof of client receipt (the existing wire contract already says this).
+Do not require the runtime to infer a stronger distinction from TCP EOF.
+
+- A complete admitted request continues across input EOF. Record `read_ended`
+  separately; EOF alone neither closes run admission nor cancels execution.
+  Reply production follows the real execution result. Attempt the bounded
+  response write even after EOF; preserve the independent operator path.
+- Journal execution, produced reply, local write outcome and client receipt
+  separately. Client receipt is unknown on both successful and failed writes
+  because this protocol has no acknowledgment. Never turn transport loss into
+  `owner_unknown`, erase a known execution or retry the operation.
+- An observed response write failure/timeout or the existing response timeout
+  closes admission under the existing deadline policy; it does not kill the
+  operator or erase an in-flight/late outcome. Input EOF alone is not such
+  evidence. Events after a completed response must not close admission for a
+  later call. An incomplete request at EOF is refused before effects.
+- H2 control: a full request followed by `SHUT_WR` during a slow admitted
+  operation still receives the response, preserves operator access and allows
+  a later request if no other terminal limit was reached.
+- H6/D2 controls: a graceful full-close client leaves exactly one execution
+  and a retained outcome/produced reply, with receipt unknown even if write
+  succeeds; the operator can still inspect, freeze and close. Separately force
+  a reset/write-failure path and prove terminal admission with the same
+  retained execution and operator access. The client driver knows it did not
+  read the response; the server must not claim it can observe that fact.
+
+The inherited Python `disconnect` and `lost-response` groups require owner
+process exit after candidate close (`local.py:250-256,289-296`). That lifecycle
+predicate conflicts with required D2 operator independence; retain those
+tests unchanged as Python regression evidence, report their Mo incompatibility,
+and add named Mo-specific H2/H6/D2 controls above as the acceptance oracle for
+those two groups. Preserve their substantive outcome/cleanup obligations;
+explicit operator close proves cleanup in part A's local scope, not machine
+cleanup. Do not claim all 13 inherited groups green when two use a different
+lifecycle oracle. This is an explicit lead decision, not a worker test waiver.
+
 ## Write scope
 
 New: `examples/programs/workspace-server/**` (Mo sources, their tests,
