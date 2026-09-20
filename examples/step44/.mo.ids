@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "chunks-tls.mo",
+      "module": "Step44.ChunksTls",
+      "declarations": [
+        { "id": "41523a10f545", "name": "module Step44.ChunksTls", "hash": "1c2a28469220cc59" },
+        { "id": "da5e2560198b", "name": "expose", "hash": "5e5dd9095acec34e" },
+        { "id": "79d133ffd11f", "name": "intent", "hash": "87d36e5a75593865" },
+        { "id": "82813bc01690", "name": "struct Seen", "hash": "831067e27e48ed1b" },
+        { "id": "b4f6ebb87141", "name": "process Sink", "hash": "bc21547c2c162aee" },
+        { "id": "910368f473f3", "name": "process Writer", "hash": "72bf25673ba852d4" },
+        { "id": "2ab9a300178c", "name": "process Acceptor", "hash": "35981961a143c9d9" },
+        { "id": "6dbff996b54b", "name": "supervisor Top", "hash": "733fbf4e02f1d3cf" },
+        { "id": "3b6a4e147ef7", "name": "fn observed", "hash": "889b57b22100c99c" },
+        { "id": "fde9f0f3ab4e", "name": "fn spoke", "hash": "735f4992be59a465" },
+        { "id": "fbbdcc2c39aa", "name": "fn talked", "hash": "b5c2b276093fe390" },
+        { "id": "5eb59b159925", "name": "fn tried", "hash": "bbd5bce1d2b25503" },
+        { "id": "8301b1d1fb01", "name": "fn faulted?", "hash": "bef7f8c8b4596f93" },
+        { "id": "be5750d052b8", "name": "fn chain_pem", "hash": "1bedee077c32ea05" },
+        { "id": "0e15ace8734b", "name": "fn key_pem", "hash": "6e214f8ba49040bd" },
+        { "id": "6583bcc18664", "name": "fn root_pem", "hash": "bc3d404bad2bca58" },
+        { "id": "9ceb8f64afc0", "name": "test \"chunks receives authenticated plaintext without waiting for TLS EOF\"", "hash": "32a66eef3d670dc4" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "38a4a18f9944e34f" }
+    },
+    {
+      "path": "chunks.mo",
+      "module": "Step44.Chunks",
+      "declarations": [
+        { "id": "3d231f96ab2b", "name": "module Step44.Chunks", "hash": "ec1648a81e83ac50" },
+        { "id": "fcac0abd3147", "name": "expose", "hash": "65b53fb6fed19d57" },
+        { "id": "071ff4c6ed74", "name": "intent", "hash": "bdcd7643205cea2d" },
+        { "id": "85acafce87ba", "name": "struct Seen", "hash": "788e43bfc984cf89" },
+        { "id": "49d153a5c63a", "name": "process Collector", "hash": "0f6efb7c5d0631a1" },
+        { "id": "d0b93a503d3c", "name": "supervisor Collectors", "hash": "87e2040934be4f29" },
+        { "id": "709e1d82f98e", "name": "fn bounded?", "hash": "fdf7515ce4fc0bd7" },
+        { "id": "fc1e4089cdac", "name": "test \"available short bytes arrive while the peer stays open\"", "hash": "6308ded93779c794" },
+        { "id": "6d62b0bbfb38", "name": "test \"bytes retained after read_line are delivered first\"", "hash": "5254b584b5e2a34d" },
+        { "id": "d22f7a6a0ae1", "name": "test \"pending bytes precede one Closed\"", "hash": "c8047d7c2db433af" },
+        { "id": "d0c1354b26c3", "name": "test \"mailbox backpressure preserves copied chunks and one end\"", "hash": "3bc5193fbac827f3" },
+        { "id": "962c5227e632", "name": "test \"idle closes an unread connection\"", "hash": "5884d8968d771842" },
+        { "id": "c3c2a05d72c4", "name": "test \"a local full close stops without a synthetic end message\"", "hash": "a4921478991c5b80" },
+        { "id": "3e0a426603aa", "name": "test \"the maximum accepted chunk bound still delivers\"", "hash": "5daa4b5c51df3121" },
+        { "id": "c3eec8041ad9", "name": "test \"a pull read is Busy after chunks owns input\"", "hash": "279694e7fa76b5d7" }
+      ],
+      "verified": { "hash": "07b81a1fcfbaf21d", "declarations": "aa98a795d70cef15" }
+    }
+  ]
+}
