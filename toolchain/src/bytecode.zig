@@ -388,6 +388,10 @@ pub const Program = struct {
     tests: []const Test,
     /// Checked signature index → function index, or `none` (a trait's signatures).
     fn_of_sig: []const u32,
+    /// (trait signature index, struct decl index) → the impl function a `call_trait` on a
+    /// value of that struct reaches (dispatchKey): the first impl of the trait for the
+    /// struct, and its first signature of that name.
+    impl_of: std.AutoHashMapUnmanaged(u64, u32) = .empty,
     /// Checked decl index → the refinements a value of that alias satisfies.
     alias_refinements: []const []const u32,
     processes: []const Process = &.{},
@@ -404,6 +408,10 @@ pub const Program = struct {
             if (std.mem.eql(u8, s.name, name) and p.fn_of_sig[si] != none) return p.fn_of_sig[si];
         }
         return null;
+    }
+
+    pub fn dispatchKey(sig: u32, decl: u32) u64 {
+        return (@as(u64, sig) << 32) | decl;
     }
 };
 
@@ -423,6 +431,21 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
     @memset(l.fn_of_sig, none);
     for (checked.sigs, 0..) |s, si| {
         if (s.kind != .trait) l.fn_of_sig[si] = try l.reserve();
+    }
+    var impl_of: std.AutoHashMapUnmanaged(u64, u32) = .empty;
+    for (checked.sigs, 0..) |sig, si| {
+        if (sig.kind != .trait) continue;
+        for (checked.impls) |im| {
+            if (im.trait != sig.owner) continue;
+            const t = checked.pool.get(checked.pool.base(im.for_type));
+            if (t.tag != .decl) continue;
+            for (im.sigs.start..im.sigs.end) |s| {
+                if (!std.mem.eql(u8, checked.sigs[s].name, sig.name)) continue;
+                const slot = try impl_of.getOrPut(gpa, Program.dispatchKey(@intCast(si), t.a));
+                if (!slot.found_existing) slot.value_ptr.* = l.fn_of_sig[s];
+                break;
+            }
+        }
     }
     const alias_refinements = try gpa.alloc([]const u32, checked.decls.len);
     for (checked.decls, alias_refinements) |d, *refs| {
@@ -473,6 +496,7 @@ pub fn lower(gpa: std.mem.Allocator, checked: check.Checked) Error!Program {
         .refinements = l.refinements.items,
         .tests = l.tests.items,
         .fn_of_sig = l.fn_of_sig,
+        .impl_of = impl_of,
         .alias_refinements = alias_refinements,
         .processes = l.processes.items,
         .supervisors = l.supervisors.items,
