@@ -420,6 +420,29 @@ frozen, stop first surprise, cleanup/report then HOLD. Exact result11/
 result12/grant12/grant13 and checker logs retained under the same evidence
 directory. Runtime proof still pending; step42 remains runtime HOLD.
 
+**Pending-reader and late-TLS controls pass in both runtimes:** fresh
+controls native build04 passed. Both pending-reader probes observed actual
+`Conn.read_line` waiting, then called `chunks` and received the exact
+one-reader refusal/exit 70. Both late-TLS probes registered chunks, called
+`TlsClient.connect`, and received the used-connection refusal/exit 70.
+All four outer drivers exited 0; lead read the raw logs.
+
+Interpreter blocked-writer probe stopped with outer/child exit 1:
+readiness false, writer row alive/unpaused, mailbox 0, scheduler 2,
+`waiting_in=none`. No control handshake or input-progress bytes occurred.
+Write return outcome was not logged; no blocked-writer/duplex proof.
+Native blocked-writer case did not run. Scoped cleanup clear reported.
+
+Authorized probe-only controlled-backpressure preparation: set/log a
+small data-peer receive buffer before connect and leave it unread;
+precompute the 16MiB payload before source/observer arming; log exact write
+returns; require writer waiting both before and after exact input delivery.
+Read-only host limits: maxsockbuf 8MiB, autosndbufmax 4MiB, default send/
+receive space 128KiB. No sleeps or weaker oracles. Grant14 permits only
+controls-check05 (120s), then driver pycompile01 (30s), no behavior/build.
+Result13/grant14 and four refusal/failed-writer logs retained in the same
+evidence directory. Both workers runtime HOLD; no acceptance.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

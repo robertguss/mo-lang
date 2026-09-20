@@ -1,0 +1,6 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls pending-pull
+pull-reader waiting_in=Conn.read_line confirmed=true
+main crashed: Conn.read_line is already waiting on this connection: a connection has one reader
+guard_exit=70
+pending_pull actual_wait=true registration_refused=true
+runtime=binary case=pending-pull result=pass

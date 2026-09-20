@@ -1,0 +1,66 @@
+{
+  "recorded_at_et": "2026-09-19T23:55:23.814884-04:00",
+  "grant": "step44-focused-validation-grant-13.json",
+  "results": [
+    {
+      "name": "controls-native-build-04",
+      "exit": 0
+    },
+    {
+      "name": "pending-pull-run-02",
+      "exit": 0,
+      "child_exit": 70,
+      "actual_wait": "Conn.read_line",
+      "actual_chunks_refusal": true
+    },
+    {
+      "name": "pending-pull-native-01",
+      "exit": 0,
+      "child_exit": 70,
+      "actual_wait": "Conn.read_line",
+      "actual_chunks_refusal": true
+    },
+    {
+      "name": "late-tls-run-01",
+      "exit": 0,
+      "child_exit": 70,
+      "registered_then_actual_tls_connect_refused": true
+    },
+    {
+      "name": "late-tls-native-01",
+      "exit": 0,
+      "child_exit": 70,
+      "registered_then_actual_tls_connect_refused": true
+    },
+    {
+      "name": "blocked-writer-run-01",
+      "outer_exit": 1,
+      "child_exit": 1,
+      "waiting_observed": false,
+      "writer_row": {
+        "id": 2,
+        "alive": true,
+        "paused": false,
+        "mailbox": 0,
+        "bound": 1000,
+        "restarts": 0,
+        "scheduler": 2,
+        "waiting_in": "none"
+      },
+      "worker_reported": "Stall ran and write had returned",
+      "write_return_outcome": "Not logged",
+      "control_handshake_completed": false,
+      "input_progress_sent_or_observed": false
+    }
+  ],
+  "command20_ran": false,
+  "lead_read": "Both pending and lateTLS raw logs, blocked failure, writeAll source",
+  "host_socket_limits_read_only": {
+    "kern.ipc.maxsockbuf": 8388608,
+    "net.inet.tcp.sendspace": 131072,
+    "net.inet.tcp.recvspace": 131072,
+    "net.inet.tcp.autosndbufmax": 4194304
+  },
+  "cleanup": "Worker scoped pgrep exit1; no owned mo/guard/control/probe processes, sockets closed, native control binary retained, nothing killed/detached",
+  "acceptance": "Worker pending/lateTLS proof in both runtimes; no blocked-writer/duplex or integration acceptance"
+}
