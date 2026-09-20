@@ -1,0 +1,21 @@
+{
+  "recorded_at": "2026-09-20T07:46:58.855695-04:00",
+  "branch": "lead/verify-step44",
+  "revision": "3bc0b508ac05b4ec46e7f509f0cc3ceaae350a40",
+  "integrated_code": "b7a21af7e76969525596d1ee0d3c9b9fc4b34131",
+  "integrated_report_last": "040da1310158883eaffdcffc863bde2f0bb8a32e",
+  "main_code_unchanged": true,
+  "source_review": "Permanent strict/fault/native/format gate and unchanged positive assertions accepted for isolated verification; no acceptance.",
+  "runtime_owner": "Lead only; both workers runtime HOLD",
+  "running": [
+    "build-02 guard600",
+    "focused-zig-03 guard600, iff build succeeds"
+  ],
+  "process_mode": "OMP-owned finite background command, wrapped in caffeinate -i; no foreground Herdr terminal blockage",
+  "next": "Read explicit5/5 before starting guarded independent unfiltered suite; then behavior-plan-02 and interleaved line comparison",
+  "not_started": [
+    "full-suite-02",
+    "behavior-plan-02",
+    "line-measurement-plan"
+  ]
+}

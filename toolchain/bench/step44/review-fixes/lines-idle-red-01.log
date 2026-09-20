@@ -1,0 +1,4 @@
+../examples/step44/chunks.mo:110:28: MO0101 a case arm holds one expression after its `:`; an assignment is a statement, and a statement goes on its own lines below the arm
+        Line(_): state.lines += 1
+                             ^
+  why: spec/grammar.md allows only this at this point in the production.

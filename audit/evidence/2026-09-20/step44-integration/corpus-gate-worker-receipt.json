@@ -1,0 +1,33 @@
+{
+  "recorded_at": "2026-09-20T07:43:53.409863-04:00",
+  "worker": "step44-fix-sol",
+  "tested_delivery": {
+    "code": "1e17fa99b6691d7aa4a806ed33440ac402d2eebb",
+    "report": "53a7e6ebe44fa53d285d0d1918f4abbbad7d8647"
+  },
+  "exits": {
+    "corpus-gate-zig-fmt-01": 0,
+    "corpus-gate-build-01": 0,
+    "corpus-gate-chunks-fmt-01": 0,
+    "corpus-gate-tls-fmt-01": 0,
+    "corpus-gate-tls-faults-fmt-01": 0,
+    "corpus-gate-chunks-write-01": 0,
+    "corpus-gate-tls-write-01": 0,
+    "corpus-gate-tls-faults-write-01": 0,
+    "corpus-gate-tls-oracle-run-01": 0,
+    "corpus-gate-tls-oracle-native-01": 0,
+    "corpus-gate-filtered-01": 0
+  },
+  "read_evidence": {
+    "strict_chunks": "9 passed,0 failed,0 skipped;9 tests under100 seeds without faults",
+    "strict_tls": "2 passed,0 failed,0 skipped;2 tests under100 seeds without faults",
+    "tls_faults": "1 passed,0 failed,0 skipped;100 seeds20%;held1,fault-free-only0",
+    "forced_oracles": "Both outer0; inner positive target assertion fails/exit1; independent forced-error target passes",
+    "focused": "5/5 steps;5/5 tests; test17s MaxRSS223M; compile5s MaxRSS789M"
+  },
+  "source_review": "Complete relocation/formatter/metadata delta and report reviewed; declaration identities/hashes unchanged, verification hashes regenerated. Shared tally consumers are all corpus.zig and do not compare whole Built values. No language servers configured; text reference fallback used.",
+  "cleanup_reported": "Scoped pgrep empty/exit1; no TLS oracle temp/build directories; no testdata/step44/zig-out; worker status/cached diff empty",
+  "packaging_stop": "The latest two commits use Robert Git author/committer instead of required GPT-5.6-Sol. Authorship-only correction requested before integration, code/evidence tree identity required, report-last pointer-only change. No runtime reruns.",
+  "historical_attribution": "Earlier frozen corrective commits02833a52,b6a54926,3036b0f3,015164e7,1f45e09c also use Robert repository Git identity. Preserve those historical snapshots; the current correction is explicitly bounded to the latest unpublished pair. Worker implementation provenance comes from the retained Sol session/delivery, not Git identity alone.",
+  "status": "Worker focused source/evidence reviewed; final packaging pending; no code acceptance"
+}

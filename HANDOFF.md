@@ -1,21 +1,75 @@
-# Mo Lang — Fable lead and Opus Herdr workers (read START HERE)
+# Mo Lang — Astra lead and fresh OMP/Sol workers (read START HERE)
 
-## START HERE: paused by Robert, 19 Sep 2026, 3:48 PM ET
+## START HERE: Step44 accepted; Step42 evidence continues, 20 Sep 2026
 
-Robert paused the project until his usage limits return. **No worker is
-running, no tab is open but the lead's, nothing runs on the Mac or the
-machine.** (A Linux full suite for step 41 may still be finishing alone on the
-VM in `~/Projects/mo-lang-lead-verify`; it is informational, Linux is
-deferred.) Load the `mo-lead` skill, read this section, then
-`mo-wiki/SCHEMA.md`, then run the auditor check
-(`git fetch origin && python3 audit/automation/fable_poll.py check`; 0 new
-records at 1:18 PM ET; PRs 15 and 16 are merged). The whole picture is the
-"Paused" section at the top of `mo-wiki/state-of-the-project.md`.
+Robert's Claude Code subscription is unavailable. Astra leads in this existing
+OMP session; workers use OMP with GPT Sol at high reasoning. Robert explicitly
+authorized resuming both saved units below after recording the new workflow.
+The afternoon pause is superseded. Step44 is accepted; Step42/server remain open.
+
+Load `mo-lead`, then this section and `mo-wiki/SCHEMA.md`. Run the auditor check
+(`git fetch origin && python3 audit/automation/fable_poll.py check`; this
+session's check at 7:36 PM ET found 0 new records). PRs 15 and 16 are merged.
+The lead owns briefs, reviews, records and acceptance; it may run independent
+builds/tests, but workers write all implementation and code, including probes.
+
+### Current ownership — 20 Sep, after Step44 acceptance
+
+- **Step44 accepted on Darwin:** tested candidate **cdf1e966**, merged locally
+  to main at **db515f9b**. Independent build0, focused5/5, full **272/272**,
+  exit0/629.86s, then **30/30** independent CLI/socket commands passed.
+  Strict9/2, separate fault control, exact binary bytes/half-close, unchanged
+  HTTP client, ownership refusals and real blocked-writer progress are proved.
+  All12 fixture controls remain automatic; original corpus gates unchanged.
+  Earlier270/271 and271/272 failures remain filed. Catalog repair regenerated
+  only MO0209/MO0223. Step44 released runtime; current ownership is below.
+  Twenty256MiB line samples are complete: interpreter best/median elapsed
+  +3.36%/+4.83%; native +10.25%/-4.41%. No zero-overhead or causal claim.
+  Owned processes are gone except idle shell48917 in **w4:p3B / w4:t1A**.
+- **Step44 worker completed and retired:** `step44-fix-sol`'s owned pane
+  w4:p3A/tab19 closed after explicit clearance and normal exit; all three
+  observed owned PIDs are gone. Its worktree/session/report/evidence remain.
+  Corrected b7a21af7/report040da131 is accepted through main db515f9b.
+- **Step42 worker:** fresh **`step42-safety-sol`**, **w4:p3C / w4:t1B**,
+  OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
+  `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
+  Revised lifetime controls are reviewed at source level, not runtime proof.
+  Separate `lead-step42-composed-4e0bfc0e` combines accepted-main4e0bfc0e
+  with frozen65b3dd37; corpus/sim conflicts are resolved, preserving Step44.
+  **Static source repair only:** private patch context rebased with195 matching
+  changed lines, apply-check0, unapplied. Four-file ownership repair plus two
+  bounded native/test quality corrections are authorized. AFTER is not frozen;
+  original drafts stay frozen and no composed memory proof ran.
+- **Fresh server worker:** `server-chunks-sol`, **w4:p3D / w4:t1C**,
+  OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
+  `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
+  b0a0eea0 plus saved server d689b441). Byte-framing/controls and
+  complete coverage/command manifest reviewed. Shared formatter repair passed
+  fresh build0/38.4s, focused2/2, original strict smoke0 and full15/15 fmt.
+  Real metadata generation now proves **42/42**:35 production and7 strict.
+  Production's three simulated controls held at5% faults; strict's seven ran
+  at0% faults. All15 parent records exist, unstaged; protected F1 stayed exact.
+  Nesting and helper-arity repairs passed. Grant06's lead fmt flag error and
+  earlier REDs remain. Evidence788KiB; completed attempts cleared resources.
+  **Grant09: server exclusively owns runtime for remaining20 correctness
+  commands.** No repeat generator; broader acceptance/benchmarks/suite remain
+  unproved. Metadata integration remains lead-owned.
+- Original server/Step42/Step44 worker launch receipts below are historical,
+  not instructions to reuse their pane IDs or start from their old WIP.
+  Server acceptance remains blocked; Linux remains deferred.
+
+Current evidence: `audit/evidence/2026-09-20/step44-integration/README.md`
+and its acceptance/measurement records; Step42 static review remains separate.
+Main holds accepted Step44 code and lead records; no push or audit publication.
+Last accepted Darwin suite is272/272. Fresh server adoption has a bounded
+correctness grant, not acceptance; Linux and Step42 evidence remain owed.
 
 ### Standing instructions learned today (in force)
 
-- **At most three Opus workers at once**, each in its own Herdr tab, bypass
-  permissions. Finished means: agent idle, worktree clean, the final report
+- **At most three Sol/high workers at once**, each in its own Herdr tab, OMP
+  auto-approval within its bounded brief. Every assignment starts a fresh clean
+  session, even for saved WIP; no continue/resume/fork/import. Finished means:
+  agent idle, worktree clean, the final report
   committed (a worker may commit its report file early, and Herdr shows `done`
   whenever a turn ends while a background run continues).
 - **Linux is deferred**: accept on macOS alone; keep the "Linux owed" list
@@ -32,17 +86,492 @@ records at 1:18 PM ET; PRs 15 and 16 are merged). The whole picture is the
 - The TypeSafe key is age-encrypted in the git-ignored `fnox.toml`:
   `fnox -c <repo>/fnox.toml exec -- <command>`. Never print it.
 
-### Stopped mid-flight (WIP commits on their own branches; nothing on `main`)
+### Authorized resumptions (saved WIP, not accepted on `main`)
 
 | unit | branch, worktree | WIP commit | notes | brief |
 |---|---|---|---|---|
-| Mo six-tool server, part A | `harness/workspace-server-4a`, `.../harness-workspace-server-4a` | `d679f568` (processes and the test double built, 7 of 13 in-scope groups green) | `examples/programs/workspace-server/WIP.md` | `mo-wiki/plans/mo-workspace-server-4a.md` |
+| Mo six-tool server, part A | `harness/workspace-server-4a`, `.../harness-workspace-server-4a` | `d679f568` (7/13 groups reported only in an unfiled half-close scratch run; unchanged-wire blocker F1 remains) | `examples/programs/workspace-server/WIP.md` | `mo-wiki/plans/mo-workspace-server-4a.md` |
 | Step 42, runtime memory safety | `toolchain/step-42-memory`, `.../toolchain-step-42-memory` | `0a4dffcd` (part E green: the guard kills the group; other parts not begun or partial) | `toolchain/WIP.md` | `mo-wiki/plans/interpreter-step-42.md` |
 
-To resume either: a **fresh** Opus worker in the same worktree, told to read
-the brief, then `WIP.md`, then `git log` of the branch, and to continue; the
-launch prompt used today is in this session's log entry and the lead skill's
-step 2.
+Resume each with a **fresh clean OMP/Sol/high session** in its saved worktree.
+Read the current brief from the lead checkout, then the worker's `WIP.md`,
+then its branch history. Old worktree role instructions are superseded by the
+current lead skill and explicit launch brief. Keep all prior evidence.
+
+**Live launch receipt:** workflow committed as `ef3b8796` before either
+worker started. `server4a-sol` is in tab `w4:t15`, pane `w4:p36`;
+`step42-sol` is in tab `w4:t16`, pane `w4:p37`. These are this launch's
+pointers, not IDs to reuse for new workers. Both started from new shell tabs
+with `--model openai-codex/gpt-5.6-sol --thinking high --no-prewalk
+--auto-approve`, no session-resume flags, and acknowledged and began their
+assignments. Exact prompts/receipts: `audit/evidence/2026-09-19/omp-resumption/launch.json`.
+Herdr 0.9.0 reports OMP `idle` even during visible tool activity: inspect
+output, report and process completion rather than treating that badge as done.
+Full suites and benchmarks remain lead-scheduled; neither worker may use the
+Linux VM or executor machine. The server first qualifies F1 without altered
+clients; memory work excludes all server files. Nothing newly accepted.
+
+**F1 update:** server worker filed `8b0ff352`; exact unchanged client, 155-byte
+body, timeout before close, body delivered only after close. `f1-06-exact-client`
+is a successful reproduction (exit 0), not GREEN. Lead brief:
+`mo-wiki/plans/interpreter-step-44.md`, bounded binary `Conn.chunks` using
+existing runtime sources; fresh `step44-sol` launched in tab `w4:t17`, pane
+`w4:p38`, branch `toolchain/step-44-conn-chunks`, matching worktree basename,
+exact clean base `c4462935fdbcf99d3b8b53258828d028d68594bc`. Startup showed
+Sol/no recent sessions; `--thinking high --no-prewalk`, new session, and
+the worker began its contract review. All three worker slots are occupied.
+Server continues only independent work until lead-approved capability
+integration. Step 42 stays isolated; lead reconciles overlapping runtime
+files, and schedules all full suites/benchmarks. No new acceptance.
+
+**Server H2/H6/D2 decision:** step 44 is unchanged. EOF after a complete
+request does not prove lost response or close admission. Preserve the
+operation, journal local write outcome separately from unknown client
+receipt, and keep the operator independent. Actual write failure/response
+timeout may close admission. The server brief names explicit Mo controls
+instead of the two incompatible Python owner-exit predicates; do not claim
+13 unchanged groups green. No client ACK or stronger runtime EOF promise.
+Fixture half-close is internal model/test support only; public fixtures
+still expose full close, and real sockets prove public half-close. Launch
+receipt/assignment: `audit/evidence/2026-09-19/omp-resumption/step44-launch.json`.
+
+**Server integration obligation:** real `mo test --write --sim 200` on the
+server modules also updates shared `examples/programs/.mo.ids` (397 added
+lines reported). Worker scope excludes this parent sidecar: restore only
+its check-generated delta, preserve earlier work, retain owned modules'
+tool-generated verified lines, and file exact commands. Lead must regenerate
+the sidecar and verify source/ID consistency in the separate integration
+verification worktree before acceptance; do not hand-edit IDs.
+
+**Step42 slot released; acceptance blocked by lead review.** Worker branch is
+clean at `be64e8a5`; runtime measured at `d3273ee2`, test-only ASan stderr
+normalization at `e537abfe`. Report: `toolchain/STEP-42-REPORT.md` in
+`toolchain-step-42-memory`. Worker reports normal stress exit 0 (386.74s),
+normalized ASan exit 0 (417.91s), owned processes clear, temporary baseline
+removed. Echo minima moved +12.90% interpreter/+8.60% native with noisy samples;
+no zero-cost conclusion. Step44 explicitly released for focused checks, not
+benchmarks/full suite. Server report remains `d689b441`, unaccepted behind F1.
+
+Lead review found: blocking threads publish completion before their last
+job/notification access; native custom fibers lack ASan switch notifications;
+stderr normalization masks the warning rather than fixing that integration;
+Part D types only pending answers, leaving other audited holders raw.
+Further requirements and exact references are in the step42 brief's review
+addendum. A fresh corrective worker must finish them before integration.
+Unfiltered suite/timings and independent integrated acceptance remain owed.
+No Linux/machine acceptance. Server continuation also needs a fresh worker.
+Fresh corrective worker `step42-fix-sol` is live in tab `w4:t18`, pane
+`w4:p39`, worktree/branch `toolchain-step-42-review-fixes` /
+`toolchain/step-42-review-fixes`, exact clean base
+`be64e8a5086f6a47dcb6683d1313579d1e6f35a6`. New Sol/high session, no imported
+conversation; all six review corrections acknowledged. **Blocking validation
+slot released:** worker reports restored source, no owned live processes,
+done-before-signal mutant exit 1, early-error-return mutant exit 1 (assertion
+failure and unsafe crash), and restored GREEN exit 0 (5/5 steps, 2/2 tests).
+Lead read the raw failure/GREEN/cleanup logs under
+`bench/step42/review-fixes/`; this is worker evidence, not acceptance.
+Step44 explicitly resumed focused checks/formatting. Step42-fix continues
+static preparation of remaining corrections until its next validation grant.
+No full sweep/suite/benchmark authorization. Original branches remain intact.
+
+**Step44 measurement slot released:** all commands/samples exited 0; worker
+reports no owned processes (`pgrep` exit 1: no matches), temporary baseline
+removed after evidence retention. Lead read all three sample logs. Lines:
+baseline/current best interpreter 1609.634/1469.714 MB/s (-8.693% throughput),
+native 1719.763/1703.119 MB/s (-0.968%). Current chunks: 68.740/194.214 MB/s
+interpreter/native. Checkpoints and 16 MiB workload hashes remain as recorded
+in `audit/evidence/2026-09-19/omp-resumption/step44-measurement-request.json`.
+Line samples are about 10–18ms; investigate the observed change during
+independent review with longer/interleaved controls, not a zero-overhead claim.
+Step44 final report is filed at `9ad0162a`; review found corrections below. Step42-fix
+now has focused validation permission for remaining corrections; full
+stress/ASan sweeps, unfiltered suites and benchmarks require a separate slot.
+Neither step is accepted.
+
+**Step44 review, 9:43 PM ET:** report/evidence read at final
+`9ad0162aa1994bb67c012ee85e78503c8573043a`. Worker reports clean tree,
+no owned processes and temporary baseline removed. Integration is blocked:
+fixture line idle falls through to `unreachable` after a deleted return;
+the TLS positive oracle accepts ordinary errors; binary count/sum is not
+exact-byte evidence, and named ownership/blocked-writer controls remain.
+The current step44 brief has the full corrective requirements. Original
+worker/worktree preserved. Fresh `step44-fix-sol` is live in tab `w4:t19`,
+pane `w4:p3A`, branch/worktree `toolchain/step-44-review-fixes` /
+`toolchain-step-44-review-fixes`, exact base `9ad0162a` above. Startup showed
+Sol/no recent sessions with `--thinking high`; lead observed all three
+corrective groups tracked and static source inspection begun. Initially
+static-only while step42-fix validates. Exact assignment/launch receipts:
+`audit/evidence/2026-09-19/omp-resumption/step44-fix-launch.json`.
+Full suite, longer/interleaved measurements and both acceptances remain owed.
+
+**Step44 idle slot released:** initial attempts 01/02 exited 1 on checker
+errors, not runtime RED. Authorized the positional pattern repair and real
+`--write` metadata generation; RED-03 exited 134 with `unreachable` at
+optimized source dispatch. The one missing return was restored; rebuild
+exit 0, GREEN exit 0 with all 9 tests passing, real IDs/verified lines generated.
+Lead read raw RED/GREEN logs under step44 `review-fixes/`; worker reports
+no owned processes. This is focused worker evidence, not integrated acceptance.
+Step42-fix now has focused validation permission again (targeted builds/tests,
+small explicit ASan/holder/event controls and targeted formatting). No full
+suite, exhaustive stress/ASan sweep or benchmark grant. Step44-fix holds.
+
+**Pane/process cleanup completed:** closed the completed original workers
+`server4a-sol` (`w4:p36`), `step42-sol` (`w4:p37`) and `step44-sol` (`w4:p38`)
+after normal OMP shutdown and saved-session receipts. Their shell/OMP/auxiliary
+process trees have no survivors. Found and terminated two detached LLDB
+debugservers owned by step42-fix, plus an obsolete local step40 `orb` status
+poll client (TERM ineffective, KILL required); verified all three absent.
+Only the lead (`w4:p1`) and corrective workers (`w4:p39`, `w4:p3A`) remain
+in this Mo workspace. Preserved Cursor/MCP and OrbStack services, unrelated
+terminals, all worktrees, commits, logs and saved sessions. Receipt:
+`audit/evidence/2026-09-19/omp-resumption/pane-cleanup.json`.
+Future debugger cleanup must include owned detached helpers (`--setsid`),
+not only mo/guard names. Close completed worker panes after evidence retention.
+
+**Step42 corrective corpus measurement slot granted:** focused checkpoints
+reported complete with no owned process left. Lead read the final blocking,
+retained-value, event and opt-in ASan GREEN summaries (each 2/2), plus the
+fiber-hooks-removed RED exposing the raw `__asan_handle_no_return` warning.
+Source/tests/driver frozen at `e79e755b2d893332cb51b490bc2fee91bff5bdb6`;
+baseline `be64e8a5086f6a47dcb6683d1313579d1e6f35a6` is the prior unaccepted
+delivery. This measures the correction delta, not whole-step overhead against
+accepted main. Step44 explicitly confirmed static-only/no owned process and
+remains held. Driver reviewed: deferred-large 400000, spread 2000, duplex;
+both runtimes, five samples each, interleaved/reversed order (60 samples).
+Outer guard 7200s, baseline compiler build 1800s, native builds/workloads
+900s; retain all samples, loads, failures and real exit. Exact grant:
+`audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-grant.json`.
+No source changes, other benchmarks, full suite, exhaustive stress/ASan,
+debugger, formatter, Linux or machine work in this slot. Cleanup, report
+explicit slot clearance, then hold. Source review/integrated acceptance,
+exhaustive checks and full-suite timings remain owed.
+
+**Step42 measurement failed; slot clear:** granted attempt exited 1 after
+six samples. Before the first spread native invocation, the driver sought
+`mo-build/main/main`; the compiler's `defaultName` emits `spread/spread`
+for `programs/spread/main.mo`. Lead read the raw failure and naming rule.
+No runtime failure or completed best-of-five result. Original samples/logs
+preserved; source remained `e79e755b`. Worker verified and removed only its
+fresh exact-`be64e8a5` temporary baseline after retaining provenance, reports
+owned cleanup clear. Authorized only a static shared `Tree.build` naming
+fix matching `cbuild.defaultName`, not a spread-specific exception; preserve
+existing callers. New checkpoint and fresh `corpus-measure-rerun-01.*`
+outputs required before an explicit rerun grant. Both workers hold runtime
+work. Partial evidence:
+`audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-failed-01.json`.
+
+**Corrected rerun granted:** lead reviewed the complete driver-only patch at
+`65b3dd37c4b2acc74bbdc425a723a163b69e50f8`: shared `default_name` matches
+`cbuild.defaultName`, all `Tree.build` callers unchanged. Source/tests/driver
+frozen at this checkpoint; same baseline, 60-sample corpus scope, ordering
+and guards. New `corpus-measure-rerun-01.log/.exit/.txt`; original failed
+attempt remains untouched. Step44 stays held. Exact grant:
+`audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-rerun-01-grant.json`.
+Report results/owned cleanup, then hold; no acceptance implied.
+
+**Step42 corpus rerun complete:** exit 0 at frozen `65b3dd37` against prior
+unaccepted `be64e8a5`; all 60 interleaved samples retained. Lead read raw
+log/table/exit, checked five samples per tree/workload/runtime and computed
+the six best-of-five elapsed deltas:
+
+| Workload | Interpreter | Native |
+|---|---:|---:|
+| deferred-large | +0.89% | -1.56% |
+| spread | +0.32% | +0.29% |
+| duplex | +2.79% | +1.07% |
+
+Correction-only comparison, not whole-step overhead or acceptance. Initial
+uptime load was 15.06/8.45/6.13; sample one-minute loads ranged 10.21–12.91.
+Raw table headings incorrectly call the final/report-time 10.21/7.98/6.06
+triple "at the start"; per-row loads remain intact. Original failed attempt
+is untouched. Worker reports fresh baseline provenance, removal of only
+that temporary baseline after retaining evidence, and filtered cleanup
+exit 0 with no owned runtime/test/debugserver matches. Slot clear; step42
+runtime HOLD. Requested its static remaining-evidence inventory and
+step44's exact next focused commands; no new runtime grant yet.
+Raw `.log/.txt/.exit` copies: `audit/evidence/2026-09-19/omp-resumption/step42-corpus-rerun-01.*`.
+Structured result/provenance: `audit/evidence/2026-09-19/omp-resumption/step42-correction-measurement-complete.json`.
+Exhaustive stress/ASan obligations, final corrective reports, independent
+source review/integration and full-suite verification remain owed.
+
+**Latest focused handoff:** step44 received only proposed commands 1–3:
+native idle build/test (guards 180s/120s), then strict TLS `mo test --write`
+(120s). Build exit 0; native tests **9 passed, 0 failed, 0 skipped**,
+including the line-idle terminal regression. TLS command exited 1 in the
+checker: MO0102 at `chunks-tls.mo:149:100`, a multiline `if` ending after
+`and`. No TLS test dispatched or metadata regenerated. Lead read both raw
+logs. Worker stopped, reported scoped cleanup clear and restored runtime
+HOLD; commands 4–20 never ran. Static syntax correction only, alongside
+preflight corrections, before a fresh command proposal.
+
+Preflight found two false-pass risks in later probes: negative-result
+helpers accept any nonzero plus expected text, including a later watchdog
+kill; full-width bound parsing falls back to zero. Require explicit expected
+termination, strict parsing and proof the actual bound equals the requested
+value. Clarify fault simulation selection/separation without weakening the
+strict TLS positive oracle. Exact proposal, limited grant and results:
+`audit/evidence/2026-09-19/omp-resumption/step44-focused-validation-grant-01.json`
+and `step44-focused-validation-result-01.json`; native/TLS raw logs retained
+beside them. No further runtime grant.
+
+**Step42 inventory received; nothing waived.** Current evidence still owed:
+exhaustive normal stress; exhaustive raw-ASan corpus; current n=10/45-byte
+ASan stale-answer mutant; ordinary interpreter/native stress-poison mutants;
+packed retaining-boundary transfer/drop/timeout/crash/cleanup; hot-path
+analysis; lead-owned unfiltered suite timing. Historical stress/mutant logs
+do not cover the current ownership/fiber corrections. Inventory retained as
+`audit/evidence/2026-09-19/omp-resumption/step42-review-obligations-inventory.txt`.
+Step42 may statically prepare scoped test/probe drafts, exact commands and
+hot-path notes; runtime implementation and measured driver remain frozen.
+No runtime/build/test/formatter grant. Final report stays blocked; Linux
+remains deferred. Both workers now runtime HOLD.
+
+**Step44 corrected focused sequence granted:** static preflight fixes read.
+Strict TLS now has two fault-free controls; the separate
+`chunks-tls-faults.mo` owns the single seeded-fault test (no `--all`).
+Negative-result helpers require exact test exit 1 or contract-refusal exit 70
+and expected behavior text, rejecting watchdog/signal termination. Bounds
+parse strictly and expose the actual full-width value for the driver oracle.
+Granted revised commands 3R, 4F, then 5–20, serialized with proposed guards
+and fresh log/exit names; completed native idle commands 1–2 do not rerun.
+Expect strict 2/2 in each runtime and one fault target test over 40 runs.
+Stop on first unexpected result, retain all evidence, cleanup, then HOLD.
+Source/probes frozen during execution except authorized generated metadata
+and temporary mutant copies. Step42 stays runtime HOLD/static preparation.
+Exact 18-command grant:
+`audit/evidence/2026-09-19/omp-resumption/step44-focused-validation-grant-02.json`.
+No results or acceptance claimed at grant time; no full suite/benchmark grant.
+
+**TLS split now has worker evidence:** first corrected strict interpreter
+check passed 2/2, then the fault target stopped in the checker (MO0323):
+`Step44.ChunksTls` did not match the standalone `examples/step44` root.
+No fault test ran in that failed attempt. Lead reviewed import/declaration
+matching and chose sibling module identities `ChunksTls` and
+`ChunksTlsFaults`, with `use ChunksTls`; no new root marker, moves,
+duplicated fixture or loader change. Generated ids/stamps were regenerated
+only through a fresh two-command `--write` grant.
+
+Fresh `tls-test-write-03` passed strict faults-disabled interpreter **2/2**.
+Separate `tls-faults-test-write-02` passed its sole target test over **40
+seeds at 20% faults**: **1 held under faults, 0 passed only without faults,
+0 failed/skipped**. No dependency tests selected. Lead read both raw logs;
+worker reported scoped process clearance. Preserved both earlier checker
+failures and the pre-rename success. Records/raw logs are under
+`audit/evidence/2026-09-19/omp-resumption/`, notably
+`step44-focused-validation-result-02.json`, `-result-03.json` and
+`step44-focused-validation-grant-03.json`.
+
+**Renewed grant 04:** original commands 5–20 now authorized serially,
+unchanged: native strict TLS, forced positive-oracle mutations, ordered
+bytes, bounds, pending-pull refusal, late-TLS refusal and blocked-writer
+input progress. Exact commands/guards in
+`step44-focused-validation-grant-04.json` beside those records. Stop first
+unexpected result; retain outputs, cleanup, then HOLD. Step42 remains
+runtime HOLD/static preparation. No native TLS or remaining-probe result,
+full-suite proof or acceptance claimed at this grant.
+
+**Native strict TLS now 2/2; oracle driver correction granted:** commands
+5–6 exited 0 (build, then native 2 passed/0 failed/0 skipped). Command 7
+stopped with outer exit 1: child exit 1 correctly failed the named positive
+test at `assert successful?(got)`, but the driver expected lowercase `fail`
+where the runner printed uppercase `FAIL`. Lead read both raw logs. Not
+a runtime failure or a passing driver control. Commands 8–20 did not run;
+worker reported temporary directory/process cleanup clear.
+Authorized only that expected-prefix literal correction, then fresh
+`tls-positive-oracle-run-02` (90s) followed by unchanged commands 8–20,
+serially and stop-on-first-surprise. Native/earlier successful checks do
+not rerun. Exact result/grant:
+`step44-focused-validation-result-04.json` and
+`step44-focused-validation-grant-05.json` in the same evidence directory.
+Step42 stays runtime HOLD; no acceptance implied.
+
+**Interpreter negative oracle passes; native driver path corrected:** fresh
+interpreter oracle driver exited 0 with intended child exit 1 and exact
+failure text. Native oracle build child exited 0, but execution never
+launched: driver `BINARY` pointed under `toolchain/zig-out`, while its
+repo-root build emitted `zig-out/mo-build/step44-tls-forced-error/...`.
+Lead read the raw build/path failure; outer exit 1 remains failed preflight,
+not native negative-oracle evidence. Commands 9–20 did not run. Worker
+reported scoped/temp cleanup clear and removed only its own mutant output.
+Authorized the shared `BINARY` constant to use the actual root-cwd output
+for execution/cleanup, then fresh `tls-positive-oracle-native-02` (120s)
+and unchanged commands 9–20 serially, stop first surprise. Other drivers'
+toolchain-relative paths remain unchanged. Exact result/grant:
+`step44-focused-validation-result-05.json` and
+`step44-focused-validation-grant-06.json` in the same evidence directory.
+
+**Native negative oracle and exact bytes now pass:** native mutant driver
+exited 0 with intended child exit 1 and named positive assertion failure.
+Both real-socket byte probes exited 0 and returned exactly
+`4100e282acf0288c2842`, including NUL/invalid UTF-8/split multibyte sends,
+with response 200 after input half-close and server exit 0. Observed chunk
+count 1 is not a boundary assertion. Lead read all three logs.
+
+Controls build then stopped in the checker, not runtime. Its first error
+was actually reserved parameter `process` in `control_probe.mo:104:31`,
+byte offset 2280. The CLI prepends `surface.mo` after loading diagnostics
+without adjusting their offsets; 2280 maps exactly to its displayed
+69:5. This diagnostic-location defect is recorded, **not fixed**. After
+only renaming that parameter/references, build02 reached nine real probe
+diagnostics: three dropped Results, three invalid `1.second` suffixes,
+four-deep mode dispatch, and two Platform-outside-main violations.
+No control binary or bounds/ownership/duplex behavior ran; commands 13–20
+remain held. Worker reported scoped cleanup clear.
+
+Authorized probe-only corrections preserving actual waiting/byte/refusal
+oracles, then just guarded `controls-check-01` (120s, `mo check`).
+No native build/runtime/formatter grant; no fixture/loader/runtime edits.
+Await checker/source review before a fresh build/behavior grant. Exact
+result06/result07/grant07/grant08 JSON and raw logs are under the same
+`audit/evidence/2026-09-19/omp-resumption/` directory. Step42 stays runtime
+HOLD/static preparation. Worker evidence only, no integration acceptance.
+
+**Probe checker gate now passes:** first checker-only attempt stopped at
+an inline case-arm assignment (MO0101); the analogous two arms were moved
+to multiline assignments only. `controls-check-02` exited 0 with empty
+output. Lead reviewed explicit Result consumption/returned markers, normal
+late-TLS return code 2, corrected duration units, flat dispatch with
+Platform confined to main, and preserved waiting/full-width/byte oracles.
+No native control build or behavior ran under that checker grant.
+Worker reported scoped clearance; all earlier logs preserved.
+Granted fresh `controls-native-build-03` (180s), then original commands
+13–20 under their reviewed limits, serially, stop first surprise. Source/
+probes frozen; cleanup/report then HOLD. Exact result08/result09 and
+grant09/grant10 JSON plus checker logs retained in the same evidence
+directory. Checker success is not behavior proof or acceptance.
+
+**Full-width bound controls pass; pending-reader observation did not:**
+controls native build03 exited 0. Both bound drivers exited 0, showing
+exact parsed/requested values 1, 65536, 0, 65537 and
+18446744073709551615; valid endpoints delivered exact bounded `B`, each
+invalid reached `Conn.chunks` and exited 70 with its range refusal.
+Lead read both complete logs. Pending-pull interpreter driver then exited
+1: all 256 immediate snapshots failed to observe `Conn.read_line` waiting,
+so the probe deliberately never called `chunks`. No reader-ownership
+refusal evidence; commands 16–20 did not run. Scoped cleanup clear reported.
+
+`Runtime.processes` snapshots are not a scheduling handshake. Authorized
+only probe-local bounded cooperative observer preparation (deferred reply/
+message turns while main awaits, exact `waiting_in` still required, no
+behavior sleeps, finite deadline/budget, failure rows retained) and one
+guarded `controls-check-03` (120s). Native/runtime checks remain held until
+source/checker review. Both workers runtime HOLD; step42 static work continues.
+Exact result10/grant11 and bound/pending logs retained in the same evidence
+directory. No runtime defect or acceptance conclusion from failed readiness.
+
+**Cooperative observer checker gate passed:** check03 stopped on two
+positional `Check` constructions and reply-fanout nesting. Worker corrected
+construction labels and flattened the terminal branch; check04 exited 0
+with empty output. Lead reviewed one exact readiness snapshot/message turn,
+finite budget/3s ask, false exhaustion, and clearing answered waiters.
+No behavior ran under those checker grants; scoped clearance reported.
+Granted fresh controls-native-build04 (180s), pending-pull-run02 (60s), then
+unchanged original16–20 serially. No successful bounds rerun; source/probes
+frozen, stop first surprise, cleanup/report then HOLD. Exact result11/
+result12/grant12/grant13 and checker logs retained under the same evidence
+directory. Runtime proof still pending; step42 remains runtime HOLD.
+
+**Pending-reader and late-TLS controls pass in both runtimes:** fresh
+controls native build04 passed. Both pending-reader probes observed actual
+`Conn.read_line` waiting, then called `chunks` and received the exact
+one-reader refusal/exit 70. Both late-TLS probes registered chunks, called
+`TlsClient.connect`, and received the used-connection refusal/exit 70.
+All four outer drivers exited 0; lead read the raw logs.
+
+Interpreter blocked-writer probe stopped with outer/child exit 1:
+readiness false, writer row alive/unpaused, mailbox 0, scheduler 2,
+`waiting_in=none`. No control handshake or input-progress bytes occurred.
+Write return outcome was not logged; no blocked-writer/duplex proof.
+Native blocked-writer case did not run. Scoped cleanup clear reported.
+
+Authorized probe-only controlled-backpressure preparation: set/log a
+small data-peer receive buffer before connect and leave it unread;
+precompute the 16MiB payload before source/observer arming; log exact write
+returns; require writer waiting both before and after exact input delivery.
+Read-only host limits: maxsockbuf 8MiB, autosndbufmax 4MiB, default send/
+receive space 128KiB. No sleeps or weaker oracles. Grant14 permits only
+controls-check05 (120s), then driver pycompile01 (30s), no behavior/build.
+Result13/grant14 and four refusal/failed-writer logs retained in the same
+evidence directory. Both workers runtime HOLD; no acceptance.
+
+**Backpressure source/preflight gate passed:** lead reviewed the prebuilt
+payload, exact return diagnostics, data-only SO_RCVBUF before connect with
+effective bound 1..16384, and actual writer waiting before and after exact
+input consumption. Checker05 and pycompile01 both exit0/empty; raw logs and
+exit files retained with result14. Worker removed generated bytecode cache
+and reported scoped clearance. Grant15 permits only native build05, then
+blocked-writer interpreter02 and native01, serial under existing guards.
+Stop first surprise without edits/retries, then cleanup/report/HOLD.
+No behavior results yet; step42 remains runtime HOLD.
+
+**Grant15 stopped at receive-window precondition:** native build05 exit0;
+interpreter writer02 outer/child1, effective SO_RCVBUF 326640 after connect
+despite pre-connect request4096, above the retained16384 ceiling. Driver
+stopped before control/input proof. Child logged Error(Closed) and one
+waiting=true marker; neither establishes overlap. Native case unrun; scoped
+process and port clearance received. Raw build/failure/exit files retained
+with result15. Grant16 permits only driver-local reapplication of the same
+4096 request immediately after connect, logging both effective readings and
+enforcing the unchanged ceiling, then pycompile02/interpreter03/native01
+serially. No Mo changes or rebuild, no retry after a failed granted command.
+Step42 runtime authorization stays HOLD; a current Herdr roster shows only
+the lead and step44 worker, with step42-fix-sol no longer registered. No
+replacement or additional runtime slot has been authorized.
+
+**20 Sep 2026, 6:41 AM ET — worker duplex proof complete:** pycompile02,
+blocked interpreter03 and native01 all exit0. Both raw logs show receive
+buffer requested4096/pre-reapply326640/post-reapply4096, actual Conn.write
+waiting before and after exact input consumption, both exact control lines,
+signalled/input_exact/answered true, unread peer, and child/outer0. No writer
+return was used as success. Lead reviewed both logs and final driver source.
+Native build05 reused with unchanged Mo source. Scoped process/port clearance
+and own bytecode removal received; result16/raw logs/exits retained.
+
+All three Step44 corrective groups now have their required worker-focused
+evidence. Authorized frozen static packaging: named-path code/evidence
+commits, then append-only STEP-44-REPORT.md committed last, preserving prior
+report and failures. Runtime slot released/HOLD. Final delivery is awaited;
+independent separate integration, full suite/timing, longer/interleaved line
+measurements and deferred Linux remain owed. No code accepted on main.
+
+**20 Sep, 6:53 AM ET — independent integration blocked on checker fixture:**
+received code/evidence02833a52, reportb6a54926 and factual report correction
+3036b0f3; lead reviewed the correction diff and corrected report. Merged only
+into new `lead/verify-step44` at c49d1821, based on main68551e8c. No accepted
+toolchain/examples delta since common base c4462935. Owned verification
+terminal w4:p3B/t1A, separate worktree/build output; main unchanged.
+
+Independent `zig build` exit0 (36.60s). Guard600 focused
+`zig build test -Dtest-filter=chunks --summary all` exit1 (5.08s), 3/4:
+`Conn.chunks requires the exact byte message shape` fails in the parser
+before checker assertions because four embedded Mo case arms use forbidden
+inline assignments. Full suite did not start. Lead terminal returned to
+prompt; scoped integrated mo/test pgrep exit1/empty.
+
+Worker authorized only multiline repair of those fixture arms in check.zig,
+then one guard600 focused run requiring explicit4/4, code/evidence commit and
+report-last update; parser, checker implementation and runtime frozen.
+Lead runtime HOLD pending repair. Raw build/focused logs and exits plus
+integration/grant/stop records are under
+`audit/evidence/2026-09-20/step44-integration/`. A fresh detached
+`lead-step44-lines-base` worktree at c4462935 was prepared, but no baseline
+build or measurement ran. All acceptance/performance obligations remain.
+
+**Checker fixture gate repaired:** worker code/evidence015164e7 and
+report-last1f45e09c reviewed; exactly four embedded fixture arms became
+multiline, with no implementation or expected-diagnostic change. Worker
+focused4/4/exit0 is explicit in its log. Integrated only into
+`lead/verify-step44` at 6aa6ca84. Independent focused rerun also4/4/exit0
+(30.67s including compiler rebuild); the guarded unfiltered suite is now
+running in owned terminalw4:p3B. Worker runtime remains HOLD. Full-suite,
+independent behavior and line-performance results are still pending.
+
+The stdlib specification now carries the bounded-byte contract with an
+explicit implementation-acceptance-pending marker. Existing-driver plans
+cover both-runtime behavior, novel bounds2/65535 and simulation seed41, then
+256MiB lines with five interleaved baseline/current samples per runtime;
+no measurements have started. Records remain in the integration evidence
+directory; no code has merged into main.
 
 ### Next, in order
 
@@ -64,6 +593,8 @@ Step 41: `-Dtest-filter="step 41"` and the full suite at `main` (first run, at
 `0b0f494b`: build 0, focused 5 of 6, the failure a test predicate fixed in
 `ba7fa7ac`; the fork child runs only on Linux). Every toolchain step accepted
 after it. VM access and the clone rule are in the lead skill, step 4.
+Step44: build, full suite, chunks-focused fixture gate and both-runtime socket
+controls on Linux; the Darwin acceptance atdb515f9b does not discharge these.
 
 ### Waiting on Robert (rows on the decision log, 19 Sep)
 

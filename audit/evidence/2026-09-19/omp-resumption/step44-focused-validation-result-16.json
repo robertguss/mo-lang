@@ -1,0 +1,42 @@
+{
+  "recorded_at_et": "2026-09-20T06:41:53.908008-04:00",
+  "grant": "step44-focused-validation-grant-16.json",
+  "results": [
+    {
+      "name": "blocked-driver-pycompile-02",
+      "exit": 0,
+      "output": "empty"
+    },
+    {
+      "name": "blocked-writer-run-03",
+      "outer_exit": 0,
+      "child_exit": 0
+    },
+    {
+      "name": "blocked-writer-native-01",
+      "outer_exit": 0,
+      "child_exit": 0
+    }
+  ],
+  "both_runtime_observations": {
+    "requested_receive_buffer": 4096,
+    "pre_reapply": 326640,
+    "post_reapply": 4096,
+    "actual_Conn_write_wait_before_input": true,
+    "actual_Conn_write_wait_after_exact_input": true,
+    "signalled": true,
+    "input_exact": true,
+    "answered": true,
+    "control_lines": [
+      "writer-blocked\n",
+      "input-progress\n"
+    ],
+    "data_peer_unread": true,
+    "writer_return_used_as_success": false
+  },
+  "lead_review": "Both raw behavior logs and final post-connect receive-bound source; no behavior rerun",
+  "native_binary": "Unchanged authorized native build05",
+  "cleanup": "Worker removed only own bytecode cache; scoped pgrep exit1 and lsof ports57434/57435/57440/57441 exit1, empty; no owned process/socket remains",
+  "acceptance": "Required worker-side focused duplex proof obtained; no integrated code or full-suite acceptance",
+  "next": "Frozen corrective code/evidence then report-last named-path commits; no runtime slot"
+}

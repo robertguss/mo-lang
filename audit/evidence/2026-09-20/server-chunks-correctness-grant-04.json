@@ -1,0 +1,269 @@
+{
+  "recorded_at": "2026-09-20T10:42:51.408315-04:00",
+  "owner": "server-chunks-sol",
+  "status": "exclusive original commands4\u201324; not acceptance",
+  "commands": [
+    {
+      "original_index": 4,
+      "name": "chunks2-tests-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "test"
+      ]
+    },
+    {
+      "original_index": 5,
+      "name": "chunks2-strict-zero-fault-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "strict"
+      ]
+    },
+    {
+      "original_index": 6,
+      "name": "chunks2-production-faults-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "sim"
+      ]
+    },
+    {
+      "original_index": 7,
+      "name": "chunks2-write-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "write"
+      ]
+    },
+    {
+      "original_index": 8,
+      "name": "chunks2-fmt-final-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "fmt"
+      ]
+    },
+    {
+      "original_index": 9,
+      "name": "chunks2-corpus-strict-01",
+      "seconds": 2400,
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"workspace server strict process fixture\" --summary all"
+      ]
+    },
+    {
+      "original_index": 10,
+      "name": "chunks2-corpus-step44-01",
+      "seconds": 2400,
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"chunks contract fixtures\" --summary all"
+      ]
+    },
+    {
+      "original_index": 11,
+      "name": "chunks2-corpus-stages-01",
+      "seconds": 2400,
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"corpus: every example passes every implemented stage\" --summary all"
+      ]
+    },
+    {
+      "original_index": 12,
+      "name": "chunks2-corpus-native-01",
+      "seconds": 2400,
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "cd toolchain && zig build test -Dtest-filter=\"corpus: every module\" --summary all"
+      ]
+    },
+    {
+      "original_index": 13,
+      "name": "chunks2-builds-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/verify.py",
+        "--kind",
+        "build"
+      ]
+    },
+    {
+      "original_index": 14,
+      "name": "chunks2-inherited-run-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/behaviour.py",
+        "--groups",
+        "six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown",
+        "--target",
+        "python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/double.mo --"
+      ]
+    },
+    {
+      "original_index": 15,
+      "name": "chunks2-inherited-binary-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/behaviour.py",
+        "--binary",
+        "--groups",
+        "six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown"
+      ]
+    },
+    {
+      "original_index": 16,
+      "name": "chunks2-green-run-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/unchanged_client_green.py",
+        "--runtime",
+        "run"
+      ]
+    },
+    {
+      "original_index": 17,
+      "name": "chunks2-green-binary-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/unchanged_client_green.py",
+        "--runtime",
+        "binary"
+      ]
+    },
+    {
+      "original_index": 18,
+      "name": "chunks2-hostile-server-run-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_server.py",
+        "--runtime",
+        "run"
+      ]
+    },
+    {
+      "original_index": 19,
+      "name": "chunks2-hostile-server-binary-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_server.py",
+        "--runtime",
+        "binary"
+      ]
+    },
+    {
+      "original_index": 20,
+      "name": "chunks2-eof-run-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/eof_controls.py",
+        "--target",
+        "python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/double.mo --"
+      ]
+    },
+    {
+      "original_index": 21,
+      "name": "chunks2-eof-binary-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/eof_controls.py",
+        "--binary"
+      ]
+    },
+    {
+      "original_index": 22,
+      "name": "chunks2-hostile-direct-run-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_fs.py",
+        "--runtime",
+        "run"
+      ]
+    },
+    {
+      "original_index": 23,
+      "name": "chunks2-hostile-direct-binary-01",
+      "seconds": 2400,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/hostile_fs.py",
+        "--runtime",
+        "binary"
+      ]
+    },
+    {
+      "original_index": 24,
+      "name": "chunks2-size-01",
+      "seconds": 300,
+      "argv": [
+        "python3",
+        "-B",
+        "examples/programs/workspace-server/size_table.py"
+      ]
+    }
+  ],
+  "worker_directive": "CORRECTNESS RESUMPTION GRANT04 \u2014 exclusive runtime owner server-chunks-sol. All four formatter-verification checks are accepted as actual worker-tree proof: fresh build0, focused2/2, strict smoke0, full15/15 fmt0. Original commands1\u20133 are now complete. Do not rerun them.\n\nResume ONLY original commands4\u201324 below, in order, serially, from repository root, with unchanged evidence.py/guard.py4GiB capture and fresh attempt names. Step42 remains STATIC ONLY. Do not modify source manually. First surprise stops; no auto-repair/retry/filter change or next command after failure.\n4. python3 -B examples/programs/workspace-server/evidence.py chunks2-tests-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind test\n5. python3 -B examples/programs/workspace-server/evidence.py chunks2-strict-zero-fault-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind strict\n6. python3 -B examples/programs/workspace-server/evidence.py chunks2-production-faults-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind sim\n7. python3 -B examples/programs/workspace-server/evidence.py chunks2-write-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind write\n8. python3 -B examples/programs/workspace-server/evidence.py chunks2-fmt-final-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind fmt\n9. python3 -B examples/programs/workspace-server/evidence.py chunks2-corpus-strict-01 2400 -- /bin/sh -c 'cd toolchain && zig build test -Dtest-filter=\"workspace server strict process fixture\" --summary all'\n10. python3 -B examples/programs/workspace-server/evidence.py chunks2-corpus-step44-01 2400 -- /bin/sh -c 'cd toolchain && zig build test -Dtest-filter=\"chunks contract fixtures\" --summary all'\n11. python3 -B examples/programs/workspace-server/evidence.py chunks2-corpus-stages-01 2400 -- /bin/sh -c 'cd toolchain && zig build test -Dtest-filter=\"corpus: every example passes every implemented stage\" --summary all'\n12. python3 -B examples/programs/workspace-server/evidence.py chunks2-corpus-native-01 2400 -- /bin/sh -c 'cd toolchain && zig build test -Dtest-filter=\"corpus: every module\" --summary all'\n13. python3 -B examples/programs/workspace-server/evidence.py chunks2-builds-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind build\n14. python3 -B examples/programs/workspace-server/evidence.py chunks2-inherited-run-01 2400 -- python3 -B examples/programs/workspace-server/behaviour.py --groups six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown --target 'python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/double.mo --'\n15. python3 -B examples/programs/workspace-server/evidence.py chunks2-inherited-binary-01 2400 -- python3 -B examples/programs/workspace-server/behaviour.py --binary --groups six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown\n16. python3 -B examples/programs/workspace-server/evidence.py chunks2-green-run-01 2400 -- python3 -B examples/programs/workspace-server/unchanged_client_green.py --runtime run\n17. python3 -B examples/programs/workspace-server/evidence.py chunks2-green-binary-01 2400 -- python3 -B examples/programs/workspace-server/unchanged_client_green.py --runtime binary\n18. python3 -B examples/programs/workspace-server/evidence.py chunks2-hostile-server-run-01 2400 -- python3 -B examples/programs/workspace-server/hostile_server.py --runtime run\n19. python3 -B examples/programs/workspace-server/evidence.py chunks2-hostile-server-binary-01 2400 -- python3 -B examples/programs/workspace-server/hostile_server.py --runtime binary\n20. python3 -B examples/programs/workspace-server/evidence.py chunks2-eof-run-01 2400 -- python3 -B examples/programs/workspace-server/eof_controls.py --target 'python3 toolchain/bench/step36/guard.py 120 -- toolchain/zig-out/bin/mo run examples/programs/workspace-server/double.mo --'\n21. python3 -B examples/programs/workspace-server/evidence.py chunks2-eof-binary-01 2400 -- python3 -B examples/programs/workspace-server/eof_controls.py --binary\n22. python3 -B examples/programs/workspace-server/evidence.py chunks2-hostile-direct-run-01 2400 -- python3 -B examples/programs/workspace-server/hostile_fs.py --runtime run\n23. python3 -B examples/programs/workspace-server/evidence.py chunks2-hostile-direct-binary-01 2400 -- python3 -B examples/programs/workspace-server/hostile_fs.py --runtime binary\n24. python3 -B examples/programs/workspace-server/evidence.py chunks2-size-01 300 -- python3 -B examples/programs/workspace-server/size_table.py\n\nKeep the original reviewed count/classification contract: actual42 tests =35 production plus7 strict; strict200 seeds/seed1/faults0 with exactly7 simulated/7 held without faults, no failures/skips; production200/seed1/faults5 with exactly35 tests and3 simulated held under faults, no failures/skips. Printed expected_tests is not evidence: inspect actual summaries. Corpus strict gate is mandatory7 with zero faults/native successful parity; Step44 gate retains all3fixtures/12controls. Generic gates stay unchanged; builds exactly3 entry points. Per runtime: inherited11 compatible groups, unchanged-client GREEN5 tools/5 journal entries, actual-server hostile14, EOF/lifecycle3, direct hostile14. Preserve the two historical Python owner-exit conflicts; never relabel those13/13 unchanged. Then size accounting.\n\nCommand7 may generate worker-local parent examples/programs/.mo.ids ONLY as unstaged evidence; no hand editing or staging it, and integrated regeneration remains lead-owned. Other protected historical paths (f1_repro.mo/.py, evidence/f1-06-exact-client, REPORT.md) stay byte-for-byte unchanged; stop if any generator alters them. Retain all RED/GREEN raw attempts. Evidence cap2MiB: stop before truncation/overwriting if exceeded.\n\nNo benchmark, unfiltered suite, Step42 execution, machine/Linux, commit or final report. Every process must remain within the guarded process group and explicit timeout. Report each actual exit/count and first failure if any, exact raw paths, metadata/generated-path status, evidence size and owned process/port/temp cleanup; explicitly release runtime at stop/end. Keep expected compiler/cache; do not touch unrelated moshi-hook1057 or any unrelated service.",
+  "directive_delivery": {
+    "text": "{\"id\":\"cli:agent:prompt\",\"result\":{\"agent\":{\"agent\":\"omp\",\"agent_status\":\"idle\",\"cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"focused\":false,\"foreground_cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"interactive_ready\":true,\"name\":\"server-chunks-sol\",\"pane_id\":\"w4:p3D\",\"revision\":48638,\"state_change_seq\":916,\"tab_id\":\"w4:t1C\",\"terminal_id\":\"term_65be97259188e85\",\"terminal_title\":\"\u03c0 > Validate Fallback Parsing Regression Fix\",\"terminal_title_stripped\":\"\u03c0 > Validate Fallback Parsing Regression Fix\",\"workspace_id\":\"w4\"},\"type\":\"agent_prompted\"}}\n\n\nWall time: 0.34 seconds",
+    "details": {
+      "timeoutSeconds": 300,
+      "wallTimeMs": 340.58887500315905
+    }
+  },
+  "classification_clarification": {
+    "text": "Grant04 classification clarification: \u201c7 held without faults\u201d described the configured faults=0, not the passed-only-without-faults outcome bucket. Require strict7 simulated, all7 held at faults=0, zero failures/skips and ZERO passed-only-without-faults outcomes, matching the already reviewed mandatory corpus gate. Production remains3 simulated held under faults=5. No command or scope change.",
+    "delivery": {
+      "text": "{\"id\":\"cli:agent:prompt\",\"result\":{\"agent\":{\"agent\":\"omp\",\"agent_status\":\"idle\",\"cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"focused\":false,\"foreground_cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"interactive_ready\":true,\"name\":\"server-chunks-sol\",\"pane_id\":\"w4:p3D\",\"revision\":49147,\"state_change_seq\":916,\"tab_id\":\"w4:t1C\",\"terminal_id\":\"term_65be97259188e85\",\"terminal_title\":\"\u03c0 \u2834 Execute Guarded Runtime Verification Steps\",\"terminal_title_stripped\":\"\u03c0 \u2834 Execute Guarded Runtime Verification Steps\",\"workspace_id\":\"w4\"},\"type\":\"agent_prompted\"}}\n\n\nWall time: 0.33 seconds",
+      "details": {
+        "timeoutSeconds": 300,
+        "wallTimeMs": 328.66916700452566
+      }
+    }
+  }
+}

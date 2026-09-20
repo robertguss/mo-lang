@@ -1,0 +1,88 @@
+2026-09-20 03:07:36 UTC
+23:07  up 1 day, 15:32, 2 users, load averages: 15.06 8.45 6.13
+measure.py --best-of 5 --parts corpus before=/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-42-review-fixes/toolchain/bench/step38/work/trees/be64e8a5086f6a47dcb6683d1313579d1e6f35a6/toolchain after=/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-42-review-fixes/toolchain
+
+## Three executable corpus workloads under both runtimes: every interleaved sample (load average at the start 10.21 7.98 6.06; each row's beside it)
+
+| sample | mo     | workload       | runtime | time       | load before     |
+|--------|--------|----------------|---------|------------|-----------------|
+| 1      | before | deferred-large | run     | 0.038338 s | 12.91 8.29 6.12 |
+| 1      | after  | deferred-large | run     | 0.045263 s | 12.91 8.29 6.12 |
+| 1      | after  | deferred-large | binary  | 0.214170 s | 12.91 8.29 6.12 |
+| 1      | before | deferred-large | binary  | 0.178135 s | 12.91 8.29 6.12 |
+| 1      | after  | spread         | run     | 0.078099 s | 12.91 8.29 6.12 |
+| 1      | before | spread         | run     | 0.080539 s | 12.91 8.29 6.12 |
+| 1      | before | spread         | binary  | 0.259991 s | 12.91 8.29 6.12 |
+| 1      | after  | spread         | binary  | 0.270716 s | 12.91 8.29 6.12 |
+| 1      | before | duplex         | run     | 0.813090 s | 12.91 8.29 6.12 |
+| 1      | after  | duplex         | run     | 0.807825 s | 12.19 8.22 6.11 |
+| 1      | after  | duplex         | binary  | 0.716998 s | 12.19 8.22 6.11 |
+| 1      | before | duplex         | binary  | 0.699623 s | 12.19 8.22 6.11 |
+| 2      | after  | duplex         | binary  | 0.472445 s | 12.19 8.22 6.11 |
+| 2      | before | duplex         | binary  | 0.467038 s | 12.19 8.22 6.11 |
+| 2      | before | duplex         | run     | 0.773532 s | 12.19 8.22 6.11 |
+| 2      | after  | duplex         | run     | 0.825628 s | 12.19 8.22 6.11 |
+| 2      | before | spread         | binary  | 0.118599 s | 11.46 8.14 6.09 |
+| 2      | after  | spread         | binary  | 0.095230 s | 11.46 8.14 6.09 |
+| 2      | after  | spread         | run     | 0.076600 s | 11.46 8.14 6.09 |
+| 2      | before | spread         | run     | 0.077550 s | 11.46 8.14 6.09 |
+| 2      | after  | deferred-large | binary  | 0.037820 s | 11.46 8.14 6.09 |
+| 2      | before | deferred-large | binary  | 0.055634 s | 11.46 8.14 6.09 |
+| 2      | before | deferred-large | run     | 0.039957 s | 11.46 8.14 6.09 |
+| 2      | after  | deferred-large | run     | 0.038647 s | 11.46 8.14 6.09 |
+| 3      | before | deferred-large | run     | 0.038348 s | 11.46 8.14 6.09 |
+| 3      | after  | deferred-large | run     | 0.038602 s | 11.46 8.14 6.09 |
+| 3      | after  | deferred-large | binary  | 0.038057 s | 11.46 8.14 6.09 |
+| 3      | before | deferred-large | binary  | 0.038419 s | 11.46 8.14 6.09 |
+| 3      | after  | spread         | run     | 0.081796 s | 11.46 8.14 6.09 |
+| 3      | before | spread         | run     | 0.076357 s | 11.46 8.14 6.09 |
+| 3      | before | spread         | binary  | 0.096135 s | 11.46 8.14 6.09 |
+| 3      | after  | spread         | binary  | 0.091465 s | 11.46 8.14 6.09 |
+| 3      | before | duplex         | run     | 0.815415 s | 11.46 8.14 6.09 |
+| 3      | after  | duplex         | run     | 0.805828 s | 11.46 8.14 6.09 |
+| 3      | after  | duplex         | binary  | 0.472012 s | 11.46 8.14 6.09 |
+| 3      | before | duplex         | binary  | 0.494259 s | 11.46 8.14 6.09 |
+| 4      | after  | duplex         | binary  | 0.501473 s | 11.46 8.14 6.09 |
+| 4      | before | duplex         | binary  | 0.482460 s | 11.46 8.14 6.09 |
+| 4      | before | duplex         | run     | 0.835137 s | 11.10 8.12 6.09 |
+| 4      | after  | duplex         | run     | 0.795145 s | 11.10 8.12 6.09 |
+| 4      | before | spread         | binary  | 0.092974 s | 11.10 8.12 6.09 |
+| 4      | after  | spread         | binary  | 0.095006 s | 11.10 8.12 6.09 |
+| 4      | after  | spread         | run     | 0.079152 s | 11.10 8.12 6.09 |
+| 4      | before | spread         | run     | 0.078985 s | 11.10 8.12 6.09 |
+| 4      | after  | deferred-large | binary  | 0.039656 s | 11.10 8.12 6.09 |
+| 4      | before | deferred-large | binary  | 0.040766 s | 11.10 8.12 6.09 |
+| 4      | before | deferred-large | run     | 0.038092 s | 11.10 8.12 6.09 |
+| 4      | after  | deferred-large | run     | 0.038431 s | 11.10 8.12 6.09 |
+| 5      | before | deferred-large | run     | 0.038148 s | 11.10 8.12 6.09 |
+| 5      | after  | deferred-large | run     | 0.039616 s | 11.10 8.12 6.09 |
+| 5      | after  | deferred-large | binary  | 0.039080 s | 11.10 8.12 6.09 |
+| 5      | before | deferred-large | binary  | 0.050291 s | 11.10 8.12 6.09 |
+| 5      | after  | spread         | run     | 0.080271 s | 11.10 8.12 6.09 |
+| 5      | before | spread         | run     | 0.077584 s | 11.10 8.12 6.09 |
+| 5      | before | spread         | binary  | 0.091197 s | 11.10 8.12 6.09 |
+| 5      | after  | spread         | binary  | 0.115499 s | 11.10 8.12 6.09 |
+| 5      | before | duplex         | run     | 0.776750 s | 11.10 8.12 6.09 |
+| 5      | after  | duplex         | run     | 0.823002 s | 11.10 8.12 6.09 |
+| 5      | after  | duplex         | binary  | 0.473895 s | 10.21 7.98 6.06 |
+| 5      | before | duplex         | binary  | 0.487666 s | 10.21 7.98 6.06 |
+
+## Three executable corpus workloads under both runtimes, best of 5 (load average at the start 10.21 7.98 6.06; each row's beside it)
+
+| mo     | workload       | runtime | best       | from     | load before     |
+|--------|----------------|---------|------------|----------|-----------------|
+| before | deferred-large | run     | 0.038092 s | sample 4 | 11.10 8.12 6.09 |
+| before | deferred-large | binary  | 0.038419 s | sample 3 | 11.46 8.14 6.09 |
+| before | spread         | run     | 0.076357 s | sample 3 | 11.46 8.14 6.09 |
+| before | spread         | binary  | 0.091197 s | sample 5 | 11.10 8.12 6.09 |
+| before | duplex         | run     | 0.773532 s | sample 2 | 12.19 8.22 6.11 |
+| before | duplex         | binary  | 0.467038 s | sample 2 | 12.19 8.22 6.11 |
+| after  | deferred-large | run     | 0.038431 s | sample 4 | 11.10 8.12 6.09 |
+| after  | deferred-large | binary  | 0.037820 s | sample 2 | 11.46 8.14 6.09 |
+| after  | spread         | run     | 0.076600 s | sample 2 | 11.46 8.14 6.09 |
+| after  | spread         | binary  | 0.091465 s | sample 3 | 11.46 8.14 6.09 |
+| after  | duplex         | run     | 0.795145 s | sample 4 | 11.10 8.12 6.09 |
+| after  | duplex         | binary  | 0.472012 s | sample 3 | 11.46 8.14 6.09 |
+
+2026-09-20 03:08:10 UTC
+23:08  up 1 day, 15:32, 2 users, load averages: 10.21 7.98 6.06

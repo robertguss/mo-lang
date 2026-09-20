@@ -1,7 +1,7 @@
 ---
-title: "Overnight harness continuation — 19 Sep 2026"
+title: "Overnight harness continuation — 19–20 Sep 2026"
 created: 2026-09-19
-updated: 2026-09-19
+updated: 2026-09-20
 type: session
 tags: [agents, tooling, verification]
 sources: [plans/mo-workspace-recovery-v1.md, plans/roadmap.md, decisions/decision-log.md]
@@ -9,7 +9,7 @@ date: 2026-09-19
 session: 13
 ---
 
-# Overnight harness continuation — 19 Sep 2026
+# Overnight harness continuation — 19–20 Sep 2026
 
 Robert authorized Astra to keep deciding and working while he sleeps, with
 fresh Astra workers at low reasoning in Herdr. Earlier accepted foundations
@@ -77,6 +77,22 @@ separate; no nested delegation or full compiler/machine concurrency.
 The released [[mo-application-workspace-v1|Mo application profile]] connects the
 recorded loop to accepted remote tools. Scripted Logstat repair follows separately.
 No live-provider, language-value or application-repair acceptance.
+
+## Step44 accepted, 20 Sep, 8:30 AM ET
+
+Robert's later workflow replaces the historical low-reasoning workers above:
+Astra leads this same OMP session; each code assignment uses a fresh Sol/high
+session in its own worktree. [[interpreter-step-44]] is accepted on Darwin at
+main db515f9b after independent build0, focused5/5, full272/272 and30 additional
+commands. The fixture-classification and generated-catalog failures were fixed
+without weakening positive or corpus fault gates; every failed output remains.
+
+Twenty larger interleaved line samples show interpreter elapsed best/median
++3.36%/+4.83%, native +10.25%/-4.41%; no zero-overhead or causal claim.
+Evidence is under `audit/evidence/2026-09-20/step44-integration/`.
+Step42 remains a static-only evidence revision with seven obligations unwaived.
+The byte API unblocks a fresh server adoption assignment, not server acceptance.
+Linux remains deferred; no push or audit publication.
 
 ## Related
 

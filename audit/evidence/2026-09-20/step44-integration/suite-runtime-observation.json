@@ -1,0 +1,16 @@
+{
+  "recorded_at_et": "2026-09-20T07:15:06.549267-04:00",
+  "suite_pid": 61546,
+  "identity": "zig build test --summary all, checked at elapsed18:07",
+  "run_mode": "Owned foreground Herdr terminal under guard2400, not detached/nohup; terminal kept intact",
+  "caffeinate": {
+    "pid": 90567,
+    "command": "/usr/bin/caffeinate -i -w 61546",
+    "added_after_start": true,
+    "verified_assertion_lines": [
+      "pid 90567(caffeinate): [0x00027129000191fa] 00:00:12 PreventUserIdleSystemSleep named: \"caffeinate command-line tool\""
+    ]
+  },
+  "observer_timeouts": "Earlier120s/300s pane-output watcher timeouts do not terminate or time out the suite; actual guard/exit file governs",
+  "status": "Suite still running at observation; no result claimed"
+}

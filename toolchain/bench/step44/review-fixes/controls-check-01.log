@@ -1,0 +1,4 @@
+bench/step44/review-fixes/control_probe.mo:76:44: MO0101 a case arm holds one expression after its `:`; an assignment is a statement, and a statement goes on its own lines below the arm
+            Ok(_) | Error(_): state.returned = true
+                                             ^
+  why: spec/grammar.md allows only this at this point in the production.

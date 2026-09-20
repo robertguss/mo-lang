@@ -1,0 +1,28 @@
+{
+  "recorded_at_et": "2026-09-20T06:49:38.241836-04:00",
+  "main_base": "68551e8c1edc4cfc6e9d76d25fc5940e3ed7648b",
+  "common_accepted_code_base": "c4462935fdbcf99d3b8b53258828d028d68594bc",
+  "accepted_code_delta_since_common_base": "git diff c4462935 main -- toolchain examples empty",
+  "worker_code_evidence": "02833a52219a428034bb6c81e9893b6d3421fcf6",
+  "worker_final_report": "3036b0f3bf3d0bc410979ebb0f693c64e7b2ccc2",
+  "report_corrections_reviewed": [
+    "Reserved process parameter and unfixed misplaced diagnostic, not runtime surface edit",
+    "256 immediate snapshots, not one snapshot",
+    "No printed return diagnostic, not proof writer never returned"
+  ],
+  "branch": "lead/verify-step44",
+  "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44",
+  "code_merge": "1a8f2551f3210d24ba7d645eea3747be5d7c4509",
+  "report_merge": "c49d182174a1fc4f1fb1cb101e2affece8e222a7",
+  "run_pane": "w4:p3B",
+  "run_tab": "w4:t1A",
+  "status": "Independent guarded build starting; no runtime result or acceptance yet",
+  "remaining": [
+    "Build and focused checks",
+    "Full zig build test --summary all guard2400 with elapsed timing",
+    "Independent both-runtime focused and real-socket checks plus novel bounds",
+    "Longer interleaved baseline/current line measurements",
+    "Scoped cleanup and acceptance decision"
+  ],
+  "constraints": "No worker code changes, main merge, push, server or step42 integration; Linux deferred"
+}

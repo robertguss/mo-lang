@@ -1,0 +1,12 @@
+{
+  "recorded_at_et": "2026-09-19T23:39:49.828288-04:00",
+  "grant": "step44-focused-validation-grant-09.json",
+  "name": "controls-check-02",
+  "exit": 0,
+  "log": "Empty, clean mo check",
+  "changes": "Only moved two returned=true assignments below case-arm colons; no semantics/oracle change",
+  "native_build_or_behavior_ran": false,
+  "commands13_to20_ran": false,
+  "cleanup": "Worker scoped pgrep exit1, no owned mo/guard/control-build processes, nothing killed/detached",
+  "acceptance": "Checker evidence only; runtime behavior still owed"
+}

@@ -1,0 +1,12 @@
+{
+  "revision": "cdf1e9660f51623d71cfb7fffd6ceef8d8a99078",
+  "command": "python3 bench/step36/guard.py 2400 -- zig build test --summary all",
+  "exit": 0,
+  "tests": "272/272",
+  "real_seconds": 629.86,
+  "user_seconds": 524.1,
+  "sys_seconds": 77.28,
+  "max_rss_test": "460M",
+  "recorded_at": "2026-09-20T08:20:10.884366-04:00",
+  "scope": "Full integration suite. No Step44 acceptance yet; socket/CLI and larger line measurements remain."
+}

@@ -1,0 +1,30 @@
+{
+  "recorded_at_et": "2026-09-20T06:53:10.718503-04:00",
+  "revision": "c49d182174a1fc4f1fb1cb101e2affece8e222a7",
+  "build_exit": 0,
+  "focused": {
+    "command": "zig build test -Dtest-filter=chunks --summary all",
+    "exit": 1,
+    "passed": 3,
+    "total": 4,
+    "real_seconds": 5.08,
+    "failed_test": "check.test.Conn.chunks requires the exact byte message shape",
+    "failure_layer": "Parser before checker assertion",
+    "cause": "Four statement assignments inline after case labels in embedded Mo fixtures at check.zig4693-4694 and4707-4708; parser explicitly rejects these forms"
+  },
+  "full_suite_ran": false,
+  "worker_grant": {
+    "scope": "Only four embedded fixture arms become multiline; expected code/message shapes/test name/filter/parser/runtime unchanged",
+    "command": "zig build test -Dtest-filter=chunks --summary all",
+    "guard_seconds": 600,
+    "evidence_name": "checker-fixture-green-01",
+    "required": "Explicit4/4, then named-path code/evidence and report-last commits; stop surprise; no silent retries",
+    "lead_slot": "HOLD"
+  },
+  "baseline_preparation": {
+    "path": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-step44-lines-base",
+    "revision": "c4462935fdbcf99d3b8b53258828d028d68594bc",
+    "status": "Fresh detached worktree created only; no build or benchmark run"
+  },
+  "acceptance": "Blocked; prior worker checker-green claim does not establish checker execution; no inference about its historical command"
+}

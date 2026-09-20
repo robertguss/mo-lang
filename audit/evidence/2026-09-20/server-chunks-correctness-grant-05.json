@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-09-20T11:00:06.131254-04:00",
+  "status": "original command7 promoted as dependency; exclusive metadata generation only",
+  "command": {
+    "name": "chunks2-write-01",
+    "seconds": 2400,
+    "argv": [
+      "python3",
+      "-B",
+      "examples/programs/workspace-server/verify.py",
+      "--kind",
+      "write"
+    ]
+  },
+  "worker_directive": "CORRECTNESS GRANT05 \u2014 exclusive runtime owner server-chunks-sol. Command4's MO0317 is accepted as the missing-provenance RED; do not rerun it now. Lead parsed the existing .mo.ids: zero workspace-server entries. Existing verify.py module order is dependency-first. main.zig353\u2013369 makes --write replace only the requested module's verification status before real tests and then records actual results; no manual footer deletion is needed.\n\nRun ONLY the already reviewed original command7, now promoted as a prerequisite, from repository root:\npython3 -B examples/programs/workspace-server/evidence.py chunks2-write-01 2400 -- python3 -B examples/programs/workspace-server/verify.py --kind write\n\nThis is the unchanged fifteen-module --write matrix: production --sim200 --seed1 --faults5; strict --sim200 --seed1 --faults0. Every nested process and outer command stays under existing guard.py4GiB and explicit timeouts. First nonzero/count/scope/guard surprise stops; NO source repair, retry or later command. Actual summaries must total42 tests if the pass completes, with35 production/7 strict; production simulated3 and held_under_faults3. STRICT EXACT COUNTERS: tests7, simulated7, held_under_faults0, fault_free_only0, failures0, skipped0, faults0. My previous phrase \u201c7 held at faults0\u201d was informal and must NOT be used as a held_under_faults counter requirement; source corpus gate473\u2013505 requires0. Printed expected counts remain insufficient.\n\nGenerator-written verification footers in non-protected server modules and worker-local parent examples/programs/.mo.ids are authorized, UNSTAGED. No hand editing, deleting verification lines, staging metadata or weakening checks. Preserve f1_repro.mo/.py, historical evidence/f1-06-exact-client and REPORT.md byte-for-byte; stop/report if the generator changes any protected path. If a test fails and --write records that failed result before exit, retain/report it as evidence, not a pass; do not erase or manually repair it.\n\nNo original4 retry,5\u20136 or8\u201324, benchmark, full suite, Step42 runtime, machine/Linux, commit or report update. Evidence cap2MiB; no overwrite/truncation. Report actual per-module results/generated paths, protected hashes, evidence size and owned process/port/temp clearance; release runtime. Keep compiler/cache and leave unrelated services including moshi-hook1057 untouched.",
+  "directive_delivery": {
+    "text": "{\"id\":\"cli:agent:prompt\",\"result\":{\"agent\":{\"agent\":\"omp\",\"agent_status\":\"idle\",\"cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"focused\":false,\"foreground_cwd\":\"/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks\",\"interactive_ready\":true,\"name\":\"server-chunks-sol\",\"pane_id\":\"w4:p3D\",\"revision\":50160,\"state_change_seq\":916,\"tab_id\":\"w4:t1C\",\"terminal_id\":\"term_65be97259188e85\",\"terminal_title\":\"\u03c0 > Execute Guarded Runtime Verification Steps\",\"terminal_title_stripped\":\"\u03c0 > Execute Guarded Runtime Verification Steps\",\"workspace_id\":\"w4\"},\"type\":\"agent_prompted\"}}\n\n\nWall time: 0.34 seconds",
+    "details": {
+      "timeoutSeconds": 300,
+      "wallTimeMs": 335.17091699689627
+    }
+  }
+}

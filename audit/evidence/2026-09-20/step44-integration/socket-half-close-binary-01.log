@@ -1,0 +1,16 @@
+client payload_bytes=10 sends=4
+client ordered_bytes_hex=4100e282acf0288c2842 server_exact_match=true
+client contains_nul=true contains_invalid_utf8=true split_multibyte=true
+client shutdown_write=true
+client post_eof_response=true status=200 chunks=1
+$ python3 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-http/step44-lead-http 54823 eof
+server port=54823 mode=eof
+server event=accepted
+server event=input_closed bytes=10 chunks=1
+server response_write=true
+server finished=true
+server_guard_exit=0
+runtime=binary case=half-close
+real 0.29
+user 0.08
+sys 0.03

@@ -1,0 +1,130 @@
+{
+  "recorded_at_et": "2026-09-19T22:40:02.539155-04:00",
+  "request": "Clean old panes and leftovers; preserve active work and evidence",
+  "closed": [
+    {
+      "pane": "w4:p36",
+      "tab": "w4:t15",
+      "worker": "server4a-sol",
+      "checkpoint": "d689b441b967eb1f9e8143a503fbc8810d60d2e1",
+      "saved_session": "01a0bc0e-f475-7000-a423-b4d6f04a4759"
+    },
+    {
+      "pane": "w4:p37",
+      "tab": "w4:t16",
+      "worker": "step42-sol",
+      "checkpoint": "be64e8a5086f6a47dcb6683d1313579d1e6f35a6",
+      "saved_session": "01a0bc0e-f469-7000-a859-b214015a0d0e"
+    },
+    {
+      "pane": "w4:p38",
+      "tab": "w4:t17",
+      "worker": "step44-sol",
+      "checkpoint": "9ad0162aa1994bb67c012ee85e78503c8573043a",
+      "saved_session": "01a0bc1b-4451-7000-ab2e-824201090ecd"
+    }
+  ],
+  "shutdown": "Ctrl-D to each completed OMP, observed shell prompt and saved session ID, then explicit pane close",
+  "owned_tree_before": [
+    {
+      "pid": 43662,
+      "ppid": 20182,
+      "pgid": 43662,
+      "command": "/Users/robertguss/.browser-use-env/bin/python -u /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/omp-python-runner/runner-35agnh7fmes4v.py"
+    },
+    {
+      "pid": 85004,
+      "ppid": 79000,
+      "pgid": 85004,
+      "command": "/Users/robertguss/.browser-use-env/bin/python -u /var/folders/f8/ft7ygqg92pj8qh0rwplbw2x80000gn/T/omp-python-runner/runner-35agnh7fmes4v.py"
+    },
+    {
+      "pid": 98656,
+      "ppid": 79002,
+      "pgid": 98656,
+      "command": "/opt/homebrew/Cellar/bun/1.3.14/bin/bun /Users/robertguss/.bun/install/global/node_modules/@oh-my-pi/pi-coding-agent/dist/cli.js __omp_worker_daemon_broker"
+    },
+    {
+      "pid": 78272,
+      "ppid": 7491,
+      "pgid": 78272,
+      "command": "-zsh"
+    },
+    {
+      "pid": 79002,
+      "ppid": 78272,
+      "pgid": 79002,
+      "command": "bun /Users/robertguss/.bun/bin/omp --model openai-codex/gpt-5.6-sol --thinking high --no-prewalk --auto-approve --append-system-prompt You are a bounded implementation WORKER, not the lead. Robert has replaced Claude Code/Opus with fresh OMP GPT Sol high sessions. Astra in Herdr w4:p1 owns lead decisions and acceptance. Do not operate the audit inbox or write lead records. Do not delegate. Read current worker role and safety instructions from /Users/robertguss/Projects/startups/mo-lang/.claude/skills/mo-lead/SKILL.md; those supersede stale role instructions in this historical worktree. Await the bounded assignment before working."
+    },
+    {
+      "pid": 78276,
+      "ppid": 7491,
+      "pgid": 78276,
+      "command": "-zsh"
+    },
+    {
+      "pid": 79000,
+      "ppid": 78276,
+      "pgid": 79000,
+      "command": "bun /Users/robertguss/.bun/bin/omp --model openai-codex/gpt-5.6-sol --thinking high --no-prewalk --auto-approve --append-system-prompt You are a bounded implementation WORKER, not the lead. Robert has replaced Claude Code/Opus with fresh OMP GPT Sol high sessions. Astra in Herdr w4:p1 owns lead decisions and acceptance. Do not operate the audit inbox or write lead records. Do not delegate. Read current worker role and safety instructions from /Users/robertguss/Projects/startups/mo-lang/.claude/skills/mo-lead/SKILL.md; those supersede stale role instructions in this historical worktree. Await the bounded assignment before working."
+    },
+    {
+      "pid": 19133,
+      "ppid": 7491,
+      "pgid": 19133,
+      "command": "-zsh"
+    },
+    {
+      "pid": 20182,
+      "ppid": 19133,
+      "pgid": 20182,
+      "command": "bun /Users/robertguss/.bun/bin/omp --model openai-codex/gpt-5.6-sol --thinking high --no-prewalk --auto-approve --append-system-prompt You are a bounded implementation WORKER, not the lead. Astra in Herdr w4:p1 owns decisions and acceptance. Follow the current mo-lead worker role. No audit inbox, lead records, nested delegation, session reuse or model switch. Await your bounded assignment."
+    }
+  ],
+  "additional_orphans_terminated": [
+    {
+      "pid": 22829,
+      "ppid": 1,
+      "kind": "LLDB debugserver",
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-42-review-fixes/examples",
+      "started_et": "2026-09-19 21:43:50",
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 54896,
+      "ppid": 1,
+      "kind": "LLDB debugserver",
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-42-review-fixes/examples",
+      "started_et": "2026-09-19 21:56:06",
+      "signal": "SIGTERM"
+    },
+    {
+      "pid": 14898,
+      "ppid": 1,
+      "kind": "obsolete local orb step40 completion poll client",
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang",
+      "started_et": "2026-09-19 11:32:16",
+      "signal": "SIGTERM, then SIGKILL after verified survival"
+    }
+  ],
+  "remaining_cleanup_targets": [],
+  "remaining_mo_panes": [
+    "w4:p1",
+    "w4:p39",
+    "w4:p3A"
+  ],
+  "preserved": [
+    "lead and both corrective workers",
+    "all worktrees, report commits, logs and saved sessions",
+    "Cursor worker and codebase-memory service",
+    "OrbStack service and executor machine",
+    "unrelated workspaces and terminals"
+  ],
+  "cleanup_lesson": "Debugger helpers started with --setsid can survive guard process-group termination; check owned detached helpers as well as mo/guard names.",
+  "completed_at_et": "2026-09-19T22:41:19.832630-04:00",
+  "final_orphan_verification": {
+    "command": "ps -p 14898,22829,54896 -o pid,ppid,state,command",
+    "exit": 1,
+    "output": "PID PPID STAT COMMAND; no process rows"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "recorded_at_et": "2026-09-19T23:25:57.835939-04:00",
+  "grant": "step44-focused-validation-grant-03.json",
+  "results": [
+    {
+      "name": "tls-test-write-03",
+      "exit": 0,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "strict faults-disabled interpreter TLS; sim not run"
+    },
+    {
+      "name": "tls-faults-test-write-02",
+      "exit": 0,
+      "target_tests": 1,
+      "sim_runs": 40,
+      "fault_percent": 20,
+      "held_under_faults": 1,
+      "passed_only_without_faults": 0,
+      "failed": 0,
+      "skipped": 0,
+      "dependency_tests_selected": false
+    }
+  ],
+  "generated_metadata": {
+    "strict": {
+      "module": "ChunksTls",
+      "module_id": "03b83dfa1442",
+      "verified_hash": "6942e5dcb90b68c4",
+      "declarations": "29d94c3ea38cfe5c"
+    },
+    "faults": {
+      "module": "ChunksTlsFaults",
+      "module_id": "62a75be58d6f",
+      "test_id": "39effd313993",
+      "verified_hash": "1d41cb73e9d9cd3f",
+      "declarations": "4ed2c8c4111504e8",
+      "use_hash": "1a269b276eaa5309"
+    }
+  },
+  "cleanup": "Worker scoped pgrep exit1; no owned mo/guard/build/temp-mutant processes; nothing killed/detached",
+  "lead_read": "Both raw test logs",
+  "commands5_to20_at_receipt": "Not run; separate renewed grant follows",
+  "acceptance": "Worker evidence only; no native TLS proof or integrated acceptance yet"
+}

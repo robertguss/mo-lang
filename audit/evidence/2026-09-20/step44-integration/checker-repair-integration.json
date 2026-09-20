@@ -1,0 +1,22 @@
+{
+  "recorded_at_et": "2026-09-20T06:56:10.790007-04:00",
+  "worker_code_evidence": "015164e717828d8c93c8647c5b5c035f2a9a3db2",
+  "worker_report": "1f45e09c4b62b27cbf205e25780ccabab1502b94",
+  "worker_focused_result": "4/4 tests passed, exit0; raw log read",
+  "lead_review": "Exactly four embedded fixture arms made multiline; no implementation/expected diagnostic change; report addendum read",
+  "integration": "6aa6ca842b1711db6a87f3327660eb2515babeee",
+  "commands": [
+    {
+      "name": "focused-zig-02",
+      "guard_seconds": 600,
+      "command": "zig build test -Dtest-filter=chunks --summary all"
+    },
+    {
+      "name": "full-suite-01",
+      "guard_seconds": 2400,
+      "command": "zig build test --summary all"
+    }
+  ],
+  "order": "Serial, second iff first0; own terminalw4:p3B, main no code merge",
+  "status": "Independent sequence restarting, no new lead runtime results yet"
+}

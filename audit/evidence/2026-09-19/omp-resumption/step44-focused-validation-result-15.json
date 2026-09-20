@@ -1,0 +1,33 @@
+{
+  "recorded_at_et": "2026-09-20T06:39:48.110134-04:00",
+  "grant": "step44-focused-validation-grant-15.json",
+  "results": [
+    {
+      "name": "controls-native-build-05",
+      "exit": 0,
+      "output": "zig-out/mo-build/step44-review-controls/step44-review-controls"
+    },
+    {
+      "name": "blocked-writer-run-02",
+      "outer_exit": 1,
+      "child_exit": 1,
+      "requested_receive_buffer": 4096,
+      "effective_after_connect": 326640,
+      "required_ceiling": 16384,
+      "stopped_at": "Socket precondition before control connection/input proof",
+      "child_output": [
+        "blocked-writer returned=Error(Closed)",
+        "blocked-writer waiting_in=Conn.write confirmed=true"
+      ],
+      "control_lines": [
+        "",
+        ""
+      ],
+      "duplex_proof": false
+    }
+  ],
+  "native_blocked_case_ran": false,
+  "lead_read": "Raw blocked-writer-run-02.log",
+  "cleanup": "Worker scoped pgrep exit1 and lsof ports57377/57378 exit1, both empty; no owned process/socket remains; build retained; no edits/retry",
+  "conclusion": "Pre-connect socket option did not establish post-connect bound on this host; kernel cause not established; no behavior acceptance"
+}

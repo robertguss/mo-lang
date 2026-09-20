@@ -1,0 +1,86 @@
+{
+  "authorized_at": "2026-09-20T07:33:01.180719-04:00",
+  "worker": "step44-fix-sol",
+  "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes",
+  "base": "1f45e09c4b62b27cbf205e25780ccabab1502b94",
+  "review": "Full static diff reviewed: existing Built tally gains success counter used by new test; ordinary assertions unchanged. New helper requires exact 9/2/1 counts, 100 runs each, strict faults0 and distinct faults20/held1, no failures/skips/counterexample seeds, formatting and 3 successful native agreements. Sole active source caller migrated. Worker reports all four moved fixture/metadata blobs byte-identical before tool writes.",
+  "scope_extension": "Additive Built.succeeded accounting in existing shared helper is explicitly approved to reuse native differential execution without accepting matching failure exits. No existing corpus assertion or runtime behavior changes.",
+  "cwd": "toolchain",
+  "commands": [
+    {
+      "name": "corpus-gate-zig-fmt-01",
+      "guard_seconds": 60,
+      "command": "zig fmt src/corpus.zig",
+      "expect": "Targeted Zig formatting only"
+    },
+    {
+      "name": "corpus-gate-build-01",
+      "guard_seconds": 600,
+      "command": "zig build",
+      "expect": "Exit 0"
+    },
+    {
+      "name": "corpus-gate-chunks-fmt-01",
+      "guard_seconds": 60,
+      "command": "zig-out/bin/mo fmt testdata/step44/chunks.mo",
+      "expect": "Targeted Mo formatting"
+    },
+    {
+      "name": "corpus-gate-tls-fmt-01",
+      "guard_seconds": 60,
+      "command": "zig-out/bin/mo fmt testdata/step44/chunks-tls.mo",
+      "expect": "Targeted Mo formatting"
+    },
+    {
+      "name": "corpus-gate-tls-faults-fmt-01",
+      "guard_seconds": 60,
+      "command": "zig-out/bin/mo fmt testdata/step44/chunks-tls-faults.mo",
+      "expect": "Targeted Mo formatting"
+    },
+    {
+      "name": "corpus-gate-chunks-write-01",
+      "guard_seconds": 900,
+      "command": "zig-out/bin/mo test --write --sim 100 --faults 0 testdata/step44/chunks.mo",
+      "expect": "9/9; no skips; 100 fault-free scheduling runs"
+    },
+    {
+      "name": "corpus-gate-tls-write-01",
+      "guard_seconds": 900,
+      "command": "zig-out/bin/mo test --write --sim 100 --faults 0 testdata/step44/chunks-tls.mo",
+      "expect": "2/2; no skips; 100 fault-free scheduling runs"
+    },
+    {
+      "name": "corpus-gate-tls-faults-write-01",
+      "guard_seconds": 900,
+      "command": "zig-out/bin/mo test --write --sim 100 --faults 20 testdata/step44/chunks-tls-faults.mo",
+      "expect": "1/1; held 1; fault-free-only 0; 100 seeds at 20%"
+    },
+    {
+      "name": "corpus-gate-tls-oracle-run-01",
+      "guard_seconds": 120,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime run",
+      "expect": "Outer 0; intentional inner positive TLS assertion failure identified"
+    },
+    {
+      "name": "corpus-gate-tls-oracle-native-01",
+      "guard_seconds": 180,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime binary",
+      "expect": "Outer 0; intentional inner positive TLS assertion failure identified"
+    },
+    {
+      "name": "corpus-gate-filtered-01",
+      "guard_seconds": 1800,
+      "command": "zig build test -Dtest-filter=chunks --summary all",
+      "expect": "Explicit 5/5; permanent fixture gate includes all 12 Mo tests and successful native parity"
+    }
+  ],
+  "conditions": [
+    "Exclusive Step44 runtime slot; Step42 static-only and lead runtime idle",
+    "Serial iff prior expected success; stop at first unexpected outcome, preserve raw log and true PIPESTATUS exit",
+    "Every row through existing step36 guard, 4 GB limit, tee and exact exit file; no unfiltered suite or benchmark",
+    "Only formatter/tool-generated fixture metadata changes authorized beyond reviewed diff; unexpected path changes stop",
+    "No oracle/runtime/loader/root-marker change; no rerun over failed evidence",
+    "After successful focused evidence and scoped cleanup, named code/evidence commit then factual append-only report commit last; no push",
+    "No main code merge or acceptance; independent focused/full suite and behavior/performance still owed"
+  ]
+}

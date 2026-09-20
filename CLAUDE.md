@@ -3,7 +3,7 @@
 A programming language for the AI era, designed and built by Robert Guss and
 Claude. Start every session by loading the `mo-lead` skill
 (`.claude/skills/mo-lead/SKILL.md`; read it directly if it is not registered):
-it holds the roles, the Opus/Herdr worker loop, and the acceptance
+it holds the roles, the OMP/Sol worker loop, and the acceptance
 checklist. Then read `HANDOFF.md` for the current state and queue, then
 `mo-wiki/SCHEMA.md` for the working agreements. Then, before any work, check
 what the auditor has posted since the last session:
@@ -14,12 +14,14 @@ for the lead. Worker threads read the role and safety rules, then follow their
 bounded brief; they do not check or operate the lead's audit inbox,
 publish/integrate audit records, or take over lead decisions.
 
-- Fable (Claude Code) is the lead on Robert's Mac since 19 Sep 2026, 7:18 AM ET,
-  taking over from Astra. It directs, verifies, decides and records.
-- Robert's 19 Sep 2026 morning instruction: workers are fresh Claude Opus
-  sessions in Herdr panes, started with bypass permissions. Follow `mo-lead` for launch, ownership and acceptance.
-  Workers write code under `toolchain/` and `examples/`; implementation uses
-  separate worktrees, while read-only review may share the lead checkout.
+- Astra in OMP is the lead in Robert's existing pane (19 Sep 2026, evening).
+  The lead plans, briefs, reviews, decides and records; it may run independent
+  acceptance builds/tests but does not write implementation code.
+- Workers use OMP with GPT Sol at high reasoning. Every assignment, including
+  continuation of saved WIP, gets a fresh clean session, never a resumed,
+  forked or imported conversation. Follow `mo-lead` for launch and acceptance.
+  At most three workers, each in its own Herdr tab; implementation uses
+  separate worktrees. Workers own all implementation, including probe scripts.
 - Stage and commit only named paths (`git add <paths>` and
   `git commit -m <message> -- <paths>`), never `git add -A`. Inspect existing
   staged changes; do not sweep in someone else's work.

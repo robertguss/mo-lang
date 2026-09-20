@@ -1,0 +1,29 @@
+{
+  "recorded_at_et": "2026-09-19T23:47:29.810934-04:00",
+  "grant": "step44-focused-validation-grant-11.json",
+  "name": "controls-check-03",
+  "exit": 1,
+  "stage": "checker-only, no build/behavior",
+  "design_reviewed": "PendingObserver retains Await reply, one Check message/snapshot per turn, exact name+waiting_in, finite256 budget, false exhaustion,3s ask deadline; matching process rows printed/flushed on failure",
+  "diagnostics": [
+    {
+      "lines": [
+        128,
+        143
+      ],
+      "codes": [
+        "MO0222",
+        "MO0209"
+      ],
+      "problem": "Check constructors require named me field; positional pattern remains valid"
+    },
+    {
+      "line": 137,
+      "code": "MO0304",
+      "problem": "false-exhaustion reply fanout nested4 deep"
+    }
+  ],
+  "cleanup": "Worker scoped pgrep exit1, no owned mo/guard/control-build processes, nothing killed/detached",
+  "previous_evidence": "pending-pull-run-01 failure and both-runtime bounds outputs untouched",
+  "acceptance": "No pending-reader observation or behavioral proof"
+}

@@ -1,0 +1,74 @@
+{
+  "reviewed_at": "2026-09-20T09:55:35.798194-04:00",
+  "base": "65b3dd37c4b2acc74bbdc425a723a163b69e50f8",
+  "worker": "step42-safety-sol",
+  "pane": "w4:p3C",
+  "status": "additional static revisions requested; no application or execution grant",
+  "reviewed_snapshots": {
+    "MANIFEST.txt": "5D9E",
+    "NATIVE-COVERAGE.txt": "4C1E",
+    "native-lifecycle-fixture.patch": "E806",
+    "test-only-parcel-audit.patch": "C792",
+    "pack-errdefer-focused-test.patch": "3D65",
+    "packs-true-focused-tests.patch": "C191",
+    "n10-focused-test.patch": "90E0",
+    "HOT-PATH.txt": "4976",
+    "omission-mutants/c-route-packed-drop.patch": "BE99",
+    "omission-mutants/zig-pack-errdefer.patch": "71BE"
+  },
+  "accepted_static_corrections": [
+    "Exact nested Timeout assertion",
+    "Removed incidental Relay state string",
+    "Real turns_answer missing-waiter mutation",
+    "FailingAllocator injection at Parcel creation then copyOut allocation",
+    "Missing n10 fixture fails and raw attempted-subrun diagnostics remain",
+    "Explicit arena versus region/LSan proof limits",
+    "Literal native case argv and independent audit macro",
+    "Correct five-current-stress sampling shape and preserved correction-only evidence"
+  ],
+  "remaining_findings": [
+    {
+      "location": "pack-errdefer-focused-test.patch:21-28; packs-true-focused-tests.patch:125-127,197-199,226-228,262-264,285-287",
+      "finding": "Passing Zig cases do not emit the actual allocation N. In the errdefer mutant the deallocation assertion fails before audit.snapshot. Paired allocation/live claims need case-labeled raw snapshots before any balance failure."
+    },
+    {
+      "location": "native-lifecycle-fixture.patch:255-260,316-324,327-334",
+      "finding": "Waiter/end check dynamic label but only nested-list length; Logger checks only count. Complete nested strings/retained values must be read and compared to establish payload survival, not merely shape."
+    },
+    {
+      "location": "native-lifecycle-fixture.patch:116-128,297-306; NATIVE-COVERAGE.txt:30",
+      "finding": "The coverage text claims Sink receives nothing, but no Sink query or observation exists. Add the actual untouched-sink semantic control."
+    },
+    {
+      "location": "MANIFEST.txt:14 and native map1-12",
+      "finding": "Twelve native mutants divide into ten ordinary paths and two private-sweep end_process paths, not eleven plus two."
+    },
+    {
+      "location": "MANIFEST.txt:155-168",
+      "finding": "Frozen65 is pre-composition. Its proposed measurements cannot stand for final accepted-main-plus-Step42 cost; lead must freeze composed checkpoints before timing grant."
+    }
+  ],
+  "source_grounding": {
+    "native_sweep": "runtime/mo_rt.c#2A7E:7901-7979; existing locked production sweep ends finished unmarked processes; private hook calls it after turns_finish and before turns_stop",
+    "quiescence": "runtime/mo_rt.c#2A7E:8170-8183,8307-8321",
+    "native_exit": "runtime/mo_rt.c#2A7E:3212-3214 sets exited and returns",
+    "stress_gate": "src/corpus.zig#3993:827-861; unchanged exhaustive isRunnable loop, positive count and both runtime predicates",
+    "compiler_dependency": "build.zig#29F7:51-55 installs compiler and sets MO_EXE before run_tests"
+  },
+  "worker_directive": "Astra/w4:p1: the revised static bundle has been read; continue STATIC ONLY in the same safety-evidence scope. No apply/build/test/runtime/benchmark/commit/report. Server correctness is being reviewed for the next exclusive slot; do not infer permission from idle capacity.\n\nRemaining source corrections before applying the private test bundle:\n1. Make Zig audit observations available in raw green AND mutant output. Every packs=true case currently snapshots then silently asserts equality; passing runs do not report allocation N. The errdefer test fails its allocator assertion before its audit snapshot in the omission case. Emit a concise case-labeled allocated/destroyed/live snapshot before any potentially failing balance assertion, and expose allocator counts too for the errdefer case. Preserve semantic assertions. This is needed to compare the actual paired N/live deltas, not merely infer them from a failed equality.\n2. Native payload checks must inspect complete dynamic nested contents. waiter and ended currently check label plus parts.size only; corrupt nested strings can pass. Compare the exact entire expected parts. Logger only returns Size, which does not prove its retained dynamic labels survived; use a single final observable of the complete expected retained values instead of the count-only ask, preserving the one-eviction scenario and documenting its literal output.\n3. NATIVE-COVERAGE says Sink receives nothing in crash-transaction, but Sink has no query and the scenario never checks it. Add an actual semantic observation of the untouched sink, not that unsupported claim. Update the case/paired allocation expectations honestly; still require each named one-free omission to yield exactly live1 with its paired allocation N unchanged.\n4. Correct the ordinary-main versus forced-sweep branch count: twelve C mutants total, ten ordinary paths and two end_process start/log paths via the private sweep hook, not eleven plus two.\n5. All timing proposals remain withheld. 65b3dd37 is the frozen pre-composition candidate, not the eventual accepted-main-plus-Step42 candidate. Do not run/relabel historical samples. The lead will freeze the composed before/after checkpoints before granting whole-step timing; the required five-before/five-after suite, five current stress and60 workload sample shape remains.\n\nKeep individual git apply --check as the only permitted patch validation; do not apply or compile combinations. Return revised static paths/manifest. No need to rerun or re-explain the already corrected exact Timeout, real turns_answer target, missing-fixture failure or raw n10 diagnostics.",
+  "directive_delivery": {
+    "result": "agent_prompted",
+    "pane": "w4:p3C",
+    "revision": 46778
+  },
+  "not_executed": [
+    "patch application",
+    "combined compilation",
+    "Mo runtime",
+    "stress",
+    "ASan",
+    "mutants",
+    "timings"
+  ],
+  "verification_worktree": "Not created; proposed toolchain-step42-safety-check path does not exist. No memory runtime grant was issued."
+}

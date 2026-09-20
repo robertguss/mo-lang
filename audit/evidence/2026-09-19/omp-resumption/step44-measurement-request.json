@@ -1,0 +1,35 @@
+{
+  "recorded_at_et": "2026-09-19T21:33:33.576416-04:00",
+  "status": "Requested; not granted. Awaiting explicit step42-fix process clearance.",
+  "worker": "step44-sol",
+  "current": "9c67ec1f1cfbf95ae625d0227ef9de8f86467c7a",
+  "baseline": "c4462935fdbcf99d3b8b53258828d028d68594bc",
+  "baseline_worktree": "/tmp/mo-step44-base-c4462935",
+  "source_policy": "Worker reports committed and source-clean; no source changes during measured series.",
+  "sequence": [
+    "Guard 240 baseline toolchain build; measure-base-build.log/.exit",
+    "Guard 1200 throughput.py baseline lines, 16 MiB, best of five; measure-lines-base.log/.exit",
+    "Guard 1200 throughput.py current lines, 16 MiB, best of five; measure-lines-current.log/.exit",
+    "Guard 1200 throughput.py current chunks, 16 MiB, best of five; measure-chunks-current.log/.exit"
+  ],
+  "driver": "toolchain/bench/step44/throughput.py",
+  "evidence_directory": "toolchain/bench/step44/",
+  "runtimes": [
+    "interpreter",
+    "native"
+  ],
+  "execution": "Sequential; no unfiltered suite.",
+  "lines": {
+    "bytes": 16777216,
+    "record_bytes": 4096,
+    "sha256": "6bb102b33c34bab0a6f26a93213745b23bf6edcddf5a7b587b4e46e73c61fc8e",
+    "comparison": "Same current committed benchmark source and deterministic input under both toolchains."
+  },
+  "chunks": {
+    "bytes": 16777216,
+    "max_bytes": 65536,
+    "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
+  },
+  "recording": "All five samples, sample exits, start/end load averages, best value, payload bytes/hash and workload geometry.",
+  "lead_review": "Read full measurement driver; executable/data hashes are worker-provided checkpoint claims, not independent runtime verification."
+}

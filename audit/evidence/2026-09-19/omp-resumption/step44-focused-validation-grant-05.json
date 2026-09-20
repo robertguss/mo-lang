@@ -1,0 +1,100 @@
+{
+  "recorded_at_et": "2026-09-19T23:28:26.308374-04:00",
+  "status": "Granted; no results yet",
+  "prior_stop": "step44-focused-validation-result-04.json",
+  "static_correction": "Only required named-test prefix literal fail  test -> FAIL  test in tls_oracle_probe.py; preserve exact test/assert/child exit1 and watchdog/signal rejection",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "number": "7R",
+      "name": "tls-positive-oracle-run-02",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime run"
+    },
+    {
+      "number": 8,
+      "name": "tls-positive-oracle-native-01",
+      "guard_seconds": 120,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime binary"
+    },
+    {
+      "number": 9,
+      "name": "ordered-bytes-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build bench/step44/http_chunks_probe.mo -o step44-review-http-chunks"
+    },
+    {
+      "number": 10,
+      "name": "ordered-bytes-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/socket_probe.py --runtime run --case half-close"
+    },
+    {
+      "number": 11,
+      "name": "ordered-bytes-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/socket_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-http-chunks/step44-review-http-chunks --case half-close"
+    },
+    {
+      "number": 12,
+      "name": "controls-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --surface bench/step44/review-fixes/control_probe.mo -o step44-review-controls"
+    },
+    {
+      "number": 13,
+      "name": "bounds-run-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case bounds"
+    },
+    {
+      "number": 14,
+      "name": "bounds-native-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case bounds"
+    },
+    {
+      "number": 15,
+      "name": "pending-pull-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case pending-pull"
+    },
+    {
+      "number": 16,
+      "name": "pending-pull-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case pending-pull"
+    },
+    {
+      "number": 17,
+      "name": "late-tls-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case late-tls"
+    },
+    {
+      "number": 18,
+      "name": "late-tls-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case late-tls"
+    },
+    {
+      "number": 19,
+      "name": "blocked-writer-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer"
+    },
+    {
+      "number": 20,
+      "name": "blocked-writer-native-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case blocked-writer"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "stop": "First unexpected result, nonzero, timeout, kill or diagnostic; no silent retries; retain checker failure tls-test-write-01",
+  "completion": "Scoped cleanup/report and HOLD",
+  "other_worker": "step42 runtime HOLD",
+  "not_authorized": "Formatter, full suite, benchmark, existing-client rerun, stress, unlisted probes, step42 integration, Linux/machine work, push",
+  "scope": "No other oracle/runtime edits, no rerun of successful commands; preserve failed run01",
+  "acceptance": "Worker evidence only; no results or acceptance at grant time"
+}

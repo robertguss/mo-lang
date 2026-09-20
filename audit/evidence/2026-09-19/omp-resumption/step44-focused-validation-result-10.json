@@ -1,0 +1,49 @@
+{
+  "recorded_at_et": "2026-09-19T23:44:11.888537-04:00",
+  "grant": "step44-focused-validation-grant-10.json",
+  "results": [
+    {
+      "name": "controls-native-build-03",
+      "exit": 0
+    },
+    {
+      "name": "bounds-run-01",
+      "exit": 0,
+      "exact_values": [
+        "1",
+        "65536",
+        "0",
+        "65537",
+        "18446744073709551615"
+      ],
+      "valid": "Exact bounded B at1/65536",
+      "invalid": "Each reached chunks and exited70 with range text"
+    },
+    {
+      "name": "bounds-native-01",
+      "exit": 0,
+      "exact_values": [
+        "1",
+        "65536",
+        "0",
+        "65537",
+        "18446744073709551615"
+      ],
+      "valid": "Exact bounded B at1/65536",
+      "invalid": "Each reached chunks and exited70 with range text"
+    },
+    {
+      "name": "pending-pull-run-01",
+      "outer_exit": 1,
+      "child_guard_exit": 1,
+      "waiting_observed": false,
+      "chunks_called": false,
+      "ownership_refusal_proved": false
+    }
+  ],
+  "commands16_to20_ran": false,
+  "lead_read": "Both complete bound logs and pending-pull failure; Runtime.processes snapshot code",
+  "coordination_finding": "Immediate256 snapshot polls are not a scheduling/readiness handshake; exact reason for failed observation not dynamically isolated",
+  "cleanup": "Worker scoped pgrep exit1; no owned mo/guard/control/probe processes; native control binary retained",
+  "acceptance": "Bounds worker evidence; no pending-reader/native-pending/late-TLS/blocked-writer proof yet"
+}

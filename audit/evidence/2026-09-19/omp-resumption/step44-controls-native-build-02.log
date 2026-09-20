@@ -1,0 +1,36 @@
+bench/step44/review-fixes/control_probe.mo:75:9: MO0310 the Result from conn.read_line(within: 10.seconds) is dropped; match it with case or pass it up with try.
+          conn.read_line(within: 10.seconds)
+          ^
+  why: Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake. So is a one-line if's: the form is a value, never a statement, and only the last line of a body that gives a value may be one.
+bench/step44/review-fixes/control_probe.mo:91:9: MO0310 the Result from conn.write("x".repeat(16_777_216), within: 10.seconds) is dropped; match it with case or pass it up with try.
+          conn.write("x".repeat(16_777_216), within: 10.seconds)
+          ^
+  why: Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake. So is a one-line if's: the form is a value, never a statement, and only the last line of a body that gives a value may be one.
+bench/step44/review-fixes/control_probe.mo:105:31: MO0208 an integer has no field or function named second; a Duration is written with ms, seconds, minute, or days, as 10.seconds
+    runtime.processes(within: 1.second).any?(fn(info)
+                                ^
+  why: x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.
+bench/step44/review-fixes/control_probe.mo:180:7: MO0310 the Result from tls.connect(client, host: "localhost", within: 2.seconds) is dropped; match it with case or pass it up with try.
+        tls.connect(client, host: "localhost", within: 2.seconds)
+        ^
+  why: Every Result and Option is consumed (chapter 2, honesty laws): a dropped error is an error nobody handles. So is the value of a pure call, one that takes no capability or handle: its value is all it does, so dropping it is a mistake. So is a one-line if's: the form is a value, never a statement, and only the last line of a body that gives a value may be one.
+bench/step44/review-fixes/control_probe.mo:220:65: MO0208 an integer has no field or function named second; a Duration is written with ms, seconds, minute, or days, as 10.seconds
+          signalled = control.write("writer-blocked\n", within: 1.second) is Ok(_)
+                                                                  ^
+  why: x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.
+bench/step44/review-fixes/control_probe.mo:222:64: MO0208 an integer has no field or function named second; a Duration is written with ms, seconds, minute, or days, as 10.seconds
+          answered = control.write("input-progress\n", within: 1.second) is Ok(_)
+                                                                 ^
+  why: x.name reads a field of x's struct, or calls name with x as its first argument; one of the two must exist.
+bench/step44/review-fixes/control_probe.mo:266:9: MO0304 this if is nested 4 deep in selected; the limit is 3, so move the inner block into its own function.
+          if mode == "blocked-writer"
+          ^
+  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.
+bench/step44/review-fixes/control_probe.mo:246:13: MO0407 selected takes a Platform, which only main holds; take the parts it uses instead, such as an Fs or an Out.
+  fn selected(platform: Platform, runtime: Runtime, mode: String) : UInt8
+              ^
+  why: A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds.
+bench/step44/review-fixes/control_probe.mo:281:43: MO0407 platform is a Platform, which stays in main; pass on a part of it, such as platform.fs or platform.stdout.
+      Some(runtime): platform.exit(selected(platform, runtime, mode))
+                                            ^
+  why: A Platform exists only as fn main's parameter (Q18): main reads its parts and passes each one down, narrowed, so no other function can reach everything the program holds.

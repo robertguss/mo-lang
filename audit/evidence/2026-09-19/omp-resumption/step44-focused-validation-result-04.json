@@ -1,0 +1,32 @@
+{
+  "recorded_at_et": "2026-09-19T23:28:26.296610-04:00",
+  "grant": "step44-focused-validation-grant-04.json",
+  "results": [
+    {
+      "command": 5,
+      "name": "tls-native-build-01",
+      "exit": 0
+    },
+    {
+      "command": 6,
+      "name": "tls-native-test-01",
+      "exit": 0,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": 7,
+      "name": "tls-positive-oracle-run-01",
+      "outer_exit": 1,
+      "child_guard_exit": 1,
+      "child_result": "Named strict positive FAIL at assert successful?(got); forced-negative passed;1 passed/1 failed/0 skipped",
+      "driver_failure": "Expected lowercase fail  test; actual runner emits uppercase FAIL  test",
+      "guard_kill_signal_timeout": false
+    }
+  ],
+  "commands8_to20_ran": false,
+  "cleanup": "Worker reports temporary oracle directory absent and scoped process check exit1; no owned mo/guard/build/temp-mutant processes, nothing killed/detached",
+  "lead_read": "Both raw native and forced-oracle logs",
+  "acceptance": "Native strict2/2 worker evidence; oracle-run01 driver failed, not a runtime failure or passed driver control"
+}

@@ -1,0 +1,86 @@
+{
+  "recorded_at": "2026-09-20T09:58:16.351725-04:00",
+  "grant": "server-chunks-correctness-grant-01.json",
+  "status": "stopped at command2; commands3-24 unattempted",
+  "attempts": [
+    {
+      "number": 1,
+      "attempt": "chunks2-compiler-build-01",
+      "reported_seconds": 37.9,
+      "exit": 0,
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "2400",
+          "--",
+          "/bin/sh",
+          "-c",
+          "cd toolchain && zig build"
+        ],
+        "cwd": "repository root"
+      },
+      "raw_output": "",
+      "raw_exit": "0\n"
+    },
+    {
+      "number": 2,
+      "attempt": "chunks2-format-01",
+      "reported_seconds": 0.6,
+      "exit": 1,
+      "command": {
+        "argv": [
+          "python3",
+          "toolchain/bench/step36/guard.py",
+          "2400",
+          "--",
+          "python3",
+          "-B",
+          "examples/programs/workspace-server/verify.py",
+          "--kind",
+          "format"
+        ],
+        "cwd": "repository root"
+      },
+      "raw_output": "command=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/wire.mo']\nexit=0\nmodule=wire.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/schema.mo']\nexit=0\nmodule=schema.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/envelope.mo']\nexit=0\nmodule=envelope.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/tools.mo']\nexit=0\nmodule=tools.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/journal.mo']\nexit=0\nmodule=journal.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/admission.mo']\nexit=0\nmodule=admission.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/worker.mo']\nexit=0\nmodule=worker.mo kind=format exit=0\ncommand=['python3', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/bench/step36/guard.py', '30', '--', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/toolchain/zig-out/bin/mo', 'fmt', '/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo']\n/Users/robertguss/Projects/startups/mo-lang-worktrees/harness-workspace-server-chunks/examples/programs/workspace-server/connection.mo:289:28: MO0101 expected field names: a variant's fields are matched by name, not by position; write HeadDone(head: parsed, reading: body)\n              HeadDone(parsed, body):\n                             ^\n  why: A variant's fields are matched by name, as they are built by name: Short(by: n) binds n to by. A position would change meaning when a field is added.\nexit=1\nmodule=connection.mo kind=format exit=1\nkind=format failed_module=connection.mo failures=1\n",
+      "raw_exit": "1\n"
+    }
+  ],
+  "diagnosis": {
+    "code": "MO0101",
+    "file": "examples/programs/workspace-server/connection.mo",
+    "snapshot": "BEE7",
+    "sites": [
+      289,
+      343,
+      360
+    ],
+    "cause": "Three positional patterns for the new two-field HeadDone variant. Its declaration, constructor and test already use head/reading labels. Change all three patterns; no compiler/runtime or contract change."
+  },
+  "worker_clearance": {
+    "owned_processes": "none",
+    "server_commands_reached": false,
+    "owned_listening_ports": "none",
+    "unrelated_listener": {
+      "pid": 1057,
+      "command": "/opt/homebrew/opt/moshi-hook/bin/moshi-hook serve",
+      "cwd": "/opt/homebrew/var",
+      "address": "127.0.0.1:24543"
+    },
+    "expected_build_outputs": "fresh toolchain compiler and cache retained",
+    "fresh_compiler_bytes": 3639072,
+    "new_evidence_reported_kib": 24,
+    "historical_f1_and_report": "unchanged",
+    "parent_ids": "unchanged"
+  },
+  "not_claimed": [
+    "full module formatting",
+    "typecheck",
+    "module tests",
+    "simulation",
+    "native parity",
+    "server behavior",
+    "measurement",
+    "acceptance"
+  ]
+}

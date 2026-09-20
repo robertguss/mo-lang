@@ -1,0 +1,35 @@
+{
+  "recorded_at_et": "2026-09-20T08:23:52.718492-04:00",
+  "status": "Correctness gates passed; baseline compiler built. Executing unchanged driver with explicit --mo per revision; driver cwd/build output remains current worktree root.",
+  "baseline_root": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-step44-lines-base",
+  "baseline_revision": "c4462935fdbcf99d3b8b53258828d028d68594bc",
+  "current_root": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44",
+  "current_revision": "cdf1e9660f51623d71cfb7fffd6ceef8d8a99078",
+  "driver": "Existing worker-authored toolchain/bench/step44/throughput.py, unmodified",
+  "mode": "lines",
+  "mib_per_sample": 256,
+  "record_bytes": 4096,
+  "runtimes": [
+    "run",
+    "binary"
+  ],
+  "best_of_per_invocation": 1,
+  "invocation_order": [
+    "baseline",
+    "current",
+    "current",
+    "baseline",
+    "baseline",
+    "current",
+    "current",
+    "baseline",
+    "baseline",
+    "current"
+  ],
+  "samples_per_revision_per_runtime": 5,
+  "expected_total_samples": 20,
+  "bounds": "Outer invocation guard360/4GB; existing native build180 and child90 guards/socket/ask bounds unchanged",
+  "capture": "Per-invocation raw output/exit/time; workload SHA256 and volume, load averages and scoped/argument-redacted host process context",
+  "analysis": "Compare full distributions, best of five, medians and range; report throughput and elapsed deltas; do not attribute kernel cause, causal regression size or zero overhead from changing host load",
+  "notes": "New larger workload gives longer samples than original16MiB. Compile work excluded from transfer timing by existing driver; serialize all runtime work. No new benchmark/probe authored by lead."
+}

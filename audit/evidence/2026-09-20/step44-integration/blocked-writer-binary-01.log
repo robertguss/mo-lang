@@ -1,0 +1,12 @@
+data_socket rcvbuf_requested=4096 rcvbuf_pre_reapply=326640 rcvbuf_post_reapply=4096
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls blocked-writer 54763 54764
+blocked-writer waiting_in=Conn.write confirmed=true
+blocked-writer post-input waiting_in=Conn.write confirmed=true
+blocked-writer signalled=true input_exact=true answered=true
+guard_exit=0
+control_first=b'writer-blocked\n' control_second=b'input-progress\n'
+blocked_writer pre_and_post_wait=true exact_input_progress=true data_peer_unread=true rcvbuf_effective=4096
+runtime=binary case=blocked-writer result=pass
+real 0.12
+user 0.09
+sys 0.03

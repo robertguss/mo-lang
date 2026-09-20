@@ -2,6 +2,39 @@
 
 What shipped, newest first. One entry per session or per milestone. The reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the same history next to the text it changed.
 
+## Step 44: bounded byte input through `Conn.chunks` — 20 Sep 2026, 8:30 AM ET
+
+- `chunks(into:, max_bytes:, idle:)` delivers owned `List(UInt8)` messages,
+  arbitrary binary bytes and bounded pieces, reusing source backpressure and
+  the unread buffer. Input EOF permits a reverse reply; waiting writes do not
+  prevent input. Single-reader ownership and TLS plaintext/used-connection rules
+  apply. No HTTP stack, new byte type or client workaround.
+- Fresh OMP/GPT-5.6-Sol workers; Astra independently verified build, focused5/5,
+  full272/272 and30 CLI/socket controls. Main merged testedcdf1e966 atdb515f9b.
+  Strict fixture controls remain automatic without weakening corpus fault gates.
+- Twenty larger interleaved line samples: interpreter best/median elapsed
+  +3.36%/+4.83%; native +10.25%/-4.41%. All distributions preserved; no
+  zero-overhead or causal claim. Linux and server adoption remain owed.
+  Evidence: `audit/evidence/2026-09-20/step44-integration/README.md`.
+
+## Server wire blocker filed; byte-source step briefed — 19 Sep 2026, evening
+
+- F1 at `8b0ff352` demonstrates that the unchanged client's body is withheld
+  by line-only input until the client times out and closes.
+- Step 44 is briefed to add bounded binary `Conn.chunks` through existing
+  runtime sources. This is a planned unblock, not a shipped capability or
+  accepted server. Clients and D2's independent operator path stay unchanged.
+
+## OMP workflow and authorized WIP resumption — 19 Sep 2026, evening
+
+- Astra leads in the existing OMP pane; workers use GPT Sol at high reasoning.
+  Every assignment starts a fresh clean session, including saved-WIP continuations.
+- Workers own implementation code; the lead owns review and acceptance and
+  may independently run builds/tests. Separate worktrees/tabs and the
+  three-worker limit remain.
+- Robert authorized resuming the Mo server part A and step 42 from their
+  preserved WIP commits. No new code accepted; Linux verification stays owed.
+
 ## Step 41: `Exec`, a child process narrowed to fixed commands — 19 Sep 2026, 3:33 PM ET
 
 - `platform.exec` exists only in `main`; it makes a `Program` (one absolute

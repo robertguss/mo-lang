@@ -1,0 +1,34 @@
+{
+  "recorded_at_et": "2026-09-19T23:55:23.829028-04:00",
+  "status": "Static corrections and two preflights granted; no results yet",
+  "prior_stop": "step44-focused-validation-result-13.json",
+  "write_scope": [
+    "control_probe.mo",
+    "behavior_probe.py"
+  ],
+  "requirements": [
+    "Data peer SO_RCVBUF request4096 before connect; log effective size/enforce small bound; no data reads through proof",
+    "Precompute16MiB payload before source/observer arming and pass ready payload into writer",
+    "Record/flush exact write Ok/Error return; return is not blocked proof",
+    "Require actual Conn.write waiting before and after exact input-progress consumption, before success acknowledgement",
+    "Preserve finite deadlines/guards/cleanup; no behavior sleeps or weaker oracles/runtime edits"
+  ],
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "name": "controls-check-05",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo check bench/step44/review-fixes/control_probe.mo"
+    },
+    {
+      "name": "blocked-driver-pycompile-01",
+      "guard_seconds": 30,
+      "command": "python3 -m py_compile bench/step44/review-fixes/behavior_probe.py"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "stop": "First unexpected result, no post-check retry/edit; report source/design/results/clearance and HOLD",
+  "not_authorized": "Native build/runtime/probe/test/formatter, native blocked command20, runtime/fixture/loader edits; prior unrelated exclusions",
+  "other_worker": "step42 runtime HOLD",
+  "acceptance": "No blocked-writer behavior or acceptance implied"
+}

@@ -1,0 +1,16 @@
+{
+  "recorded_at": "2026-09-20T07:44:55.035596-04:00",
+  "code": "b7a21af7e76969525596d1ee0d3c9b9fc4b34131",
+  "report_last": "040da1310158883eaffdcffc863bde2f0bb8a32e",
+  "author_and_committer": "GPT-5.6-Sol <noreply@openai.com>",
+  "parent": "1f45e09c4b62b27cbf205e25780ccabab1502b94",
+  "code_tree": "b6a164f885ae73fc3da9a0fd33ba69937ee57aaa",
+  "identity_reported": "Old1e17fa99 and newb7a21af7 code trees identical; git diff --quiet0",
+  "report_delta_reported": "Only embedded code pointer changed; one insertion/one deletion; report committed last",
+  "preserved_refs": {
+    "refs/safety/step44-corpus-gate/code-misattributed": "1e17fa99b6691d7aa4a806ed33440ac402d2eebb",
+    "refs/safety/step44-corpus-gate/report-misattributed": "53a7e6ebe44fa53d285d0d1918f4abbbad7d8647"
+  },
+  "runtime": "No worker rerun; previous reviewed eleven exits0 remain evidence for identical tree. Both workers runtime HOLD; lead integration verification next.",
+  "status": "Packaging accepted for isolated integration, not code acceptance"
+}

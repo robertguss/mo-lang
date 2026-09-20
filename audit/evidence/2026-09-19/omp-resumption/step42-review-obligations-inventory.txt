@@ -1,0 +1,47 @@
+Step 42 review-fix evidence inventory — static review after checkpoint 65b3dd37c4b2acc74bbdc425a723a163b69e50f8
+
+STATUS
+- Runtime/source/tests/measurement driver are frozen at 65b3dd37c4b2acc74bbdc425a723a163b69e50f8.
+- The complete correction-only corpus measurement is filed as corpus-measure-rerun-01.{log,txt,exit}; exit 0, 60/60 samples.
+- The failed first measurement and its six samples remain corpus-measure.{log,exit}; no structured .txt was emitted before failure.
+- No rerun is needed. This comparison is prior UNACCEPTED delivery be64e8a... versus review corrections, not whole-Step42 overhead or acceptance.
+
+CURRENT-CHECKPOINT CONTROLS ALREADY FILED
+- Blocking ownership: blocking-done-before-signal-v2-red.exit=1 and blocking-early-error-v2-red.exit=1; blocking-restored-v2-green.exit=0, 2/2. The latter mutant produced the escaped-stack failure the guard contained.
+- Packed event retention: events-discard-v2-red.exit=1 (expected 1, found 0); events-restored-v2-green.exit=0, 2/2. The retained value is a dynamically built string and its parcel is non-null.
+- Holder type split: zig-owned-holders-red.exit=1 rejects bare Value assignments to outbox, delayed-send, timer, and mailbox holders; c-owned-holders-red.exit=1 rejects bare MoValue assignments to mailbox, outbox, timer, and threaded-answer holders. asan-restored-final-green.exit=0, 2/2 after restoration.
+- ASan fiber integration/raw comparison: asan-fiber-red.exit=1 reproduces the unstripped __asan_handle_no_return warning when the custom-fiber hooks are removed. asan-focused-green.exit=0 and asan-restored-final-green.exit=0 compare raw stderr successfully for deferred-large and never-restart.
+- Normal retained-answer path: retained-normal-final-green.exit=0, 2/2.
+- Formatting and driver syntax checkpoint: focused-format.exit=0; measure-pycompile.exit=0. These predate the one-rule default_name correction, which was statically reviewed and then exercised by the 60-sample measurement.
+- Cleanup: corpus-measure-rerun-01-cleanup.exit=0 with no owned worktree/test/runtime or debugserver match. debugger-orphan-finding.txt records why debugger cleanup must include detached, PPID-1 debugserver helpers and cwd scoping.
+
+HISTORICAL CONTROLS PRESERVED, BUT NOT CURRENT-CHECKPOINT ACCEPTANCE
+- final-stress.{log,exit}: exit 0, 2/2, exhaustive normal stress corpus at the earlier runtime checkpoint; about five minutes. Review fixes changed runtime ownership and fibers afterward, so this is not a current-checkpoint sweep.
+- pending-answer-mutant.{patch,log,exit}: exit 1; interpreter poison produced a union-tag panic and native ASan reported use-after-poison. The rejected report identifies n=10 as the 45-byte case, but the raw log does not print the run argument. The patch names the pre-refactor value/parcel fields and no longer represents the current ParcelValue holders.
+- poison-green.{log,exit}: exit 0, 2/2 after restoring the historical pending-answer mutant.
+- final-asan.log/.exit: exit 1 because six crashing programs emitted __asan_handle_no_return warnings.
+- final-asan-green.log/.exit: exit 0 only after the now-removed warning-stripping comparison. It is preserved history, not valid raw-ASan acceptance.
+- audit-green.{log,exit}: exit 0, 3/3 at the earlier audit checkpoint.
+- type-split historical logs cover PendingAnswer only; the current four-holder compile mutants above supersede that narrow proof.
+- guard-all-green.{log,exit}: historical process-group guard coverage. The later detached-LLDB finding limits its cleanup claim for debugger sessions.
+
+REMAINING EVIDENCE OBLIGATIONS
+1. Current-checkpoint exhaustive normal stress corpus sweep. Historical final-stress is stale after the review fixes.
+2. Current-checkpoint exhaustive ASan corpus sweep with raw stderr comparison. The historical green suppressed warnings; the current focused ASan control covers only deferred-large and never-restart.
+3. Current-checkpoint real stale-answer mutant at the 45-byte n=10 boundary under host-Clang ASan. It must reintroduce a raw PendingAnswer through the current ParcelValue representation and show AddressSanitizer use-after-poison, not merely a differential mismatch or fiber warning.
+4. Current-checkpoint ordinary, non-ASan stale-answer mutant at the same small boundary. It must show stress poison catches the stale value in both the interpreter and an ordinary native -DMO_STRESS binary. The historical filed mutant clearly proves interpreter poison plus native ASan, not this ordinary-native control.
+5. Retaining-boundary behavior under packs=true for all ownership outcomes: transfer outbox -> mailbox -> log; delayed outbox -> timer -> mailbox; pending answer -> waiter; target-down/exit drop; timed-out or absent waiter; update crash freeing outbox/emits/pending answers; restart/ended-process freeing mailbox/log/start; committed-event shutdown cleanup. Existing semantic tests cover many branches with packs=false, and the current packed tests directly cover successful pending-answer and event commit only. Compile mutants prove field types, not transfer/free behavior.
+6. Hot-path analysis in the final report. Static facts: ASan calls are preprocessor-elided outside ASan; ParcelValue wraps the value+parcel representation holders already carried; event packing is confined to Events.emit; blocking's publication wait is after readiness/error, not scheduler dispatch. Measurement facts: best-of-five correction deltas range from -1.56% to +2.79% under varying load. No zero-cost claim is justified without stronger statistics or instruction-level evidence.
+7. Plan-level suite timing remains unfilled unless the lead explicitly waives it. The unfiltered suite is lead-owned and Linux remains deferred; this worker must not run either without assignment.
+
+MEASUREMENT REPORT CAVEAT
+- The generated table headings say load average "at the start 10.21 7.98 6.06"; that value was sampled when the report tables were emitted at the end, not at run start.
+- Actual run-start uptime: 15.06 8.45 6.13.
+- First sample load: 12.91 8.29 6.12.
+- Per-row one-minute loads range from 10.21 to 12.91 and every exact triple remains in corpus-measure-rerun-01.txt.
+- Raw measurement outputs and the frozen driver must not be rewritten to repair the heading.
+
+FINAL REPORT READINESS
+- Not ready to call final or acceptance. The repository report is still the rejected historical report; an exact copy is preserved as original-STEP-42-REPORT.md.
+- Final report must be written last, after assigned missing evidence is complete or explicitly waived. It must separate historical evidence from current-checkpoint proof, retain the measurement/load caveat and correction-only baseline, preserve the old noisy echo minima (+12.90% interpreter, +8.60% C), state full-suite/Linux limits, and record the detached-debugserver cleanup limitation.
+- Final evidence/report named-path commit remains pending.

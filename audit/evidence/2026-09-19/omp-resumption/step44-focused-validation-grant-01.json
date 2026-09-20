@@ -1,0 +1,177 @@
+{
+  "recorded_at_et": "2026-09-19T23:16:12.275697-04:00",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "granted_commands": [
+    1,
+    2,
+    3
+  ],
+  "remaining_status": "HOLD pending first three results and static preflight corrections",
+  "commands": [
+    {
+      "number": 1,
+      "name": "idle-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --tests ../examples/step44/chunks.mo -o step44-review-chunks-tests",
+      "granted": true
+    },
+    {
+      "number": 2,
+      "name": "idle-native-test-01",
+      "guard_seconds": 120,
+      "command": "zig-out/mo-build/step44-review-chunks-tests/step44-review-chunks-tests",
+      "granted": true
+    },
+    {
+      "number": 3,
+      "name": "tls-test-write-01",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo test --write ../examples/step44/chunks-tls.mo",
+      "granted": true
+    },
+    {
+      "number": 4,
+      "name": "tls-sim-faults-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo test --sim 40 --seed 1 --faults 20 ../examples/step44/chunks-tls.mo",
+      "granted": false
+    },
+    {
+      "number": 5,
+      "name": "tls-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --tests ../examples/step44/chunks-tls.mo -o step44-review-chunks-tls-tests",
+      "granted": false
+    },
+    {
+      "number": 6,
+      "name": "tls-native-test-01",
+      "guard_seconds": 120,
+      "command": "zig-out/mo-build/step44-review-chunks-tls-tests/step44-review-chunks-tls-tests",
+      "granted": false
+    },
+    {
+      "number": 7,
+      "name": "tls-positive-oracle-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime run",
+      "granted": false
+    },
+    {
+      "number": 8,
+      "name": "tls-positive-oracle-native-01",
+      "guard_seconds": 120,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime binary",
+      "granted": false
+    },
+    {
+      "number": 9,
+      "name": "ordered-bytes-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build bench/step44/http_chunks_probe.mo -o step44-review-http-chunks",
+      "granted": false
+    },
+    {
+      "number": 10,
+      "name": "ordered-bytes-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/socket_probe.py --runtime run --case half-close",
+      "granted": false
+    },
+    {
+      "number": 11,
+      "name": "ordered-bytes-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/socket_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-http-chunks/step44-review-http-chunks --case half-close",
+      "granted": false
+    },
+    {
+      "number": 12,
+      "name": "controls-native-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --surface bench/step44/review-fixes/control_probe.mo -o step44-review-controls",
+      "granted": false
+    },
+    {
+      "number": 13,
+      "name": "bounds-run-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case bounds",
+      "granted": false
+    },
+    {
+      "number": 14,
+      "name": "bounds-native-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case bounds",
+      "granted": false
+    },
+    {
+      "number": 15,
+      "name": "pending-pull-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case pending-pull",
+      "granted": false
+    },
+    {
+      "number": 16,
+      "name": "pending-pull-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case pending-pull",
+      "granted": false
+    },
+    {
+      "number": 17,
+      "name": "late-tls-run-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case late-tls",
+      "granted": false
+    },
+    {
+      "number": 18,
+      "name": "late-tls-native-01",
+      "guard_seconds": 60,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case late-tls",
+      "granted": false
+    },
+    {
+      "number": 19,
+      "name": "blocked-writer-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer",
+      "granted": false
+    },
+    {
+      "number": 20,
+      "name": "blocked-writer-native-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case blocked-writer",
+      "granted": false
+    }
+  ],
+  "capture": "Each command wrapped in guard.py; combined output to same NAME.log, real guard exit via PIPESTATUS[0] to NAME.exit under bench/step44/review-fixes; stop first unexpected nonzero/timeout/kill/diagnostic; after3 scoped cleanup and HOLD",
+  "expected": [
+    "native idle build exit0",
+    "native idle9/9 exit0",
+    "strict TLS interpreter3/3 exit0; --write stamps/ids authorized"
+  ],
+  "preflight_findings": [
+    {
+      "path": "bench/step44/review-fixes/tls_oracle_probe.py:45-55; behavior_probe.py:42-48",
+      "finding": "Any nonzero plus expected text can normalize a later watchdog kill as successful rejection",
+      "required": "Documented expected exit statuses; explicitly reject watchdog/deadline/unexpected signal termination, retain raw child output/exit"
+    },
+    {
+      "path": "bench/step44/review-fixes/control_probe.mo:248",
+      "finding": "to_u64 or0 can mask failed full-width parsing as expected zero rejection",
+      "required": "Strict parsing, flush actual max before chunks; driver requires actual value matches requested invalid bound"
+    },
+    {
+      "command": 4,
+      "finding": "Fault simulation invokes whole file with strict positive and exact-handshake controls",
+      "required": "Explain actual runner selection/fault-free-only semantics or propose precise separation; never weaken strict controls"
+    }
+  ],
+  "other_worker": "step42 runtime HOLD; static missing-evidence preparation only",
+  "not_authorized": "Commands4\u201320, unfiltered suite, benchmarks, formatter, Linux, machine work, step42 integration, unlisted probes"
+}

@@ -123,18 +123,17 @@ Add a tag here before using it. Keep it under 30.
 4. "Unpack this" / "ELI5" → deeper, still in tight bullets with a snippet.
 5. Fresh **web research** over training data when a topic calls for it; two lanes — Claude writes prompts into `research/prompts/`, Robert runs them (Perplexity) into `raw/research-runs/`; papers required.
 6. **Nothing is final until measured** (direction 28).
-7. **Lead and workers** (Robert, 19 Sep 2026, superseding Amp orbs): Astra
-   stays the lead in this Mac session and owns judgment and documentation.
-   Fresh Astra workers run at low reasoning in Herdr panes; there is no oracle
-   requirement on the Mac. `mo-lead` owns the launch and acceptance procedure.
-   Implementation workers use separate worktrees with an exact local base;
-   read-only reviewers may share the lead checkout. Preserve bounded ownership
-   of `toolchain/` and `examples/`, inspect exact returned changes and verify
-   them in the lead checkout. Robert's subsequent overnight instruction
-   authorizes the lead to decide and drive bounded harness setup,
-   implementation and verification while he is AFK, including decisions
-   previously awaiting approval. The lead records the scope and readiness;
-   prerequisites requiring Robert's presence do not stop independent work.
+7. **Lead and workers** (Robert, 19 Sep 2026, evening): Astra leads in OMP in
+   the existing lead pane. Workers use OMP with GPT Sol at high reasoning;
+   every assignment gets a fresh clean session, including saved-WIP
+   continuations. No resumed, forked or imported worker conversations.
+   `mo-lead` owns launch and acceptance. At most three workers, each in its
+   own Herdr tab. Workers own implementation and code; the lead owns briefs,
+   review, documentation and decisions and may run independent builds/tests.
+   Implementation and lead verification use separate worktrees; read-only
+   review may share the lead checkout. Preserve bounded write scopes and
+   historical work. Robert authorized resuming the server part A and step 42
+   after recording this workflow; use `HANDOFF.md` for the current queue.
 8. **The lead decides** (Robert, session 5; Astra succeeds Fable): the lead's
    recommendation is the decision within approved scope, recorded as a
    decision-log row with who, status, and first tested by. Robert reviews the

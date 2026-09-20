@@ -1,0 +1,59 @@
+{
+  "recorded_at_et": "2026-09-19T23:36:34.477253-04:00",
+  "grant": "step44-focused-validation-grant-07.json",
+  "name": "controls-native-build-02",
+  "exit": 1,
+  "stage": "checker-only, no native control built or behavior run",
+  "reserved_parameter_correction": "Applied only process -> process_name in pending?/await_pending?; misleading surface diagnostic cleared",
+  "diagnostics": [
+    {
+      "code": "MO0310",
+      "line": 75,
+      "problem": "dropped conn.read_line Result"
+    },
+    {
+      "code": "MO0310",
+      "line": 91,
+      "problem": "dropped conn.write Result"
+    },
+    {
+      "code": "MO0208",
+      "line": 105,
+      "problem": "invalid1.second"
+    },
+    {
+      "code": "MO0310",
+      "line": 180,
+      "problem": "dropped tls.connect Result"
+    },
+    {
+      "code": "MO0208",
+      "line": 220,
+      "problem": "invalid1.second"
+    },
+    {
+      "code": "MO0208",
+      "line": 222,
+      "problem": "invalid1.second"
+    },
+    {
+      "code": "MO0304",
+      "line": 266,
+      "problem": "four-deep mode dispatch"
+    },
+    {
+      "code": "MO0407",
+      "line": 246,
+      "problem": "selected takes Platform outside main"
+    },
+    {
+      "code": "MO0407",
+      "line": 281,
+      "problem": "passes Platform outside main"
+    }
+  ],
+  "commands13_to20_ran": false,
+  "cleanup": "Worker scoped pgrep exit1; no owned mo/guard/control-build processes, nothing killed/detached",
+  "lead_read": "All9 raw checker diagnostics",
+  "acceptance": "No runtime failure or control behavior evidence"
+}

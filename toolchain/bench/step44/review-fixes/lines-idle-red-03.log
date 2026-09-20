@@ -1,0 +1,24 @@
+thread 15148941 panic: reached unreachable code
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/sources.zig:281:30: 0x104f035ef in round (mo)
+        const went = switch (s.kind) {
+                             ^
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/sim.zig:930:33: 0x104f06fd3 in drain (mo)
+            while (try sim.round(&sim.order, &delivered)) {}
+                                ^
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/vm.zig:337:20: 0x104fc2353 in callWith (mo)
+        try vm.exec(function, args, captures);
+                   ^
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/runner.zig:148:98: 0x104fbf743 in run (mo)
+        var r = if (t.kind == .property) try runProperty(gpa, arena, program, t) else try runTest(gpa, arena, program, t, null, 0, null);
+                                                                                                 ^
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/pipeline.zig:52:22: 0x104e6323b in testProgram (mo)
+    return runner.run(gpa, lowered, own);
+                     ^
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/main.zig:348:42: 0x104e44227 in run (mo)
+        const r = mo.pipeline.testProgram(arena, program, all, options, &diags) catch |e| switch (e) {
+                                         ^
+/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/src/main.zig:77:19: 0x104e33c83 in onStack (mo)
+    result.* = run(init);
+                  ^
+???:?:?: 0x18151bc57 in __pthread_cond_wait (/usr/lib/system/libsystem_pthread.dylib)
+???:?:?: 0x181516c1b in _pthread_cond_broadcast (/usr/lib/system/libsystem_pthread.dylib)

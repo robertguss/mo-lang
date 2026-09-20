@@ -1,0 +1,17 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 30 -- toolchain/zig-out/bin/mo test toolchain/bench/step44/review-fixes/tls-oracle-4ae6ugja/chunks-tls-forced-error.mo
+FAIL  test "fault-free TLS chunks exchange exact bounded plaintext in both directions": toolchain/bench/step44/review-fixes/tls-oracle-4ae6ugja/chunks-tls-forced-error.mo:258:3: assert successful?(got) failed
+pass  test "a forced TLS handshake error fails the positive oracle"
+1 passed, 1 failed, 0 skipped
+verified: types
+          proven: not run
+guard_exit=1
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/tls_oracle_probe.py", line 89, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/tls_oracle_probe.py", line 81, in main
+    require_oracle_failure(completed)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/tls_oracle_probe.py", line 57, in require_oracle_failure
+    raise AssertionError((missing, combined))
+AssertionError: (['fail  test "fault-free TLS chunks exchange exact bounded plaintext in both directions"'], 'FAIL  test "fault-free TLS chunks exchange exact bounded plaintext in both directions": toolchain/bench/step44/review-fixes/tls-oracle-4ae6ugja/chunks-tls-forced-error.mo:258:3: assert successful?(got) failed\npass  test "a forced TLS handshake error fails the positive oracle"\n1 passed, 1 failed, 0 skipped\nverified: types\n          proven: not run\n')

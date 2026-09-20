@@ -1,0 +1,31 @@
+{
+  "recorded_at_et": "2026-09-20T06:37:35.846641-04:00",
+  "status": "Granted to step44-fix-sol; no results yet",
+  "prior_result": "step44-focused-validation-result-14.json",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "name": "controls-native-build-05",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --surface bench/step44/review-fixes/control_probe.mo -o step44-review-controls"
+    },
+    {
+      "name": "blocked-writer-run-02",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer"
+    },
+    {
+      "name": "blocked-writer-native-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-review-controls/step44-review-controls --case blocked-writer"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "bounds": "Retain child guard20, 4GB watchdog and all socket/ask/write/process deadlines",
+  "required": "Effective receive buffer in bound; actual Conn.write waiting pre/post exact input; exact control lines; input_exact/answered true; peer unread; child/outer0",
+  "stop": "First unexpected diagnostic/nonzero/timeout/kill/oracle failure; no retries or edits; retain raw outputs and prior failures",
+  "completion": "Scoped owned-process/socket cleanup and report then HOLD",
+  "freeze": "Runtime and probes frozen",
+  "other_worker": "step42 runtime HOLD",
+  "not_authorized": "Previous successful controls reruns, formatter, full suite, benchmark, stress, runtime/fixture/loader edits, step42 integration, Linux/machine work, push or acceptance"
+}

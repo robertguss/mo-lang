@@ -1,0 +1,8 @@
+../examples/step44/chunks.mo:139:7: MO0212 Await has one field, so it is matched by position: write Await(me), not Await(me: me)
+        Await(me: me):
+        ^
+  why: A pattern matches the shape of its subject's type: a one-field variant positionally, a variant with more fields by name, a tuple by position.
+../examples/step44/chunks.mo:289:1: MO0317 expose, intent, struct LineSeen, and 3 more changed since mo test --write recorded the verified: line; run mo test --write on this file, which writes the line again.
+  verified: types, contracts, tests (8), property (0 seeds), sim (not run)
+  ^
+  why: The verified: line belongs to the toolchain (chapter 5): mo test --write computes it, writes it at the bottom of the file, and records it in .mo.ids against the file's declarations. A line with no record, a different line, or declarations changed since was not computed for this code.

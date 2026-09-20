@@ -1,0 +1,935 @@
+{
+  "recorded_at_et": "2026-09-19T23:11:04.141571-04:00",
+  "before": "be64e8a5086f6a47dcb6683d1313579d1e6f35a6",
+  "after": "65b3dd37c4b2acc74bbdc425a723a163b69e50f8",
+  "exit": 0,
+  "scope": "Correction delta against prior UNACCEPTED delivery, not whole-step overhead or acceptance",
+  "samples": [
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 1,
+      "seconds": 0.038338,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 1,
+      "seconds": 0.045263,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 1,
+      "seconds": 0.21417,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 1,
+      "seconds": 0.178135,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 1,
+      "seconds": 0.078099,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 1,
+      "seconds": 0.080539,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 1,
+      "seconds": 0.259991,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 1,
+      "seconds": 0.270716,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 1,
+      "seconds": 0.81309,
+      "load_before": [
+        12.91,
+        8.29,
+        6.12
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 1,
+      "seconds": 0.807825,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 1,
+      "seconds": 0.716998,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 1,
+      "seconds": 0.699623,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 2,
+      "seconds": 0.472445,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 2,
+      "seconds": 0.467038,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 2,
+      "seconds": 0.773532,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 2,
+      "seconds": 0.825628,
+      "load_before": [
+        12.19,
+        8.22,
+        6.11
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 2,
+      "seconds": 0.118599,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 2,
+      "seconds": 0.09523,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 2,
+      "seconds": 0.0766,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 2,
+      "seconds": 0.07755,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 2,
+      "seconds": 0.03782,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 2,
+      "seconds": 0.055634,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 2,
+      "seconds": 0.039957,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 2,
+      "seconds": 0.038647,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 3,
+      "seconds": 0.038348,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 3,
+      "seconds": 0.038602,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 3,
+      "seconds": 0.038057,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 3,
+      "seconds": 0.038419,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 3,
+      "seconds": 0.081796,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 3,
+      "seconds": 0.076357,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 3,
+      "seconds": 0.096135,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 3,
+      "seconds": 0.091465,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 3,
+      "seconds": 0.815415,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 3,
+      "seconds": 0.805828,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 3,
+      "seconds": 0.472012,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 3,
+      "seconds": 0.494259,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 4,
+      "seconds": 0.501473,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 4,
+      "seconds": 0.48246,
+      "load_before": [
+        11.46,
+        8.14,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 4,
+      "seconds": 0.835137,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 4,
+      "seconds": 0.795145,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 4,
+      "seconds": 0.092974,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 4,
+      "seconds": 0.095006,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 4,
+      "seconds": 0.079152,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 4,
+      "seconds": 0.078985,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 4,
+      "seconds": 0.039656,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 4,
+      "seconds": 0.040766,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 4,
+      "seconds": 0.038092,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 4,
+      "seconds": 0.038431,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 5,
+      "seconds": 0.038148,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "run",
+      "sample": 5,
+      "seconds": 0.039616,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 5,
+      "seconds": 0.03908,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "sample": 5,
+      "seconds": 0.050291,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 5,
+      "seconds": 0.080271,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "run",
+      "sample": 5,
+      "seconds": 0.077584,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 5,
+      "seconds": 0.091197,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "spread",
+      "runtime": "binary",
+      "sample": 5,
+      "seconds": 0.115499,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 5,
+      "seconds": 0.77675,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "run",
+      "sample": 5,
+      "seconds": 0.823002,
+      "load_before": [
+        11.1,
+        8.12,
+        6.09
+      ]
+    },
+    {
+      "tree": "after",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 5,
+      "seconds": 0.473895,
+      "load_before": [
+        10.21,
+        7.98,
+        6.06
+      ]
+    },
+    {
+      "tree": "before",
+      "workload": "duplex",
+      "runtime": "binary",
+      "sample": 5,
+      "seconds": 0.487666,
+      "load_before": [
+        10.21,
+        7.98,
+        6.06
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "workload": "deferred-large",
+      "runtime": "run",
+      "best_before": {
+        "tree": "before",
+        "workload": "deferred-large",
+        "runtime": "run",
+        "sample": 4,
+        "seconds": 0.038092,
+        "load_before": [
+          11.1,
+          8.12,
+          6.09
+        ]
+      },
+      "best_after": {
+        "tree": "after",
+        "workload": "deferred-large",
+        "runtime": "run",
+        "sample": 4,
+        "seconds": 0.038431,
+        "load_before": [
+          11.1,
+          8.12,
+          6.09
+        ]
+      },
+      "elapsed_delta_percent": 0.89
+    },
+    {
+      "workload": "deferred-large",
+      "runtime": "binary",
+      "best_before": {
+        "tree": "before",
+        "workload": "deferred-large",
+        "runtime": "binary",
+        "sample": 3,
+        "seconds": 0.038419,
+        "load_before": [
+          11.46,
+          8.14,
+          6.09
+        ]
+      },
+      "best_after": {
+        "tree": "after",
+        "workload": "deferred-large",
+        "runtime": "binary",
+        "sample": 2,
+        "seconds": 0.03782,
+        "load_before": [
+          11.46,
+          8.14,
+          6.09
+        ]
+      },
+      "elapsed_delta_percent": -1.56
+    },
+    {
+      "workload": "spread",
+      "runtime": "run",
+      "best_before": {
+        "tree": "before",
+        "workload": "spread",
+        "runtime": "run",
+        "sample": 3,
+        "seconds": 0.076357,
+        "load_before": [
+          11.46,
+          8.14,
+          6.09
+        ]
+      },
+      "best_after": {
+        "tree": "after",
+        "workload": "spread",
+        "runtime": "run",
+        "sample": 2,
+        "seconds": 0.0766,
+        "load_before": [
+          11.46,
+          8.14,
+          6.09
+        ]
+      },
+      "elapsed_delta_percent": 0.32
+    },
+    {
+      "workload": "spread",
+      "runtime": "binary",
+      "best_before": {
+        "tree": "before",
+        "workload": "spread",
+        "runtime": "binary",
+        "sample": 5,
+        "seconds": 0.091197,
+        "load_before": [
+          11.1,
+          8.12,
+          6.09
+        ]
+      },
+      "best_after": {
+        "tree": "after",
+        "workload": "spread",
+        "runtime": "binary",
+        "sample": 3,
+        "seconds": 0.091465,
+        "load_before": [
+          11.46,
+          8.14,
+          6.09
+        ]
+      },
+      "elapsed_delta_percent": 0.29
+    },
+    {
+      "workload": "duplex",
+      "runtime": "run",
+      "best_before": {
+        "tree": "before",
+        "workload": "duplex",
+        "runtime": "run",
+        "sample": 2,
+        "seconds": 0.773532,
+        "load_before": [
+          12.19,
+          8.22,
+          6.11
+        ]
+      },
+      "best_after": {
+        "tree": "after",
+        "workload": "duplex",
+        "runtime": "run",
+        "sample": 4,
+        "seconds": 0.795145,
+        "load_before": [
+          11.1,
+          8.12,
+          6.09
+        ]
+      },
+      "elapsed_delta_percent": 2.79
+    },
+    {
+      "workload": "duplex",
+      "runtime": "binary",
+      "best_before": {
+        "tree": "before",
+        "workload": "duplex",
+        "runtime": "binary",
+        "sample": 2,
+        "seconds": 0.467038,
+        "load_before": [
+          12.19,
+          8.22,
+          6.11
+        ]
+      },
+      "best_after": {
+        "tree": "after",
+        "workload": "duplex",
+        "runtime": "binary",
+        "sample": 3,
+        "seconds": 0.472012,
+        "load_before": [
+          11.46,
+          8.14,
+          6.09
+        ]
+      },
+      "elapsed_delta_percent": 1.07
+    }
+  ],
+  "raw_source_prefix": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-42-review-fixes/toolchain/bench/step42/review-fixes/corpus-measure-rerun-01",
+  "raw_preserved_prefix": "audit/evidence/2026-09-19/omp-resumption/step42-corpus-rerun-01",
+  "loads": {
+    "run_initial_uptime": [
+      15.06,
+      8.45,
+      6.13
+    ],
+    "first_sample": [
+      12.91,
+      8.29,
+      6.12
+    ],
+    "last_sample": [
+      10.21,
+      7.98,
+      6.06
+    ],
+    "note": "Table headings label final/report-time load as at the start; rely on row loads and initial uptime, preserve raw outputs unchanged."
+  },
+  "user_reported_provenance_and_cleanup": {
+    "baseline_absent_before_run": true,
+    "fresh_baseline_HEAD": "be64e8a5086f6a47dcb6683d1313579d1e6f35a6",
+    "only_fresh_owned_baseline_removed_after_evidence": true,
+    "historical_trees_untouched": true,
+    "filtered_cleanup_exit": 0,
+    "owned_runtime_test_debugserver_matches": false
+  },
+  "acceptance": "Not accepted; remaining source/evidence review, exhaustive checks, isolated integration and independent full-suite verification remain owed",
+  "slot": "Clear; step42 runtime HOLD; step44 command review pending"
+}

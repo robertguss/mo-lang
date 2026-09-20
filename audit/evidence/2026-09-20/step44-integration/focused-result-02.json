@@ -1,0 +1,13 @@
+{
+  "recorded_at_et": "2026-09-20T06:59:02.226660-04:00",
+  "revision": "6aa6ca842b1711db6a87f3327660eb2515babeee",
+  "name": "focused-zig-02",
+  "exit": 0,
+  "passed": 4,
+  "total": 4,
+  "real_seconds": 30.67,
+  "user_seconds": 34.33,
+  "sys_seconds": 1.11,
+  "full_suite": "Started after focused0; no result yet",
+  "runtime_ownership": "Lead pane w4:p3B only; worker HOLD"
+}

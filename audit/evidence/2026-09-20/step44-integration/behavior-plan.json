@@ -1,0 +1,161 @@
+{
+  "recorded_at_et": "2026-09-20T06:57:48.039573-04:00",
+  "status": "PLANNED, not started; gated on independent focused and full suite success",
+  "revision": "6aa6ca842b1711db6a87f3327660eb2515babeee",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain",
+  "commands": [
+    {
+      "name": "chunks-tests-run-01",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo test ../examples/step44/chunks.mo"
+    },
+    {
+      "name": "tls-tests-run-01",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo test ../examples/step44/chunks-tls.mo"
+    },
+    {
+      "name": "chunks-sim-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo test --sim 40 --seed 41 ../examples/step44/chunks.mo"
+    },
+    {
+      "name": "tls-faults-sim-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo test --sim 40 --seed 41 --faults 20 ../examples/step44/chunks-tls-faults.mo"
+    },
+    {
+      "name": "chunks-tests-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --tests ../examples/step44/chunks.mo -o step44-lead-chunks-tests"
+    },
+    {
+      "name": "chunks-tests-native-01",
+      "guard_seconds": 120,
+      "command": "zig-out/mo-build/step44-lead-chunks-tests/step44-lead-chunks-tests"
+    },
+    {
+      "name": "tls-tests-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --tests ../examples/step44/chunks-tls.mo -o step44-lead-tls-tests"
+    },
+    {
+      "name": "tls-tests-native-01",
+      "guard_seconds": 120,
+      "command": "zig-out/mo-build/step44-lead-tls-tests/step44-lead-tls-tests"
+    },
+    {
+      "name": "controls-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build --surface bench/step44/review-fixes/control_probe.mo -o step44-lead-controls"
+    },
+    {
+      "name": "http-build-01",
+      "guard_seconds": 180,
+      "command": "zig-out/bin/mo build bench/step44/http_chunks_probe.mo -o step44-lead-http"
+    },
+    {
+      "name": "bounds-run-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case bounds"
+    },
+    {
+      "name": "bounds-binary-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls --case bounds"
+    },
+    {
+      "name": "pending-pull-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case pending-pull"
+    },
+    {
+      "name": "pending-pull-binary-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls --case pending-pull"
+    },
+    {
+      "name": "late-tls-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case late-tls"
+    },
+    {
+      "name": "late-tls-binary-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls --case late-tls"
+    },
+    {
+      "name": "blocked-writer-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime run --case blocked-writer"
+    },
+    {
+      "name": "blocked-writer-binary-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/review-fixes/behavior_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls --case blocked-writer"
+    },
+    {
+      "name": "socket-exact-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/socket_probe.py --runtime run --case exact"
+    },
+    {
+      "name": "socket-exact-binary-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/socket_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-http/step44-lead-http --case exact"
+    },
+    {
+      "name": "socket-oversize-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/socket_probe.py --runtime run --case oversize"
+    },
+    {
+      "name": "socket-oversize-binary-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/socket_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-http/step44-lead-http --case oversize"
+    },
+    {
+      "name": "socket-half-close-run-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/socket_probe.py --runtime run --case half-close"
+    },
+    {
+      "name": "socket-half-close-binary-01",
+      "guard_seconds": 90,
+      "command": "python3 bench/step44/socket_probe.py --runtime binary --binary toolchain/zig-out/mo-build/step44-lead-http/step44-lead-http --case half-close"
+    },
+    {
+      "name": "novel-bound-2-run-01",
+      "guard_seconds": 30,
+      "command": "zig-out/bin/mo run bench/step44/review-fixes/control_probe.mo -- bounds 2"
+    },
+    {
+      "name": "novel-bound-2-native-01",
+      "guard_seconds": 30,
+      "command": "zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 2"
+    },
+    {
+      "name": "novel-bound-65535-run-01",
+      "guard_seconds": 30,
+      "command": "zig-out/bin/mo run bench/step44/review-fixes/control_probe.mo -- bounds 65535"
+    },
+    {
+      "name": "novel-bound-65535-native-01",
+      "guard_seconds": 30,
+      "command": "zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 65535"
+    },
+    {
+      "name": "tls-oracle-run-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime run"
+    },
+    {
+      "name": "tls-oracle-binary-01",
+      "guard_seconds": 150,
+      "command": "python3 bench/step44/review-fixes/tls_oracle_probe.py --runtime binary"
+    }
+  ],
+  "order": "Serial; stop first unexpected result, read actual logs/counts; no simultaneous worker runtime",
+  "novel_inputs": "Valid bounds2 and65535, seeded simulations starting41",
+  "acceptance": "Require explicit9/9 chunks and2/2 strict TLS per runtime, seeded outcomes, exact byte/refusal/wait/ack oracles; no empty zero-match green"
+}

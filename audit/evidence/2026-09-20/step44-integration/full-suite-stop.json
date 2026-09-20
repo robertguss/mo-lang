@@ -1,0 +1,55 @@
+{
+  "observed_at": "2026-09-20T07:24:07.459162-04:00",
+  "revision": "6aa6ca842b1711db6a87f3327660eb2515babeee",
+  "worktree": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44",
+  "command": "python3 bench/step36/guard.py 2400 -- zig build test --summary all",
+  "result": {
+    "exit": 1,
+    "passed": 270,
+    "total": 271,
+    "real_seconds": 1142.19,
+    "user_seconds": 1112.87,
+    "sys_seconds": 88.55
+  },
+  "raw": [
+    "full-suite-01.log",
+    "full-suite-01.exit"
+  ],
+  "failed_test": "corpus.test.corpus: every example passes every implemented stage; rejects/ is rejected",
+  "assertion": "toolchain/src/corpus.zig:714: tally.simulated == tally.held_under_faults",
+  "observed": {
+    "simulated": 121,
+    "held_under_faults": 110,
+    "strict_chunks_fault_free_only": 9,
+    "strict_tls_fault_free_only": 2,
+    "distinct_tls_fault_control_held": true
+  },
+  "decision": "Preserve all 12 fixtures and all assertions; classify as toolchain contract testdata with permanent automatic strict, separate fault, successful native parity and formatting gates. Keep ordinary examples corpus invariants unchanged. Static-only correction authorized before a reviewed runtime grant.",
+  "not_run": [
+    "independent behavior plan",
+    "larger interleaved line measurements"
+  ],
+  "last_accepted_suite": "268/268",
+  "cleanup": {
+    "lsof_command": "lsof -nP -d cwd -Fpn (filter returned records to owned verification worktree only)",
+    "lsof_exit": 0,
+    "owned_cwds": [
+      {
+        "pid": "48917",
+        "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain"
+      }
+    ],
+    "tracked_completed_pids": [
+      61546,
+      61695,
+      90567
+    ],
+    "ps_output": "48917  7491 Ss+  34:31 -zsh\n",
+    "interpretation": "Only owned idle shell remains; tracked suite, test and awake processes absent."
+  },
+  "limits": [
+    "No Step44 code accepted or merged to main",
+    "No runtime regression conclusion from classification failure",
+    "Linux deferred"
+  ]
+}

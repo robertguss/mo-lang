@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-19
+updated: 2026-09-20
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -24,7 +24,60 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence
 here, and the [[roadmap]] table is the authority on order.
 
-**Last updated:** 19 Sep 2026, 1:13 PM ET: a pause for a fresh lead session.
+**Current, 20 Sep 2026, 8:30 AM ET:** Astra leads this OMP session; every
+code assignment starts a fresh Sol/high worker in a separate worktree.
+[[interpreter-step-44]] is accepted on Darwin, merged locally at **db515f9b**
+after independent verification of cdf1e966: build, focused5/5, **272/272**
+full-suite tests (exit0,629.86s), and30 additional CLI/socket commands.
+
+`Conn.chunks` delivers bounded owned binary messages through existing runtime
+sources. Both runtimes preserve exact bytes and half-close replies, refuse
+conflicting readers/late TLS, and make input progress while a write remains
+blocked. The unchanged HTTP client receives200 before newline/shutdown; an
+unfinished oversized header receives431. Strict TLS success and its negative
+control stay separate from the seeded-fault oracle. All12 fixture controls
+remain automatic in toolchain testdata; ordinary corpus fault gates are intact.
+Earlier full-suite failures270/271 (classification) and271/272 (generated
+catalog) remain filed, not hidden.
+
+Twenty larger interleaved line measurements show interpreter elapsed
+best/median **+3.36%/+4.83%**, native **+10.25%/-4.41%**. The interpreter is
+slower in this run; native best and median disagree. All samples/load averages
+and original16MiB measurements are retained. No zero-overhead or causal claim.
+The existing --surface diagnostic line offset remains unfixed.
+
+Step42 remains unaccepted. Frozen65b3dd37 is input to a provisional
+accepted-main4e0bfc0e composition; source conflicts are resolved, not verified.
+Revised lifetime controls expose paired counts and complete payloads. A known
+enqueue error-ownership hole blocks AFTER freeze. Private patch context is
+rebased; bounded ownership and native/test quality corrections are source-only.
+All seven obligations remain: current normal/raw-ASan exhaustive sweeps,
+small ASan and ordinary stale-answer mutants, packed lifecycle/reclamation proof,
+hot-path analysis, and lead-owned best-of-five suite timings. Its60 corrected
+runtime samples compare two unaccepted checkpoints, not the whole step's cost.
+Independent integration and the required stress timings are still owed.
+
+The source capability unblocks a fresh server-adoption assignment, not acceptance
+of the six-tool server. Its original F1 timeout remains historical evidence;
+full-wire and operator-cleanup predicates are not weakened. Linux remains
+deferred. Step39, Program7, full-sync durability and catch claims are unchanged.
+No live-provider/model-driven task/Pi-comparison acceptance. Nothing pushed or
+published to the auditor by this acceptance.
+
+The fresh server consumer in `harness/workspace-server-chunks` at65f2eca0
+combines accepted main with saved serverd689b441. Its shared formatter repair
+passed a fresh build, focused2/2, original strict smoke and full15/15 matrix.
+Dependency-ordered generation now proves **42/42** tests:35 production and7
+strict; production's three simulated controls held at5% faults, strict's seven
+ran without faults. All15 sidecar records exist, unstaged. Connection nesting
+and arity repairs passed; protected F1 bytes stayed unchanged. Earlier REDs,
+including the lead's invalid fmt flag, remain. Grant09 gives the server sole
+runtime ownership for the remaining20 correctness commands—not benchmarks,
+an unfiltered suite or acceptance. Step42 remains source-only; composed
+normal/ASan/mutant/reclamation and timing proof is still owed.
+The completed Step44 pane is retired; evidence and worktrees are preserved.
+
+The account below preserves the earlier checkpoints.
 
 **19 Sep, the day so far.** Robert made Fable (Claude Code) the lead at 7:18 AM
 ET, with Claude Opus workers, and asked for three things: review what Astra
@@ -119,7 +172,7 @@ The final review labelled DeepSeek was byte-identical to the supplied Kimi body,
 verified by comparison and SHA-256. Four distinct review bodies, not five; the
 reason for duplicate attribution is unknown.
 
-## Paused, 19 Sep 2026, 3:41 PM ET: read this first
+## Historical pause, 19 Sep 2026, afternoon (resumption authorized above)
 
 Robert paused the project until his usage limits return. Everything accepted is
 on `main`; two workers were stopped at a checkpoint with their work committed as

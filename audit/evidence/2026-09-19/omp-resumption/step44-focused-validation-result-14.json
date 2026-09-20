@@ -1,0 +1,28 @@
+{
+  "recorded_at_et": "2026-09-20T06:37:35.840564-04:00",
+  "grant": "step44-focused-validation-grant-14.json",
+  "preflights": [
+    {
+      "name": "controls-check-05",
+      "exit": 0,
+      "output": "empty"
+    },
+    {
+      "name": "blocked-driver-pycompile-01",
+      "exit": 0,
+      "output": "empty"
+    }
+  ],
+  "lead_source_review": [
+    "control_probe.mo:83-105,268-303",
+    "behavior_probe.py:122-140,170-231; constants and dispatch"
+  ],
+  "design": [
+    "Precompute16MiB payload before chunks source and observer",
+    "Writer logs exact Ok byte count or Error reason on return; return is never success",
+    "Set SO_RCVBUF4096 before data connect, log/enforce 0<effective<=16384, no data recv through proof",
+    "Exact Conn.write waiting observed before external input signal and after exact input completion, before success acknowledgement"
+  ],
+  "worker_clearance": "Scoped pgrep exit1; sole generated Python bytecode cache removed; all prior evidence retained",
+  "acceptance": "Preflight/source gate only; no build/runtime behavior from grant14"
+}

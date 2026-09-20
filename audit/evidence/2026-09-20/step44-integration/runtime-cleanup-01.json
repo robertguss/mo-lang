@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-09-20T08:27:08.635524-04:00",
+  "owned_cwd_records": [
+    {
+      "pid": 48917,
+      "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain"
+    }
+  ],
+  "owned_process_status": "48917  7491 Ss+  01:38:51 -zsh\n",
+  "scope": "Only processes with cwd under the two lead verification/measurement worktrees and prior owned caffeinate97514. No unrelated processes stopped. All finite captures have completed."
+}

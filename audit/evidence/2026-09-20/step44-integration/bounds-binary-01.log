@@ -1,0 +1,25 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 1
+bound-request=1 parsed=1
+bound=1 wrote=true exact_bounded=true
+guard_exit=0
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 65536
+bound-request=65536 parsed=65536
+bound=65536 wrote=true exact_bounded=true
+guard_exit=0
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 0
+bound-request=0 parsed=0
+main crashed: Conn.chunks max_bytes must be from 1 through 65,536, not 0
+guard_exit=70
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 65537
+bound-request=65537 parsed=65537
+main crashed: Conn.chunks max_bytes must be from 1 through 65,536, not 65537
+guard_exit=70
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/mo-build/step44-lead-controls/step44-lead-controls bounds 18446744073709551615
+bound-request=18446744073709551615 parsed=18446744073709551615
+main crashed: Conn.chunks max_bytes must be from 1 through 65,536, not 18446744073709551615
+guard_exit=70
+bounds valid=1,65536 invalid=0,65537,18446744073709551615 full_width=true
+runtime=binary case=bounds result=pass
+real 0.42
+user 0.16
+sys 0.09

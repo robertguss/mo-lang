@@ -1,0 +1,43 @@
+{
+  "observed_at": "2026-09-20T08:07:31.850820-04:00",
+  "revision": "3bc0b508ac05b4ec46e7f509f0cc3ceaae350a40",
+  "result": {
+    "exit": 1,
+    "passed": 271,
+    "total": 272,
+    "real_seconds": 622.91,
+    "user_seconds": 519.99,
+    "sys_seconds": 74.15
+  },
+  "raw": [
+    "full-suite-02.log",
+    "full-suite-02.exit"
+  ],
+  "failure": "corpus.zig777 catalogCurrent: mo-wiki/spec/errors.md differs from diagnostic tables",
+  "scope": "Permanent fixture gate passed. Earlier corpus fault/format assertions passed before catalog assertion. Later statements in that failing corpus test did not run. No runtime regression conclusion.",
+  "repair": {
+    "command": "python3 bench/step36/guard.py 600 -- zig build errors",
+    "exit": 0,
+    "real_seconds": 1.55,
+    "delta": "Generated MO0209 named-label explanation and MO0223 Conn.chunks protocol row; two rows only",
+    "commit": "cdf1e9660f51623d71cfb7fffd6ceef8d8a99078",
+    "runtime_and_test_sources_unchanged": true
+  },
+  "cleanup": {
+    "lsof_exit": 0,
+    "owned_cwds": [
+      {
+        "pid": "48917",
+        "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/lead-verify-step44/toolchain"
+      }
+    ],
+    "ps": "48917  7491 Ss+  01:19:14 -zsh\n",
+    "tracked_caffeinate_pid": 67491
+  },
+  "next": "Independent full-suite03 on corrected documentation tree; no redundant focused rerun because only generated documentation changed",
+  "not_run": [
+    "behavior-plan-02",
+    "interleaved line measurements"
+  ],
+  "last_accepted_suite": "268/268"
+}

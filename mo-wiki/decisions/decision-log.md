@@ -1,7 +1,7 @@
 ---
 title: "Decision log"
 created: 2026-09-12
-updated: 2026-09-19
+updated: 2026-09-20
 type: decision
 tags: [meta, laws]
 sources: [spec/grammar.md, plans/model-bakeoff.md]
@@ -939,6 +939,121 @@ direction separately from the lead's conservative execution interpretation.
 | The design said `Command.in`; the row is `in_folder`, because `in` is a keyword and taking it after a `.` would be new syntax. **For Robert**: if you want `cmd.in(fs)`, it is one arm in the parser plus the formatter, and a rename in seven places; the lead's default is to keep zero new syntax. The design page is corrected, with `Fixed(text: "rm")`. | Fable lead | decided | the server's part B, its first real user |
 | Ratified defaults of the worker (Claude Opus 5): a module's own variant or message hides a stdlib struct of the same name in that module (so the new `Done` did not break the agent); `flows` follows a list literal at the call; a message line's field may not be a `Platform`, `Exec` or `Program`; when the leader exits the rest of its group is killed before it is reaped; the child gets its own session, not only its own group; the fixture's function receives the program's path first; each run has its own thread with no cap on concurrent runs; Darwin uses one `posix_spawn` (`CLOEXEC_DEFAULT`) after the fork version cost 94 ms a run closing a million descriptors. `semantic` | Fable lead | decided | step 41's controls |
 | Recorded for later toolchain work, from the worker's report: no cap on concurrent runs; exit detection naps instead of `EVFILT_PROC` or a pidfd; output as `List(UInt8)` makes 1 MiB cost 2.3 to 3.9 times C (a `Bytes` type would fix it); `blocking.run` still returns if `block` errors while its job is on the pool (step 42's audit takes this one). | Fable lead | recorded | step 42 |
+
+## 19 Sep 2026 — OMP lead and fresh Sol workers; both WIP units resume
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Astra leads in OMP in this existing pane while Claude Code is unavailable. Workers use OMP with GPT Sol at high reasoning. Every assignment, including saved-WIP continuation and review, gets a fresh clean session; no resumed, forked or imported conversation. Maximum three workers, each in its own tab and implementation worktree. | Robert | decided | the server part A and step 42 launches |
+| Workers write all implementation and code, including test/probe scripts. Astra owns plans, briefs, review, documentation, coordination and acceptance, and Robert explicitly permits the lead to run independent acceptance builds/tests. Existing audit safeguards, Linux deferral and push ownership remain. `semantic` | Robert; recorded by Astra (GPT-6) | decided | independent acceptance of the two resumed units |
+| Resume [[mo-workspace-server-4a]] at `d679f568` and [[interpreter-step-42]] at `0a4dffcd` after recording the workflow. Their original worktrees are clean at these commits. Server WIP's 7/13 is an unfiled half-close run, not unchanged-wire evidence; F1 needs a filed reproduction or a solution without changing clients. No acceptance claimed. | Robert (resume); Astra (evidence qualification) | decided | fresh workers' filed results and lead checks |
+
+## 19 Sep 2026 — Server F1 requires bounded byte input
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| F1 is a capability gap, not a client defect: Sol's filed `8b0ff352` run uses the unchanged workspace client, whose 155-byte body arrives at `Conn.lines` only after the timed-out client closes. The lead read the reproducer and raw output without rerunning the known failure. Its exit 0 means reproduction succeeded, not protocol acceptance. | Astra (GPT-6), reading GPT-5.6-Sol evidence | recorded | step 44's separate positive control |
+| Add `Conn.chunks(into:, max_bytes:, idle:)`, delivering bounded `Chunk(bytes: List(UInt8))` messages through the existing source mechanism, in [[interpreter-step-44]]. This supports the unchanged body and early rejection of oversized unfinished headers without a pull-read loop or mode switch. No new syntax, byte type, HTTP stack or client workaround. One reader, binary preservation, peer-half-close replies, TLS plaintext, backpressure and owned payloads are required. `semantic` | Astra (GPT-6) | decided | fresh Sol contract review, focused regressions, both-runtime unchanged-client control and independent lead acceptance |
+| Use the third worker slot with a fresh Sol/high session and separate worktree. The server worker continues only independent part A; step 42 retains its memory-safety scope. Runtime changes remain isolated, with lead-serialized integration and full-suite runs; no copying unaccepted binaries or merging sibling branches. Neither server acceptance nor TLS/Program 7 acceptance is implied. | Astra (GPT-6) | decided | step 44 launch and integration |
+
+## 19 Sep 2026 — Input EOF is not proof of lost response
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Keep step 44 unchanged. Its `Closed` cannot distinguish write-half-close from a peer that will never receive; neither the existing Net/source implementation nor a successful socket write proves receipt. In the server, input EOF after a complete request does not cancel an admitted operation or close admission. Keep read-end, execution, reply production, write outcome and unknown client receipt distinct. Write failure/timeout and existing response deadlines remain terminal for admission, not for the independent operator. `semantic` | Astra (GPT-6), following server Sol's consumer review | decided | separate half-close, graceful full-close, failed-write and operator-path controls |
+| Preserve Python's original `disconnect`/`lost-response` tests unchanged; their required owner exit conflicts with D2. Add explicit Mo H2/H6/D2 lifecycle controls while preserving exactly-once execution, retained outcomes, unknown receipt and explicit-close cleanup evidence. Report the incompatible predicates rather than claiming 13 unchanged groups passed. No claim of detecting remote receipt without protocol acknowledgment; no new ACK or runtime terminal distinction. `semantic` | Astra (GPT-6) | decided | server part A acceptance, then machine cleanup in part B |
+| Step 44's adversarial review found fixtures represent only full close today, so public fixtures cannot initiate a half-close control. Authorize an internal directional EOF model and runtime-level tests through the real source/dispatch; preserve public `Conn.close` and add no half-close API. Real sockets prove public half-close in both runtimes. Report these evidence boundaries separately; do not claim the public fixture can initiate half-close. `semantic` | Astra (GPT-6), following step44 Sol's blocker | decided | step 44 internal fixture and public socket controls |
+
+## 19 Sep 2026 — Step 42 worker completion is not acceptance
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Request changes at `be64e8a5`. Source review shows `blocking.worker` and `aloneMain` publish `done` before their last job/fd access, while callers may unwind after observing it. Finish the completion handoff and prove it through real paths, not only the wait helper. Complete Part D for all audited retaining holders; pending answers alone do not satisfy the brief. | Astra (GPT-6) | corrective worker required | deterministic ownership/error-path regressions and compile-failing holder mutants |
+| Do not accept ASan warning filtering as sanitizer integration. Native custom fibers omit LLVM's required switch notifications; add that integration and remove `e537abfe`'s stderr suppression. Restore opt-in sanitizer runs and preserve both ordinary and ASan mutant proof. Do not discard interpreter server events merely to avoid retaining them: preserve the existing effect safely. | Astra (GPT-6) | corrective worker required | unsuppressed expected-crash corpus, ASan mutant, safe event retention |
+| Keep the noisy +12.90%/+8.60% echo results; they prove neither a zero-cost switch nor a reliable regression size. Require controlled runtime measurements on three workloads in both runtimes; build timing is not a third runtime workload. Explicitly extend corrective scope to the existing `bench/step38/measure.py` for measurement evidence, without treating its earlier out-of-scope edit as authorized retroactively. | Astra (GPT-6) | decided | serialized measurements after corrective code stabilizes |
+
+## 19 Sep 2026 — Step 44 needs correction before integration
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Request changes at `9ad0162a`: the fixture line-idle branch lost its terminal return and reaches `unreachable`; preserve existing `Conn.lines` semantics. The TLS positive test accepts ordinary errors, and binary length/sum is not exact ordered-byte evidence. Complete the bounded controls named in [[interpreter-step-44]] rather than accepting the report's broader claims. No dynamic reproduction or new acceptance claimed. | Astra (GPT-6), source review at 9:43 PM ET | fresh corrective worker required | actual line-idle RED/GREEN; strict TLS success/negative control; exact-byte, ownership and blocked-writer probes |
+| Preserve original samples (-8.69% interpreter/-0.97% native lines throughput) and the original delivery. Integrate only after corrections and independent guarded verification, including longer/interleaved lines measurements. No zero-overhead or causal regression conclusion from the short sequential samples. Step42-fix retains focused validation; the new step44 worker starts static-only. | Astra (GPT-6) | decided | explicit validation slot, isolated integrated checks and measurements |
+
+## 20 Sep 2026 — Preserve strict contracts without weakening fault-tolerant corpus gates
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Independent Step44 full suite270/271 at6aa6ca84 fails the corpus invariant:11 strict chunks/TLS tests need fault-free setup; held-under-faults110 of121. Preserve all12 fixture tests, including the separate TLS fault target, in toolchain/testdata with permanent automated strict, seeded-fault, successful interpreter/native and formatting checks. Keep the ordinary example corpus's all-held/zero-fault-free-only gates and every positive oracle unchanged. This changes test classification, not language/runtime semantics or any stopping rule. | Astra (GPT-6) | static diff reviewed; bounded focused slot granted; no code acceptance | focused chunks-filtered fixture gate, then independent unfiltered suite and remaining behavior/performance checks |
+
+## 20 Sep 2026 — Make memory reclamation evidence observable
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Require real delayed commit and waiter consumption, plus payload survival and observable Parcel reclamation; empty containers/pointer copies alone cannot prove a missing free is caught. Approve only an unapplied private test-only Zig/C allocation/destruction observer proposal, thread-safe/case-isolated and absent from normal execution; no public Mo hook or runtime grant. Reject silent missing-fixture and successful-run stderr suppression in the n10 draft. | Astra (GPT-6), static source review | static revision authorized; source frozen65b3dd37; no acceptance | source review, then explicit guarded green/mutant/restoration controls after Step44 releases runtime |
+
+## 20 Sep 2026 — Step44 accepted on Darwin, with measured limits
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept bounded Conn.chunks from fresh OMP/GPT-5.6-Sol workers after independent candidatecdf1e966 build, focused5/5, full272/272 and30 CLI/socket checks. Preserve strict positive oracles, separate fault classification, single-reader ownership and input-EOF/write-half separation. Main merged atdb515f9b; server adoption is separate, Linux owed, no audit/stopping-rule change. | Astra (GPT-6), 8:30 AM ET | accepted on Darwin; semantic; for Robert | full-suite-03 and behavior-result-01 raw logs under audit/evidence/2026-09-20/step44-integration |
+| Retain all20 larger interleaved line samples and original16MiB results. Interpreter best/median elapsed +3.36%/+4.83%; native +10.25%/-4.41%. Accept with these disclosed observations: no numerical performance floor was specified; neither zero overhead nor a stable causal regression is proved. Step42 still owes its own isolated before/after suite/stress measurements and all other gates. | Astra (GPT-6) | decided; for Robert | line-measurement-result-01.json, all raw samples, load averages and unchanged worker driver |
+
+## 20 Sep 2026 — Fresh server adoption, explicit admission precedence
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Combine accepted Step44 with saved server deliveryd689b441 only in a fresh Sol/high worker tree. Start static-only chunks framing/coverage preparation; no runtime, source-harness change, machine or server acceptance. Preserve F1 RED and the two incompatible Python owner-exit predicates. Require complete real-server coverage and strict/fault-tolerant corpus classification before grants. | Astra (GPT-6) | authorized bounded continuation | reviewed static diff/manifest, then explicitly scheduled unchanged-client and H2/H6/D2 controls |
+| Ratify Mo refusal precedence: busy, duplicate/conflicting ID, terminal/short-lease admission,16-call limit, then journal capacity for otherwise admissible requests. CONTRACT.md lists codes/limits but no simultaneous priority; retain the existing Mo order and require overlapping-condition outcome tests. Never write an intent for an already-refused call or claim blanket H7 equivalence. | Astra (GPT-6) | decided; semantic; for Robert | actual admission outcomes with overlapping limits, without effects or counter changes |
+
+## 20 Sep 2026 — Narrow server fixture scope; withhold execution
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Authorize one strict process fixture and the corpus gate, not a separate faults fixture. Keep three fault-tolerant controls in ordinary coverage; move seven strict controls without duplicating production modules or widening APIs for tests. Any exact-path simulation exception requires mandatory positive counts, seeded zero-fault execution, native parity and formatting; ordinary and Step44 gates stay intact. | Astra (GPT-6), static review | static scope granted; runtime withheld | revised diff/manifest, then a separately granted correctness batch |
+| Bind the trusted operator's base64 source mapping with the existing sorted-key compact-JSON digest convention. Require an independent actual-journal vector and key-order invariance, not config/journal echo; do not label insertion-ordered encoding a canonical reference hash. Preserve hostile-tree readiness and the tool fence. | Astra (GPT-6) | decided; semantic; for Robert | actual-server GREEN and hostile controls after correction |
+| Withhold correctness execution until the fixture split, fresh guarded compiler-build prerequisite, exact counts/fault settings and stronger binding assertions are reviewed. Benchmarks remain separate; retain the16-call cap and disclose batched1000-call timing, with exact result oracles. | Astra (GPT-6) | no runtime owner or acceptance | server-chunks-static-review-01.json; static whitespace check0 only |
+
+## 20 Sep 2026 — Grant serialized server correctness, not measurement
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept the revised one-fixture routing for execution: strict7 retains fixed-order generic coverage and mandatory100-seed zero-fault/native-success gates; production35 includes three ordinary fault-tolerant controls. Grant exactly24 guarded commands to server-chunks-sol, sequential, first-surprise stop. Correct only command12's shell quoting with its uniquely matching native-corpus filter. | Astra (GPT-6), review02 | exclusive runtime grant; no acceptance | server-chunks-correctness-grant-01.json; actual summaries, not printed expectations |
+| Permit check-generated worker-local parent .mo.ids only as unstaged evidence; lead retains integrated regeneration/staging. Keep F1/evidence/report unchanged and stop on unexpected generator changes. Benchmarks, full suite, Step42 execution, machine/Linux and commits remain separately withheld. | Astra (GPT-6) | bounded execution exception | raw per-attempt records and scoped cleanup after the batch |
+
+## 20 Sep 2026 — Repair imported-effect formatter classification at source
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| After formatter03 passes all15 and fmt-check rejects strict.mo's imported-handle loop, repair the shared formatter analysis rather than rewriting the admission test. The documented rule already treats handle calls as effects; isolated-file type checking loses that information. Authorize static program/pipeline/main/corpus changes and existing FORMAT documentation, preserving requested-file scope, correct diagnostic coordinates, best-effort checking and both formatter callers. | Astra (GPT-6), source review | static repair only; runtime released; no acceptance | focused imported-effect/pure-call/location regressions, then rebuilt-compiler correctness resumption under a separate grant |
+
+## 20 Sep 2026 — Preserve formatter scope; compose memory with accepted chunks
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Preserve requested-file loop checking when dependency loading stops: use the existing standalone Program rather than skipping analysis or reporting dependency loops. Require canonical fixture endings and interrupted-import regressions. Grant only fresh compiler, focused regression, strict smoke and full15-module fmt-check through the existing4GiB guard; original server commands4–24 remain withheld. | Astra (GPT-6), formatter review02 | bounded exclusive verification; no acceptance | server-chunks-formatter-grant-01.json and actual retained outputs |
+| Revised Step42 lifetime oracles are ready for static composition, not evidence acceptance. Anchor BEFORE at accepted-main4e0bfc0e and merge frozen65b3dd37 only in a separate verification tree. Assign source conflict resolution and new Step44 retaining-caller migration to the same worker; do not freeze AFTER or grant runtime/timings until reviewed. | Astra (GPT-6), memory review04 | static composition authorized | resolved-source/caller review, then separately guarded composed-source proof |
+
+## 20 Sep 2026 — Generate real provenance; keep failed transfers single-owned
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| After formatter verification passes, promote the existing dependency-ordered --write generator ahead of tests because the fresh sidecar has no server records. No hand-edited/deleted verification lines. Keep generated provenance unstaged; seven modules proved27 tests before connection's nesting diagnostics. Authorize only a connection-local, behavior-preserving nesting refactor; do not rerun unchanged completed modules. | Astra (GPT-6) | partial proof; static repair; runtime released | correctness-result04/05 and nesting-review01 |
+| Use exact strict summary fields:7 tests and7 simulated at faults0, held_under_faults0 and fault_free_only0. Earlier “7 held” wording described success informally, not the held-under-faults counter; the existing corpus gate is authoritative and unchanged. | Astra (GPT-6), source correction | clarified; no strict run claimed | corpus checkContractFixture and later real strict summary |
+| Do not freeze composed Step42 with the known enqueue ownership hole. Require success-only ownership transfer with failure-atomic publication and audit caller cleanup, including partially transferred batches. A source-send errdefer alone can double-free after enqueue's post-insertion failure. Permit only a static repair proposal and private context-only test-patch rebase first. | Astra (GPT-6), composition review05 | static-only; no acceptance | bounded source/caller review and allocation-failure controls under a later grant |
+
+## 20 Sep 2026 — Bound ownership implementation and correct the formatter grant
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Authorize the reviewed four-file Step42 ownership repair as source only. Retain markRunnable's API; pre-reserve mailbox/trace, call its fallible resize/publish under the runtime lock, then commit infallibly. Prefer prefix cursors to sentinel stores, cover all already-owned commit buffers on failure, and include the explicitly reviewed answer/log seams. No native change, production audit instrumentation or AFTER freeze. | Astra (GPT-6), composition review06 | implementation authorized, runtime withheld | source/caller review and three permanent plus private allocation-failure controls |
+| Own grant06's invalid mo fmt --write invocation as a lead command error, not a compiler failure. Preserve exit2 and untouched seven-record/27-test subtotal. Grant07 uses the existing default fmt invocation followed by only the remaining eight generators; no first-seven repeat or broader runtime grant. | Astra (GPT-6) | corrected bounded grant; no new pass claimed | correctness-result06 and grant07 |
+
+## 20 Sep 2026 — Advance complete provenance; keep normal builds free of audit-only storage
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Accept grant08's42/42 generator results as the provenance prerequisite only:15 unstaged records and protected F1 unchanged. Resume the twenty remaining correctness commands under sole server runtime ownership; no generation repeat, benchmark, full-suite or server acceptance implied. | Astra (GPT-6), raw result08 review | remaining correctness authorized | grant09 exact commands and actual gate results |
+| Compile ASan-only fiber context fields and initialization out of normal native builds; remove the field-assignment-only stress budget test rather than preserving low-value implementation assertions. Keep actual stress/mutant obligations and the blocking lifetime behavior control. These are two bounded additions to the static memory repair, not a native ownership redesign. | Astra (GPT-6), independent source review07 | source correction authorized; unexecuted | normal/ASan build and existing real stress/mutant proof under later grants |
 
 ## Related
 

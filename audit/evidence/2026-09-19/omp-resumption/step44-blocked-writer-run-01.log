@@ -1,0 +1,21 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/bin/mo run toolchain/bench/step44/review-fixes/control_probe.mo -- blocked-writer 65428 65429
+blocked-writer waiting_in=Conn.write confirmed=false
+pending-row id=2 name=BlockedWriter alive=true paused=false
+pending-row mailbox=0 bound=1000 restarts=0 scheduler=2 waiting_in=none
+pending-row target=BlockedWriter rows=1
+guard_exit=1
+control_first=b'' control_second=b''
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 220, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 214, in main
+    cases[args.case](args.runtime, args.binary)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 189, in blocked_writer
+    raise failure
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 168, in blocked_writer
+    first = line(control)
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 124, in line
+    part = conn.recv(128)
+ConnectionResetError: [Errno 54] Connection reset by peer

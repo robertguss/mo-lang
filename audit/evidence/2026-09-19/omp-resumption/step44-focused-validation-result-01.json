@@ -1,0 +1,33 @@
+{
+  "recorded_at_et": "2026-09-19T23:17:16.184204-04:00",
+  "grant": "step44-focused-validation-grant-01.json",
+  "results": [
+    {
+      "command": 1,
+      "name": "idle-native-build-01",
+      "exit": 0
+    },
+    {
+      "command": 2,
+      "name": "idle-native-test-01",
+      "exit": 0,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": 3,
+      "name": "tls-test-write-01",
+      "exit": 1,
+      "diagnostic": "MO0102 expected an expression, chunks-tls.mo:149:100",
+      "stage": "checker only",
+      "tls_tests_dispatched": false,
+      "metadata_regenerated": false
+    }
+  ],
+  "commands4_to20_ran": false,
+  "cleanup": "Worker reports scoped pgrep exit1, no owned mo/guard/native-idle matches, nothing killed",
+  "lead_read": "Native9/9 raw log and exact TLS checker diagnostic",
+  "authorization": "Static syntax correction and prior negative-exit/full-width/fault-plan corrections only; fresh rerun log names; no runtime or formatter grant",
+  "acceptance": "Native idle evidence received; no TLS runtime proof or integrated acceptance"
+}
