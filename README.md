@@ -53,6 +53,7 @@ The toolchain needs Zig 0.16 and nothing else.
 cd toolchain
 zig build                  # zig-out/bin/mo (ReleaseSafe)
 zig build test             # every stage's unit tests, and the corpus test over ../examples
+zig build coverage         # the same under kcov (needs kcov on PATH) into zig-out/coverage/
 zig build bench            # times every stage over the corpus
 zig build errors           # regenerates mo-wiki/spec/errors.md from the diagnostic tables
 ```

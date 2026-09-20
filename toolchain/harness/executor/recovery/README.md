@@ -89,6 +89,14 @@ python3 -B toolchain/harness/executor/guarded.py 1800 NEW_REGRESSION -- python3 
 python3 -B toolchain/harness/executor/inventory.py NEW_INVENTORY NEW_LIVE NEW_REGRESSION
 ```
 
+Line coverage of the local suite (Python 3.12+, `.coveragerc` at the root
+scopes it to `toolchain/harness/executor` and omits the evidence snapshots):
+
+```sh
+uv run --python 3.12 --with coverage coverage run toolchain/harness/executor/recovery/local_suite.py
+uv run --python 3.12 --with coverage coverage report
+```
+
 Machine commands require exclusive lead release of `mo-executor-r01`. The 16
 fixed groups are `create-before`, `create-response`, `reserve-response`,
 `registration-before-reaper`, `active-owner-death`, `finalize-gap`, `complete-gap`,

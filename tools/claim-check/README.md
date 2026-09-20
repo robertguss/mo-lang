@@ -31,6 +31,7 @@ is sent.
 
 ```sh
 uv run pytest && uv run ruff check && uv run mypy        # offline
+uv run pytest --cov                                      # with line coverage of src/claim_check
 uv run claim-check toolchain/STEP-43-REPORT.md \
   --log audit/evidence/2026-09-19/fable-lead-verification/step43/darwin-full-suite.log
 uv run python -m claim_check.calibrate                   # replays calibration/answers.json

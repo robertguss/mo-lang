@@ -5,6 +5,7 @@ const std = @import("std");
 //   zig build -Ddebug  → zig-out/bin/mo        the same, Debug
 //   zig build test     → unit tests of every stage, plus the corpus test, which runs
 //                        examples/programs/ through the installed mo (MO_EXE)
+//   zig build coverage → zig-out/coverage/     the same tests under kcov (line coverage of src/)
 //   zig build bench    → zig-out/bin/mo-bench  the benchmark harness, run against ../examples
 //   zig build errors   → ../mo-wiki/spec/errors.md, the error catalog, from the diagnostic tables
 //   zig build tls-tools → zig-out/bin/mo-tls-peer, mo-tls-fuzz, and mo-tls-limbo, steps 37 and 39's bench tools
@@ -53,6 +54,22 @@ pub fn build(b: *std.Build) void {
     run_tests.setEnvironmentVariable("MO_EXE", mo_path);
     run_tests.step.dependOn(&install_exe.step);
     test_step.dependOn(&run_tests.step);
+
+    // zig build coverage runs the same test binary under kcov (must be on PATH) and installs
+    // the line-coverage report to zig-out/coverage/index.html. Only src/ counts;
+    // -Dtest-filter narrows the run as for zig build test.
+    const coverage_step = b.step("coverage", "Run the tests under kcov into zig-out/coverage (needs kcov on PATH)");
+    const kcov = b.addSystemCommand(&.{ "kcov", "--clean", b.fmt("--include-path={s}", .{b.pathFromRoot("src")}) });
+    const coverage_dir = kcov.addOutputDirectoryArg("coverage");
+    kcov.addArtifactArg(mod_tests);
+    kcov.setEnvironmentVariable("MO_EXE", mo_path);
+    kcov.step.dependOn(&install_exe.step);
+    const install_coverage = b.addInstallDirectory(.{
+        .source_dir = coverage_dir,
+        .install_dir = .prefix,
+        .install_subdir = "coverage",
+    });
+    coverage_step.dependOn(&install_coverage.step);
 
     // The error catalog page, rendered from the diagnostic tables (src/errors.zig). The
     // corpus test fails when the page on disk is not this.

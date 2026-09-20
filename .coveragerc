@@ -1,0 +1,16 @@
+# Repo-root coverage.py configuration (used by `pytest --cov` and
+# `coverage run` from the root; tools/claim-check has its own in pyproject.toml).
+[run]
+source =
+    toolchain/harness/executor
+    tools/claim-check/src/claim_check
+omit =
+    */evidence/*
+    */audit/*
+    */tests/*
+    */test_*.py
+    */local_suite.py
+    */selftest.py
+
+[report]
+skip_empty = True
