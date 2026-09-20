@@ -1,0 +1,20 @@
+{
+  "recorded_at_et": "2026-09-19T23:44:11.900307-04:00",
+  "status": "Static preparation and one checker granted; no results yet",
+  "prior_stop": "step44-focused-validation-result-10.json",
+  "write_scope": "control_probe.mo only",
+  "design_requirements": "Replace immediate polls with bounded scheduler-cooperative readiness observer; deferred reply/message turns, main awaits; actual matching waiting_in required, not sent/start/time flags. Finite check budget/ask deadline under20s child guard; retain10s target deadlines and exact external byte handshake; report relevant process rows on failed observation; no behavior sleeps",
+  "cwd": "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain",
+  "commands": [
+    {
+      "name": "controls-check-03",
+      "guard_seconds": 120,
+      "command": "zig-out/bin/mo check bench/step44/review-fixes/control_probe.mo"
+    }
+  ],
+  "capture": "Reviewed pipefail/tee wrapper, separate fresh NAME.log and PIPESTATUS[0] NAME.exit under bench/step44/review-fixes",
+  "stop": "One checker only, no post-check edit/retry; report source/design/result/clearance then HOLD",
+  "not_authorized": "Native build/runtime/test/probe/formatter, commands16\u201320, runtime/fixture/loader changes, weakened oracles; prior unrelated exclusions",
+  "other_worker": "step42 runtime HOLD",
+  "acceptance": "No pending-reader behavior or acceptance implied"
+}

@@ -389,6 +389,25 @@ probes frozen; cleanup/report then HOLD. Exact result08/result09 and
 grant09/grant10 JSON plus checker logs retained in the same evidence
 directory. Checker success is not behavior proof or acceptance.
 
+**Full-width bound controls pass; pending-reader observation did not:**
+controls native build03 exited 0. Both bound drivers exited 0, showing
+exact parsed/requested values 1, 65536, 0, 65537 and
+18446744073709551615; valid endpoints delivered exact bounded `B`, each
+invalid reached `Conn.chunks` and exited 70 with its range refusal.
+Lead read both complete logs. Pending-pull interpreter driver then exited
+1: all 256 immediate snapshots failed to observe `Conn.read_line` waiting,
+so the probe deliberately never called `chunks`. No reader-ownership
+refusal evidence; commands 16–20 did not run. Scoped cleanup clear reported.
+
+`Runtime.processes` snapshots are not a scheduling handshake. Authorized
+only probe-local bounded cooperative observer preparation (deferred reply/
+message turns while main awaits, exact `waiting_in` still required, no
+behavior sleeps, finite deadline/budget, failure rows retained) and one
+guarded `controls-check-03` (120s). Native/runtime checks remain held until
+source/checker review. Both workers runtime HOLD; step42 static work continues.
+Exact result10/grant11 and bound/pending logs retained in the same evidence
+directory. No runtime defect or acceptance conclusion from failed readiness.
+
 ### Next, in order
 
 1. Resume the two units above; accept each (build, focused tests, full suite,

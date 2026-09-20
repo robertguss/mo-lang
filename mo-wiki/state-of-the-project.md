@@ -36,10 +36,10 @@ acceptance remain. Step42-fix completed its correction-only corpus rerun at
 against the prior unaccepted delivery. No whole-step overhead or acceptance
 claim. Step44 now has worker native idle9/9, strict interpreter/native TLS2/2
 each and a separate fault target held over40 seeds at20%. Both forced-positive
-oracle drivers and exact ordered-byte socket probes now pass. Remaining controls
-probe now passes its checker gate after source corrections; fresh native build
-and bounds/ownership/duplex validation are granted, results pending.
-A mislocated --surface diagnostic is recorded, not fixed. Step42
+oracle drivers, exact-byte probes and full-width bounds pass in both runtimes.
+Pending-reader readiness was not observed, so no ownership refusal ran.
+A bounded scheduling observer/checker is authorized; runtime checks held.
+The mislocated --surface diagnostic remains unfixed. Step42
 remains runtime HOLD/static preparation; its
 exhaustive normal/raw-ASan sweeps,
 current stale-answer mutants, packed lifecycle controls and hot-path report

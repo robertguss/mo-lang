@@ -1,0 +1,23 @@
+$ /opt/homebrew/opt/python@3.14/bin/python3.14 toolchain/bench/step36/guard.py 20 -- toolchain/zig-out/bin/mo run toolchain/bench/step44/review-fixes/control_probe.mo -- pending-pull
+pull-reader waiting_in=Conn.read_line confirmed=false
+guard_exit=1
+Traceback (most recent call last):
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 220, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 214, in main
+    cases[args.case](args.runtime, args.binary)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 77, in pending_pull
+    require(
+    ~~~~~~~^
+        completed,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        ),
+        ^^
+    )
+    ^
+  File "/Users/robertguss/Projects/startups/mo-lang-worktrees/toolchain-step-44-review-fixes/toolchain/bench/step44/review-fixes/behavior_probe.py", line 48, in require
+    raise AssertionError((completed.returncode, expected, combined))
+AssertionError: (1, 70, 'pull-reader waiting_in=Conn.read_line confirmed=false\n')
