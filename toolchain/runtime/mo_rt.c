@@ -4689,7 +4689,9 @@ static bool json_digits(Decoder *d) {
     return d->i > start;
 }
 
-typedef struct { MoValue *xs; size_t n, cap; } Values;
+/* Values being decoded; an object's also carry an open-addressing table over its key ordinals
+ * (ordinal + 1, 0 when empty) once it has INDEX_FROM keys, so a duplicate key is found in O(1). */
+typedef struct { MoValue *xs; size_t n, cap; uint32_t *table; size_t slots; } Values;
 
 static void values_push(Values *v, MoValue x) {
     if (v->n == v->cap) {
@@ -4697,6 +4699,45 @@ static void values_push(Values *v, MoValue x) {
         v->xs = xrealloc(v->xs, v->cap * sizeof(MoValue));
     }
     v->xs[v->n++] = x;
+}
+
+static void object_table_insert(Values *e, size_t ordinal) {
+    size_t mask = e->slots - 1;
+    size_t i = (size_t)hash_value(e->xs[ordinal * 2]) & mask;
+    while (e->table[i] != 0) i = (i + 1) & mask;
+    e->table[i] = (uint32_t)(ordinal + 1);
+}
+
+static void object_table_build(Values *e, size_t slots) {
+    e->table = xrealloc(e->table, slots * sizeof(uint32_t));
+    memset(e->table, 0, slots * sizeof(uint32_t));
+    e->slots = slots;
+    for (size_t o = 0; o < e->n / 2; o++) object_table_insert(e, o);
+}
+
+/* The offset of `key` in an object's entries, SIZE_MAX when it is new (index_of below the table). */
+static size_t object_find(const Values *e, MoValue key) {
+    if (!e->table) return index_of(e->xs, e->n, 2, key);
+    size_t mask = e->slots - 1;
+    for (size_t i = (size_t)hash_value(key) & mask;; i = (i + 1) & mask) {
+        uint32_t slot = e->table[i];
+        if (slot == 0) return SIZE_MAX;
+        size_t at = (size_t)(slot - 1) * 2;
+        if (mo_equal(e->xs[at], key)) return at;
+    }
+}
+
+static void object_push(Values *e, MoValue key, MoValue v) {
+    values_push(e, key);
+    values_push(e, v);
+    size_t keys = e->n / 2;
+    if (!e->table) {
+        if (keys >= INDEX_FROM) object_table_build(e, 4 * INDEX_FROM);
+    } else if (2 * keys > e->slots) {
+        object_table_build(e, 2 * e->slots);
+    } else {
+        object_table_insert(e, keys - 1);
+    }
 }
 
 /* Scratch that a failed decode leaves behind, freed when the decode ends. */
@@ -4709,7 +4750,7 @@ static Values *json_values(void) {
         capjson_scratch = capjson_scratch ? 2 * capjson_scratch : 16;
         json_scratch = xrealloc(json_scratch, capjson_scratch * sizeof(Values));
     }
-    json_scratch[njson_scratch] = (Values){NULL, 0, 0};
+    json_scratch[njson_scratch] = (Values){NULL, 0, 0, NULL, 0};
     return &json_scratch[njson_scratch++];
 }
 
@@ -4732,13 +4773,9 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
                 if (d->i >= d->n || d->s[d->i] != ':') json_bad(d, d->i);
                 d->i++;
                 MoValue v = json_read(d, depth + 1);
-                size_t k = index_of(entries->xs, entries->n, 2, key);
-                if (k != SIZE_MAX) {
-                    entries->xs[k + 1] = v;
-                } else {
-                    values_push(entries, key);
-                    values_push(entries, v);
-                }
+                size_t k = object_find(entries, key);
+                if (k != SIZE_MAX) entries->xs[k + 1] = v;
+                else object_push(entries, key, v);
                 if (!json_more(d, '}')) break;
             }
         }
@@ -4799,7 +4836,10 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
 }
 
 static void json_scratch_free(void) {
-    for (size_t k = 0; k < njson_scratch; k++) free(json_scratch[k].xs);
+    for (size_t k = 0; k < njson_scratch; k++) {
+        free(json_scratch[k].xs);
+        free(json_scratch[k].table);
+    }
     njson_scratch = 0;
 }
 

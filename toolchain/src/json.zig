@@ -338,6 +338,9 @@ const Decoder = struct {
         const gpa = d.vm.gpa;
         var entries: std.ArrayList(Value) = .empty;
         defer entries.deinit(gpa);
+        // Each key's offset in entries, so a repeated key is found without a scan.
+        var seen: std.HashMapUnmanaged(Value, usize, stdlib.ValueContext, 80) = .empty;
+        defer seen.deinit(gpa);
         d.i += 1;
         d.space();
         if (d.i < d.s.len and d.s[d.i] == '}') {
@@ -351,9 +354,11 @@ const Decoder = struct {
             d.i += 1;
             const v = try d.value(depth + 1);
             // A repeated key keeps its first place and its last value.
-            if (stdlib.indexOf(entries.items, 2, key)) |k| {
-                entries.items[k + 1] = v;
+            const found = try seen.getOrPut(gpa, key);
+            if (found.found_existing) {
+                entries.items[found.value_ptr.* + 1] = v;
             } else {
+                found.value_ptr.* = entries.items.len;
                 try entries.append(gpa, key);
                 try entries.append(gpa, v);
             }
