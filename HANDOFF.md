@@ -153,18 +153,19 @@ static-only while step42-fix validates. Exact assignment/launch receipts:
 `audit/evidence/2026-09-19/omp-resumption/step44-fix-launch.json`.
 Full suite, longer/interleaved measurements and both acceptances remain owed.
 
-**Step44 idle slot requested, not granted:** worker prepared static probes
-and deliberately retained the inherited source bug for RED. Lead asked
-step42-fix to finish its current focused command and start no further validation.
-A clearance was forwarded with a step44 prefix but step42 debugger paths
-(120s timeout, exit 137); the reported files were not found in the corrective
-worktree. Owner attribution is pending with step42-fix; no process rerun asked.
-The revised deferred `Await` control passed static review: real source pumping
-precedes the returned terminal counts; public source retirement and a later
-snapshot are checked. Proposed slot: 300s guarded build, 120s corpus RED;
-only after the expected `linesFixture` unreachable, restore its terminal return,
-then identical bounded build/corpus GREEN (9/9). No other commands granted.
-Still **not granted** pending explicit step42 clearance attribution.
+**Step44 exclusive idle validation slot granted:** lead read step42-fix's
+explicit current clearance: no owned build/test/runtime/probe/formatter/
+benchmark/background process active. This supersedes the earlier ambiguously
+attributed receipt for scheduling; its missing debugger evidence remains
+owed in the step42 report. Step42 stays static-only until explicit release.
+The reviewed deferred `Await` control drives real fixture source dispatch.
+Grant: 300s guarded build, 120s chunks corpus RED; only after the expected
+`linesFixture` unreachable, add the one terminal return, then identical
+bounded rebuild/corpus GREEN (9/9). File all four logs/exits under step44
+`review-fixes/`. Any unexpected failure/timeout/kill stops the slot.
+Only owned-process cleanup/status checks afterward; then report and hold.
+No formatter, native/TLS/socket checks, sim/faults, suite, stress or benchmark.
+No runtime acceptance; remaining correction checks need their own grant.
 
 ### Next, in order
 
