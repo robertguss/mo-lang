@@ -190,6 +190,22 @@ lint suppression, runtime grant or acceptance. A rebuilt compiler and focused
 regression proof must precede any resumed batch. Exact brief and raw results:
 `audit/evidence/2026-09-20/server-chunks-formatter-review-01.json`.
 
+The first formatter patch's static review found two issues: fixture strings
+lacked the canonical final newline, and skipping a stopped import load also
+skipped genuine requested-file pure loops. Both are corrected in the revised
+source. Existing `program.single` preserves best-effort requested-file analysis
+when imports cannot load; global coordinates follow the actual checked
+Program. The regression covers imported effects, pure-call location,
+dependency-only isolation and both pure/clean targets after an invalid import.
+
+**Formatter verification grant01** permits exactly four serialized guarded
+attempts: compiler-build02, fmt-regression01, fmt-strict01, fmt-check02.
+The last is the complete15-module matrix, not just the strict smoke.
+First surprise stops; original commands4–24 remain withheld. The rejected
+ulimit/timeout proposal is replaced by existing evidence.py/guard.py capture
+with4GiB. Exact argv: `server-chunks-formatter-grant-01.json` under the same
+evidence directory. This is verification permission, not acceptance.
+
 ### EOF and delivery decision (lead, 19 Sep, evening)
 
 Step 44 stays unchanged. `Closed` reports input termination, not whether the

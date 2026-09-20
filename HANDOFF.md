@@ -33,13 +33,13 @@ builds/tests, but workers write all implementation and code, including probes.
 - **Step42 worker:** fresh **`step42-safety-sol`**, **w4:p3C / w4:t1B**,
   OMP/GPT Sol/high, `toolchain/step42-safety-evidence` at frozen base
   `65b3dd37`, worktree `.../toolchain-step42-safety-evidence`.
-  **Static revision only**, runtime HOLD, under
-  `toolchain/bench/step42/safety-evidence/**`. Exact Timeout, native
-  turns_answer drop and allocator-failure drafts are corrected. Next static
-  revision must expose paired Zig audit counts before failing assertions,
-  check complete native nested payload/retained labels and observe the
-  untouched sink. Private sweep proves only its named destructor paths.
-  All stress/mutation/timing obligations remain; no runtime grant.
+  Revised static lifetime controls are reviewed: paired counts precede balance
+  assertions; native nested payloads, retained labels and the empty Sink are
+  observed. None is runtime proof. **Static composition only** in separate
+  `lead-step42-composed-4e0bfc0e`: accepted-main4e0bfc0e plus frozen65b3dd37.
+  Worker owns corpus/sim conflict resolution and necessary Step44 caller
+  migration; original draft tree remains frozen. No audit/mutant patches or tests run.
+  Timing AFTER is not frozen; all stress/mutation/timing obligations remain.
 - **Fresh server worker:** `server-chunks-sol`, **w4:p3D / w4:t1C**,
   OMP/GPT Sol/high, branch `harness/workspace-server-chunks`, worktree
   `.../harness-workspace-server-chunks`, prepared **65f2eca0** (accepted
@@ -47,11 +47,12 @@ builds/tests, but workers write all implementation and code, including probes.
   complete coverage/command manifest reviewed twice. Compiler build0/37.9s;
   formatter03 passed all15 after two retained syntax failures. Command3
   fmt-check stopped at strict.mo97 MO0501 after fourteen modules passed.
-  **Runtime released; static formatter repair only.** Imported handle types
-  are missing from isolated-file loop analysis; fix shared analysis and both
-  CLI/corpus callers, preserving the admission loop and all assertions.
-  Commands4–24 remain unattempted;72KiB evidence retained. Canonical source
-  vector independently checked. Parent metadata remains lead-integrated;
+  **Exclusive formatter verification grant01:** fresh compiler, focused
+  regression, original strict-file smoke, then full15-module fmt-check.
+  Imported handle analysis now loads context; interrupted imports retain
+  requested-file checking. Static review corrected fixture final newlines
+  and a skipped-analysis false negative. Stop first surprise; original
+  commands4–24 remain unattempted. Parent metadata remains lead-integrated;
   benchmarks/full suite/commits/report remain withheld.
 - Original server/Step42/Step44 worker launch receipts below are historical,
   not instructions to reuse their pane IDs or start from their old WIP.

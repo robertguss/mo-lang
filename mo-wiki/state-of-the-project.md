@@ -46,9 +46,10 @@ slower in this run; native best and median disagree. All samples/load averages
 and original16MiB measurements are retained. No zero-overhead or causal claim.
 The existing --surface diagnostic line offset remains unfixed.
 
-Step42 remains unaccepted at frozen65b3dd37. Its fresh static-only worker has
-drafted missing-fixture/raw-stderr repairs, real delayed/waiter controls and
-private allocation/destruction observability; none is runtime proof yet.
+Step42 remains unaccepted. Frozen65b3dd37 is now input to a provisional
+accepted-main4e0bfc0e composition. Revised lifetime controls expose paired
+counts, complete native payloads and the actual empty Sink; none is runtime
+proof. Worker-owned static conflict/caller migration is in a separate tree.
 All seven obligations remain: current normal/raw-ASan exhaustive sweeps,
 small ASan and ordinary stale-answer mutants, packed lifecycle/reclamation proof,
 hot-path analysis, and lead-owned best-of-five suite timings. Its60 corrected
@@ -63,13 +64,15 @@ No live-provider/model-driven task/Pi-comparison acceptance. Nothing pushed or
 published to the auditor by this acceptance.
 
 The fresh server consumer in `harness/workspace-server-chunks` at65f2eca0
-combines accepted main with saved serverd689b441. After two static reviews,
-it owns an exclusive24-command guarded correctness grant: fresh compiler first,
-first-surprise stop, no benchmarks/full suite/commits/report. Strict7 retains
+combines accepted main with saved serverd689b441. Its original correctness
+batch stopped at command3 after formatter03 passed15/15. Imported handle
+types were absent from formatter loop analysis. The shared repair now has
+a four-command exclusive fresh-build/regression/strict-smoke/full-fmt grant,
+not acceptance or permission for original commands4–24. Strict7 retains
 fixed-order coverage plus a mandatory zero-fault/native-success gate; the
 three tolerant tests stay ordinary. Source binding has an independent vector.
-Step42 remains static-only: its corrected real native drop/allocator proposals
-still need raw paired counts and complete dynamic payload/sink observations.
+Step42 remains static-only; its composed AFTER checkpoint is not yet frozen.
+All runtime, mutant and timing proof remains owed.
 The completed Step44 pane is retired; evidence and worktrees are preserved.
 
 The account below preserves the earlier checkpoints.

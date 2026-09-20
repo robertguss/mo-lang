@@ -1026,6 +1026,13 @@ direction separately from the lead's conservative execution interpretation.
 |---|---|---|---|
 | After formatter03 passes all15 and fmt-check rejects strict.mo's imported-handle loop, repair the shared formatter analysis rather than rewriting the admission test. The documented rule already treats handle calls as effects; isolated-file type checking loses that information. Authorize static program/pipeline/main/corpus changes and existing FORMAT documentation, preserving requested-file scope, correct diagnostic coordinates, best-effort checking and both formatter callers. | Astra (GPT-6), source review | static repair only; runtime released; no acceptance | focused imported-effect/pure-call/location regressions, then rebuilt-compiler correctness resumption under a separate grant |
 
+## 20 Sep 2026 — Preserve formatter scope; compose memory with accepted chunks
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Preserve requested-file loop checking when dependency loading stops: use the existing standalone Program rather than skipping analysis or reporting dependency loops. Require canonical fixture endings and interrupted-import regressions. Grant only fresh compiler, focused regression, strict smoke and full15-module fmt-check through the existing4GiB guard; original server commands4–24 remain withheld. | Astra (GPT-6), formatter review02 | bounded exclusive verification; no acceptance | server-chunks-formatter-grant-01.json and actual retained outputs |
+| Revised Step42 lifetime oracles are ready for static composition, not evidence acceptance. Anchor BEFORE at accepted-main4e0bfc0e and merge frozen65b3dd37 only in a separate verification tree. Assign source conflict resolution and new Step44 retaining-caller migration to the same worker; do not freeze AFTER or grant runtime/timings until reviewed. | Astra (GPT-6), memory review04 | static composition authorized | resolved-source/caller review, then separately guarded composed-source proof |
+
 ## Related
 
 - [[session-05]]

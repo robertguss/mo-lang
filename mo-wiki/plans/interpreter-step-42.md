@@ -319,6 +319,29 @@ Source tags/witnesses and the delivered static-only directive are in
 `audit/evidence/2026-09-20/step42-static-review-03.json`. Server correctness
 owns the runtime slot; no memory application/execution is authorized.
 
+### Composed source preparation after revised oracle review
+
+The revised six artifacts address review03 at source level: paired Zig counts
+precede balance assertions; native waiter/end compare all nested parts; Logger
+returns all16 ordered labels; Sink is actually observed empty; and the native
+map distinguishes ten ordinary paths from two private-sweep end paths. No
+combined patch or control has run. Review04 preserves the complete drafts.
+
+Lead prepared `lead-step42-composed-4e0bfc0e` at accepted-main4e0bfc0e and
+started an uncommitted merge of65b3dd37. Merge base is2f669902. Only corpus.zig
+and sim.zig have textual conflicts; automatic merging elsewhere is not
+semantic proof. The same worker owns static resolution and all necessary
+Step44 retention-caller migration in this separate tree. Original frozen
+source/drafts, historical evidence, guards and measurement drivers stay
+unchanged. Named source staging is permitted, not a commit or runtime.
+
+The worker must preserve all accepted Step44 controls and Step42 exhaustive
+gates, and check draft applicability without applying instrumentation or
+mutants. BEFORE is anchored at4e0bfc0e; AFTER is not frozen. No timing grant.
+Server formatter verification owns runtime; memory remains static-only.
+Exact scope, receipt and reviewed source:
+`audit/evidence/2026-09-20/step42-static-review-04.json`.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]
