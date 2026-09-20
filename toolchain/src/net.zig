@@ -86,12 +86,17 @@ fn connResult(vm: *Vm, o: Outcome) Error!Value {
 /// The next line in `pending`, the bytes of the stream so far not given out: how many
 /// bytes it takes, and the line, what stands in its way, or `more` to read first. `eof`:
 /// nothing follows `pending`. A line of more than 64 KiB is too long, and the bytes up to
-/// its newline are taken, at once or as they arrive (`skipping`).
-pub fn scanLine(pending: []const u8, eof: bool, skipping: *bool) struct { usize, Scan } {
+/// its newline are taken, at once or as they arrive (`skipping`). `pending[0..scanned]` was
+/// searched before and holds no newline: the search resumes after it.
+pub fn scanLine(pending: []const u8, scanned: usize, eof: bool, skipping: *bool) struct { usize, Scan } {
     var off: usize = 0;
+    var from: usize = @min(scanned, pending.len);
     while (true) {
         const rest = pending[off..];
-        if (std.mem.indexOfScalar(u8, rest, '\n')) |k| {
+        const found = std.mem.indexOfScalar(u8, rest[from..], '\n');
+        if (found) |j| {
+            const k = from + j;
+            from = 0;
             off += k + 1;
             if (skipping.*) {
                 skipping.* = false;
@@ -153,6 +158,9 @@ pub const Conn = struct {
     released: bool = false,
     /// After LineTooLong, the rest of that line is dropped.
     skipping: bool = false,
+    /// buf[start..scanned] was searched for a newline and holds none: the next `scan` resumes
+    /// after it. Stale (outside buf[start..end]) after bytes are given out or the buffer moves.
+    scanned: usize = 0,
     /// A read (`read_line`, a handshake's read) or a write waits on it: a second of either kind
     /// is Busy. Each goes on while the other waits (step 38): a read proceeds while a write on the
     /// same connection is blocked on the peer.
@@ -178,12 +186,15 @@ pub const Conn = struct {
     used: []const u8 = "",
 
     pub fn scan(c: *Conn) Scan {
-        const taken, const what = scanLine(c.buf[c.start..c.end], c.eof, &c.skipping);
+        const pending = c.buf[c.start..c.end];
+        const scanned = if (c.scanned >= c.start and c.scanned <= c.end) c.scanned - c.start else 0;
+        const taken, const what = scanLine(pending, scanned, c.eof, &c.skipping);
         c.start += taken;
         if (c.start == c.end) {
             c.start = 0;
             c.end = 0;
         }
+        c.scanned = if (what == .more and taken == 0) c.end else c.start;
         return what;
     }
 
@@ -196,6 +207,7 @@ pub const Conn = struct {
     pub fn roomToRead(c: *Conn, initial: usize, cap: usize) Error!bool {
         if (c.start > 0) {
             std.mem.copyForwards(u8, c.buf, c.buf[c.start..c.end]);
+            c.scanned = if (c.scanned >= c.start and c.scanned <= c.end) c.scanned - c.start else 0;
             c.end -= c.start;
             c.start = 0;
         }
@@ -1070,7 +1082,7 @@ pub const Fixture = struct {
                         return fail(vm, .Closed);
                     }
                     const c = &f.conns.items[h];
-                    const taken, const what = scanLine(c.clear.items[c.clear_start..], f.peerEnded(h), &c.skipping);
+                    const taken, const what = scanLine(c.clear.items[c.clear_start..], 0, f.peerEnded(h), &c.skipping);
                     c.clear_start += taken;
                     const got = try lineResult(vm, what) orelse {
                         sim.wait(within);
@@ -1083,7 +1095,7 @@ pub const Fixture = struct {
                     return got;
                 }
                 const c = &f.conns.items[h];
-                const taken, const what = scanLine(c.inbound.items[c.start..], f.peerEnded(h), &c.skipping);
+                const taken, const what = scanLine(c.inbound.items[c.start..], 0, f.peerEnded(h), &c.skipping);
                 c.start += taken;
                 const got = try lineResult(vm, what) orelse {
                     sim.wait(within);
@@ -1187,6 +1199,32 @@ test "a line is cut at its newline, keeps no \\r, and one past 64 KiB is dropped
     c.eof = true;
     try std.testing.expectEqualStrings("z", c.scan().line);
     try std.testing.expect(c.scan() == .end);
+}
+
+test "a line arriving in pieces is searched once: each scan resumes after the bytes it saw" {
+    var buf: [64]u8 = undefined;
+    var c: Conn = .{ .stream = undefined, .buf = &buf };
+    @memcpy(buf[0..4], "x\nab");
+    c.end = 4;
+    try std.testing.expectEqualStrings("x", c.scan().line);
+    try std.testing.expect(c.scan() == .more);
+    try std.testing.expectEqual(@as(usize, 4), c.scanned);
+    @memcpy(buf[4..8], "cd\r\n");
+    c.end = 8;
+    try std.testing.expectEqualStrings("abcd", c.scan().line);
+    try std.testing.expect(c.start == 0 and c.end == 0 and c.scanned == 0);
+
+    // The buffer moving to the front keeps the searched prefix.
+    @memcpy(buf[0..6], "p\nqrst");
+    c.end = 6;
+    try std.testing.expectEqualStrings("p", c.scan().line);
+    try std.testing.expect(c.scan() == .more);
+    try std.testing.expect(c.start == 2 and c.scanned == 6);
+    try std.testing.expect(try c.roomToRead(64, 64));
+    try std.testing.expect(c.start == 0 and c.end == 4 and c.scanned == 4);
+    @memcpy(buf[4..6], "u\n");
+    c.end = 6;
+    try std.testing.expectEqualStrings("qrstu", c.scan().line);
 }
 
 fn named(v: Value) []const u8 {
