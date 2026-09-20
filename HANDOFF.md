@@ -92,20 +92,23 @@ tool-generated verified lines, and file exact commands. Lead must regenerate
 the sidecar and verify source/ID consistency in the separate integration
 verification worktree before acceptance; do not hand-edit IDs.
 
-**Exclusive Darwin measurement slot: step42-sol.** Server and step44 workers
-confirmed no owned runtime/build/test/server/probe processes remain and hold
-new checks until explicit lead release. Server report checkpoint:
-`d689b441b967eb1f9e8143a503fbc8810d60d2e1`, final guarded fmt exit 0; report is
-filed but F1 still blocks cutover. Step44's last built-runtime exact-client
-probe exited 0 (worker report), not independent acceptance.
-Step42 code checkpoint `d3273ee2335f2fbbdad3eb81dc1f8eb86870d293` may run the
-filtered step42 sweep, ASan stress sweep and best-of-five echo/duplex/jobq,
-comparing `0a4dffcd` with that checkpoint. Evidence/table under `bench/step42/`.
-Unfiltered suite, its best-of-five timings and integrated acceptance remain
-lead-owned and owed. No concurrent lead runtime workload; no Linux/machine
-runs. Release siblings only after step42 reports the slot free and owned
-processes clear. Server continuation after the filed report needs a fresh
-worker session under the standing workflow.
+**Step42 slot released; acceptance blocked by lead review.** Worker branch is
+clean at `be64e8a5`; runtime measured at `d3273ee2`, test-only ASan stderr
+normalization at `e537abfe`. Report: `toolchain/STEP-42-REPORT.md` in
+`toolchain-step-42-memory`. Worker reports normal stress exit 0 (386.74s),
+normalized ASan exit 0 (417.91s), owned processes clear, temporary baseline
+removed. Echo minima moved +12.90% interpreter/+8.60% native with noisy samples;
+no zero-cost conclusion. Step44 explicitly released for focused checks, not
+benchmarks/full suite. Server report remains `d689b441`, unaccepted behind F1.
+
+Lead review found: blocking threads publish completion before their last
+job/notification access; native custom fibers lack ASan switch notifications;
+stderr normalization masks the warning rather than fixing that integration;
+Part D types only pending answers, leaving other audited holders raw.
+Further requirements and exact references are in the step42 brief's review
+addendum. A fresh corrective worker must finish them before integration.
+Unfiltered suite/timings and independent integrated acceptance remain owed.
+No Linux/machine acceptance. Server continuation also needs a fresh worker.
 
 ### Next, in order
 

@@ -129,6 +129,64 @@ in the report what it would take). **Write your final report to
 `toolchain/STEP-42-REPORT.md` and commit it.** While anything runs, wait in the
 foreground so your tab does not look finished.
 
+## Lead review of `be64e8a5` (19 Sep, evening)
+
+Not accepted. Preserve all worker RED/GREEN evidence and the final report;
+these findings require a fresh corrective session, not a resumed conversation.
+
+1. **Completion is not last access.** In `blocking.zig:118-121,246-250`,
+   `done.store(true)` precedes reading `job.write_fd` and signaling it. The
+   caller may observe done, close the fd and unwind its stack first. Fix the
+   ownership/notification handoff in both pool and standalone paths, including
+   scheduler-wait errors; copying the descriptor alone does not prevent close
+   and fd reuse. The helper-only 20ms test does not exercise `run` or this race:
+   replace it with a deterministic production-path control and mutation that
+   fails when early completion/early error return is restored.
+2. **ASan must know the fiber stacks.** `mo_rt.c:7378,7508` switches custom
+   stacks with no sanitizer start/finish notifications. LLVM's public
+   [fiber interface](https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/common_interface_defs.h)
+   requires them. Implement correct ASan-only first-entry, switch, resume,
+   reuse/destruction and scheduler-stack bookkeeping. Remove the warning
+   stripping in `e537abfe` and its normalization-only test. Preserve raw
+   diagnostics; expected-crash corpus cases must compare without suppression,
+   and the 45-byte stale-answer mutant must still produce a real ASan error.
+   Do not globally disable ASan checks or fake-stack protection.
+3. **Finish Part D, not just pending answers.** Zig `Entry`, `Outgoing`,
+   `Later`, `Answered` and corresponding native/scheduler/log holders still
+   pair raw values with independent parcel pointers. Carry the distinct owned
+   representation across every retaining boundary identified by the audit;
+   migrate all callers. Explicitly distinguish no-packs/test-only values and
+   traced process-state roots instead of wrapping roots as owned parcels.
+   Compile-failing bare-value mutations must cover more than pending answers;
+   runtime controls must cover transfer, drop, timeout, crash and cleanup.
+4. **Do not erase an effect to avoid retaining its value.** The new
+   `if (sim.packs) return` in `Sim.emit` drops interpreter server events; native
+   behavior alone is not permission to remove existing interpreter behavior.
+   Preserve emitted values safely through the existing event lifecycle,
+   without inventing a new external sink. Replace the test that merely
+   asserts the list is empty with retention/compaction and simulator controls.
+5. **Keep ASan opt-in.** The existing large-answer regression now unconditionally
+   builds through Clang/ASan. Restore ordinary-runtime coverage there and select
+   sanitizer builds explicitly; document the host Clang requirement for that
+   mode. Retain both ordinary and sanitizer mutant proofs. Do not silently
+   sample or omit the exhaustive stress sweep.
+6. **Finish honest measurements.** Echo minima rose 12.90%/8.60%, with substantial
+   variance and changing load; this establishes neither a zero-cost switch nor
+   a reliable regression magnitude. Inspect the new normal-mode hot-path
+   loads/checks, prepare controlled interleaved before/after measurements and
+   request a serialized slot. Fix a demonstrated avoidable cost, not noise.
+   Three corpus runtime benchmarks means three executable workloads in both
+   runtimes; `jobq` build timing alone is not the third runtime benchmark.
+   Preserve all samples and failures. Full-suite timings stay lead-owned.
+
+Corrective write scope remains the original scope, plus
+`toolchain/bench/step38/measure.py` strictly for complete per-sample reporting
+and the measurement controls above. The prior worker changed that helper
+outside its named scope; the lead reviewed the diff and now explicitly owns
+this bounded scope extension. Keep benchmark corpus inputs unchanged between
+trees, and do not break existing output-path callers. Report which prior
+results no longer apply after corrective code changes.
+
 ## Related
 
 - [[toolchain-raw-memory-report]]

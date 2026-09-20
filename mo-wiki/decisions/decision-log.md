@@ -964,6 +964,14 @@ direction separately from the lead's conservative execution interpretation.
 | Preserve Python's original `disconnect`/`lost-response` tests unchanged; their required owner exit conflicts with D2. Add explicit Mo H2/H6/D2 lifecycle controls while preserving exactly-once execution, retained outcomes, unknown receipt and explicit-close cleanup evidence. Report the incompatible predicates rather than claiming 13 unchanged groups passed. No claim of detecting remote receipt without protocol acknowledgment; no new ACK or runtime terminal distinction. `semantic` | Astra (GPT-6) | decided | server part A acceptance, then machine cleanup in part B |
 | Step 44's adversarial review found fixtures represent only full close today, so public fixtures cannot initiate a half-close control. Authorize an internal directional EOF model and runtime-level tests through the real source/dispatch; preserve public `Conn.close` and add no half-close API. Real sockets prove public half-close in both runtimes. Report these evidence boundaries separately; do not claim the public fixture can initiate half-close. `semantic` | Astra (GPT-6), following step44 Sol's blocker | decided | step 44 internal fixture and public socket controls |
 
+## 19 Sep 2026 — Step 42 worker completion is not acceptance
+
+| decision | who | status | first tested by |
+|---|---|---|---|
+| Request changes at `be64e8a5`. Source review shows `blocking.worker` and `aloneMain` publish `done` before their last job/fd access, while callers may unwind after observing it. Finish the completion handoff and prove it through real paths, not only the wait helper. Complete Part D for all audited retaining holders; pending answers alone do not satisfy the brief. | Astra (GPT-6) | corrective worker required | deterministic ownership/error-path regressions and compile-failing holder mutants |
+| Do not accept ASan warning filtering as sanitizer integration. Native custom fibers omit LLVM's required switch notifications; add that integration and remove `e537abfe`'s stderr suppression. Restore opt-in sanitizer runs and preserve both ordinary and ASan mutant proof. Do not discard interpreter server events merely to avoid retaining them: preserve the existing effect safely. | Astra (GPT-6) | corrective worker required | unsuppressed expected-crash corpus, ASan mutant, safe event retention |
+| Keep the noisy +12.90%/+8.60% echo results; they prove neither a zero-cost switch nor a reliable regression size. Require controlled runtime measurements on three workloads in both runtimes; build timing is not a third runtime workload. Explicitly extend corrective scope to the existing `bench/step38/measure.py` for measurement evidence, without treating its earlier out-of-scope edit as authorized retroactively. | Astra (GPT-6) | decided | serialized measurements after corrective code stabilizes |
+
 ## Related
 
 - [[session-05]]
