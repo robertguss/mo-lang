@@ -64,8 +64,8 @@ process Sink()
           state.waiting = []
         end
       Snapshot:
-        Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes,
-          closed: state.closed, idle: state.idle)
+        Seen(bytes: state.bytes, chunks: state.chunks, sizes: state.sizes, closed: state.closed,
+          idle: state.idle)
       Await(me: me, bytes: bytes):
         state.want_bytes = bytes
         state.waiting = state.waiting.push(reply_to)
@@ -190,7 +190,7 @@ fn talked(net: Net, server: TlsServer, client: TlsClient, sink: Handle(Sink)) : 
 end
 
 fn tried(tls: Tls, net: Net, sink: Handle(Sink), offered: List(String),
-    accepted: List(String)) : Result(Bool, TlsError)
+  accepted: List(String)) : Result(Bool, TlsError)
   case tls.server(cert: chain_pem(), key: key_pem())
     Ok(server):
       case tls.client(trust: root_pem())
@@ -264,5 +264,5 @@ test "a forced TLS handshake error fails the positive oracle"
   assert !successful?(got)
 end
 
-verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+verified: types, contracts, tests (2), property (0 seeds), sim (100 runs)
           proven: not run
