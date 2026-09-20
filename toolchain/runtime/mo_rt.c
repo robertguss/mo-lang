@@ -3465,7 +3465,8 @@ static char *read_scoped(const Scope *scope, const char *path, size_t n, size_t 
 static int64_t sim_waited;
 
 typedef struct { char *path; MoValue text; } FixFile;
-typedef struct { FixFile *files; size_t n, cap; } FixSystem;
+/* The files in order (list shows them so), and a table by path: slot i holds a file's index + 1. */
+typedef struct { FixFile *files; size_t n, cap; uint32_t *slots; size_t mask; } FixSystem;
 typedef struct { int32_t system; char *folder; bool read_only, empty; int64_t delay; } FixScope;
 static FixSystem *fix_systems;
 static size_t nfix_systems, capfix_systems;
@@ -3523,11 +3524,34 @@ static char *fix_path_in(const FixScope *scope, const char *name, size_t n) {
     return NULL;
 }
 
-static FixFile *fix_find(FixSystem *sys, const char *path) {
-    for (size_t i = 0; i < sys->n; i++) {
-        if (strcmp(sys->files[i].path, path) == 0) return &sys->files[i];
+static uint64_t hash_path(const char *path) {
+    uint64_t h = 1469598103934665603ULL;
+    for (const unsigned char *p = (const unsigned char *)path; *p; p++) h = (h ^ *p) * 1099511628211ULL;
+    return h;
+}
+
+/* The slot `path` is at, or the empty slot it goes in. */
+static uint32_t *fix_slot(FixSystem *sys, const char *path) {
+    for (size_t i = (size_t)hash_path(path) & sys->mask;; i = (i + 1) & sys->mask) {
+        if (sys->slots[i] == 0 || strcmp(sys->files[sys->slots[i] - 1].path, path) == 0) return &sys->slots[i];
     }
-    return NULL;
+}
+
+/* The table rebuilt over the files, sized so it is at most half full. */
+static void fix_reindex(FixSystem *sys) {
+    size_t cap = 16;
+    while (cap < 2 * sys->n + 2) cap *= 2;
+    free(sys->slots);
+    sys->slots = calloc(cap, sizeof(uint32_t));
+    if (!sys->slots) out_of_memory();
+    sys->mask = cap - 1;
+    for (size_t i = 0; i < sys->n; i++) *fix_slot(sys, sys->files[i].path) = (uint32_t)(i + 1);
+}
+
+static FixFile *fix_find(FixSystem *sys, const char *path) {
+    if (sys->n == 0) return NULL;
+    uint32_t slot = *fix_slot(sys, path);
+    return slot ? &sys->files[slot - 1] : NULL;
 }
 
 /* A path's text set, keeping its place when it is there, else last. */
@@ -3545,6 +3569,8 @@ static void fix_put(FixSystem *sys, char *path, MoValue text) {
         sys->files = xrealloc(sys->files, sys->cap * sizeof(FixFile));
     }
     sys->files[sys->n++] = (FixFile){path, mo_str(copy, text.aux)};
+    if (!sys->slots || 2 * sys->n + 2 > sys->mask + 1) fix_reindex(sys);
+    else *fix_slot(sys, path) = (uint32_t)sys->n;
 }
 
 static bool fix_remove(FixSystem *sys, const char *path) {
@@ -3553,6 +3579,7 @@ static bool fix_remove(FixSystem *sys, const char *path) {
     size_t i = (size_t)(f - sys->files);
     memmove(sys->files + i, sys->files + i + 1, (sys->n - i - 1) * sizeof(FixFile));
     sys->n--;
+    fix_reindex(sys);
     return true;
 }
 
@@ -4280,7 +4307,7 @@ static MoValue fixture_fs(int64_t delay) {
         capfix_systems = capfix_systems ? 2 * capfix_systems : 8;
         fix_systems = xrealloc(fix_systems, capfix_systems * sizeof(FixSystem));
     }
-    fix_systems[nfix_systems++] = (FixSystem){NULL, 0, 0};
+    fix_systems[nfix_systems++] = (FixSystem){NULL, 0, 0, NULL, 0};
     return add_fix_scope((FixScope){(int32_t)(nfix_systems - 1), "/", false, false, delay});
 }
 
