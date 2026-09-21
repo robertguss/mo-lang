@@ -224,6 +224,15 @@ cleanup diagnostics, receipt before expected-file writes. Controls must exercise
 production owner/wrapper orchestration, not only serializers/predicates. Author
 outer-interruption procedure but do not run it. Scope unchanged, no new gates.
 
+21 Sep, 11:31 AM ET: f0e9bebc source reread with Oracle; execution remains HOLD.
+Unknown ownership now avoids EOF reads, launch receipts precede expected files,
+and the reviewed synthetic PID controls bypass real signal/wait calls. Two
+bounded evidence corrections remain: missing/stat-failed lengths must be
+unavailable, not certified final zero; a late limit failure must survive a
+simultaneous metadata failure, with lifecycle primary/reason in fallback output.
+Author continues corpus-only correction and discriminating controls; no compile,
+runtime, control or retry grant. Seven obligations remain open.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

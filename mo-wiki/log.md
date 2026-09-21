@@ -3185,3 +3185,12 @@
 - Assigned bounded corrections and production owner/wrapper controls. Incomplete
   ownership must yield incomplete records without EOF reads; keep original
   failure plus observable cleanup outcomes. No scope expansion or runtime gate.
+
+## [2026-09-21] review | 11:31 AM ET, incomplete capture follow-up
+
+- Lead/Oracle source reread of f0e9bebc confirms unknown ownership avoids EOF
+  reads and synthetic PID controls bypass real signal/wait calls. No execution.
+- Retain HOLD for two bounded evidence corrections: unavailable stat results
+  must not become certified zero lengths; late limit failures must survive
+  simultaneous metadata failure. Assigned source-only follow-up and controls.
+- Ten-call scope, supervision limits and all seven obligations unchanged.
