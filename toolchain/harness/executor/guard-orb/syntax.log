@@ -1,0 +1,4 @@
+syntax: toolchain/bench/step36/guard.py: OK
+syntax: toolchain/harness/executor/guarded.py: OK
+syntax: toolchain/harness/executor/guard-orb/controls.py: OK
+syntax: toolchain/bench/step42/guard-orb/guard_regression.py: OK

@@ -1,0 +1,2 @@
+overflow-sleep: exit=124 expected=124; reason=None; group=None; child=not-live; descendant=not-live; dedicated=True; observed-before-fallback=child:True,descendant:True; bytes=17825882; stable=False; elapsed=0.84s; issue=None; wrapper='guarded /tmp/mo-guarded-baseline-02/overflow-sleep/attempt child_exit=-9 exit=124 group_absent=True'; FAIL; sentinel=live
+guarded_controls: 0/1 passed
