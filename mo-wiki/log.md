@@ -2897,3 +2897,12 @@
 - Source-only revision also fixes environment restoration scope and eager
   diagnostic allocation. C stays design-only with positional Grow rendering and
   a separate diagnostic capture allowance; no execution or acceptance.
+
+## [2026-09-21] review | A+B preflight released, C source only
+
+- b6a1fb67 bundle/hash/diff verified. Oracle agrees integrated fake compiler
+  controls close prior source gaps; release one independent build and three
+  filters only. New static inventory304 reconciles three additions, no pass yet.
+- C source authoring released with exact25-report oracle, retained file capture,
+  inherited outer group and unchanged RSS threshold. No C execution or broader
+  gate grant. Prior301/301 remains attributed to71a4fafc.

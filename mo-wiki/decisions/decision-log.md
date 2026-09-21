@@ -2095,6 +2095,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------ |
 | a2d7f695 production A+B wiring passes source review, but integrated fake compiler controls must exercise buildWithCompilerRunner and create output markers. Authorize source-only correction plus scoped environment restore and lazy error formatting; ordinary richer failure prose allowed. C design must separate exact stderr oracle from sampled expected-length-plus16MiB diagnostic allowance and render Grow positionally. No execution or C implementation. | Amp lead with Oracle | decided | next fixed source reread |
 
+### A+B preflight and C source authorization
+
+| decision                                                                                                                                                                                                                                                                                                                                                                    | who                  | status  | first tested by                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------- |
+| b6a1fb67 closes source control gaps. Release independent build900 plus three exact filters1800 on acceptedc7c84d10 composition, fresh caches and stop-first; no full/sanitizer/stress/mutants/timing. Authorize C source-only with corrected exact grammar, inherited outer group, sampled capture bounds and unchanged RSS predicate. Static inventory304 is not a result. | Amp lead with Oracle | decided | next independent preflight and C source reread |
+
 ## Related
 
 - [[session-05]]

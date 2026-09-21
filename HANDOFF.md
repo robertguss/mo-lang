@@ -140,6 +140,15 @@ lazy failure argv formatting. C design must use positional Grow(100000) and keep
 exact stderr acceptance separate from expected-length-plus16MiB diagnostic
 watchdog; polling is not hard containment. No execution or C implementation.
 
+b6a1fb67 closes A+B source-review gaps. Oracle grants independent validator one
+build900 then three exact new filters1800 each on full candidate composed with
+pinned acceptedc7c84d10, fresh caches/output and accepted guards, stop-first. No
+full or real ASan/stress/mutant/timing run. Static inventory304 (three new
+tests), not a304 pass. Implementation worker separately has C source-only grant
+in corpus.zig/control map: corrected exact report, bounded retained captures,
+immediate Ok(0) or Down/retry legal, original RSS contract unchanged. No C
+execution; return fixed source for reread. Prior301/301 remains prior revision.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:
