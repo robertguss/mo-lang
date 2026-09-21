@@ -86,6 +86,17 @@ sanitizer environment and host prerequisites. Some corpus children still omit
 term/full stderr checks; no blanket raw-ASan claim. No execution, separate
 exhaustive stress, mutants, timing or acceptance released.
 
+Readiness packet reviewed: --prefix correctly supplies installed MO_EXE; focused
+fiber build/runs expose streams and require exact runtime output/empty stderr.
+Validator now has HOST INSPECTION ONLY: exact integration, resolved tool/version
+queries, compiler-rt symbols, symbolizer, safe environment controls and existing
+filesystem prerequisites. No compile/link/probe/Mo/test or installation grant.
+Return packet before execution. Later narrow fiber-ASan evidence may use
+retained runtime-object ASan/access-check/fake-stack/fiber-hook symbols plus
+reviewed source/link path; generated C remains source-established, not
+artifact-verified. No ptrace capture, suppression, fake-stack disable or
+leak-check waiver.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

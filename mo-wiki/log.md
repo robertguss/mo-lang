@@ -3044,3 +3044,13 @@
   actual modes, captured/asserted/retained streams, explicit ASAN_OPTIONS and
   host prerequisites. Some corpus checks still drop term/diagnostic evidence. No
   new execution grant; all seven obligations remain unwaived.
+
+## [2026-09-21] review | focused sanitizer host inspection only
+
+- Reviewed source69 readiness map and command paths with Oracle. Full-corpus
+  term/stream gaps remain; focused fiber test has usable raw result checks.
+- Validator granted only host/tool/version/library-symbol/environment/filesystem
+  inspection, no build/runtime. Return exact prerequisite packet before release.
+- Later narrow native-runtime/fiber evidence may verify retained runtime object
+  including fake-stack instrumentation; generated-C flags remain source-proven.
+  No ptrace capture, suppression or disabled leak/fake-stack checks permitted.
