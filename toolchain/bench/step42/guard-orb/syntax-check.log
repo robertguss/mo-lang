@@ -1,0 +1,2 @@
+syntax: toolchain/bench/step36/guard.py: OK
+syntax: toolchain/bench/step42/guard-orb/guard_regression.py: OK
