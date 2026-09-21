@@ -102,6 +102,15 @@ correction in sim.zig; implementation worker is source-only pending reread. No
 retry or ASan released. Raw evidence:
 audit/evidence/2026-09-21/orb-memory-normal-ad748089/.
 
+Correction71a4fafc is verified as exactly one expected-literal replacement.
+Independent five tx_src filters on194f1969 (accepted3ac2e9fe) passed2/2 each,
+all exits0 and groups absent; ownership6/6/0 and1/1/0. Lead checked raw archive
+and Oracle released ONE unfiltered full-normal7200 run on that exact
+composition, fresh absolute caches/zig-out and accepted guards. Expect301/301,
+no skips; stop first failure or cleanup uncertainty. No retry, ASan, mutants,
+stress or measurement grant. Evidence:
+audit/evidence/2026-09-21/orb-memory-filters-71a4fafc/.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

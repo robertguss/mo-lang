@@ -2071,6 +2071,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------------------------------------------- |
 | Fresh ad748089 normal suite is RED:300/301, exit1, no skips/crashes, group absent. Shared tx_src gained held; Poke leaves it empty. Authorize only exact expected Relay(sent: 0, held: []) literal, keeping every rollback assertion. Source reread before execution; no retry, ASan or acceptance granted. `semantic` | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-normal-ad748089/ and pending corrected source |
 
+### Corrected transaction full-normal grant
+
+| decision                                                                                                                                                                                                                                                                                           | who                  | status  | first tested by                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------------------------------------------------- |
+| Source71a4fafc preserves exact complete-state equality; all five tx_src filters pass2/2 independently, groups absent. Release one fresh unfiltered normal7200 run on fixed194f1969 with accepted3ac2e9fe guards, fresh caches/output, expected301/301. Stop-first; no retries, ASan or acceptance. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-filters-71a4fafc/ and next full output |
+
 ## Related
 
 - [[session-05]]

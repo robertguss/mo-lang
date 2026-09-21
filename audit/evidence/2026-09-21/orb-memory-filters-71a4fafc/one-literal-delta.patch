@@ -1,0 +1,13 @@
+diff --git a/toolchain/src/sim.zig b/toolchain/src/sim.zig
+index 66cf6552..a67552d2 100644
+--- a/toolchain/src/sim.zig
++++ b/toolchain/src/sim.zig
+@@ -2830,7 +2830,7 @@ test "update is a transaction: a crash drops its state writes, sends, and emits,
+     try std.testing.expectEqual(contracts.Kind.overflow, crash.kind);
+     try std.testing.expectEqualStrings("Relay", crash.process.?.process);
+     try std.testing.expectEqualStrings("Poke", crash.process.?.log[0]);
+-    try std.testing.expectEqualStrings("Relay(sent: 0)", crash.process.?.state);
++    try std.testing.expectEqualStrings("Relay(sent: 0, held: [])", crash.process.?.state);
+     try std.testing.expectEqual(@as(u64, 7), crash.process.?.seed);
+ }
+ 

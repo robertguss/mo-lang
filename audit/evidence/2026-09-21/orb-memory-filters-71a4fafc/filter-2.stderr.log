@@ -1,0 +1,12 @@
+test-corpus
++- run test w
+step42 parcel-audit case=crashing-update allocated=6 destroyed=6 live=0
+failed command: MO_EXE=/home/user/workspace/verify-memory-71a4fafc-filters/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache-filter-2/o/0fea323f41e895ed47f50d3410333f8d/test --cache-dir=./.zig-cache-filter-2 --seed=0x6e4a22dc --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 14ms MaxRSS:10M
+   +- compile test Debug native success 2s MaxRSS:253M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+

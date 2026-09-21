@@ -2863,3 +2863,11 @@
   Source-only one-literal correction authorized, every rollback assertion kept;
   no execution retry or ASan released. Raw evidence is filed under
   audit/evidence/2026-09-21/orb-memory-normal-ad748089/.
+
+## [2026-09-21] verify | corrected transaction filters pass
+
+- Verified source71a4fafc and independent five filters:2/2 each, exits0, no
+  skips/crashes, groups absent; ownership6/6/0 and1/1/0. Archive hash and raw
+  receipts checked. Wiki lint:287 pages,29 existing notices; diff check clean.
+- Oracle releases one fresh full-normal7200 run on fixed194f1969 composition,
+  expected301/301; stop-first, no retry or ASan continuation. Prior REDs remain.
