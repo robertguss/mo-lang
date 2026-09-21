@@ -6,7 +6,8 @@ dirty paths), output.log, and exit.json with the child's real return code.
 --home gives the child an empty HOME and a minimal PATH (node, npm, zig, /usr/bin,
 /bin) with npm configuration kept inside that home. Exits with the child's code
 (guard.py reports its own kill as 137), 124 if supervision exceeds SECONDS+5 or
-output passes 16 MiB, or 125 if supervision or cleanup is unknown/failed.
+the final retained output passes 16 MiB, or 125 if supervision or cleanup is
+unknown/failed. Cleanup failure wins over 124 without replacing its policy reason.
 """
 import argparse, importlib.util, json, os, shutil, subprocess, sys, time
 from pathlib import Path
@@ -43,7 +44,7 @@ sys.modules[spec.name] = guard
 spec.loader.exec_module(guard)
 with (args.attempt / 'output.log').open('xb') as log:
     def policy(_payload, _now):
-        return 'output_overflow' if log.tell() > BUDGET else None
+        return 'output_overflow' if _payload.poll() is None and log.tell() > BUDGET else None
     outcome = guard.supervise(
         args.seconds,
         args.command,
@@ -56,7 +57,13 @@ with (args.attempt / 'output.log').open('xb') as log:
         outer_deadline=start + args.seconds + 5,
     )
 size = (args.attempt / 'output.log').stat().st_size
-policy_timeout = outcome.reason in ('output_overflow', 'outer_deadline')
+reason = outcome.reason
+supervision_reason = outcome.reason
+reason_source = 'supervision'
+if size > BUDGET and reason != 'output_overflow':
+    reason = 'output_overflow'
+    reason_source = 'after_cleanup'
+policy_timeout = reason in ('output_overflow', 'outer_deadline')
 if not outcome.cleanup_confirmed or outcome.supervision_error or outcome.reason == 'rss_probe_failed':
     code = 125
 elif policy_timeout:
@@ -66,7 +73,9 @@ elif outcome.child_exit is None:
 else:
     code = outcome.child_exit
 result = {'child_exit': outcome.child_exit, 'child_returncode': outcome.child_returncode,
-          'exit': code, 'reason': outcome.reason, 'timed_out': policy_timeout,
+          'exit': code, 'reason': reason, 'reason_source': reason_source,
+          'supervision_reason': supervision_reason,
+          'timed_out': policy_timeout,
           'process_group': outcome.process_group,
           'cleanup_confirmed': outcome.cleanup_confirmed,
           'group_state': outcome.group.state, 'group_absent': outcome.group.state == 'absent',
@@ -75,5 +84,5 @@ result = {'child_exit': outcome.child_exit, 'child_returncode': outcome.child_re
           'elapsed_seconds': round(time.monotonic() - start, 3)}
 (args.attempt / 'exit.json').write_text(json.dumps(result, indent=2) + '\n')
 print(f"guarded {args.attempt} child_exit={outcome.child_exit} exit={code} "
-      f"group_state={outcome.group.state} reason={outcome.reason}", flush=True)
+      f"group_state={outcome.group.state} reason={reason}", flush=True)
 sys.exit(code)

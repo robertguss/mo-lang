@@ -27,6 +27,43 @@ to 124 only when cleanup is confirmed. Unknown/failed supervision or cleanup
 maps to 125 and wins over policy. Group inspection reports `absent`, zombie-only
 `not_live`, `live`, or `unknown`; only the first sets literal `group_absent`.
 
+## Review corrections
+
+The acceptance review found that the first candidate trusted an empty process
+snapshot as absence, did not fail the standalone CLI closed, started startup
+cancellation grace only after `Popen` returned, and could miss output appended
+between its last policy check and final cleanup. It also found unsafe infinite
+test descendants and an unbounded wrapper-output pipe.
+
+The corrected candidate validates every process-snapshot PGID, PID, and state.
+Empty, malformed, truncated, nonzero, or timed-out snapshots are `unknown` and
+make both wrapper and standalone CLI return 125. This is an explicit exceptional
+standalone compatibility change: ordinary execution still returns the normalized
+direct-child status, but failed or unknown supervision/cleanup now returns 125.
+
+An RSS query now distinguishes a numeric sample from no selection, malformed
+output, nonzero status, or timeout. No selection re-polls the child: a completed
+child keeps its real status, while a still-live child fails supervision and is
+cleaned. The synthetic synchronized controls prove both branches; they do not
+claim an ordinary Linux exit race was reproduced.
+
+The first TERM/INT receipt starts the wrapper's two-second cancellation grace,
+including while synchronous `Popen` is still running. Queued or repeated signals
+cannot reset it, and an already-expired grace escalates as soon as `Popen`
+returns the handle. This cannot kill the new group while synchronous `Popen`
+withholds that handle; the held-startup control states and measures that limit.
+
+Final retained size is checked after cleanup. `reason_source: after_cleanup`
+identifies the fast-exit tail case. If overflow combines with unknown/live
+cleanup, exit 125 wins while `reason: output_overflow` remains recorded.
+
+The corrected harness uses independently finite processes, file-bounded wrapper
+output, and stop/reap-before-reread cleanup. Its `finally` makes each known
+cleanup attempt independently, and liveness errors fail rather than imply
+absence. Controls inject failure before local ownership publication and during
+liveness observation; both leave all subsequently discovered owned PIDs
+not-live.
+
 ## Controls
 
 The baseline control checks the immutable base wrapper. Its finite binary
@@ -53,6 +90,17 @@ cleanup, the unrelated sentinel, and a 12-second wall deadline.
 | Accepted harness-failure cleanup | GREEN, 1/1   | forced probe failure 0.15 s                                                              | `direct-harness-failure.log`, `.exit` |
 | Syntax parse                     | GREEN        | four Python sources parsed                                                               | `syntax.log`, `.exit`                 |
 
+Corrected evidence is additive; the preceding evidence files remain immutable.
+
+| Corrected run                    | Result       | Timing/status highlights                                                                      | Raw files                                       |
+| -------------------------------- | ------------ | --------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Extracted base overflow          | RED, 0/1     | 0.61 s; payload and descendant live before fallback, output unstable                          | `corrected-baseline-overflow-red.log`, `.exit`  |
+| Candidate wrapper/standalone     | GREEN, 30/30 | ordinary 0.51–0.67 s; TERM repeat 2.67 s; held startup 2.94 s; persistent cleanup 3.49–3.63 s | `candidate-corrected.log`, `.exit`              |
+| Accepted direct core             | GREEN, 6/6   | timeout 0.81 s; RSS 0.24 s                                                                    | `direct-core-corrected.log`, `.exit`            |
+| Accepted direct startup          | GREEN, 2/2   | TERM 0.29 s; INT 0.31 s                                                                       | `direct-startup-corrected.log`, `.exit`         |
+| Accepted harness-failure cleanup | GREEN, 1/1   | forced probe failure 0.18 s                                                                   | `direct-harness-failure-corrected.log`, `.exit` |
+| Corrected syntax parse           | GREEN        | four Python sources parsed                                                                    | `syntax-corrected.log`, `.exit`                 |
+
 All filed commands used `set -o pipefail`, combined output through `tee`, and
 wrote `${PIPESTATUS[0]}` to the adjacent exit file. The baseline ran the wrapper
 from a detached worktree at the named base; candidate payload/control code came
@@ -66,9 +114,15 @@ from this tree.
   `SECONDS + 5`; its branch control advances the wrapper's monotonic test clock,
   so its 0.57-second wall time is branch proof, not real-time `SECONDS + 5`
   evidence.
+- Wrapper controls use a 12-second wall bound. Ignoring-signal cases configure a
+  30-second guard timeout and a finite nine-second payload, so the observed
+  2.67–2.70-second exits distinguish the original two-second grace from either a
+  reset grace or ordinary timeout. The repeated TERM control attempts another
+  delivery after the original grace. The held-startup case releases `Popen` only
+  after 2.3 seconds and exits by 2.94 seconds, rather than starting a new grace.
 - The 16 MiB value is a trigger, not a hard retained cap. Polling and concurrent
-  writes produced 17,825,792–17,825,900-byte retained logs. Both were stable
-  0.25 seconds after wrapper cleanup; the fast case retained child exit 0 while
+  writes produced 17,825,792–17,825,900-byte retained logs. All were stable 0.25
+  seconds after wrapper cleanup; the fast case retained child exit 0 while
   wrapper policy returned 124.
 - A successful `ps` snapshot proves group state at that instant. A timed-out or
   nonzero probe is `unknown`/125. Zombie-only rows are cleanup-confirmed but not

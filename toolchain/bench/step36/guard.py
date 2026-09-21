@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Bounded direct-child RSS and process-group supervision.
 
-The CLI is ``guard.py SECONDS -- cmd...``.  ``supervise`` is also the shared
-in-process entry point for recording wrappers that must own the payload group
-themselves rather than supervise a second guard process.
+The CLI is ``guard.py SECONDS -- cmd...``.  It normally exits as the normalized
+direct child status, but exceptionally exits 125 when supervision or final
+cleanup is failed or unknown.  ``supervise`` is also the shared in-process entry
+point for recording wrappers that must own the payload group themselves rather
+than supervise a second guard process.
 """
 
 from dataclasses import dataclass
@@ -66,10 +68,15 @@ def _rss(pid):
         timeout=PROBE_SECONDS,
         check=False,
     )
-    if probe.returncode:
-        raise RuntimeError(f"rss probe exited {probe.returncode}")
     value = probe.stdout.strip()
-    return int(value) * 1024 if value else 0
+    if probe.returncode:
+        return None, f"rss probe exited {probe.returncode}"
+    if not value:
+        return None, "rss probe selected no process"
+    try:
+        return int(value) * 1024, None
+    except ValueError:
+        return None, f"malformed rss sample: {value!r}"
 
 
 def _observe_group(pgid):
@@ -87,9 +94,20 @@ def _observe_group(pgid):
         return GroupObservation("unknown", [], f"ps exited {probe.returncode}")
     rows = []
     live = False
-    for row in probe.stdout.splitlines():
+    snapshot = probe.stdout.splitlines()
+    if not snapshot:
+        return GroupObservation("unknown", [], "empty process snapshot")
+    for row in snapshot:
         fields = row.split(None, 3)
-        if len(fields) >= 3 and fields[0] == str(pgid):
+        if (
+            len(fields) < 3
+            or not fields[0].isdigit()
+            or not fields[1].isdigit()
+            or not fields[2]
+            or fields[2][0] not in "DIRSTtWXxZOU"
+        ):
+            return GroupObservation("unknown", rows, f"malformed process row: {row!r}")
+        if fields[0] == str(pgid):
             rows.append(row.strip())
             live = live or not fields[2].startswith("Z")
     if not rows:
@@ -112,8 +130,10 @@ def supervise(
     """Run one payload group and return its status plus bounded cleanup proof.
 
     ``policy`` may return a reason string such as ``output_overflow``.  Signals
-    arriving during ``Popen`` are queued.  With a forwarding grace, the first
-    TERM/INT starts one escalation clock; repeated signals never extend it.
+    arriving during synchronous ``Popen`` are queued: cleanup cannot act on the
+    new group until ``Popen`` returns its handle.  With a forwarding grace, the
+    first TERM/INT receipt starts one escalation clock; repeated or queued
+    signals never extend it.
     """
     started = time.monotonic()
     payload = None
@@ -125,12 +145,12 @@ def supervise(
 
     def forward(sig, _frame=None):
         nonlocal forwarded_deadline
+        if forwarded_signal_grace is not None and forwarded_deadline is None:
+            forwarded_deadline = time.monotonic() + forwarded_signal_grace
         if payload is None:
             pending.append(sig)
             return
         _signal_group(payload.pid, sig)
-        if forwarded_signal_grace is not None and forwarded_deadline is None:
-            forwarded_deadline = time.monotonic() + forwarded_signal_grace
 
     previous = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
     for sig in previous:
@@ -145,7 +165,10 @@ def supervise(
             start_new_session=True,
         )
         for sig in pending:
-            forward(sig)
+            _signal_group(payload.pid, sig)
+        if forwarded_deadline is not None and time.monotonic() >= forwarded_deadline:
+            reason = "signal_grace"
+            _signal_group(payload.pid, signal.SIGKILL)
         next_rss = started
         while True:
             now = time.monotonic()
@@ -174,12 +197,20 @@ def supervise(
                 break
             if now >= next_rss:
                 try:
-                    rss = _rss(payload.pid)
-                except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:
+                    sample, probe_error = _rss(payload.pid)
+                except (OSError, subprocess.TimeoutExpired) as error:
                     reason = "rss_probe_failed"
                     supervision_error = f"{type(error).__name__}: {error}"
                     _signal_group(payload.pid, signal.SIGKILL)
                     break
+                if sample is None:
+                    if payload.poll() is not None:
+                        continue
+                    reason = "rss_probe_failed"
+                    supervision_error = probe_error
+                    _signal_group(payload.pid, signal.SIGKILL)
+                    break
+                rss = sample
                 if rss > RSS_LIMIT:
                     reason = "rss"
                     sys.stderr.write(
@@ -226,7 +257,7 @@ def main(argv=None):
     limit = float(argv[0])
     command = argv[argv.index("--") + 1 :]
     result = supervise(limit, command)
-    if result.child_exit is None:
+    if result.child_exit is None or result.supervision_error or not result.cleanup_confirmed:
         return 125
     return result.child_exit
 
