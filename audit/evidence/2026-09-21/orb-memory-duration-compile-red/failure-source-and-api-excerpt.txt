@@ -1,0 +1,64 @@
+candidate source excerpts:
+  1428	            } else |err| {
+  1429	                owner.lifecycle.observation_error = @errorName(err);
+  1430	                owner.lifecycle.cleanup_error = @errorName(err);
+  1431	                owner.recordPrimary(@errorName(err));
+  1432	                owner.lifecycle.ownership = .unknown;
+  1433	                return;
+  1434	            }
+  1435	            const elapsed = signalled.durationTo(Io.Clock.Timestamp.now(io, .awake)).nanoseconds;
+  1436	            if (elapsed >= LargeRestartOracle.cleanup_timeout_ns) {
+  1437	                owner.lifecycle.cleanup_error = "CaptureCleanupDeadline";
+  1438	                owner.recordPrimary("CaptureCleanupDeadline");
+  1439	                owner.lifecycle.ownership = .unknown;
+  1440	                return;
+  1478	            owner.recordPrimary(@errorName(err));
+  1479	            break :blk 0;
+  1480	        } else 0;
+  1481	        if (owner.stdout_file) |file| file.close(io);
+  1482	        owner.stdout_file = null;
+  1483	        if (owner.stderr_file) |file| file.close(io);
+  1484	        owner.stderr_file = null;
+  1485	        owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).nanoseconds;
+  1486	        var metadata: Io.Writer.Allocating = .init(arena);
+  1487	        writeCaptureMetadata(&metadata.writer, owner.lifecycle, owner.argv, owner.cwd, owner.stdout_path, owner.stderr_path, owner.stdout_limit, owner.stderr_limit) catch |err| {
+  1488	            std.debug.print("step 42 metadata render failed ({t}); capture retained at {s}\n", .{ err, owner.capture_dir });
+  1489	            return error.CaptureMetadataFailed;
+  1490	        };
+  1766	    const capture_root = if (supplied_capture_root) |path|
+  1767	        if (std.fs.path.isAbsolute(path)) path else try std.fs.path.join(arena, &.{ root, path })
+  1768	    else
+  1769	        try std.fs.path.join(arena, &.{ root, ".zig-cache", "step42-captures" });
+  1770	    const capture_dir = try std.fs.path.join(arena, &.{ capture_root, &tmp.sub_path });
+  1771	    try Io.Dir.cwd().createDirPath(io, capture_dir);
+  1772	    const expected_stderr_path = try std.fs.path.join(arena, &.{ capture_dir, "expected.stderr" });
+installed Zig 0.16 Io.Clock.Duration declaration:
+   886	            return math.compare(lhs.raw.nanoseconds, op, rhs.raw.nanoseconds);
+   887	        }
+   888	    };
+   889	
+   890	    pub const Duration = struct {
+   891	        raw: Io.Duration,
+   892	        clock: Clock,
+   893	
+   894	        /// Waits until a specified amount of time has passed on `clock`.
+   895	        ///
+   896	        /// See also:
+   897	        /// * `Io.sleep`
+   898	        /// * `Clock.Timestamp.wait`
+   899	        /// * `Timeout.sleep`
+   900	        pub fn sleep(duration: Clock.Duration, io: Io) Cancelable!void {
+   901	            return io.vtable.sleep(io.userdata, .{ .duration = duration });
+   902	        }
+   903	    };
+   904	};
+   905	
+   906	pub const Timestamp = struct {
+   907	    nanoseconds: i96,
+   908	
+   909	    pub fn now(io: Io, clock: Clock) Io.Timestamp {
+   910	        return io.vtable.now(io.userdata, clock);
+   911	    }
+   912	
+   913	    pub const zero: Timestamp = .{ .nanoseconds = 0 };
+   914	

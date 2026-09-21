@@ -44,13 +44,13 @@ hidden suite was opened. Evidence and reply mapping:
 
 ### Active orb workers
 
-Latest bounded grant: lead/Oracle reread approves the one-token path-slice
-correction at49b69a65. Validator has the verified bundle and may run exactly one
-normal large-restart filter on full49 composed onto accepted728b7a91, with fresh
-caches/output and retained raw captures. Require both runtimes, exact25 reports,
-canonical stdout/nonzero RSS/strict growth bound and complete cleanup.
-Stop-first; no retry or full309/ASan/stress/mutants/timing grant. Priorf54cf712
-compile-only RED remains preserved; no runtime green or acceptance yet.
+Latest normal49b69a65 attempt on accepted728b7a91, integrated924c24d8, is
+compile-only RED: exit1/build2/5, no runtime/captures, groups absent. The path
+slice fix compiled; two Clock.Duration.nanoseconds accesses did not. Lead found
+a third identical access in the sampling loop. Oracle authorizes only three .raw
+insertions in corpus.zig, then source reread. No retry or broader execution
+grant. Both compile-only REDs remain preserved; no acceptance. Raw receipts:
+audit/evidence/2026-09-21/orb-memory-duration-compile-red/.
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 

@@ -1,0 +1,15 @@
+bundle_sha256=3c35dd1c9aaa5f5844b92ebacafb09098a1d0694d2512ac7e57cd2e7c9c3df5d
+bundle_bytes=104360
+prerequisite=1839785eead517324e63232dc2261a5be8882dc2
+candidate=49b69a65f696f19c34e20cc19572cc9f0cc8da62
+accepted_base=728b7a9135f381d38614cf833641ce96d1c21870
+origin_main_at_fetch=728b7a9135f381d38614cf833641ce96d1c21870
+integrated=924c24d8af1b517ac4f91592d2b369ecd5e74cb1
+integrated_parent=728b7a9135f381d38614cf833641ce96d1c21870
+candidate_path_count=57
+candidate_paths_byte_and_mode_equal=yes
+accepted_guard_identities_equal=yes
+tracked_diff_entries=0
+cached_diff_entries=0
+status_entries=0
+path_fix=    const capture_dir = try std.fs.path.join(arena, &.{ capture_root, &tmp.sub_path });

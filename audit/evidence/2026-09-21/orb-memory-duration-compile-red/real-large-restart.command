@@ -1,0 +1,5 @@
+cwd=/home/user/workspace/verify-memory-49b69a65-large-restart/toolchain
+revision=924c24d8af1b517ac4f91592d2b369ecd5e74cb1
+filter=corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary
+capture_dir=/home/user/workspace/repo/.amp/transfer/49b69a65-real-large-restart/capture-924c24d8-normal
+env -u MO_NATIVE_ASAN -u MO_STRESS -u MO_CORPUS MO_CACHE=/home/user/workspace/verify-memory-49b69a65-large-restart/.mo-cache-real-restart-fresh ZIG_LOCAL_CACHE_DIR=/home/user/workspace/verify-memory-49b69a65-large-restart/toolchain/.zig-cache-real-restart-fresh ZIG_GLOBAL_CACHE_DIR=/home/user/workspace/verify-memory-49b69a65-large-restart/.zig-global-cache-real-restart-fresh MO_STEP42_CAPTURE_DIR=/home/user/workspace/repo/.amp/transfer/49b69a65-real-large-restart/capture-924c24d8-normal python3 bench/step36/guard.py 1800 -- zig build test-corpus -j4 -Dtest-filter='corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary' --summary all

@@ -1,0 +1,10 @@
+utc=2026-09-21T09:44:07+00:00
+capture_tree:
+capture_total:
+0	.amp/transfer/49b69a65-real-large-restart/capture-924c24d8-normal
+exit:
+1
+log_sizes:
+   0 .amp/transfer/49b69a65-real-large-restart/real-large-restart.stdout.log
+2711 .amp/transfer/49b69a65-real-large-restart/real-large-restart.stderr.log
+2711 total

@@ -2967,3 +2967,12 @@
 - Fresh caches/output and retained captures; both runtimes and every existing
   exact-output/RSS/cleanup predicate required. Stop-first, no broader execution
   or acceptance. Compile-only RED remains unchanged; results pending.
+
+## [2026-09-21] verify | duration API compile-only RED
+
+- Verified raw archive/hash and receipts for49b69a65 on924c24d8: exit1,
+  build2/5, no runtime/captures, outer group and scoped PIDs absent. Previous
+  RED preserved; path-slice error resolved, duration accesses now fail compile.
+- Lead found three sites, despite two diagnostics. Oracle approves only three
+  .raw insertions to reach signed nanoseconds; worker has source-only brief. No
+  retry or broader execution. Seven obligations unchanged.
