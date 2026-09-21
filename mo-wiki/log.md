@@ -2942,3 +2942,11 @@
   execution grant.
 - Clarify sampled five-second cleanup budget in worker-owned map; no hard bound
   or executed owner claim. Static309 and seven obligations remain unchanged.
+
+## [2026-09-21] verify | owner helper gate green, one real normal run released
+
+- Verified archive hash/composition/raw receipts:build5/5, five filters2/2, all
+  exits0 and owned groups absent. Helpers do not execute process ownership.
+- Oracle releases one exact normal large-restart filter on fixedf54cf712,
+  retained raw captures and strict exact-output/RSS/cleanup predicates. No retry
+  or broader grant; sampled-budget documentation correction verified separately.

@@ -2125,6 +2125,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | -------------------------------- |
 | Source86b66e0 helper fixes and85edd344 owner corrections close prior blockers. Explicitly pin existing build900/five-helper1800 gate to85 on accepted60595692, fresh full composition/caches and stop-first. No real capture/full/ASan grant. Correct map to sampled five-second observation budget, not hard wall-clock limit; metadata tests remain serialization evidence only. | Amp lead with Oracle | decided | next independent helper receipts |
 
+### One real normal capture gate
+
+| decision                                                                                                                                                                                                                                                                                                                        | who                  | status  | first tested by                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | -------------------------------------------------------------------------- |
+| Owner85 helper gate passes onf54cf712:build5/5,five filters2/2,exits0/groups absent. Release one real normal large-restart filter1800 on same composition with fresh caches and retained captures; both runtimes exact reports/RSS/completed-reaped metadata required. Stop-first, no retry or full/ASan/stress/mutants/timing. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-owner-helpers85/ and pending real run |
+
 ## Related
 
 - [[session-05]]

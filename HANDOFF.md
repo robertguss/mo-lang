@@ -181,6 +181,17 @@ metadata test proves serialization only. Worker doc-only correction must call
 five seconds a sampled observation budget, not a hard maximum (100ms sleeps,
 scheduling/syscall/finalization delays; outer guard owns unresolved cleanup).
 
+Owner85 integratedf54cf712 helper gate verified:build5/5 plus five filters2/2
+each, exits0 and six owned groups absent. Evidence:
+audit/evidence/2026-09-21/orb-memory-owner-helpers85/. Doc336621a6 wording diff
+verified separately. Oracle releases ONE normal real large-restart filter1800 on
+same exactf54cf712, fresh caches/output and absolute retained capture root.
+Require both interpreter/native exact25 reports, canonical stdout/strict RSS,
+completed/reaped/error-null metadata,2/2 exit0 and literal group absence/scoped
+child check. Preserve all whole/partial captures. Stop-first; no retry or
+broader full309/ASan/stress/mutant/timing release. Result returns to review
+only.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:
