@@ -2113,6 +2113,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------ |
 | Hold105cc503: fix missing invariant prefix/canonical stdout, replace pipe monitor with direct-file single lifecycle ownership to prevent post-reap signaling and unbounded pump waits, finalize error evidence and add discriminating comparison/lifecycle controls. Source-only correction in corpus/control map; no execution, thresholds and seven obligations unchanged. `semantic` | Amp lead with Oracle | decided | next fixed source reread |
 
+### C helper preflight and ownership boundaries
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                                            | who                  | status  | first tested by          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------ |
+| Hold efccfabf for three helper blockers: catch syntax, canonical -0 ordering and optional-string metadata. Source-only small-fix checkpoint before separate owner correction: no PID operations after ECHILD, no null-id reap inference, bounded post-signal observation, fail unknown final stats/cleanup after recording evidence. Helper serialization does not verify lifecycle. No execution grant. `semantic` | Amp lead with Oracle | decided | next fixed source reread |
+
 ## Related
 
 - [[session-05]]

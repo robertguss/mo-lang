@@ -2924,3 +2924,12 @@
 - Return source only to direct-file capture with one lifecycle owner and exact
   oracle/positive multi-chunk controls. No execution grant; seven obligations
   unchanged. Prior A+B bounded greens remain prior-revision evidence.
+
+## [2026-09-21] review | C helper and owner gates remain separate
+
+- Verified efccfabf bundle/hash and source. Direct files/single owner close the
+  old concurrent race; Oracle identifies catch syntax, -0 classification and
+  optional error-name formatting as deterministic helper blockers.
+- Source-only small-fix commit then separate ownership/finalization correction
+  authorized. Unknown ownership forbids PID reuse; unknown cleanup cannot pass.
+  No execution; metadata serialization is not process-lifecycle verification.

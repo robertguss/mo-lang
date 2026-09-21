@@ -163,6 +163,16 @@ granted: direct file redirection, one nonreaping lifecycle owner, explicit
 signal/reap outcomes, failure finalization and discriminating oracle/capture
 controls. No execution. Prior A+B preflight remains valid only for b6a1fb67.
 
+Cefccfabf source remains HOLD. Single-owner direct files close prior concurrent
+race, but bare-null catch syntax, canonical -0 error ordering and
+optional-string metadata formatting block helper preflight. Worker authorized
+separate small-fix commit, then owner correction: ECHILD forbids later PID
+operations; SDK wait clears Child.id even on error, not reap proof; final
+stat/cleanup uncertainty must fail after metadata; bound post-signal observation
+before reap. Metadata test is serialization only. No execution; five helper
+filters may follow fixed reread, never real capture/full/ASan automatically.
+Static309 is not executed evidence.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:
