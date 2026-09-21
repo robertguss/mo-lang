@@ -69,6 +69,12 @@ Depth becomes3; asks/retry bound/oracles unchanged. Break skips inner-loop
 collection, so identical GC/RSS is not assumed; strict RSS bound remains. Worker
 has brief; no execution before source reread.
 
+Follow-up: verified69dc6df1 implements only the reviewed retry-depth change.
+Lead/Oracle release one normal exact large-restart filter on full69 composed
+onto accepted d02014c0. Validator has bundle/grant, fresh caches/output and
+retained captures required. All both-runtime report/RSS/cleanup predicates
+remain; no GC equality claim, further retry or broader gate authorized.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.

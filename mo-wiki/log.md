@@ -3012,3 +3012,12 @@
 - Lead/Oracle approve only removal of the enclosing retry guard and break on
   Ok(0). Asks unchanged, depth3; break skips inner-loop collection, not outer.
   Strict RSS gate unchanged. Source-only worker brief; no retry grant.
+
+## [2026-09-21] review | depth-three retry correction releases one attempt
+
+- Verified69dc6df1 bundle/hash and exact retry-block diff. Oracle confirms
+  inner-loop break, unchanged bounded ask/report behavior and invariant11:3. No
+  identical collection timing or RSS claim; strict predicate unchanged.
+- Transferred full candidate and released one normal exact filter composed onto
+  accepted d02014c0, fresh caches/output and retained captures. Stop-first, all
+  both-runtime report/RSS/cleanup checks required; no broader grant.

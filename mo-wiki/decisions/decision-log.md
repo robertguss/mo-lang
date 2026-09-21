@@ -2173,6 +2173,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------------------------------------- |
 | Preserve e73504d0/92e2589f shape RED: exit1/build3/5, tests1 pass/1 fail; no restart/RSS/native result. Remove enclosing if !empty and break after empty=true in successful retry case, reducing depth4 to3 without extra asks or changed retry/sentinels/oracle. Break bypasses inner-loop collection; outer collection and strict RSS gate remain. Source reread before any retry. `semantic` | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-fixture-shape-red/ |
 
+### Retry-depth reread releases one normal attempt
+
+| decision                                                                                                                                                                                                                                                                                                                                                            | who                  | status  | first tested by                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------------- |
+| Verified69dc6df1 implements only the reviewed depth-three retry block with inner-loop success break. Release one normal exact large-restart filter on full69 composed onto accepted d02014c0, fresh caches/output and retained captures; unchanged both-runtime report/RSS/cleanup predicates. No GC/RSS equality claim, further retry, broader gate or acceptance. | Amp lead with Oracle | decided | pending independent exact-filter receipts |
+
 ## Related
 
 - [[session-05]]
