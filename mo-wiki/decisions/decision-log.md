@@ -2107,6 +2107,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- | ------------------------------------------------- |
 | Recognize b6a1fb67 composed as1109b581 bounded preflight only:build5/5 and three filters2/2 each, exits0 and owned groups absent. ASan-named filter is fake compiler policy evidence. Hold validator pending C source review; no full304 or broader execution/acceptance. | Amp lead with Oracle | recorded | audit/evidence/2026-09-21/orb-memory-ab-b6a1fb67/ |
 
+### C source capture correction
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                | who                  | status  | first tested by          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------ |
+| Hold105cc503: fix missing invariant prefix/canonical stdout, replace pipe monitor with direct-file single lifecycle ownership to prevent post-reap signaling and unbounded pump waits, finalize error evidence and add discriminating comparison/lifecycle controls. Source-only correction in corpus/control map; no execution, thresholds and seven obligations unchanged. `semantic` | Amp lead with Oracle | decided | next fixed source reread |
+
 ## Related
 
 - [[session-05]]

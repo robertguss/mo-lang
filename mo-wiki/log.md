@@ -2915,3 +2915,12 @@
   proof.
 - Validator held pending C source reread. No full304 or broader grant; prior
   evidence unchanged. Wiki lint287 pages/29 existing notices; diff check clean.
+
+## [2026-09-21] review | C source blocked before execution
+
+- Verified105cc503 bundle/hash and full source diff. Lead/Oracle found omitted
+  invariant prefix, noncanonical stdout acceptance, PID-after-reap race and
+  incomplete error cleanup/evidence in the pipe-based implementation.
+- Return source only to direct-file capture with one lifecycle owner and exact
+  oracle/positive multi-chunk controls. No execution grant; seven obligations
+  unchanged. Prior A+B bounded greens remain prior-revision evidence.

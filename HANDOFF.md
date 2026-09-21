@@ -155,6 +155,14 @@ receipts checked by lead, Oracle agrees narrow result. Evidence:
 audit/evidence/2026-09-21/orb-memory-ab-b6a1fb67/. Validator HOLD pending C
 source review; no full304, real ASan, stress, mutants, timing or acceptance.
 
+C105cc503 source HOLD after lead/Oracle review. Expected crash prefix omits
+invariant; stdout parser accepts noncanonical numbers. Pipe-pump monitor can
+signal after reap and loses supervision before pumps finish; error cleanup can
+skip joining a task and leave pending-only metadata. Source-only correction
+granted: direct file redirection, one nonreaping lifecycle owner, explicit
+signal/reap outcomes, failure finalization and discriminating oracle/capture
+controls. No execution. Prior A+B preflight remains valid only for b6a1fb67.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:
