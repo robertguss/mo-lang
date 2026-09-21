@@ -22,19 +22,42 @@ after every leader exit. It still reports the direct child's exit status: normal
 status unchanged, or `128 + signal` for signal death. The final kill does not
 replace or rewrite that recorded status.
 
+The corrected candidate also installs TERM/INT handlers before `Popen`. A signal
+received before the child handle is available is queued and forwarded as soon as
+`Popen` returns. This closes the startup interval in which the guard could die
+after its newly sessioned child existed but before forwarding was possible.
+
 ## Controls
 
 `guard_regression.py` owns and bounds every process it starts. Each case records
 the direct child and descendant PIDs, imposes an 8-second harness deadline,
 verifies that the child leads a dedicated process group, checks both child and
-descendant are absent, verifies a separately sessioned unrelated process is
-still alive, and independently kills any survivors so the broken baseline is
-safe to test. The descendant ignores TERM and INT.
+descendant are not live, verifies a separately sessioned unrelated process is
+still live, and independently kills any live test processes so the broken
+baseline is safe to test. Zombie state counts as not live; these controls do not
+claim that a PID is absent. The descendant acknowledges readiness only after
+installing both ignore handlers. The child publishes final readiness only after
+that acknowledgment and after installing its SIGINT disposition.
 
 The RSS case injects a temporary fake `ps` through `PATH`; only the guard's
-`ps -o rss=` query returns 4,194,305 KiB. This exercises the production
-`rss > 4 << 30` kill branch without allocating 4 GiB. It does not alter the
-guard or its CLI.
+`ps -o rss=` query returns 4,194,305 KiB, and only after payload readiness. This
+exercises the production `rss > 4 << 30` kill branch without allocating 4 GiB.
+It does not alter the guard or its CLI.
+
+The startup controls inject `sitecustomize` through `PYTHONPATH` into the guard
+test process. Its `Popen` wrapper calls the real `Popen`, waits for payload
+readiness, publishes proof that the child exists, and then withholds the child
+handle from `guard.py`. The harness sends TERM or INT during that deterministic
+hold, then releases the return. This is a test-only seam; production code and
+CLI have no hook.
+
+Every case uses one absolute 8-second deadline for startup, readiness, guard
+wait, inspection, and owned-process cleanup; the ordinary not-live observation
+window is the smaller of one second and the remaining case deadline. The suite
+has a separate final cleanup of its unrelated control process, bounded by two
+seconds. Cleanup is an outer `finally`, re-reads every available PID record, and
+runs even if readiness or process inspection fails. The forced-`ps`-timeout case
+proves both owned test processes are not live afterward.
 
 | Control              | Exit | Result                                                    | Raw output                                                |
 | -------------------- | ---: | --------------------------------------------------------- | --------------------------------------------------------- |
@@ -42,6 +65,20 @@ guard or its CLI.
 | recovered `0a4dffcd` |    1 | RED, 4/6; natural/signal leader-exit descendants survived | `recovered-wip-control.log`, `recovered-wip-control.exit` |
 | candidate            |    0 | GREEN, 6/6                                                | `candidate-green.log`, `candidate-green.exit`             |
 | syntax parse         |    0 | guard and regression script parse                         | `syntax-check.log`, `syntax-check.exit`                   |
+
+The preceding files are immutable first-pass evidence. Corrected synchronized
+evidence is separate:
+
+| Control                           | Exit | Result     | Raw output                                  |
+| --------------------------------- | ---: | ---------- | ------------------------------------------- |
+| synchronized `origin/main`        |    1 | RED, 0/6   | `synchronized-main-red.log`, `.exit`        |
+| synchronized recovered `0a4dffcd` |    1 | RED, 4/6   | `synchronized-wip-red.log`, `.exit`         |
+| synchronized corrected candidate  |    0 | GREEN, 6/6 | `synchronized-candidate-green.log`, `.exit` |
+| startup `origin/main`             |    1 | RED, 0/2   | `startup-main-red.log`, `.exit`             |
+| startup recovered `0a4dffcd`      |    1 | RED, 0/2   | `startup-wip-red.log`, `.exit`              |
+| startup corrected candidate       |    0 | GREEN, 2/2 | `startup-candidate-green.log`, `.exit`      |
+| forced inspection timeout cleanup |    0 | GREEN, 1/1 | `harness-failure-green.log`, `.exit`        |
+| corrected syntax parse            |    0 | GREEN, 2/2 | `synchronized-syntax.log`, `.exit`          |
 
 Commands (run from repository root):
 
@@ -52,7 +89,9 @@ python3 toolchain/bench/step42/guard-orb/guard_regression.py --guard /tmp/step42
 git show 0a4dffcd460a4f47ac925c6d2fb13c7e081a14ce:toolchain/bench/step36/guard.py > /tmp/step42-guard-recovered/guard.py
 python3 toolchain/bench/step42/guard-orb/guard_regression.py --guard /tmp/step42-guard-recovered/guard.py
 
-python3 toolchain/bench/step42/guard-orb/guard_regression.py --guard toolchain/bench/step36/guard.py
+python3 toolchain/bench/step42/guard-orb/guard_regression.py --guard toolchain/bench/step36/guard.py --mode core
+python3 toolchain/bench/step42/guard-orb/guard_regression.py --guard toolchain/bench/step36/guard.py --mode startup
+python3 toolchain/bench/step42/guard-orb/guard_regression.py --guard toolchain/bench/step36/guard.py --mode harness-failure
 ```
 
 Each filed run used `set -o pipefail`, piped combined output through `tee`, and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded regression controls for step 42's process-group guard recovery."""
+"""Bounded, synchronized controls for step 42's process-group guard."""
 
 import argparse
 import os
@@ -12,65 +12,88 @@ import tempfile
 import time
 
 
-CASE_TIMEOUT = 8.0
-POLL_INTERVAL = 0.02
+CASE_SECONDS = 8.0
+POLL_SECONDS = 0.02
 
 
-def alive(pid):
+def remaining(deadline):
+    return max(0.01, deadline - time.monotonic())
+
+
+def alive(pid, ps="ps", timeout=1.0):
+    if pid is None:
+        return False
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     state = subprocess.run(
-        ["ps", "-o", "stat=", "-p", str(pid)],
+        [ps, "-o", "stat=", "-p", str(pid)],
         capture_output=True,
         text=True,
-        timeout=1,
+        timeout=timeout,
     ).stdout.strip()
     return bool(state) and not state.startswith("Z")
 
 
-def wait_for_pid(path, deadline):
+def read_pid(path):
+    try:
+        value = path.read_text().strip()
+        return int(value) if value else None
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def wait_for_file(path, deadline):
     while time.monotonic() < deadline:
-        try:
-            value = path.read_text().strip()
-            if value:
-                return int(value)
-        except FileNotFoundError:
-            pass
-        time.sleep(POLL_INTERVAL)
-    raise TimeoutError(f"no pid appeared in {path}")
+        if path.exists():
+            return
+        time.sleep(POLL_SECONDS)
+    raise TimeoutError(f"readiness did not appear: {path}")
 
 
-def stop_pid(pid):
+def kill_pid(pid):
     if pid is None:
         return
     try:
         os.kill(pid, signal.SIGKILL)
     except ProcessLookupError:
-        return
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline and alive(pid):
-        time.sleep(POLL_INTERVAL)
+        pass
 
 
-def payload(child_path, descendant_path, group_path, outcome):
-    descendant = subprocess.Popen(
+def wait_not_live(pids, deadline):
+    while time.monotonic() < deadline:
+        if not any(alive(pid) for pid in pids):
+            return
+        time.sleep(POLL_SECONDS)
+
+
+def descendant(ready_path):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    Path(ready_path).write_text("ready\n")
+    time.sleep(300)
+
+
+def payload(child_path, descendant_path, group_path, ready_path, outcome):
+    descendant_ready = Path(ready_path).with_name("descendant.ready")
+    child = subprocess.Popen(
         [
             sys.executable,
-            "-c",
-            "import signal,time; "
-            "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
-            "signal.signal(signal.SIGINT, signal.SIG_IGN); "
-            "time.sleep(300)",
+            str(Path(__file__).resolve()),
+            "--descendant-ready",
+            str(descendant_ready),
         ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    Path(descendant_path).write_text(f"{descendant.pid}\n")
+    Path(descendant_path).write_text(f"{child.pid}\n")
     Path(child_path).write_text(f"{os.getpid()}\n")
+    wait_for_file(descendant_ready, time.monotonic() + 3)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     Path(group_path).write_text(f"{os.getpgrp()}\n")
+    Path(ready_path).write_text("ready\n")
     if outcome == "natural":
         time.sleep(0.1)
         return 7
@@ -78,12 +101,11 @@ def payload(child_path, descendant_path, group_path, outcome):
         time.sleep(0.1)
         os.kill(os.getpid(), signal.SIGUSR1)
         raise AssertionError("SIGUSR1 did not terminate payload")
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
     time.sleep(300)
     return 0
 
 
-def make_fake_ps(folder):
+def make_fake_ps(folder, ready_path):
     real_ps = shutil.which("ps")
     fake_bin = folder / "fake-bin"
     fake_bin.mkdir()
@@ -91,7 +113,12 @@ def make_fake_ps(folder):
     script.write_text(
         "#!/bin/sh\n"
         "case \" $* \" in\n"
-        "  *' rss= '*) sleep 0.2; echo 4194305 ;;\n"
+        "  *' rss= '*)\n"
+        "    count=0\n"
+        f"    while [ ! -f {str(ready_path)!r} ] && [ $count -lt 100 ]; do\n"
+        "      sleep 0.02; count=$((count + 1))\n"
+        "    done\n"
+        f"    if [ -f {str(ready_path)!r} ]; then echo 4194305; else echo 0; fi ;;\n"
         f"  *) exec {real_ps} \"$@\" ;;\n"
         "esac\n"
     )
@@ -99,20 +126,75 @@ def make_fake_ps(folder):
     return f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
 
 
-def run_case(guard, name, outcome, expected, forwarded=None, fake_rss=False):
+def install_startup_interposer(folder, ready_path, spawned_path, release_path):
+    interposer = folder / "interposer"
+    interposer.mkdir()
+    (interposer / "sitecustomize.py").write_text(
+        "import os\n"
+        "from pathlib import Path\n"
+        "import subprocess\n"
+        "import time\n"
+        "original = subprocess.Popen\n"
+        "def held(*args, **kwargs):\n"
+        "    process = original(*args, **kwargs)\n"
+        "    command = args[0] if args else kwargs.get('args', [])\n"
+        "    if '--payload' in command:\n"
+        f"        ready = Path({str(ready_path)!r})\n"
+        f"        spawned = Path({str(spawned_path)!r})\n"
+        f"        release = Path({str(release_path)!r})\n"
+        "        deadline = time.monotonic() + 5\n"
+        "        while not ready.exists() and time.monotonic() < deadline:\n"
+        "            time.sleep(0.01)\n"
+        "        spawned.write_text(str(process.pid) + '\\n')\n"
+        "        while not release.exists() and time.monotonic() < deadline:\n"
+        "            time.sleep(0.01)\n"
+        "    return process\n"
+        "subprocess.Popen = held\n"
+    )
+    return f"{interposer}{os.pathsep}{os.environ.get('PYTHONPATH', '')}"
+
+
+def make_hanging_ps(folder):
+    script = folder / "hanging-ps"
+    script.write_text("#!/bin/sh\nexec sleep 2\n")
+    script.chmod(0o755)
+    return script
+
+
+def run_case(
+    guard,
+    name,
+    outcome,
+    expected,
+    forwarded=None,
+    fake_rss=False,
+    startup=False,
+    force_probe_failure=False,
+):
     started = time.monotonic()
-    child = descendant = None
-    child_group = None
+    deadline = started + CASE_SECONDS
+    child = descendant_pid = child_group = None
     guard_process = None
+    rc = None
+    issue = None
+    child_live = descendant_live = True
+    stderr = ""
     with tempfile.TemporaryDirectory(prefix=f"guard-{name}-") as raw_folder:
         folder = Path(raw_folder)
         child_path = folder / "child.pid"
         descendant_path = folder / "descendant.pid"
         group_path = folder / "group.pid"
+        ready_path = folder / "payload.ready"
+        spawned_path = folder / "popen-return-held"
+        release_path = folder / "release-popen"
         stderr_path = folder / "guard.stderr"
         environment = os.environ.copy()
         if fake_rss:
-            environment["PATH"] = make_fake_ps(folder)
+            environment["PATH"] = make_fake_ps(folder, ready_path)
+        if startup:
+            environment["PYTHONPATH"] = install_startup_interposer(
+                folder, ready_path, spawned_path, release_path
+            )
         command = [
             sys.executable,
             str(guard),
@@ -124,6 +206,7 @@ def run_case(guard, name, outcome, expected, forwarded=None, fake_rss=False):
             str(child_path),
             str(descendant_path),
             str(group_path),
+            str(ready_path),
             outcome,
         ]
         try:
@@ -135,55 +218,81 @@ def run_case(guard, name, outcome, expected, forwarded=None, fake_rss=False):
                     stderr=stderr_file,
                     env=environment,
                 )
-            ready_deadline = time.monotonic() + 3
-            child = wait_for_pid(child_path, ready_deadline)
-            descendant = wait_for_pid(descendant_path, ready_deadline)
-            child_group = wait_for_pid(group_path, ready_deadline)
-            if forwarded is not None:
+            wait_for_file(spawned_path if startup else ready_path, deadline)
+            child = read_pid(child_path)
+            descendant_pid = read_pid(descendant_path)
+            child_group = read_pid(group_path)
+            if startup:
                 guard_process.send_signal(forwarded)
-            rc = guard_process.wait(timeout=CASE_TIMEOUT)
-        except (subprocess.TimeoutExpired, TimeoutError) as error:
-            rc = f"bounded-failure:{type(error).__name__}"
+                release_path.write_text("release\n")
+            elif forwarded is not None:
+                guard_process.send_signal(forwarded)
+            if force_probe_failure:
+                probe_target = child
+                child = descendant_pid = child_group = None
+                alive(probe_target, ps=str(make_hanging_ps(folder)), timeout=0.05)
+                raise AssertionError("forced ps timeout did not occur")
+            rc = guard_process.wait(timeout=remaining(deadline))
+            observation_deadline = min(deadline, time.monotonic() + 1)
+            wait_not_live((child, descendant_pid), observation_deadline)
+            child_live = alive(child)
+            descendant_live = alive(descendant_pid)
+            stderr = stderr_path.read_text().strip()
+        except Exception as error:
+            issue = f"{type(error).__name__}:{error}"
         finally:
+            release_path.touch()
+            child = child or read_pid(child_path)
+            descendant_pid = descendant_pid or read_pid(descendant_path)
+            child_group = child_group or read_pid(group_path)
             if guard_process is not None and guard_process.poll() is None:
                 guard_process.kill()
-                guard_process.wait(timeout=2)
+            kill_pid(child)
+            kill_pid(descendant_pid)
+            if guard_process is not None:
+                try:
+                    guard_process.wait(timeout=remaining(deadline))
+                except subprocess.TimeoutExpired:
+                    guard_process.kill()
+            try:
+                wait_not_live((child, descendant_pid), deadline)
+            except (subprocess.TimeoutExpired, TimeoutError):
+                pass
 
-        deadline = time.monotonic() + 1
-        while time.monotonic() < deadline and any(
-            pid is not None and alive(pid) for pid in (child, descendant)
-        ):
-            time.sleep(POLL_INTERVAL)
-        child_alive = child is not None and alive(child)
-        descendant_alive = descendant is not None and alive(descendant)
-        stderr = stderr_path.read_text().strip()
         elapsed = time.monotonic() - started
-        rss_message = not fake_rss or "rss 4096 MB" in stderr
-        ok = (
-            rc == expected
-            and child_group == child
-            and not child_alive
-            and not descendant_alive
-            and elapsed <= CASE_TIMEOUT
-            and rss_message
-        )
-
-        # This cleanup is deliberately independent of guard behavior so the
-        # RED control against the old direct-child guard is bounded too.
-        stop_pid(child)
-        stop_pid(descendant)
+        if force_probe_failure:
+            child_live = alive(child)
+            descendant_live = alive(descendant_pid)
+            ok = (
+                issue is not None
+                and issue.startswith("TimeoutExpired:")
+                and not child_live
+                and not descendant_live
+                and elapsed <= CASE_SECONDS
+            )
+        else:
+            rss_message = not fake_rss or "rss 4096 MB" in stderr
+            ok = (
+                issue is None
+                and rc == expected
+                and child_group == child
+                and not child_live
+                and not descendant_live
+                and elapsed <= CASE_SECONDS
+                and rss_message
+            )
         details = (
             f"{name}: exit={rc} expected={expected}; "
-            f"child={'alive' if child_alive else 'gone'}; "
-            f"descendant={'alive' if descendant_alive else 'gone'}; "
+            f"child={'live' if child_live else 'not-live'}; "
+            f"descendant={'live' if descendant_live else 'not-live'}; "
             f"dedicated-group={'yes' if child_group == child else 'no'}; "
             f"unrelated={{unrelated}}; elapsed={elapsed:.2f}s; "
-            f"stderr={stderr!r}; {'PASS' if ok else 'FAIL'}"
+            f"issue={issue!r}; stderr={stderr!r}"
         )
         return ok, details
 
 
-def regression(guard):
+def run_suite(guard, mode):
     unrelated = subprocess.Popen(
         [sys.executable, "-c", "import time; time.sleep(300)"],
         stdin=subprocess.DEVNULL,
@@ -191,45 +300,59 @@ def regression(guard):
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
+    if mode == "core":
+        cases = [
+            ("natural", "natural", 7, None, False, False, False),
+            ("signal", "signal", 128 + signal.SIGUSR1, None, False, False, False),
+            ("timeout", "wait", 128 + signal.SIGKILL, None, False, False, False),
+            ("term", "wait", 128 + signal.SIGTERM, signal.SIGTERM, False, False, False),
+            ("int", "wait", 128 + signal.SIGINT, signal.SIGINT, False, False, False),
+            ("rss", "wait", 128 + signal.SIGKILL, None, True, False, False),
+        ]
+    elif mode == "startup":
+        cases = [
+            ("startup-term", "wait", 128 + signal.SIGTERM, signal.SIGTERM, False, True, False),
+            ("startup-int", "wait", 128 + signal.SIGINT, signal.SIGINT, False, True, False),
+        ]
+    else:
+        cases = [
+            ("forced-ps-timeout", "wait", None, None, False, False, True),
+        ]
     results = []
     try:
-        cases = [
-            ("natural", "natural", 7, None, False),
-            ("signal", "signal", 128 + signal.SIGUSR1, None, False),
-            ("timeout", "wait", 128 + signal.SIGKILL, None, False),
-            ("term", "wait", 128 + signal.SIGTERM, signal.SIGTERM, False),
-            ("int", "wait", 128 + signal.SIGINT, signal.SIGINT, False),
-            ("rss", "wait", 128 + signal.SIGKILL, None, True),
-        ]
         for case in cases:
             ok, details = run_case(guard, *case)
-            unrelated_alive = alive(unrelated.pid)
-            ok = ok and unrelated_alive
+            unrelated_live = alive(unrelated.pid)
+            ok = ok and unrelated_live
             print(
-                details.format(
-                    unrelated="alive" if unrelated_alive else "gone"
-                ).rsplit("; ", 1)[0]
+                details.format(unrelated="live" if unrelated_live else "not-live")
                 + f"; {'PASS' if ok else 'FAIL'}"
             )
             results.append(ok)
     finally:
-        stop_pid(unrelated.pid)
+        kill_pid(unrelated.pid)
         try:
             unrelated.wait(timeout=2)
         except subprocess.TimeoutExpired:
             unrelated.kill()
             unrelated.wait(timeout=2)
-    print(f"guard_regression: {sum(results)}/{len(results)} passed")
+    print(f"guard_regression[{mode}]: {sum(results)}/{len(results)} passed")
     return 0 if all(results) else 1
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == "--descendant-ready":
+        descendant(sys.argv[2])
+        return 0
     if len(sys.argv) >= 2 and sys.argv[1] == "--payload":
         return payload(*sys.argv[2:])
     parser = argparse.ArgumentParser()
     parser.add_argument("--guard", required=True, type=Path)
+    parser.add_argument(
+        "--mode", choices=("core", "startup", "harness-failure"), default="core"
+    )
     arguments = parser.parse_args()
-    return regression(arguments.guard.resolve())
+    return run_suite(arguments.guard.resolve(), arguments.mode)
 
 
 if __name__ == "__main__":
