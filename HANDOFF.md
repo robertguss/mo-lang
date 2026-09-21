@@ -60,11 +60,14 @@ Oracle authorizes only four inline statement arms becoming block arms in the
 fixture, preserving all bodies/retries/oracles. Worker has source-only brief; no
 retry before reread. Seven obligations and all earlier REDs unchanged.
 
-Follow-up: verified e73504d0 expands exactly the four statement arms.
-Lead/Oracle reread authorizes one normal exact large-restart attempt on full
-candidate composed onto accepted fe29ea7a. Validator has the bundle/grant; fresh
-caches/output, retained captures, all both-runtime report/RSS/cleanup predicates
-unchanged. Stop-first, no further retry or broader execution.
+Latest e73504d0/92e2589f attempt is shape-check RED: exit1/build3/5, tests1
+pass/1 fail. Interpreter completed/reaped/exited1 on MO0304 depth4; no restart,
+RSS or native evidence. Receipts:
+audit/evidence/2026-09-21/orb-memory-fixture-shape-red/. Source-only correction:
+remove enclosing if !empty, add break after empty=true in successful retry arm.
+Depth becomes3; asks/retry bound/oracles unchanged. Break skips inner-loop
+collection, so identical GC/RSS is not assumed; strict RSS bound remains. Worker
+has brief; no execution before source reread.
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 

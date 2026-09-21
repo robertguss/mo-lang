@@ -1,0 +1,60 @@
+capture sizes and hashes:
+.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/expected.stderr	90006894 bytes
+.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.comparison	380 bytes
+.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.meta	1196 bytes
+.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.stderr	344 bytes
+.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.stdout	0 bytes
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  .amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/expected.stderr
+79a10f9e8d2f77610c32494f7dc95a9a36413ba80d9c24ffc4f1c4702b900fab  .amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.comparison
+f3235362fcc47a43159945f697b11d2ee01e6be8f3b8dd17dad368ea0699a802  .amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.meta
+7321ee8b253a06016a412e683e270d263e0b054d32afe638e60a343e2a20a82c  .amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.stderr
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  .amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.stdout
+expected process-crashed lines:
+25
+actual process-crashed lines:
+0
+expected EOF byte:
+ 0a
+actual EOF byte:
+ 0a
+interpreter metadata:
+cwd=.zig-cache/tmp/yvKgL0CAOOdfbeoT
+argv={ { 47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 119, 111, 114, 107, 115, 112, 97, 99, 101, 47, 118, 101, 114, 105, 102, 121, 45, 109, 101, 109, 111, 114, 121, 45, 101, 55, 51, 53, 48, 52, 100, 48, 45, 108, 97, 114, 103, 101, 45, 114, 101, 115, 116, 97, 114, 116, 47, 116, 111, 111, 108, 99, 104, 97, 105, 110, 47, 122, 105, 103, 45, 111, 117, 116, 47, 98, 105, 110, 47, 109, 111 }, { 114, 117, 110 }, { 108, 101, 97, 107, 46, 109, 111 } }
+stdout-path=/home/user/workspace/repo/.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.stdout
+stderr-path=/home/user/workspace/repo/.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal/yvKgL0CAOOdfbeoT/interpreter.stderr
+reason=completed
+spawned-pid=147089
+ownership=reaped
+primary-error=null
+observation-error=null
+signal-error=null
+reap-error=null
+cleanup-error=null
+stdout-stat-error=null
+stderr-stat-error=null
+term=.{ .exited = 1 }
+poll-ms=100
+timeout-s=300
+cleanup-timeout-s=5
+stdout-limit=4096
+stderr-limit=106784110
+sampled-stdout=0
+sampled-stderr=0
+final-stdout=0
+final-stderr=344
+overshoot-stdout=0
+overshoot-stderr=0
+elapsed-ns=101777545
+comparison:
+expected-bytes=90006894
+actual-bytes=344
+expected-sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+actual-sha256=7321ee8b253a06016a412e683e270d263e0b054d32afe638e60a343e2a20a82c
+first-mismatch=0
+expected-context=70726f6365737320637261736865643a206c65616b2e6d6f3a31313a333a2069
+actual-context=6c65616b2e6d6f3a34333a393a204d4f30333034207468697320636173652069
+interpreter stderr:
+leak.mo:43:9: MO0304 this case is nested 4 deep in crash; the limit is 3, so move the inner block into its own function.
+          case holder.ask(Size, within: 1.minute)
+          ^
+  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.

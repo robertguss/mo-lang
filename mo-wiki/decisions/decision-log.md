@@ -2167,6 +2167,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------------- |
 | Verified e73504d0 changes only four inline statement arms to block form. Release one normal exact large-restart filter on full candidate composed onto accepted fe29ea7a with fresh caches/output and retained captures; unchanged both-runtime 25-report/RSS/cleanup predicates, stop-first. Prior REDs preserved; no further retry, full309, ASan, stress, mutants or timing. | Amp lead with Oracle | decided | pending independent exact-filter receipts |
 
+### Retry nesting correction after fixture shape RED
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                        | who                  | status  | first tested by                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------------------------------------- |
+| Preserve e73504d0/92e2589f shape RED: exit1/build3/5, tests1 pass/1 fail; no restart/RSS/native result. Remove enclosing if !empty and break after empty=true in successful retry case, reducing depth4 to3 without extra asks or changed retry/sentinels/oracle. Break bypasses inner-loop collection; outer collection and strict RSS gate remain. Source reread before any retry. `semantic` | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-fixture-shape-red/ |
+
 ## Related
 
 - [[session-05]]

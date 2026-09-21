@@ -1,0 +1,4 @@
+leak.mo:43:9: MO0304 this case is nested 4 deep in crash; the limit is 3, so move the inner block into its own function.
+          case holder.ask(Size, within: 1.minute)
+          ^
+  why: Nesting is at most 3 deep (chapter 2, shape laws): each if, case, for, and block anonymous function is a level. The inner block becomes its own function.

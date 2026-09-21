@@ -1,0 +1,14 @@
+utc=2026-09-21T10:16:03+00:00
+yvKgL0CAOOdfbeoT/expected.stderr	90006894 bytes
+yvKgL0CAOOdfbeoT/interpreter.comparison	380 bytes
+yvKgL0CAOOdfbeoT/interpreter.meta	1196 bytes
+yvKgL0CAOOdfbeoT/interpreter.stderr	344 bytes
+yvKgL0CAOOdfbeoT/interpreter.stdout	0 bytes
+total:
+86M	.amp/transfer/e73504d0-real-large-restart/capture-92e2589f-normal
+exit:
+1
+logs:
+   0 .amp/transfer/e73504d0-real-large-restart/real-large-restart.stdout.log
+2375 .amp/transfer/e73504d0-real-large-restart/real-large-restart.stderr.log
+2375 total

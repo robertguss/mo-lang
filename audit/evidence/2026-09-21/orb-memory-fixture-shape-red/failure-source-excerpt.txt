@@ -1,0 +1,46 @@
+Generated fixture and execution ordering from exact integrated source:
+  1714	        \\# Crashes the holder `n` times, each with a large state before the message and after it.
+  1715	        \\fn crash(holder: Handle(Holder), n: UInt64) : UInt64
+  1716	        \\  var gone = 0
+  1717	        \\  for _ in 0..n
+  1718	        \\    holder.send(Grow(n: 100_000))
+  1719	        \\    holder.send(Grow(n: 100_000))
+  1720	        \\    # An ask the restart drops is Down; the next is answered by the restarted holder.
+  1721	        \\    var empty = false
+  1722	        \\    for _ in 0..3
+  1723	        \\      if !empty
+  1724	        \\        case holder.ask(Size, within: 1.minute)
+  1725	        \\          Ok(0):
+  1726	        \\            empty = true
+  1727	        \\          Ok(_):
+  1728	        \\            return 1_000_000
+  1729	        \\          Error(Down):
+  1730	        \\            empty = empty
+  1731	        \\          Error(_):
+  1732	        \\            return 1_000_000
+  1733	        \\        end
+  1734	        \\      end
+  1735	        \\    end
+  1736	        \\    if !empty
+  1737	        \\      return 1_000_000
+  1738	        \\    end
+  1739	        \\    gone += 1
+  1740	        \\  end
+  1741	        \\  gone
+  1742	        \\end
+  1780	        var expected_buffer: [64 * 1024]u8 = undefined;
+  1781	        var expected_writer = expected_file.writer(io, &expected_buffer);
+  1782	        try LargeRestartOracle.writeReport(&expected_writer.interface, leak, LargeRestartOracle.reports, LargeRestartOracle.values);
+  1783	        try expected_writer.interface.flush();
+  1784	    }
+  1785	    const expected_stderr_bytes = try captureLength(io, expected_stderr_path);
+  1786	    const stderr_limit = std.math.add(u64, expected_stderr_bytes, LargeRestartOracle.diagnostic_allowance) catch return error.ExpectedDiagnosticsTooLarge;
+  1787	    var environ = try std.testing.environ.createMap(arena);
+  1788	    const interp = try captureDirectChild(arena, io, &.{ mo_exe, "run", "leak.mo" }, &environ, cwd, capture_dir, try capturePaths(arena, capture_dir, "interpreter"), stderr_limit);
+  1789	    try checkLargeRestartCapture(arena, io, interp, expected_stderr_path, capture_dir, "interpreter");
+  1790	    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "leak.mo", "-o", "leak-served" }, .cwd = .{ .path = cwd } });
+  1791	    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+  1792	    const binary = try std.fs.path.join(arena, &.{ root, cwd, "zig-out/mo-build/leak-served/leak-served" });
+  1793	    const compiled = try captureDirectChild(arena, io, &.{binary}, &environ, cwd, capture_dir, try capturePaths(arena, capture_dir, "native"), stderr_limit);
+  1794	    try checkLargeRestartCapture(arena, io, compiled, expected_stderr_path, capture_dir, "native");
+  1795	}

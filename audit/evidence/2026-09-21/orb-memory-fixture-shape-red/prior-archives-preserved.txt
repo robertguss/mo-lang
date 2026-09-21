@@ -1,0 +1,10 @@
+Prior archives preserved; hashes at packaging time:
+a225217e93dc28f2056ccdd58898e380525ec53fb5b3aba06477ae7fced25e50  .amp/transfer/49b69a65-real-large-restart/verification-49b69a65-real-large-restart-red.tar.gz
+f54f714c222fe483788621a87246ef67afb190dfbb0ecf34990feac3f7b5fff8  .amp/transfer/71a4fafc-full-normal/verification-71a4fafc-full-normal.tar.gz
+e2761381d310cd382b2c28df5411def474f545febc99043c2bd3c54feea555b6  .amp/transfer/71a4fafc/verification-71a4fafc-filters.tar.gz
+563511ab0af557415fbf7ba6669891dabfed8212f7859cb20888cfef0bdf9016  .amp/transfer/85edd344-large-restart/verification-85edd344-real-large-restart-red.tar.gz
+ab2d121b27c488309540b2e8ea0a517a6a6767ca34da2101e443d138a8b538cf  .amp/transfer/85edd344/verification-85edd344-helper-gate.tar.gz
+58fe05e6f444e3f23b0ad452ad57d921d6da9d1e65b89b20e32e41ed1d51ca41  .amp/transfer/ad748089/verification-ad748089-normal.tar.gz
+509a67cb70bb95ee8b34d1c291034601649fc72b46592bf7fa40c1ea9a88d8bf  .amp/transfer/b6a1fb67/verification-b6a1fb67-bounded.tar.gz
+144d6bccb308229b805f0e2f150c32f729eac21d1f3a44d8e52f61cf8328cc5c  .amp/transfer/eb665371-real-large-restart/verification-eb665371-real-large-restart-red.tar.gz
+9bc1582a36568211db8e1cbce1185452ca14afce88277d20b03f289576e6b720  .amp/transfer/verification-fixed-413e006c.tar.gz

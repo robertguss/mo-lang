@@ -3003,3 +3003,12 @@
   composed onto accepted fe29ea7a; transferred bundle and sent bounded grant.
 - Results pending. Existing both-runtime report/RSS/cleanup predicates remain;
   no broader execution or acceptance. Prior REDs and full captures preserved.
+
+## [2026-09-21] verify | fixture shape-check RED
+
+- Verified e73504d0/92e2589f archive/hash and captures: exit1/build3/5, tests1
+  pass/1 fail. Interpreter exited1 on MO0304 depth4; completed/reaped, null
+  lifecycle errors and cleanup confirmed. Native and RSS unexecuted.
+- Lead/Oracle approve only removal of the enclosing retry guard and break on
+  Ok(0). Asks unchanged, depth3; break skips inner-loop collection, not outer.
+  Strict RSS gate unchanged. Source-only worker brief; no retry grant.
