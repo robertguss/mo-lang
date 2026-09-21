@@ -3086,3 +3086,16 @@
   environment, instrumentation and strict output gates unchanged.
 - No new runtime result or acceptance. Confirmed completed guard and wrapper
   threads archived; unfinished memory, validator and server threads retained.
+
+## [2026-09-21] verify | 8:39 AM ET, native-fiber leak exposed
+
+- Verified fa two-stage archive/hash and all manifest entries. Normal control
+  2/2 passes; quiet ASan link succeeds. Native20 aborts after exact stdout on
+  LSan131840 bytes/12 allocations; other three runtime cases pass. Cleanup
+  certain; raw receipts preserved in orb-memory-fiber-lsan-red.
+- Lead/Oracle identify missing scheduler TLS forwarding-table and idle-pool
+  cleanup. Source-only correction assigned with sanitizer-aware permanent fiber
+  retirement, main-thread parity and additive shutdown regressions. Parked
+  workers, saved VMs and reports excluded; no blanket TLS destruction.
+- No retry or acceptance. Wiki lint:287 pages,29 inherited notices, exit0 at
+  preceding release checkpoint; current checkpoint reruns lint before commit.

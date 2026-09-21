@@ -1,0 +1,17 @@
+final_cleanup_utc=2026-09-21T12:28:35+00:00
+owned-pgid-336841:
+    PID    PPID    PGID STAT COMMAND
+owned_pgid_ps_exit=1
+scoped_noninspection_count=0
+scoped_zombie_count=0
+known-pids:
+    PID    PPID    PGID STAT COMMAND
+pid_336838=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_336841=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_337569=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_337573=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_340344=ABSENT

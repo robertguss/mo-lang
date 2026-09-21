@@ -1,0 +1,18 @@
+cleanup_utc=2026-09-21T12:23:02+00:00
+owned-pgid-327394:
+    PID    PPID    PGID STAT COMMAND
+owned_pgid_ps_exit=1
+scoped-path-processes:
+scoped_path_count=0
+known-pids:
+    PID    PPID    PGID STAT COMMAND
+pid_327391=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_327394=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_328328=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_328332=ABSENT
+prefix-bin-zig:
+ABSENT
+tracked-index:

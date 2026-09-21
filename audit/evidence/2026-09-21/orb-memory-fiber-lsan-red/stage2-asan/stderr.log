@@ -1,0 +1,61 @@
+test-corpus-asan
++- run test 1 pass, 1 fail (2 total)
+error: 'corpus.test.corpus: step 42 native fibers cover first entry park resume caller reuse and excess retirement' failed:
+       step42 case=fiber-lifecycle-build term=.{ .exited = 0 } stdout=zig-out/mo-build/fiber-lifecycle/fiber-lifecycle
+        stderr=
+       step42 case=fiber-lifecycle-retirement-one-scheduler-interp term=.{ .exited = 0 } stdout=held 70; released 70; done 70; sum 490
+        stderr=
+       step42 case=fiber-lifecycle-retirement-one-scheduler-native term=.{ .exited = 0 } stdout=held 70; released 70; done 70; sum 490
+        stderr=
+       step42 case=fiber-lifecycle-caller-reuse-multi-scheduler-interp term=.{ .exited = 0 } stdout=held 20; released 20; done 20; sum 140
+        stderr=
+       step42 case=fiber-lifecycle-caller-reuse-multi-scheduler-native term=.{ .signal = .ABRT } stdout=held 20; released 20; done 20; sum 140
+        stderr=
+       =================================================================
+       ==340344==ERROR: LeakSanitizer: detected memory leaks
+       
+       Direct leak of 131072 byte(s) in 1 object(s) allocated from:
+           #0 0x4a4b28 in __interceptor_calloc (/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/.zig-cache/tmp/SqWH2zJVQAP2R0VL/zig-out/mo-build/fiber-lifecycle/fiber-lifecycle+0x4a4b28) (BuildId: 844f886f52607e3347d17ed2dc5dd120682601a3)
+           #1 0x54d71c in forward_put /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:680:20
+           #2 0x54d71c in copy_slice /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:774:5
+           #3 0x54ce80 in copy_out /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:825:32
+           #4 0x519e0e in pack /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:986:16
+           #5 0x51887f in mo_send /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:5848:30
+           #6 0x4e2566 in pu2 /home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/.zig-cache/tmp/SqWH2zJVQAP2R0VL/zig-out/mo-build/fiber-lifecycle/fiber-lifecycle.c
+           #7 0x57033b in update /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:6446:19
+           #8 0x57033b in run_update /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:6469:16
+           #9 0x522f21 in deliver /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:6700:18
+           #10 0x521744 in mo_fiber_start /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:7622:13
+       
+       Direct leak of 128 byte(s) in 1 object(s) allocated from:
+           #0 0x4a4d66 in __interceptor_realloc (/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/.zig-cache/tmp/SqWH2zJVQAP2R0VL/zig-out/mo-build/fiber-lifecycle/fiber-lifecycle+0x4a4d66) (BuildId: 844f886f52607e3347d17ed2dc5dd120682601a3)
+           #1 0x521d28 in xrealloc /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:138:15
+           #2 0x521d28 in mo_fiber_start /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:7647:9
+       
+       Indirect leak of 640 byte(s) in 10 object(s) allocated from:
+           #0 0x4a4b28 in __interceptor_calloc (/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/.zig-cache/tmp/SqWH2zJVQAP2R0VL/zig-out/mo-build/fiber-lifecycle/fiber-lifecycle+0x4a4b28) (BuildId: 844f886f52607e3347d17ed2dc5dd120682601a3)
+           #1 0x562165 in fiber_create /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:6897:16
+           #2 0x562165 in hand_to /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:7580:17
+           #3 0x55d3fc in step /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:8145:9
+           #4 0x58190c in sched_loop /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/src-fa7fb1e374e22b06/mo_rt.c:8323:17
+           #5 0x7f1ff4ddc1f4  (/lib/x86_64-linux-gnu/libc.so.6+0x891f4) (BuildId: 93ac61ec5a8eb1396f9fbd350e3169a558528a40)
+       
+       SUMMARY: AddressSanitizer: 131840 byte(s) leaked in 12 allocation(s).
+       
+       /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:615:14: 0x13ab8b9 in expect (std.zig)
+           if (!ok) return error.TestUnexpectedResult;
+                    ^
+       /home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/src/corpus.zig:2131:9: 0x13ad606 in test.corpus: step 42 native fibers cover first entry park resume caller reuse and excess retirement (root.zig)
+               try std.testing.expect(native.term == .exited and native.term.exited == 0);
+               ^
+failed command: MO_EXE=/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/zig-out-stage2-asan-fresh/bin/mo MO_CORPUS=1 ./.zig-cache-stage2-asan-fresh/o/b4d9db20e33d8c44904658e441a107b2/test --cache-dir=./.zig-cache-stage2-asan-fresh --seed=0xf4154a0 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus-asan transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 1s MaxRSS:192M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache-stage2-asan-fresh/o/bc0619dbfa9da73f98952af8d0005a12/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain .zig-cache-stage2-asan-fresh /home/user/workspace/verify-memory-fa98233e-stage2-asan/.zig-global-cache-stage2-asan-fresh --seed 0xf4154a0 -Za499c359a7c71a80 test-corpus-asan -j4 --prefix /home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/zig-out-stage2-asan-fresh -Dtest-filter=corpus: step 42 native fibers cover first entry park resume caller reuse and excess retirement --summary all

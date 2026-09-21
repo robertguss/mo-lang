@@ -129,6 +129,17 @@ stage; reviewed Clang14, sanitized environment, UAR/leak options and artifact
 checks unchanged. Stop-first, no retries or broader gates. No new result yet;
 prior309/309 is still prior normal evidence, not acceptance.
 
+21 Sep, 8:39 AM ET: fa98233e integrated cdb27668 passed normal fake control 2/2,
+then quiet ASan link. Interpreter70/native70/interpreter20 passed; native20
+printed exact output then aborted on LSan131840 bytes/12 allocations. Cleanup
+certain. Lead verified archive and all manifest entries; Oracle reviewed raw
+logs and source. Evidence: audit/evidence/2026-09-21/orb-memory-fiber-lsan-red/.
+Source-only correction assigned for current-thread forwarding table and
+completed-fiber pool, including scheduler zero. Retire suspended pooled fibers
+through sanitizer protocol before off-stack destruction; never touch parked
+workers, saved VMs or reports. Add shutdown regression source; no execution
+before reread. All seven obligations and prior REDs remain.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

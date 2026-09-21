@@ -1,0 +1,6 @@
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh absent_before=yes
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/.zig-cache-stage2-asan-fresh absent_before=yes
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/.zig-global-cache-stage2-asan-fresh absent_before=yes
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/zig-out-stage2-asan-fresh absent_before=yes
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/zig-out absent_before=yes
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/toolchain/zig-out-stage2-asan-fresh/bin/zig absent_before=yes

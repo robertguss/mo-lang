@@ -1,0 +1,58 @@
+object=/home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o
+db5f5cc9d83aea44e73b9b14456b7c950a4b68aedb4d7d5d9dab0da844c2a47c  /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o
+mode=644 size=2653264 uid=1000 gid=1000 mtime=2026-09-21 12:26:55.845683995 +0000
+/home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o: ELF 64-bit LSB relocatable, x86-64, version 1 (GNU/Linux), with debug_info, not stripped
+--- ELF header ---
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 03 00 00 00 00 00 00 00 00 
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - GNU
+  ABI Version:                       0
+  Type:                              REL (Relocatable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x0
+  Start of program headers:          0 (bytes into file)
+  Start of section headers:          2650512 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           0 (bytes)
+  Number of program headers:         0
+  Size of section headers:           64 (bytes)
+  Number of section headers:         43
+  Section header string table index: 1
+--- compiler producer/comment ---
+
+String dump of section '.comment':
+  [     1]  Debian clang version 14.0.6
+
+--- required undefined ASan and fiber symbols ---
+                 U __asan_init
+                 U __asan_option_detect_stack_use_after_return
+                 U __asan_report_load1
+                 U __asan_report_load16
+                 U __asan_report_load2
+                 U __asan_report_load4
+                 U __asan_report_load8
+                 U __asan_report_load_n
+                 U __asan_report_store1
+                 U __asan_report_store16
+                 U __asan_report_store2
+                 U __asan_report_store4
+                 U __asan_report_store8
+                 U __asan_report_store_n
+                 U __asan_stack_malloc_0
+                 U __asan_stack_malloc_1
+                 U __asan_stack_malloc_10
+                 U __asan_stack_malloc_2
+                 U __asan_stack_malloc_3
+                 U __asan_stack_malloc_4
+                 U __asan_stack_malloc_5
+                 U __asan_stack_malloc_6
+                 U __asan_stack_malloc_7
+                 U __asan_stack_malloc_8
+                 U __asan_stack_malloc_9
+                 U __sanitizer_finish_switch_fiber
+                 U __sanitizer_start_switch_fiber

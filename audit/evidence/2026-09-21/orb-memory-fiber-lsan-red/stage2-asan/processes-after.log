@@ -1,0 +1,22 @@
+cleanup_utc=2026-09-21T12:27:32+00:00
+owned-pgid-336841:
+    PID    PPID    PGID STAT COMMAND
+owned_pgid_ps_exit=1
+scoped-path-processes:
+ 341917  289099  341917 Ss   bash /usr/local/bin/amp-run-workload -- /bin/bash -c EVID=.amp/transfer/fa98233e-two-stage/stage2-asan printf '%s\n' '--- exit/log sizes ---' cat "$EVID/exit.txt"; wc -c "$EVID/stdout.log" "$EVID/stderr.log" printf '%s\n' '--- runtime objects ---' find /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime -type f -name mo_rt.o -printf '%p\n' | LC_ALL=C sort printf '%s\n' '--- exact runtime records ---' rg -n '^       step42 case=fiber-lifecycle|^        stderr=|SUMMARY: AddressSanitizer|Build Summary' "$EVID/stderr.log"
+ 341918  341917  341917 S    sudo -nE /usr/bin/systemd-run --scope --quiet --collect --slice=amp-workload.slice --uid=user --same-dir --setenv=HOME=/home/user --setenv=PATH=/home/user/.amp/bin:/opt/git/bin:/home/user/.local/bin:/home/user/.local/bin:/home/user/.local/bin:/usr/local/bin:/usr/bin:/bin --property=OOMPolicy=kill --unit=amp-run-341917-28547.scope /bin/sh -c printf "%s\n" 500 > /proc/self/oom_score_adj; exec "$@" amp-workload /bin/bash -c EVID=.amp/transfer/fa98233e-two-stage/stage2-asan printf '%s\n' '--- exit/log sizes ---' cat "$EVID/exit.txt"; wc -c "$EVID/stdout.log" "$EVID/stderr.log" printf '%s\n' '--- runtime objects ---' find /home/user/workspace/verify-memory-fa98233e-stage2-asan/.mo-cache-stage2-asan-fresh/.runtime -type f -name mo_rt.o -printf '%p\n' | LC_ALL=C sort printf '%s\n' '--- exact runtime records ---' rg -n '^       step42 case=fiber-lifecycle|^        stderr=|SUMMARY: AddressSanitizer|Build Summary' "$EVID/stderr.log"
+scoped_path_count=0
+known-pids:
+    PID    PPID    PGID STAT COMMAND
+pid_336838=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_336841=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_337569=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_337573=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_340344=ABSENT
+prefix-bin-zig:
+ABSENT
+tracked-index:

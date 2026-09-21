@@ -1,0 +1,15 @@
+bundle_sha256=b7835bb0eb477cbf2788b8911c1a4b6cdf1420f8da05b56ad6bec91dfba0afb7
+bundle_size=106764
+integrated=cdb2766805a6f1691a188385da2e51255695bb1a
+accepted_base=6ea9abc64bdb56b846df24024b947cb7bcbecd9a
+candidate=fa98233e2244b6c4a462a4852392a19bb417893e
+candidate_parent=69dc6df1f664c10a7e8319ec4a575ec5b46f1394
+candidate_path_count=57
+candidate_path_mismatches=0
+guard=100755 711862a7018e37a0925c351a2bfbc60df5bbdfd7 0	toolchain/bench/step36/guard.py
+guarded=100644 c7f911f3456a863f6420429e8268768e1afba85f 0	toolchain/harness/executor/guarded.py
+tracked_diff_count=0
+index_diff_count=0
+tracked_status=0
+candidate parent delta:
+M	toolchain/src/cbuild.zig

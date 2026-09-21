@@ -1,0 +1,9 @@
+clang=/usr/bin/clang -> /usr/lib/llvm-14/bin/clang
+zig=/usr/local/bin/zig -> /opt/zig-x86_64-linux-0.16.0/zig
+python3=/usr/local/bin/python3 -> /usr/local/bin/python3.11
+symbolizer=/usr/lib/llvm-14/bin/llvm-symbolizer -> /usr/lib/llvm-14/bin/llvm-symbolizer
+Debian clang version 14.0.6
+0.16.0
+71b0de1b06b1ffe3a68f1b15f3bfff1f80ba3351ac679be346fb515327494157  /usr/lib/llvm-14/bin/clang
+2317bbb91798556d9d0f38aabdac23db83f0979b25f767259ae474546724087c  /opt/zig-x86_64-linux-0.16.0/zig
+dd1580ac239d53ce4f002ed5ad435c0252ff323356b186369afd3124f96f95e5  /usr/lib/llvm-14/bin/llvm-symbolizer

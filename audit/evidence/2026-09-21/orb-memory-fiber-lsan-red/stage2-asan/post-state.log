@@ -1,0 +1,8 @@
+tracked worktree diff:
+staged index diff:
+tracked status only:
+head=cdb2766805a6f1691a188385da2e51255695bb1a
+100755 711862a7018e37a0925c351a2bfbc60df5bbdfd7 0	toolchain/bench/step36/guard.py
+100644 c7f911f3456a863f6420429e8268768e1afba85f 0	toolchain/harness/executor/guarded.py
+candidate path comparison:
+candidate_path_count=57 mismatches=0
