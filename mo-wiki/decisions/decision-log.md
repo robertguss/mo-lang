@@ -2065,6 +2065,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------------------------------------------- |
 | Nativead748089 independently passes2/2, all18 exact cases and audit balances. Release one fresh normal unfiltered test-corpus7200s to existing independent validator, candidate source/fixtures plus current accepted guards and fresh caches. Stop first failure/skip/cleanup uncertainty; no retries or ASan continuation. Prior288/289 remains historical RED, seven obligations unchanged. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-native/ then fresh normal output |
 
+### 21 Sep 2026, 2:19 AM ET — full-normal stale fixture assertion
+
+| decision                                                                                                                                                                                                                                                                                                               | who                  | status  | first tested by                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------------------------------------------- |
+| Fresh ad748089 normal suite is RED:300/301, exit1, no skips/crashes, group absent. Shared tx_src gained held; Poke leaves it empty. Authorize only exact expected Relay(sent: 0, held: []) literal, keeping every rollback assertion. Source reread before execution; no retry, ASan or acceptance granted. `semantic` | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-normal-ad748089/ and pending corrected source |
+
 ## Related
 
 - [[session-05]]

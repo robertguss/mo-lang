@@ -93,6 +93,15 @@ overrides. Stop first failure/skip/unknown cleanup, no retry/source changes. No
 ASan even after green, no mutants/stress/timing. Prior full288/289 remains
 unresolved.
 
+The authorized fresh normal run is RED:300/301, exit1, zero skips/crashes, owned
+group absent. Candidate ad748089 composed as38af0247 with accepted b2c6daab
+guards; source equality verified. The shared Relay fixture gained held:
+List(Reply(String)), but the old transaction assertion omitted held: []. Lead
+source inspection and Oracle approve only the complete expected-literal
+correction in sim.zig; implementation worker is source-only pending reread. No
+retry or ASan released. Raw evidence:
+audit/evidence/2026-09-21/orb-memory-normal-ad748089/.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

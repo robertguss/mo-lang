@@ -2854,3 +2854,12 @@
   aggregate parcel52/52/0. Native stopped on intentional crash stderr versus an
   incorrect empty oracle. Source-derived full diagnostic literals in ad748089
   passed reread; one native-only1800 retry granted, not broader acceptance.
+
+## [2026-09-21] verify | full normal remains RED, 2:19 AM ET
+
+- Independent corrected memory normal suite:300/301, exit1, no skips/crashes,
+  group absent. Lead verified archive hash and read raw failure/composition.
+- Oracle confirms stale full-state expectation after shared Relay gained held.
+  Source-only one-literal correction authorized, every rollback assertion kept;
+  no execution retry or ASan released. Raw evidence is filed under
+  audit/evidence/2026-09-21/orb-memory-normal-ad748089/.

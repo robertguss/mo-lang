@@ -1,0 +1,91 @@
+bundle_sha256=f300f6c43b24464dc88528dbf844f0bb3d5645610339d14082111df6090f96e6
+prerequisite=1839785eead517324e63232dc2261a5be8882dc2
+candidate=ad748089558018894021a2c2bb623df0e6a6ad35
+accepted_main=b2c6daabffc909f45d1b0ed70748e17e0f635507
+integrated=38af0247df5ef2efea8571d208eba2524a03d940
+integrated_merge_base_main=b2c6daabffc909f45d1b0ed70748e17e0f635507
+rebased_candidate_commit_count=24
+candidate_commit_count=24
+all_candidate_delta_paths_byte_equal=yes
+build_runtime_src_byte_equal_candidate=yes
+native_fixture_byte_equal_candidate=yes
+accepted_guard_wrapper_byte_equal_main=yes
+candidate_delta_paths=57
+source_path_overlap_candidate_vs_main_since_prerequisite=0
+compose_status_entries=0
+normal_status_entries=0
+accepted_main_delta_after_e79806fc:
+M	HANDOFF.md
+A	audit/evidence/2026-09-21/orb-memory-normal/README.md
+A	audit/evidence/2026-09-21/orb-memory-normal/asan-not-run.txt
+A	audit/evidence/2026-09-21/orb-memory-normal/bundle.sha256
+A	audit/evidence/2026-09-21/orb-memory-normal/composition-proof.exit
+A	audit/evidence/2026-09-21/orb-memory-normal/composition-proof.log
+A	audit/evidence/2026-09-21/orb-memory-normal/environment.txt
+A	audit/evidence/2026-09-21/orb-memory-normal/integrated-revision.txt
+A	audit/evidence/2026-09-21/orb-memory-normal/normal-command.txt
+A	audit/evidence/2026-09-21/orb-memory-normal/normal-process-group-after.exit
+A	audit/evidence/2026-09-21/orb-memory-normal/normal-process-group-after.log
+A	audit/evidence/2026-09-21/orb-memory-normal/normal.exit
+A	audit/evidence/2026-09-21/orb-memory-normal/normal.stderr.log
+A	audit/evidence/2026-09-21/orb-memory-normal/normal.stdout.log
+A	audit/evidence/2026-09-21/orb-memory-normal/source-cause.log
+A	audit/evidence/2026-09-21/orb-memory-normal/stop-reason.txt
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-146d24b5/00-build.exit
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-146d24b5/00-build.log
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-146d24b5/CLEANUP.txt
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-146d24b5/MANIFEST.txt
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/00-build.command
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/00-build.exit
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/00-build.log
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/01-lifecycle-matrix.command
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/01-lifecycle-matrix.exit
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/01-lifecycle-matrix.log
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/CLEANUP.txt
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/MANIFEST.txt
+A	audit/evidence/2026-09-21/orb-memory-preexecution/step42-final-positive-corrected-146d24b5/RESULT.txt
+A	audit/evidence/2026-09-21/orb-server-stage2/README.md
+A	audit/evidence/2026-09-21/orb-server-stage2/behaviour-binary.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/behaviour-binary.log
+A	audit/evidence/2026-09-21/orb-server-stage2/behaviour-run.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/behaviour-run.log
+A	audit/evidence/2026-09-21/orb-server-stage2/build.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/build.log
+A	audit/evidence/2026-09-21/orb-server-stage2/eof_controls-binary.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/eof_controls-binary.log
+A	audit/evidence/2026-09-21/orb-server-stage2/eof_controls-run.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/eof_controls-run.log
+A	audit/evidence/2026-09-21/orb-server-stage2/full-test-corpus.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/full-test-corpus.log
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_fs-binary.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_fs-binary.log
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_fs-run.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_fs-run.log
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_server-binary.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_server-binary.log
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_server-run.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/hostile_server-run.log
+A	audit/evidence/2026-09-21/orb-server-stage2/request_controls-binary.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/request_controls-binary.log
+A	audit/evidence/2026-09-21/orb-server-stage2/request_controls-run.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/request_controls-run.log
+A	audit/evidence/2026-09-21/orb-server-stage2/revision.txt
+A	audit/evidence/2026-09-21/orb-server-stage2/size-table.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/size-table.log
+A	audit/evidence/2026-09-21/orb-server-stage2/unchanged_client_green-binary.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/unchanged_client_green-binary.log
+A	audit/evidence/2026-09-21/orb-server-stage2/unchanged_client_green-run.exit
+A	audit/evidence/2026-09-21/orb-server-stage2/unchanged_client_green-run.log
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/README.md
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/actual-exit.txt
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/attempt/benchmark-payload.json
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/attempt/command.json
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/attempt/exit.json
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/attempt/output.log
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/guard.stderr
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/guard.stdout
+A	audit/evidence/2026-09-21/orb-watcher-synthetic/result.json
+M	mo-wiki/decisions/decision-log.md
+M	mo-wiki/log.md
+M	mo-wiki/plans/roadmap.md
+M	mo-wiki/state-of-the-project.md
