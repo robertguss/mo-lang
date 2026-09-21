@@ -1,0 +1,85 @@
+test-corpus
++- run test w
+step42 case=parcel-lifecycle-build term=.{ .exited = 0 } stdout=zig-out/mo-build/parcel-lifecycle/parcel-lifecycle
+ stderr=
+step42 case=parcel-lifecycle-audit-build term=.{ .exited = 0 } stdout= stderr=
+step42 case=parcel-lifecycle-waiter-normal term=.{ .exited = 0 } stdout=waiter: nested payload exact
+ stderr=
+step42 case=parcel-lifecycle-waiter-audit term=.{ .exited = 0 } stdout=waiter: nested payload exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+
+step42 case=parcel-lifecycle-timeout-normal term=.{ .exited = 0 } stdout=timeout: Error(Timeout)
+ stderr=
+step42 case=parcel-lifecycle-timeout-audit term=.{ .exited = 0 } stdout=timeout: Error(Timeout)
+ stderr=MO_TEST_PARCEL_AUDIT allocated=4 destroyed=4 live=0
+
+step42 case=parcel-lifecycle-due-down-normal term=.{ .exited = 0 } stdout=due-down: armed then Down
+ stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+      in process DropTarget, seed 0
+      messages since it started: Crash(Payload(label: "down-target|long:0123456789abcdef", parts: ["down-target|left:abc", "down-target|middle:012345", "down-target|right:uvwxyz"]))
+      state before the last message: DropTarget(count: 0, seen: "")
+      not restarted: DropTargets says restart: :never, so DropTarget stays down
+
+step42 case=parcel-lifecycle-due-down-audit term=.{ .exited = 0 } stdout=due-down: armed then Down
+ stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+      in process DropTarget, seed 0
+      messages since it started: Crash(Payload(label: "down-target|long:0123456789abcdef", parts: ["down-target|left:abc", "down-target|middle:012345", "down-target|right:uvwxyz"]))
+      state before the last message: DropTarget(count: 0, seen: "")
+      not restarted: DropTargets says restart: :never, so DropTarget stays down
+MO_TEST_PARCEL_AUDIT allocated=6 destroyed=6 live=0
+
+step42 case=parcel-lifecycle-exit-later-normal term=.{ .exited = 3 } stdout=exit-later: armed exact
+ stderr=
+step42 case=parcel-lifecycle-exit-later-audit term=.{ .exited = 3 } stdout=exit-later: armed exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=5 destroyed=5 live=0
+
+step42 case=parcel-lifecycle-push-after-exit-normal term=.{ .exited = 4 } stdout=push-after-exit: scheduled after exit
+ stderr=
+step42 case=parcel-lifecycle-push-after-exit-audit term=.{ .exited = 4 } stdout=push-after-exit: scheduled after exit
+ stderr=MO_TEST_PARCEL_AUDIT allocated=2 destroyed=2 live=0
+
+step42 case=parcel-lifecycle-crash-transaction-normal term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+ stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+      in process Exploder, seed 0
+      messages since it started: Explode(sink: Sink #0, value: Payload(label: "crash|long:0123456789abcdef", parts: ["crash|left:abc", "crash|middle:012345", "crash|right:uvwxyz"]))
+      state before the last message: Exploder(count: 0, held: [])
+
+step42 case=parcel-lifecycle-crash-transaction-audit term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+ stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+      in process Exploder, seed 0
+      messages since it started: Explode(sink: Sink #0, value: Payload(label: "crash|long:0123456789abcdef", parts: ["crash|left:abc", "crash|middle:012345", "crash|right:uvwxyz"]))
+      state before the last message: Exploder(count: 0, held: [])
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+
+step42 case=parcel-lifecycle-restart-drop-normal term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+ stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+      in process RestartTarget, seed 0
+      messages since it started: Crash(Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"]))
+      state before the last message: RestartTarget(count: 0, seen: [])
+
+step42 case=parcel-lifecycle-restart-drop-audit term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+ stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+      in process RestartTarget, seed 0
+      messages since it started: Crash(Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"]))
+      state before the last message: RestartTarget(count: 0, seen: [])
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+
+step42 case=parcel-lifecycle-log-eviction-normal term=.{ .exited = 0 } stdout=log-eviction: all 16 asymmetric labels exact
+ stderr=
+step42 case=parcel-lifecycle-log-eviction-audit term=.{ .exited = 0 } stdout=log-eviction: all 16 asymmetric labels exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=19 destroyed=19 live=0
+
+step42 case=parcel-lifecycle-end-normal term=.{ .exited = 0 } stdout=end: nested start and log exact
+ stderr=
+step42 case=parcel-lifecycle-end-audit term=.{ .exited = 0 } stdout=end: nested start and log exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+
+failed command: MO_EXE=/tmp/mo-lead-orb-memory-corrected/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/5f2e14228057d393ef5b687db63e78b1/test --cache-dir=./.zig-cache --seed=0xf886a9a7 --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 17s MaxRSS:280M
+   +- compile test Debug native success 1s MaxRSS:182M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+

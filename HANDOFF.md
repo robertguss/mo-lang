@@ -81,15 +81,16 @@ orb-memory-normal/. Both correction workers must return source for review. The
 test-rejects assertion-masking defect is reproduced and queued separately;
 server uses an external positive lifecycle oracle, not the false-green test.
 
-Memorye7e12385 passed build5/5, all eleven Zig positives and chunks2/2 each.
-Aggregate52/52/0 and other ownership counts are filed in worker raw archive
-/tmp/mo-memory-focused-e7e12385.tar.gz. Native waiter/timeout normal+audit
-passed, then due-down's intentional crash report violated the empty-stderr
-oracle. Oracle authorizes source-only literal complete reports for exactly
-due-down, crash-transaction,restart-drop; six others remain empty. Audit must
-append one canonical accounting line only. Lead rereadad748089 passed; worker
-granted one native-filter-only1800 retry, all9normal+9audit, stop first
-surprise. No full/mutants/ASan/stress/timing; prior full288/289 remains
+Memoryad748089 native passed independently:2/2 and all9normal+9audit cases with
+exact reports/balances. Earlier eleven Zig positives/chunks remain e7e12385
+greens. Lead raw evidence: audit/evidence/2026-09-21/orb-memory-native/. Lead
+used accepted70 direct guard, not latest wrapper core. Oracle released ONE fresh
+normal full run to existing validatorT-01a0c217-68f4-70c6-84b5-8283e6125331,
+bundle uploaded as memory-ad748089.bundle. Compose full candidate with accepted
+b2c6daab guards, prove source/fixture equality, fresh absolute caches, toolchain
+cwd, direct7200s test-corpus -j4 --summary all; unset ASan/STRESS/CORPUS
+overrides. Stop first failure/skip/unknown cleanup, no retry/source changes. No
+ASan even after green, no mutants/stress/timing. Prior full288/289 remains
 unresolved.
 
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11

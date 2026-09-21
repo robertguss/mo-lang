@@ -2059,6 +2059,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | Synthetic watcher72a49307 meets Oracle predicates independently:11/11, local sentinel reap, all exits0, literal absent group, no errors, matching clean command receipt. Do not release realMo or measurements from this result. The initial partial-overlay import failure was the lead's composition error, not a watcher result. | Amp lead with Oracle | verified synthetic only | audit/evidence/2026-09-21/orb-watcher-synthetic/ |
 | Memorye7e12385 Zig positives/chunks pass; native intentional-crash stderr requires exact full literals for three cases, not suppression or arbitrary stderr acceptance. Six normal cases stay empty; audited suffix is one canonical balance line. Source reread before native-only1800 retry.                                      | Amp lead with Oracle | decided                 | retained e7 native exit1 and next fixed oracle   |
 
+### Fresh full-normal validation release
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                       | who                  | status  | first tested by                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------------------------------------------- |
+| Nativead748089 independently passes2/2, all18 exact cases and audit balances. Release one fresh normal unfiltered test-corpus7200s to existing independent validator, candidate source/fixtures plus current accepted guards and fresh caches. Stop first failure/skip/cleanup uncertainty; no retries or ASan continuation. Prior288/289 remains historical RED, seven obligations unchanged. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-native/ then fresh normal output |
+
 ## Related
 
 - [[session-05]]
