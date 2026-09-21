@@ -132,6 +132,14 @@ bounded wait and retention; children stay in outer guard group. Preserve
 original RSS threshold/counts under ASan. Source reread precedes any validation
 grant.
 
+A+B candidatea2d7f695 source reviewed with Oracle: production wiring correct,
+controls need real buildWithCompilerRunner orchestration to detect final-stage
+bypass, and fake exit0 must create output markers. Source-only revision granted,
+including iteration-scoped environment restore/sanitizer-cache sentinels and
+lazy failure argv formatting. C design must use positional Grow(100000) and keep
+exact stderr acceptance separate from expected-length-plus16MiB diagnostic
+watchdog; polling is not hard containment. No execution or C implementation.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

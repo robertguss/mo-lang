@@ -2888,3 +2888,12 @@
 - Large report capture remains design-only, retaining outer process group and
   original memory threshold. No execution granted; prior301/301 is not proof of
   the next source revision. Seven obligations remain unwaived.
+
+## [2026-09-21] review | A+B controls need orchestration coverage
+
+- Verified a2d7f695 bundle hash and two-file diff, static diff check clean.
+  Oracle and lead source reread find production wiring correct; return controls
+  for integrated fake build orchestration, not repeated helper stage strings.
+- Source-only revision also fixes environment restoration scope and eager
+  diagnostic allocation. C stays design-only with positional Grow rendering and
+  a separate diagnostic capture allowance; no execution or acceptance.
