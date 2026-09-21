@@ -204,6 +204,16 @@ contracts for generic/module, surface/crash-kept and large/n10 build streams;
 derive complete expected outputs and minimal raw retention before assertions. No
 edits or execution; broader ASan remains blocked, seven obligations open.
 
+21 Sep, 10:46 AM ET: readiness reviewed with Oracle. Author now has SOURCE-ONLY
+implementation for ten child calls in corpus.zig: surface3, crash-kept5, large
+build1, n10 initial build1. Reuse existing capture owner/limits/cleanup; add
+pre-spawn incomplete receipt and both-stream exact evidence before assertions,
+retain success and failure artifacts. No new subprocess framework. Runtime,
+cbuild, public runProgram/bench, generic/module and n10 companions excluded.
+Later module expectations will be committed source-authored transcripts, never
+interpreter-generated goldens. Return source/controls for review; no execution,
+broader ASan or acceptance released. Seven obligations unchanged.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

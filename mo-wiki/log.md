@@ -3165,3 +3165,14 @@
 - Normal evidence only. Source-only diagnostic-contract readiness assigned for
   generic/module, surface/crash-kept and large/n10 build paths. No edits or
   execution released; known discarded-child-stream gaps block broader ASan.
+
+## [2026-09-21] plan | 10:46 AM ET, ten-call diagnostic capture slice
+
+- Lead/Oracle choose existing capture owner, not a second supervisor.
+  Source-only corpus.zig implementation covers
+  surface3/crash-kept5/large-build1/n10-build1; exact contracts, pre-spawn
+  incomplete metadata, both-stream evidence and retained successes/failures.
+  Existing bounds/ownership remain unchanged.
+- Public runProgram/bench and generic/module paths remain excluded. Later module
+  expectations use independently source-authored committed transcripts, not
+  runtime-generated goldens. Controls authored only; source review before runs.
