@@ -1,0 +1,3 @@
+interpreter: before=25350144 after=25415680 delta=65536 reported_mib=0 checks={'restarts_25': True, 'kept_1': True, 'rss_nonzero': True, 'strict_up': True, 'strict_under_16777216': True, 'direction_up': True, 'under_true': True, 'reported_delta_mib_correct': True}
+native: before=7835648 after=12161024 delta=4325376 reported_mib=4 checks={'restarts_25': True, 'kept_1': True, 'rss_nonzero': True, 'strict_up': True, 'strict_under_16777216': True, 'direction_up': True, 'under_true': True, 'reported_delta_mib_correct': True}
+stdout_validation=pass

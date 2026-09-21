@@ -3021,3 +3021,14 @@
 - Transferred full candidate and released one normal exact filter composed onto
   accepted d02014c0, fresh caches/output and retained captures. Stop-first, all
   both-runtime report/RSS/cleanup checks required; no broader grant.
+
+## [2026-09-21] verify | normal large restart green, fresh full-normal released
+
+- Lead/Oracle checked full69 captures: exit0/build5/5/tests2/2, both runtimes
+  exact25 reports/90,006,894 stderr bytes and matching hashes, completed/reaped,
+  null errors. RSS growth65536/4325376 bytes below16MiB; cleanup confirmed.
+- One unfiltered normal7200 run released on same0a0de7f7, fresh caches/output
+  and retained captures. Observe/reconcile309; no separate stress/ASan/mutants
+  or timing. Seven obligations unchanged; no candidate acceptance.
+- At Robert's morning request, archived the two accepted guard worker threads;
+  retained lead, memory author, validator and unfinished server threads.

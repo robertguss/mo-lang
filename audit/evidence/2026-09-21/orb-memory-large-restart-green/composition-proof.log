@@ -1,0 +1,48 @@
+bundle_sha256=2e58274bfa8b688b6622c19876e72ce42391ee08dd21cfded2e5bd1dbb838979
+bundle_bytes=106828
+prerequisite=1839785eead517324e63232dc2261a5be8882dc2
+candidate=69dc6df1f664c10a7e8319ec4a575ec5b46f1394
+candidate_parent=e73504d064b4686300c4775c746dc89b3ec65c8f
+accepted_base=d02014c03eaa67531a48c1b5e0a6de2649d97b16
+origin_main_at_fetch=d02014c03eaa67531a48c1b5e0a6de2649d97b16
+integrated=0a0de7f7de45d7c5b597ab01c43a5e85d8834053
+integrated_parent=d02014c03eaa67531a48c1b5e0a6de2649d97b16
+candidate_path_count=57
+candidate_paths_byte_and_mode_equal=yes
+accepted_guard_identities_equal=yes
+guard_entry=100755 blob 711862a7018e37a0925c351a2bfbc60df5bbdfd7	toolchain/bench/step36/guard.py
+guarded_entry=100644 blob c7f911f3456a863f6420429e8268768e1afba85f	toolchain/harness/executor/guarded.py
+tracked_diff_entries=0
+cached_diff_entries=0
+status_entries=0
+candidate_parent_delta:
+diff --git a/toolchain/src/corpus.zig b/toolchain/src/corpus.zig
+index df3117ee..d6628c86 100644
+--- a/toolchain/src/corpus.zig
++++ b/toolchain/src/corpus.zig
+@@ -1721,15 +1721,14 @@ test "corpus: a process whose state is megabytes restarts twenty times and its r
+         \\    var empty = false
+         \\    for _ in 0..3
+-        \\      if !empty
+-        \\        case holder.ask(Size, within: 1.minute)
+-        \\          Ok(0):
+-        \\            empty = true
+-        \\          Ok(_):
+-        \\            return 1_000_000
+-        \\          Error(Down):
+-        \\            empty = empty
+-        \\          Error(_):
+-        \\            return 1_000_000
+-        \\        end
++        \\      case holder.ask(Size, within: 1.minute)
++        \\        Ok(0):
++        \\          empty = true
++        \\          break
++        \\        Ok(_):
++        \\          return 1_000_000
++        \\        Error(Down):
++        \\          empty = empty
++        \\        Error(_):
++        \\          return 1_000_000
+         \\      end
+         \\    end

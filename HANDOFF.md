@@ -69,15 +69,23 @@ Depth becomes3; asks/retry bound/oracles unchanged. Break skips inner-loop
 collection, so identical GC/RSS is not assumed; strict RSS bound remains. Worker
 has brief; no execution before source reread.
 
-Follow-up: verified69dc6df1 implements only the reviewed retry-depth change.
-Lead/Oracle release one normal exact large-restart filter on full69 composed
-onto accepted d02014c0. Validator has bundle/grant, fresh caches/output and
-retained captures required. All both-runtime report/RSS/cleanup predicates
-remain; no GC equality claim, further retry or broader gate authorized.
+Latest69dc6df1 on0a0de7f7 is normal large-restart GREEN: actual0/build5/5,
+tests2/2; both runtimes completed/reaped/exited0, exact25 reports and90,006,894
+stderr bytes each, matching full hashes. RSS increases65536/4325376 bytes,
+strictly below16MiB; all owned groups/children absent. Lead/Oracle checked raw
+full captures. Evidence:
+audit/evidence/2026-09-21/orb-memory-large-restart-green/. Validator now has ONE
+fresh unfiltered normal7200 grant on SAME0a0de7f7, fresh absolute
+caches/output/retained captures, no rebase. Observe/reconcile309 inventory, no
+skips/failures/uncertain cleanup. Existing case-local stress controls remain; no
+separate stress/ASan/mutants/timing or acceptance grant.
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
-- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.
+- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
+  archived at Robert's morning request, alongside completed wrapper worker
+  T-01a0c1db-5a25-76c3-b289-9c2db968ba3d. Active memory/server/validator
+  retained.
 - Memory: T-01a0c18a-5e4e-729b-96fb-39ccb6c9d1cc, static A–D recovery; guard
   files are excluded from its ownership.
 - Server: T-01a0c18a-cc44-7380-8650-bf09bfec9954, static chunks recovery.
