@@ -2227,6 +2227,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------------------------------- |
 | eaaf4dab runtime retirement passes source review only. Return new corpus fixture for depth3 polling, exact build-path stdout and invariant-backed completion sentinel replacing unbound empty references. Retained reply tokens alone do not prove still-parked work; any Waiter completion must make the test fail. Keep outer else because platform.exit returns. Runtime and existing tests unchanged; execution HOLD until reread. | Amp lead with Oracle | decided | Corrected source review, then separately authorized guarded validation |
 
+## 21 Sep 2026, 9:08 AM ET — shutdown fixture supervision
+
+| decision                                                                                                                                                                                                                                                                                                                                          | who                  | status  | first tested by                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------------ |
+| 3457fdf2 resolves prior fixture findings but omits required supervisor children for Gate and Waiter (MO0316). Add only the adjacent-pattern supervisor declaration; no startup call, runtime change or execution. Return source for reread. Proposed normal compiler/shutdown and ASan lifecycle/shutdown gates remain unreleased; no acceptance. | Amp lead with Oracle | decided | Declaration-only source review |
+
 ## Related
 
 - [[session-05]]

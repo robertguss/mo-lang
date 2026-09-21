@@ -3110,3 +3110,11 @@
   because platform.exit returns. Existing tests and runtime remain unchanged.
 - Execution HOLD; seven obligations unchanged. Previous checkpoint lint passed
   287 pages/29 inherited notices, exit0.
+
+## [2026-09-21] review | 9:08 AM ET, shutdown supervision declaration
+
+- Verified3457fdf2 hashes and runtime identity. Prior source findings resolved;
+  Oracle found missing supervisor-child declarations (MO0316), independently
+  confirmed in checker. Declaration-only correction returned, no runtime edits.
+- Four serial filters proposed after reread: normal compiler/shutdown, ASan
+  lifecycle/shutdown. No execution released and no new runtime result.

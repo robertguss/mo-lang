@@ -149,6 +149,14 @@ Waiter completion observable; held reply tokens alone outlive timeouts. Keep
 outer if/else because platform.exit returns normally. No runtime edits, retries
 or acceptance; return source for reread.
 
+21 Sep, 9:08 AM ET: 3457fdf2 fixes prior fixture findings; bundle/diff and
+unchanged runtime verified. Oracle found remaining MO0316 blocker: Gate and
+Waiter lack supervisor-child declarations. Author granted declaration-only
+addition matching adjacent lifecycle fixture, no startup call or execution.
+After reread, proposed serial gates are normal compiler control, normal
+shutdown, existing focused ASan lifecycle, ASan shutdown; none released yet. New
+full inventory is310, not a claim of310 passed. Seven obligations unchanged.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
