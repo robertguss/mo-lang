@@ -1,5 +1,16 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
+Latest moscope checkpoint: Robert authorized fixing the declaration error and
+retrying. Worker02727b71 changes only declaration line wrapping; lead reviewed
+the diff and reused the unchanged accepted compiler (SHA256
+3ef07d08ed6d0c802a2597bd956579873851855961cf2e5f01cf87018d273b78). One 60-second
+guarded smoke exited1 at model.mo:82:3, MO0101 expected a name on
+`message: Message`; `message` is a reserved token. Stdout0/stderr175 bytes,
+owned PGID661455 absent, no cleanup errors. Search never ran. No further retry.
+Raw receipts and incremental bundle:
+audit/evidence/2026-09-21/moscope-declaration-retry/. App remains unaccepted;
+Step42/harness still paused.
+
 ## Moscope first bounded execution — 21 Sep 2026, 5:52 PM ET
 
 Robert chose the smaller serial session-search CLI; harness and Step42 remain

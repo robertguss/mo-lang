@@ -3213,3 +3213,13 @@
 - No edit/retry. Source bundle and raw receipts preserved under
   audit/evidence/2026-09-21/moscope-first-smoke/. Candidate unaccepted;
   Step42/harness paused, no private data or broader execution.
+
+## [2026-09-21] verification | moscope authorized declaration retry
+
+- Robert authorized correction and retry. Worker02727b71 fixes declaration
+  wrapping; lead verified compiler identity and ran the same guarded synthetic
+  smoke once. Exit1 on reserved field name `message` at model.mo:82:3; no search
+  execution, owned group absent. No further retry.
+- Raw evidence and incremental source preserved under
+  audit/evidence/2026-09-21/moscope-declaration-retry/. App unaccepted;
+  Step42/harness unchanged and paused.

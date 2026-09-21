@@ -1,0 +1,4 @@
+examples/programs/moscope/../moscope/model.mo:82:3: MO0101 expected a name
+    message: Message
+    ^
+  why: spec/grammar.md allows only this at this point in the production.

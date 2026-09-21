@@ -1,0 +1,33 @@
+{
+  "argv": [
+    "/bin/bash",
+    "-c",
+    "exec \"$@\" > /tmp/mo-moscope-evidence-02727b71/smoke.stdout 2> /tmp/mo-moscope-evidence-02727b71/smoke.stderr",
+    "moscope-smoke",
+    "/tmp/mo-moscope-evidence-7aa1e81e/prefix/bin/mo",
+    "run",
+    "examples/programs/moscope/main.mo",
+    "--",
+    "search",
+    "connection refused",
+    "examples/programs/moscope/fixtures/smoke"
+  ],
+  "cwd": "/tmp/mo-moscope-02727b71",
+  "seconds": 60,
+  "head": "02727b71b085d39f5847bf1eef470cac3f3c292d",
+  "dirty": [],
+  "tools": {
+    "node": "/usr/local/bin/node",
+    "npm": "/usr/local/bin/npm",
+    "zig": "/usr/local/bin/zig"
+  },
+  "environment": {
+    "PATH": "/usr/local/bin:/usr/bin:/bin",
+    "HOME": "/tmp/mo-moscope-evidence-02727b71/home",
+    "NO_COLOR": "1",
+    "npm_config_cache": "/tmp/mo-moscope-evidence-02727b71/home/npm",
+    "npm_config_userconfig": "/tmp/mo-moscope-evidence-02727b71/home/user.npmrc",
+    "npm_config_globalconfig": "/tmp/mo-moscope-evidence-02727b71/home/global.npmrc",
+    "npm_config_registry": "https://registry.npmjs.org"
+  }
+}
