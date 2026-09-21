@@ -1,0 +1,55 @@
+capture sizes and hashes:
+.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/expected.stderr	90006894 bytes
+.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.comparison	380 bytes
+.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.meta	1195 bytes
+.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.stderr	283 bytes
+.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.stdout	0 bytes
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  .amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/expected.stderr
+b237f088a985d4579c75bb6158a06aef669161292c7afe2c72e00aa49f3a7cc3  .amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.comparison
+3fb9abee726af871cacaae343a377c3e5b9820e7ea8fe22c694dc3d9e942753d  .amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.meta
+2ca1ae5723254a2156c821b88a041eb0cf1c5d431f31abf88e7418060640065c  .amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.stderr
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  .amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.stdout
+expected process-crashed lines:
+25
+actual process-crashed lines:
+0
+expected EOF bytes:
+ 38 2c 20 31 30 30 30 30 39 39 39 39 39 5d 29 0a
+actual EOF bytes:
+ 74 68 65 20 70 72 6f 64 75 63 74 69 6f 6e 2e 0a
+interpreter metadata:
+cwd=.zig-cache/tmp/6wmCRvvrHs0f-_gy
+argv={ { 47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 119, 111, 114, 107, 115, 112, 97, 99, 101, 47, 118, 101, 114, 105, 102, 121, 45, 109, 101, 109, 111, 114, 121, 45, 101, 98, 54, 54, 53, 51, 55, 49, 45, 108, 97, 114, 103, 101, 45, 114, 101, 115, 116, 97, 114, 116, 47, 116, 111, 111, 108, 99, 104, 97, 105, 110, 47, 122, 105, 103, 45, 111, 117, 116, 47, 98, 105, 110, 47, 109, 111 }, { 114, 117, 110 }, { 108, 101, 97, 107, 46, 109, 111 } }
+stdout-path=/home/user/workspace/repo/.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.stdout
+stderr-path=/home/user/workspace/repo/.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy/interpreter.stderr
+reason=completed
+spawned-pid=134682
+ownership=reaped
+primary-error=null
+observation-error=null
+signal-error=null
+reap-error=null
+cleanup-error=null
+stdout-stat-error=null
+stderr-stat-error=null
+term=.{ .exited = 1 }
+poll-ms=100
+timeout-s=300
+cleanup-timeout-s=5
+stdout-limit=4096
+stderr-limit=106784110
+sampled-stdout=0
+sampled-stderr=0
+final-stdout=0
+final-stderr=283
+overshoot-stdout=0
+overshoot-stderr=0
+elapsed-ns=102223359
+comparison:
+expected-bytes=90006894
+actual-bytes=283
+expected-sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+actual-sha256=2ca1ae5723254a2156c821b88a041eb0cf1c5d431f31abf88e7418060640065c
+first-mismatch=0
+expected-context=70726f6365737320637261736865643a206c65616b2e6d6f3a31313a333a2069
+actual-context=6c65616b2e6d6f3a34343a32343a204d4f30313031206120636173652061726d

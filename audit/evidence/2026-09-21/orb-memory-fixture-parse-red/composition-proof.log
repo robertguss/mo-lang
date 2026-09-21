@@ -1,0 +1,34 @@
+bundle_sha256=5bb439f3e27e2f4e43b89cb303fc991f636dcda9a9dc08654c6366b0d49f2682
+bundle_bytes=105435
+prerequisite=1839785eead517324e63232dc2261a5be8882dc2
+candidate=eb6653716ea0fb73d75c4eda378a70e358260e30
+candidate_parent=49b69a65f696f19c34e20cc19572cc9f0cc8da62
+accepted_base=cc2f2f0d7308003c32062e2fb33a7f9c4e2a3b08
+origin_main_at_fetch=cc2f2f0d7308003c32062e2fb33a7f9c4e2a3b08
+integrated=efbccec10b62b461730d81771036edeaebc14d0e
+integrated_parent=cc2f2f0d7308003c32062e2fb33a7f9c4e2a3b08
+candidate_path_count=57
+candidate_paths_byte_and_mode_equal=yes
+accepted_guard_identities_equal=yes
+tracked_diff_entries=0
+cached_diff_entries=0
+status_entries=0
+duration_accesses:
+  1435	            const elapsed = signalled.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.nanoseconds;
+  1485	        owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.nanoseconds;
+  1569	            owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.nanoseconds;
+  1770	    const capture_dir = try std.fs.path.join(arena, &.{ capture_root, &tmp.sub_path });
+candidate_parent_delta:
+diff --git a/toolchain/src/corpus.zig b/toolchain/src/corpus.zig
+index 26dd1fb9..881ac99b 100644
+--- a/toolchain/src/corpus.zig
++++ b/toolchain/src/corpus.zig
+@@ -1435 +1435 @@ const CaptureOwner = struct {
+-            const elapsed = signalled.durationTo(Io.Clock.Timestamp.now(io, .awake)).nanoseconds;
++            const elapsed = signalled.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.nanoseconds;
+@@ -1485 +1485 @@ const CaptureOwner = struct {
+-        owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).nanoseconds;
++        owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.nanoseconds;
+@@ -1569 +1569 @@ fn captureDirectChild(arena: std.mem.Allocator, io: Io, argv: []const []const u8
+-            owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).nanoseconds;
++            owner.lifecycle.elapsed_ns = owner.started.durationTo(Io.Clock.Timestamp.now(io, .awake)).raw.nanoseconds;

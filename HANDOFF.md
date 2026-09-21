@@ -52,11 +52,13 @@ insertions in corpus.zig, then source reread. No retry or broader execution
 grant. Both compile-only REDs remain preserved; no acceptance. Raw receipts:
 audit/evidence/2026-09-21/orb-memory-duration-compile-red/.
 
-Follow-up: verified eb665371 changes exactly the three duration accesses.
-Lead/Oracle reread releases one normal exact large-restart attempt on full eb
-composed onto accepted cc2f2f0d, with fresh caches/output and retained captures.
-Validator has the bundle and grant. All prior both-runtime report/RSS/cleanup
-predicates remain mandatory; stop-first, no further retry or broader gate.
+Latest eb665371 attempt on cc2f2f0d, integrated efbccec1, compiled but is RED:
+exit1/build3/5, tests1 pass/1 fail. Interpreter exited1 on fixture MO0101,
+completed/reaped/error-null; stdout empty, native never reached. Raw captures
+and cleanup receipts: audit/evidence/2026-09-21/orb-memory-fixture-parse-red/.
+Oracle authorizes only four inline statement arms becoming block arms in the
+fixture, preserving all bodies/retries/oracles. Worker has source-only brief; no
+retry before reread. Seven obligations and all earlier REDs unchanged.
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 

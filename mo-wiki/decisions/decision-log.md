@@ -2155,6 +2155,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------------- |
 | Verified eb665371 has exactly the three approved .raw insertions. Release one normal exact large-restart attempt on full candidate composed onto accepted cc2f2f0d, fresh caches/output and retained captures. Require unchanged 2/2, both-runtime exact reports/RSS and complete cleanup; stop-first, no further retry or broader execution. Source review is not compilation or runtime evidence. | Amp lead with Oracle | decided | pending independent exact-filter receipts |
 
+### Fixture statement-arm correction after interpreter parse RED
+
+| decision                                                                                                                                                                                                                                                                                                                                            | who                  | status  | first tested by                                         |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------------------------------------- |
+| Preserve eb665371/efbccec1 RED: exit1/build3/5, tests1 pass/1 fail; interpreter completed/reaped/exited1 on MO0101, native unexecuted. Convert exactly four inline assignment/return case arms to block form, preserving patterns, bodies, order, retry3, sentinel and invariant location. No parser or oracle changes; source reread before retry. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-fixture-parse-red/ |
+
 ## Related
 
 - [[session-05]]

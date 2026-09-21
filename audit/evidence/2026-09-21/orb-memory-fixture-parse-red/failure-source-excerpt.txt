@@ -1,0 +1,38 @@
+Generated source embedded in exact candidate:
+  1714	        \\# Crashes the holder `n` times, each with a large state before the message and after it.
+  1715	        \\fn crash(holder: Handle(Holder), n: UInt64) : UInt64
+  1716	        \\  var gone = 0
+  1717	        \\  for _ in 0..n
+  1718	        \\    holder.send(Grow(n: 100_000))
+  1719	        \\    holder.send(Grow(n: 100_000))
+  1720	        \\    # An ask the restart drops is Down; the next is answered by the restarted holder.
+  1721	        \\    var empty = false
+  1722	        \\    for _ in 0..3
+  1723	        \\      if !empty
+  1724	        \\        case holder.ask(Size, within: 1.minute)
+  1725	        \\          Ok(0): empty = true
+  1726	        \\          Ok(_): return 1_000_000
+  1727	        \\          Error(Down): empty = empty
+  1728	        \\          Error(_): return 1_000_000
+  1729	        \\        end
+  1730	        \\      end
+  1731	        \\    end
+  1732	        \\    if !empty
+  1733	        \\      return 1_000_000
+  1734	        \\    end
+  1735	        \\    gone += 1
+  1736	        \\  end
+  1737	        \\  gone
+  1738	        \\end
+Execution ordering proving native follows successful interpreter validation:
+  1781	    const expected_stderr_bytes = try captureLength(io, expected_stderr_path);
+  1782	    const stderr_limit = std.math.add(u64, expected_stderr_bytes, LargeRestartOracle.diagnostic_allowance) catch return error.ExpectedDiagnosticsTooLarge;
+  1783	    var environ = try std.testing.environ.createMap(arena);
+  1784	    const interp = try captureDirectChild(arena, io, &.{ mo_exe, "run", "leak.mo" }, &environ, cwd, capture_dir, try capturePaths(arena, capture_dir, "interpreter"), stderr_limit);
+  1785	    try checkLargeRestartCapture(arena, io, interp, expected_stderr_path, capture_dir, "interpreter");
+  1786	    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "leak.mo", "-o", "leak-served" }, .cwd = .{ .path = cwd } });
+  1787	    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+  1788	    const binary = try std.fs.path.join(arena, &.{ root, cwd, "zig-out/mo-build/leak-served/leak-served" });
+  1789	    const compiled = try captureDirectChild(arena, io, &.{binary}, &environ, cwd, capture_dir, try capturePaths(arena, capture_dir, "native"), stderr_limit);
+  1790	    try checkLargeRestartCapture(arena, io, compiled, expected_stderr_path, capture_dir, "native");
+  1791	}

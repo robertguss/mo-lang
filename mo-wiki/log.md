@@ -2985,3 +2985,12 @@
 - Existing exact both-runtime output/RSS/cleanup predicates unchanged. Both
   compile-only REDs preserved; no full309, ASan, stress, mutants or timing.
   Documentation lint:287 pages,29 existing notices, exit0; diff check clean.
+
+## [2026-09-21] verify | fixture parse failure after successful compilation
+
+- Verified eb665371/efbccec1 raw archive, captures and cleanup: exit1, build3/5,
+  tests1 pass/1 fail. Interpreter exited1 on inline assignment syntax, with
+  completed/reaped metadata and null errors. No native or RSS evidence.
+- Lead/Oracle identified all four inline statement arms, including returns.
+  Source-only conversion to block arms authorized; no expected-report changes,
+  retry or broader execution. Full partial captures and prior REDs retained.
