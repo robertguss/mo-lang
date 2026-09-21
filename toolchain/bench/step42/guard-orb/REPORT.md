@@ -51,13 +51,16 @@ handle from `guard.py`. The harness sends TERM or INT during that deterministic
 hold, then releases the return. This is a test-only seam; production code and
 CLI have no hook.
 
-Every case uses one absolute 8-second deadline for startup, readiness, guard
-wait, inspection, and owned-process cleanup; the ordinary not-live observation
-window is the smaller of one second and the remaining case deadline. The suite
-has a separate final cleanup of its unrelated control process, bounded by two
-seconds. Cleanup is an outer `finally`, re-reads every available PID record, and
-runs even if readiness or process inspection fails. The forced-`ps`-timeout case
-proves both owned test processes are not live afterward.
+Every case uses an 8-second working deadline and pass threshold for startup,
+readiness, the guard wait, ordinary observation, and owned-process cleanup. It
+is not a strict end-to-end 8-second bound: each `alive()` probe has its own
+one-second timeout, the harness-failure case performs its final probes after
+sampling the reported elapsed time, and the suite's unrelated-control cleanup
+can make two successive waits of up to two seconds each. The ordinary not-live
+observation window is the smaller of one second and the remaining working
+deadline. Cleanup is an outer `finally`, re-reads every available PID record,
+and runs even if readiness or process inspection fails. The forced-`ps`-timeout
+case proves both owned test processes are not live afterward.
 
 | Control              | Exit | Result                                                    | Raw output                                                |
 | -------------------- | ---: | --------------------------------------------------------- | --------------------------------------------------------- |
