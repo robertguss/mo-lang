@@ -3176,3 +3176,12 @@
 - Public runProgram/bench and generic/module paths remain excluded. Later module
   expectations use independently source-authored committed transcripts, not
   runtime-generated goldens. Controls authored only; source review before runs.
+
+## [2026-09-21] review | 11:10 AM ET, diagnostic owner failure paths
+
+- Verified69b5d81d bundle/hash, corpus-only +395/-58 diff and diff-check.
+  Lead/Oracle hold execution: unknown ownership still permits EOF reads; setup
+  and secondary error paths can lose required receipts.
+- Assigned bounded corrections and production owner/wrapper controls. Incomplete
+  ownership must yield incomplete records without EOF reads; keep original
+  failure plus observable cleanup outcomes. No scope expansion or runtime gate.

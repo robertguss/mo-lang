@@ -214,6 +214,16 @@ Later module expectations will be committed source-authored transcripts, never
 interpreter-generated goldens. Return source/controls for review; no execution,
 broader ASan or acceptance released. Seven obligations unchanged.
 
+21 Sep, 11:10 AM ET: 69b5d81d ten-call source reviewed, execution HOLD.
+Lead/Oracle blockers: unknown ownership still hashes/compares to EOF (livewriter
+can extend or yield uncertified final evidence); expected-file setup bypasses
+receipt; secondary finalization/comparison-metadata errors lose evidence.
+Source-only correction assigned: expose settled/incomplete status, no EOF reads
+when unsettled, both incomplete records, original-error precedence plus fallback
+cleanup diagnostics, receipt before expected-file writes. Controls must exercise
+production owner/wrapper orchestration, not only serializers/predicates. Author
+outer-interruption procedure but do not run it. Scope unchanged, no new gates.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
