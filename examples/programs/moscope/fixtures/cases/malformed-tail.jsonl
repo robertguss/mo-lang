@@ -1,0 +1,2 @@
+{"type":"user","uuid":"tail-before","sessionId":"malformed-tail","timestamp":"2026-09-21T08:00:00Z","message":{"role":"user","id":"before","content":"tail-needle before"}}
+{"type":"assistant","uuid":"tail-broken","sessionId":"malformed-tail","message":{"role":"assistant","id":"broken","content":"tail-needle"

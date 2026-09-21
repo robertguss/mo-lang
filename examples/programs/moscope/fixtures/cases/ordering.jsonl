@@ -1,0 +1,7 @@
+{"type":"user","uuid":"order-a-hit","sessionId":"order-a","timestamp":"2026-09-21T10:00:00Z","message":{"role":"user","id":"a-hit","content":"order-needle"}}
+{"type":"assistant","uuid":"order-a-latest","sessionId":"order-a","timestamp":"2026-09-21T12:30:00+02:00","message":{"role":"assistant","id":"a-latest","content":"newer nonmatching conversation"}}
+{"type":"progress","timestamp":"2026-09-21T23:59:59Z","message":"newer bookkeeping must not order"}
+{"type":"user","uuid":"order-b-hit","sessionId":"order-b","timestamp":"2026-09-21T10:30:00Z","message":{"role":"user","id":"b-hit","content":"order-needle"}}
+{"type":"user","uuid":"order-tie-a","sessionId":"tie-a","timestamp":"2026-09-21T11:00:00.1234Z","message":{"role":"user","id":"tie-a","content":"order-needle"}}
+{"type":"user","uuid":"order-tie-b","sessionId":"tie-b","timestamp":"2026-09-21T11:00:00.1239Z","message":{"role":"user","id":"tie-b","content":"order-needle"}}
+{"type":"user","uuid":"order-missing","sessionId":"order-missing","message":{"role":"user","id":"missing","content":"order-needle"}}

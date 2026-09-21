@@ -1,0 +1,3 @@
+{"type":"user","uuid":"u-beta","sessionId":"beta","timestamp":"2026-09-21T12:00:00+02:00","message":{"role":"user","id":"m-beta","content":[{"type":"text","text":"connection refused behind the hidden directory","apiBlockIndex":7}]}}
+{"type":"user","uuid":"u-alpha-b","sessionId":"alpha","timestamp":"2026-09-21T12:30:00Z","message":{"role":"user","id":"m-other-file","content":"shared session, different file, no hit"}}
+{"type":"assistant","uuid":"a-no-session-b","timestamp":"2026-09-21T14:00:00Z","message":{"role":"assistant","id":"m-no-session-b","content":"connection refused without a session id"}}

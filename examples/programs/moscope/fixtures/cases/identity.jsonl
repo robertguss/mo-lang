@@ -1,0 +1,8 @@
+{"type":"assistant","uuid":"id-1","sessionId":"identity","timestamp":"2026-09-21T09:00:00Z","message":{"role":"assistant","id":"same-message","content":[{"type":"text","text":"alpha first","apiBlockIndex":4}]}}
+{"type":"user","uuid":"id-2","sessionId":"identity","timestamp":"2026-09-21T09:00:01Z","message":{"role":"user","id":"interleaved","content":"another logical message"}}
+{"type":"assistant","uuid":"id-3","sessionId":"identity","timestamp":"2026-09-21T09:00:02Z","message":{"role":"assistant","id":"same-message","content":[{"type":"text","text":"omega second","apiBlockIndex":9}]}}
+{"type":"assistant","uuid":"id-3","sessionId":"identity","timestamp":"2026-09-21T09:00:02Z","message":{"role":"assistant","id":"same-message","content":[{"type":"text","text":"omega second","apiBlockIndex":9}]}}
+{"type":"assistant","uuid":"id-conflict","sessionId":"identity","timestamp":"2026-09-21T09:00:03Z","message":{"role":"assistant","id":"conflict","content":"kept payload"}}
+{"type":"assistant","uuid":"id-conflict","sessionId":"identity","timestamp":"2026-09-21T09:00:04Z","message":{"role":"assistant","id":"conflict","content":"conflicting payload"}}
+{"type":"user","uuid":"id-fallback-1","sessionId":"identity","timestamp":"2026-09-21T09:00:05Z","message":{"role":"user","content":"physical fallback one"}}
+{"type":"user","uuid":"id-fallback-2","sessionId":"identity","timestamp":"2026-09-21T09:00:06Z","message":{"role":"user","content":"physical fallback two"}}
