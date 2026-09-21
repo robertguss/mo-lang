@@ -3118,3 +3118,12 @@
   confirmed in checker. Declaration-only correction returned, no runtime edits.
 - Four serial filters proposed after reread: normal compiler/shutdown, ASan
   lifecycle/shutdown. No execution released and no new runtime result.
+
+## [2026-09-21] review | 9:15 AM ET, four-stage focused validation released
+
+- d2a9541f adds only required supervisor declaration. Bundle109298 and hashes
+  verified; runtime unchanged. Lead/Oracle source review passes.
+- Full candidate transferred for composition on acceptedb52cac15; four serial
+  guarded filters released: normal compiler/shutdown, ASan lifecycle/shutdown.
+  Independently fresh roots, exact prior environment, strict outputs and
+  per-stage cleanup; stop-first. No new results or acceptance yet.

@@ -157,6 +157,16 @@ After reread, proposed serial gates are normal compiler control, normal
 shutdown, existing focused ASan lifecycle, ASan shutdown; none released yet. New
 full inventory is310, not a claim of310 passed. Seven obligations unchanged.
 
+21 Sep, 9:15 AM ET: d2a9541f declaration-only correction and full bundle
+verified; lead/Oracle source reread approves bounded execution. Transferred full
+candidate to validator for new composition on exact acceptedb52cac15. Release
+four serial directguard1800 filters: normal compiler control, normal shutdown,
+existing focused ASan lifecycle, ASan shutdown. Same frozen source, independent
+fresh absolute caches/prefix each; next stage requires prior actual0/tests2/2,
+no skips, full raw receipts and certain cleanup. Preserve exact Clang14/UAR/LSan
+controls, all8 shutdown and all4 lifecycle results, per-ASan-stage artifact
+proofs. Stop-first, no retry/edits/broader gates. No new runtime result yet.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
