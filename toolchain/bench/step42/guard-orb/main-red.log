@@ -1,0 +1,7 @@
+natural: exit=7 expected=7; child=gone; descendant=alive; dedicated-group=no; unrelated=alive; elapsed=1.20s; stderr=''; FAIL
+signal: exit=138 expected=138; child=gone; descendant=alive; dedicated-group=no; unrelated=alive; elapsed=1.18s; stderr=''; FAIL
+timeout: exit=137 expected=137; child=gone; descendant=alive; dedicated-group=no; unrelated=alive; elapsed=2.09s; stderr='guard: killed 7530 (rss 12 MB, 1 s)'; FAIL
+term: exit=143 expected=143; child=gone; descendant=alive; dedicated-group=no; unrelated=alive; elapsed=1.10s; stderr=''; FAIL
+int: exit=130 expected=130; child=gone; descendant=alive; dedicated-group=no; unrelated=alive; elapsed=1.09s; stderr=''; FAIL
+rss: exit=137 expected=137; child=gone; descendant=alive; dedicated-group=no; unrelated=alive; elapsed=1.26s; stderr='guard: killed 7670 (rss 4096 MB, 0 s)'; FAIL
+guard_regression: 0/6 passed
