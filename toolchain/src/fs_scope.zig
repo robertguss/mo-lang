@@ -78,9 +78,7 @@ const Setup = struct {
 
 fn setup(arena: std.mem.Allocator, io: Io, tmp: *std.testing.TmpDir) !Setup {
     const gpa = std.testing.allocator;
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try corpus.moExe(gpa, io, from_environ);
+    const mo_exe = try corpus.integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     return .{
         .arena = arena,

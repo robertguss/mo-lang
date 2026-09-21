@@ -5,7 +5,9 @@ const std = @import("std");
 //   zig build -Ddebug  → zig-out/bin/mo        the same, Debug
 //   zig build test     → unit tests of every stage, plus the corpus test, which runs
 //                        examples/programs/ through the installed mo (MO_EXE)
-//   zig build coverage → zig-out/coverage/     the same tests under kcov (line coverage of src/)
+//   zig build test-corpus → the same, plus the integration tests that build binaries with
+//                        mo build and compare them to the interpreter (MO_CORPUS=1)
+//   zig build coverage → zig-out/coverage/     the test-corpus run under kcov (line coverage of src/)
 //   zig build bench    → zig-out/bin/mo-bench  the benchmark harness, run against ../examples
 //   zig build errors   → ../mo-wiki/spec/errors.md, the error catalog, from the diagnostic tables
 //   zig build tls-tools → zig-out/bin/mo-tls-peer, mo-tls-fuzz, and mo-tls-limbo, steps 37 and 39's bench tools
@@ -49,20 +51,32 @@ pub fn build(b: *std.Build) void {
     // only when it matches).
     const filters = b.option([]const []const u8, "test-filter", "Run only the tests whose names hold this") orelse &.{};
     const mod_tests = b.addTest(.{ .root_module = mo, .filters = filters });
-    const test_step = b.step("test", "Run every stage's tests and the corpus test");
+    const test_step = b.step("test", "Run every stage's tests and the corpus test (the mo build integration tests skip)");
     const run_tests = b.addRunArtifact(mod_tests);
     run_tests.setEnvironmentVariable("MO_EXE", mo_path);
     run_tests.step.dependOn(&install_exe.step);
     test_step.dependOn(&run_tests.step);
 
-    // zig build coverage runs the same test binary under kcov (must be on PATH) and installs
-    // the line-coverage report to zig-out/coverage/index.html. Only src/ counts;
+    // The integration tests (named `corpus: ...`, plus number.zig's over mo build) spawn the
+    // installed mo to build every module and program natively and compare with the interpreter,
+    // exercise the filesystem, the network, and TLS. They run only when MO_CORPUS is set, which
+    // this step does; zig build test reports them as skipped.
+    const corpus_step = b.step("test-corpus", "Run every test, the mo build integration tests included");
+    const run_corpus = b.addRunArtifact(mod_tests);
+    run_corpus.setEnvironmentVariable("MO_EXE", mo_path);
+    run_corpus.setEnvironmentVariable("MO_CORPUS", "1");
+    run_corpus.step.dependOn(&install_exe.step);
+    corpus_step.dependOn(&run_corpus.step);
+
+    // zig build coverage runs the same test binary, integration tests included, under kcov (must
+    // be on PATH) and installs the line-coverage report to zig-out/coverage/index.html. Only src/ counts;
     // -Dtest-filter narrows the run as for zig build test.
     const coverage_step = b.step("coverage", "Run the tests under kcov into zig-out/coverage (needs kcov on PATH)");
     const kcov = b.addSystemCommand(&.{ "kcov", "--clean", b.fmt("--include-path={s}", .{b.pathFromRoot("src")}) });
     const coverage_dir = kcov.addOutputDirectoryArg("coverage");
     kcov.addArtifactArg(mod_tests);
     kcov.setEnvironmentVariable("MO_EXE", mo_path);
+    kcov.setEnvironmentVariable("MO_CORPUS", "1");
     kcov.step.dependOn(&install_exe.step);
     const install_coverage = b.addInstallDirectory(.{
         .source_dir = coverage_dir,

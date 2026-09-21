@@ -32,6 +32,7 @@ const std = @import("std");
 const Io = std.Io;
 const pipeline = @import("pipeline.zig");
 const program = @import("program.zig");
+const cbuild = @import("cbuild.zig");
 const runner = @import("runner.zig");
 const diag = @import("diag.zig");
 const fmt = @import("fmt.zig");
@@ -353,6 +354,17 @@ test "a program names its runs, and each run's exit code, on its first lines" {
 /// so a program can run in its own folder.
 pub fn moExe(gpa: std.mem.Allocator, io: Io, from_environ: ?[]const u8) ![:0]u8 {
     return Io.Dir.cwd().realPathFileAlloc(io, from_environ orelse "zig-out/bin/mo", gpa);
+}
+
+/// The `mo` of an integration test, one that builds binaries with `mo build` or runs long: only
+/// under `zig build test-corpus`, which sets MO_CORPUS; `zig build test` skips it.
+pub fn integrationMo(gpa: std.mem.Allocator, io: Io) ![:0]u8 {
+    const opted_in = std.testing.environ.getAlloc(gpa, "MO_CORPUS") catch null;
+    defer if (opted_in) |e| gpa.free(e);
+    if (opted_in == null) return error.SkipZigTest;
+    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
+    defer if (from_environ) |e| gpa.free(e);
+    return moExe(gpa, io, from_environ);
 }
 
 /// The programs whose output depends on the order in which two of their processes act, which the
@@ -813,9 +825,7 @@ test "corpus: every module's tests and every program, built by mo build, print w
         for (paths) |p| gpa.free(p);
         gpa.free(paths);
     }
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     defer Io.Dir.cwd().deleteTree(io, root ++ "/zig-out") catch {};
 
@@ -872,9 +882,7 @@ test "corpus: chunks contract fixtures keep strict and fault targets separate un
         try std.testing.expect(try fmtCheck(gpa, io, root, fixture.rel));
     }
 
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     defer Io.Dir.cwd().deleteTree(io, root ++ "/zig-out") catch {};
     var built: Built = .{};
@@ -896,9 +904,7 @@ test "corpus: mo run --surface and a binary built with --surface serve the runti
     const arena = arena_state.allocator();
     const folder = "../examples/programs/surface";
     Io.Dir.cwd().access(io, folder ++ "/main.mo", .{}) catch return;
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     const want =
         \\200, holds "name": "Tally"
@@ -943,9 +949,7 @@ test "corpus: a crash 200 updates back, past a ring of 64, is still in crashes u
     const arena = arena_state.allocator();
     const folder = "../examples/processes";
     Io.Dir.cwd().access(io, folder ++ "/crash-kept.mo", .{}) catch return;
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     const want =
         \\restarted at 0: true
@@ -982,9 +986,7 @@ test "corpus: a process whose state is megabytes restarts twenty times and its r
     var arena_state = std.heap.ArenaAllocator.init(gpa);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -1091,9 +1093,7 @@ test "corpus: an answer of megabytes an arm made to an ask it kept arrives whole
     var arena_state = std.heap.ArenaAllocator.init(gpa);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     try std.testing.expect(try checkProgram(gpa, io, mo_exe, root, rel));
     var built: Built = .{};
@@ -1110,7 +1110,11 @@ test "corpus: an answer of megabytes an arm made to an ask it kept arrives whole
     const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
     const made = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "deferred.mo", "-o", "deferred" }, .cwd = .{ .path = cwd } });
     try std.testing.expect(made.term == .exited and made.term.exited == 0);
-    const stress = "zig cc -std=c11 -Wall -Werror -O2 -DMO_STRESS -o stressed zig-out/mo-build/deferred/deferred.c zig-out/mo-build/deferred/mo_rt.c zig-out/mo-build/.bricks/*/*.o";
+    // The bricks' objects are where mo build cached them (cbuild.cacheDir).
+    const mo_cache = std.testing.environ.getAlloc(arena, "MO_CACHE") catch null;
+    const home = std.testing.environ.getAlloc(arena, "HOME") catch null;
+    const bricks = try cbuild.cacheDir(arena, mo_cache, home, "zig-out/mo-build");
+    const stress = try std.fmt.allocPrint(arena, "zig cc -std=c11 -Wall -Werror -O2 -DMO_STRESS -o stressed zig-out/mo-build/deferred/deferred.c zig-out/mo-build/deferred/mo_rt.c {s}/.bricks/*/*.o", .{bricks});
     const compiled = try std.process.run(arena, io, .{ .argv = &.{ "/bin/sh", "-c", stress }, .cwd = .{ .path = cwd } });
     try std.testing.expect(compiled.term == .exited and compiled.term.exited == 0);
     for ([_][]const u8{ "10", "1000" }) |n| {
@@ -1129,9 +1133,7 @@ test "corpus: a process an update starts runs on its starter's scheduler up to t
     var arena_state = std.heap.ArenaAllocator.init(gpa);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -1265,9 +1267,7 @@ test "corpus: a fatal alert where a hello belongs is Handshake and a reset mid-h
     const arena = arena_state.allocator();
     const pems = "../examples/effects/tls";
     Io.Dir.cwd().access(io, pems ++ "/cert.pem", .{}) catch return;
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -1389,9 +1389,7 @@ test "corpus: an ALPN offer of 8,192 bytes on the wire is taken and one past it 
     const arena = arena_state.allocator();
     const pems = "../examples/effects/tls";
     Io.Dir.cwd().access(io, pems ++ "/root.pem", .{}) catch return;
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -1464,9 +1462,7 @@ test "corpus: a callee's body changed in another module makes its caller's verif
     var arena_state = std.heap.ArenaAllocator.init(gpa);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
-    const from_environ = std.testing.environ.getAlloc(gpa, "MO_EXE") catch null;
-    defer if (from_environ) |e| gpa.free(e);
-    const mo_exe = try moExe(gpa, io, from_environ);
+    const mo_exe = try integrationMo(gpa, io);
     defer gpa.free(mo_exe);
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
