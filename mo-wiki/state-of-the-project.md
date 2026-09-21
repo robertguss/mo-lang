@@ -34,9 +34,14 @@ executor and login prerequisites are satisfied. Neither old Mac services nor
 unpushed candidate objects are assumed present in the new environment.
 
 The arrival checkout matches fetched GitHub main and is clean. A fresh Linux
-baseline is still owed. The ten historical audit records new to this orb's
-receiver ledger require reconciliation, not automatic duplicate publication. No
-auditor reading or hidden suite was opened during migration.
+baseline is still owed. All ten historical audit records new to this orb's
+receiver ledger already have replies on main; no duplicate publication is
+needed. No auditor reading or hidden suite was opened during migration. Three
+medium/xxlarge workers now own guard cleanup proof, memory-safety source
+recovery and server source recovery. The two source lanes await guard acceptance
+and review before runtime runs. Native integration is included via test-corpus;
+the faster test command alone is not acceptance. The old OrbStack executor is
+unavailable here, so machine cutover remains a separate prerequisite.
 
 **Historical acceptance, 20 Sep 2026, 8:30 AM ET:** [[interpreter-step-44]] is
 accepted on Darwin, merged locally at **db515f9b** after independent

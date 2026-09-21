@@ -2760,3 +2760,13 @@
   or hidden suite opened.
 - Wiki lint checked286 pages with29 nonblocking notices (15 review,14 size),
   exit0; no broken-link/schema errors. Diff whitespace check passed.
+- Oracle found that current main's test step skips native integration; active
+  acceptance now requires test-corpus and equal-coverage timing. Guard part E is
+  a separate bounded prerequisite because main kills only the direct child.
+  Three medium/xxlarge workers launched from pushed9111bb70; memory/server
+  source recovery proceeds while the guard worker runs bounded cleanup controls.
+- All ten audit records have existing replies on main; no duplicate publication.
+  Reply mapping and environment/launch receipts are filed under
+  audit/evidence/2026-09-20/orb-migration/. Orbctl and Docker's socket are
+  absent; no daemon was started. Lead baseline tree prepared at
+  /tmp/mo-lead-orb-baseline; no runtime baseline accepted yet.

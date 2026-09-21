@@ -34,9 +34,27 @@ server remain unaccepted. Server42/42 is generator coverage only. Step39
 unresolved; Program7 suspended; no live-provider/Pi acceptance.
 
 The pointer-only intake found ten historical records new to this orb ledger,
-plus one invalid transport canary. This is not proof of new audit work or of
-missing prior handling. Reconcile existing handoff replies before publishing
-duplicates; no auditor reading or hidden suite was opened at arrival.
+plus one invalid transport canary. Reconciliation confirmed existing replies for
+all ten on main; no duplicate publication is needed. No auditor reading or
+hidden suite was opened. Evidence and reply mapping:
+`audit/evidence/2026-09-20/orb-migration/README.md`.
+
+### Active orb workers
+
+All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
+
+- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, bounded Python cleanup proof.
+- Memory: T-01a0c18a-5e4e-729b-96fb-39ccb6c9d1cc, static A–D recovery; guard
+  files are excluded from its ownership.
+- Server: T-01a0c18a-cc44-7380-8650-bf09bfec9954, static chunks recovery.
+
+Review their replies and fixed bundles in this thread; do not create
+replacements for the same assignment. Memory/server runtime runs await guard
+acceptance and source/manifest review. Lead baseline tree is
+`/tmp/mo-lead-orb-baseline` on `lead/verify-orb-baseline`, not main. No runtime
+baseline accepted yet. `orbctl` is absent and Docker's socket is absent; machine
+cutover needs a separately established execution boundary. No daemon was
+started.
 
 ## Historical Mac checkpoints below
 
