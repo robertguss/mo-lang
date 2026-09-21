@@ -35,7 +35,7 @@ fn discover(root: Fs, path: String, level: UInt64, so_far: Discovery, clock: Clo
   if clock.now >= started + process_time()
     return discovery_stop(found, path, "the 60 second processing deadline was exceeded")
   end
-  if level > depth()
+  if !depth_admitted?(level)
     return discovery_stop(found, path, "traversal exceeds depth 24")
   end
   folder = if path == ".": root else: root.scoped(path)
@@ -49,7 +49,7 @@ fn discover(root: Fs, path: String, level: UInt64, so_far: Discovery, clock: Clo
     if clock.now >= started + process_time()
       return discovery_stop(found, path, "the 60 second processing deadline was exceeded")
     end
-    if found.entries >= entries()
+    if !entry_admitted?(found.entries)
       return discovery_stop(found, path, "traversal exceeds 50000 entries")
     end
     found.entries += 1
@@ -82,7 +82,7 @@ fn discovered_entry(root: Fs, place: EntryPlace, so_far: Discovery, clock: Clock
       found = discover(root, place.entry_path, place.next_level, found, clock, started)
     File:
       if place.entry_path.ends_with?(".jsonl")
-        if found.files.size >= files()
+        if !file_admitted?(found.files.size)
           return discovery_stop(found, place.entry_path, "discovery exceeds 5000 JSONL files")
         end
         found.files = found.files.push(place.entry_path)
@@ -131,6 +131,18 @@ end
 fn joined(parent: String, name: String) : String
   return name if parent == "."
   "#{parent}/#{name}"
+end
+
+fn depth_admitted?(level: UInt64) : Bool
+  level <= depth()
+end
+
+fn entry_admitted?(count: UInt64) : Bool
+  count < entries()
+end
+
+fn file_admitted?(count: UInt64) : Bool
+  count < files()
 end
 
 fn fs_error(error: FsError) : String
@@ -201,4 +213,10 @@ test "processing expiry after a successful fold preserves admitted results"
   assert scan.incomplete
   assert scan.files_read == 1
   assert scan.messages.size == 1
+end
+
+test "production traversal admission predicates differ at every boundary"
+  assert depth_admitted?(24) and !depth_admitted?(25)
+  assert entry_admitted?(49_999) and !entry_admitted?(50_000)
+  assert file_admitted?(4_999) and !file_admitted?(5_000)
 end

@@ -73,12 +73,12 @@ fn folded_line(state: FileFold, line: String) : FileFold
     next.stopped = true
     return next
   end
-  if next.file_records >= file_records()
+  if !file_record_admitted?(next.file_records)
     next.scan = problem(next.scan, next.path, next.lines, "the file exceeds 200000 records")
     next.stopped = true
     return next
   end
-  if next.scan.records >= records()
+  if !record_admitted?(next.scan.records)
     next.scan = problem(next.scan, next.path, next.lines, "the search exceeds 1000000 records")
     next.stopped = true
     return next
@@ -248,7 +248,7 @@ fn retain_message(scan: Scan, input: ConversationInput, identity: Identity,
   session_label = if input.session == "": "(missing session id in #{input.path})" else: input.session
   key = Json.encode((input.path, session_key, input.kind, identity.kind, identity.value))
   existing = next.messages.get(key)
-  if existing is None and next.messages.size >= messages()
+  if existing is None and !message_admitted?(next.messages.size)
     return problem(next, input.path, input.line, "more than 100000 logical messages would be retained")
   end
   room = blocks().saturating_sub(next.retained_blocks)
@@ -433,6 +433,18 @@ fn marked?(fields: Map(String, Json), name: String) : Bool
   fields.get(name) == Some(Bool(value: true))
 end
 
+fn file_record_admitted?(count: UInt64) : Bool
+  count < file_records()
+end
+
+fn record_admitted?(count: UInt64) : Bool
+  count < records()
+end
+
+fn message_admitted?(count: UInt64) : Bool
+  count < messages()
+end
+
 fn later(a: Option(Time), b: Option(Time)) : Option(Time)
   case (a, b)
     (Some(left), Some(right)): Some(max_of(left, right))
@@ -508,4 +520,10 @@ test "production per-file total-record and retained-block counters refuse the ne
   record = "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"kept\"}}"
   capped = folded_line(start_file(block_scan, "three.jsonl", 10_000), record).scan
   assert capped.incomplete and capped.retained_blocks == 500_000
+end
+
+test "production record and message admission predicates differ at each boundary"
+  assert file_record_admitted?(199_999) and !file_record_admitted?(200_000)
+  assert record_admitted?(999_999) and !record_admitted?(1_000_000)
+  assert message_admitted?(99_999) and !message_admitted?(100_000)
 end

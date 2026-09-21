@@ -466,11 +466,13 @@ def interpreter_cases(stage: Path, compiler: Path) -> list[dict[str, object]]:
             "file-local UUID state resets and malformed middle input retains neighboring messages",
             "replacement characters and conflicting payloads preserve first results but are incomplete",
             "production per-file total-record and retained-block counters refuse the next value",
+            "production record and message admission predicates differ at each boundary",
         ],
         "scan": [
             "production discovery reads nested JSONL, ignores other files, and diagnoses JSONL folders",
             "production filesystem timeout and aggregate admission paths are incomplete",
             "processing expiry after a successful fold preserves admitted results",
+            "production traversal admission predicates differ at every boundary",
         ],
         "search": [
             "ASCII folding leaves non-ASCII exact, and punctuation remains literal",
@@ -478,6 +480,7 @@ def interpreter_cases(stage: Path, compiler: Path) -> list[dict[str, object]]:
             "safe output has no raw controls or non-ASCII bytes",
             "terminal safety covers NUL DEL and bidi while doubling backslash",
             "excerpt boundaries and output admission differ on both sides of the limit",
+            "production result admission differs at the matching-message boundary",
         ],
         "tests": [
             "a phrase stays inside one block while all words may span blocks of one logical message",

@@ -6,10 +6,11 @@ the accepted compiler: exit 0, 731 stdout bytes, 107 stderr bytes, and four
 matches, with both streams byte-exact to the hand-authored expectations. That
 was a narrow pre-integration check, not full app acceptance. The frozen
 app-local candidate has since passed the serial interpreter stage: 46 exact
-cases, including all eight original triples, 39 CLI/filesystem/boundary cases,
-and all seven modules' 24 non-writing tests. Every payload had literal absent
-process-group cleanup. Native behavior, formatter/`--write` release metadata,
-and the full corpus remain unexecuted and unaccepted.
+cases, including all eight original triples, 31 additional
+CLI/filesystem/boundary cases, and all seven modules' 27 non-writing tests.
+Every payload had literal absent process-group cleanup. Native behavior,
+formatter/`--write` release metadata, and the full corpus remain unexecuted and
+unaccepted.
 
 ```text
 moscope search "connection refused" ./sessions/

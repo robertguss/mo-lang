@@ -61,7 +61,7 @@ types, and the app-local `.mo.ids` when present.
 ## Interpreter checkpoint
 
 The final interpreter attempt ran 46 serial cases: all eight original triples,
-31 additional CLI/filesystem/boundary cases, and all seven modules with 24
+31 additional CLI/filesystem/boundary cases, and all seven modules with 27
 non-writing tests. It covered query/term/line boundaries, LF/CRLF/no-LF,
 malformed and replacement input, ordering, root and discovered symlinks, FIFO,
 directory candidates, sparse file admission, genuine non-root unreadable file

@@ -86,7 +86,7 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
         end
     end
     if shown.size > 0
-      if result.hits.size >= results()
+      if !result_admitted?(result.hits.size)
         result.scan = problem(result.scan, entry.path, entry.first_line,
           "search exceeds 10000 matching logical messages")
         break
@@ -230,6 +230,10 @@ fn append_limit(rendered: Render, addition: String, limit: UInt64) : Render
   Render(text: "#{rendered.text}#{addition}", truncated: false)
 end
 
+fn result_admitted?(count: UInt64) : Bool
+  count < results()
+end
+
 # ASCII bytes A-Z fold; every non-ASCII byte is unchanged, so non-ASCII matching is exact.
 fn ascii_lower(text: String) : String
   lowered = text.bytes.map(fn(byte)
@@ -317,4 +321,8 @@ test "excerpt boundaries and output admission differ on both sides of the limit"
   assert full.text == "1234" and full.truncated
   room = append_limit(Render(text: "1234", truncated: false), "5", 5)
   assert room.text == "12345" and !room.truncated
+end
+
+test "production result admission differs at the matching-message boundary"
+  assert result_admitted?(9_999) and !result_admitted?(10_000)
 end
