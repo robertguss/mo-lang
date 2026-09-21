@@ -14,3 +14,5 @@ fnox.local.toml
 .coverage.*
 htmlcov/
 coverage/
+site/public/
+site/quartz/.quartz-cache
