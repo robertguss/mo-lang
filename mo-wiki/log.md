@@ -3137,3 +3137,12 @@
   top-level branch observes before queued Waiters run. Source-only deferred
   Ready barrier plus one HeldCount correction assigned; exact expectations,
   marker invariant and runtime unchanged. No retries or acceptance.
+
+## [2026-09-21] review | 9:47 AM ET, barrier validation released
+
+- Verified672b1b54 bundle110603/hash and exact fixture-only diff. Lead/Oracle
+  source review passes barrier ordering, token ownership and depth3; runtime
+  unchanged. No claim of compilation or runtime success yet.
+- Full candidate transferred for composition on accepted7ee9edc2. Same four
+  serialized normal compiler/shutdown and ASan lifecycle/shutdown filters
+  released with fresh roots and unchanged strict gates; stop-first, no retry.

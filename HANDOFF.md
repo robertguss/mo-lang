@@ -178,6 +178,14 @@ main asks and explicit failure branch, invariant/runtime/oracles intact. No
 extra handle roots, sleeps, forced stress or relaxed expected counts. Return
 source before execution; prior LSan RED remains open.
 
+21 Sep, 9:47 AM ET: 672b1b54 barrier-only fixture change verified; lead/Oracle
+source review passes both arrival orders, explicit reply semantics, exact
+readiness/count checks and depth3. Runtime unchanged. Full bundle transferred;
+validator granted same four serial stop-first filters on new composition with
+exact accepted7ee9edc2. Independent fresh roots, frozen source and all previous
+strict environment/output/instrumentation/cleanup gates remain. No new runtime
+result or acceptance; preserve prior REDs and all seven obligations.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
