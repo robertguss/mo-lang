@@ -2119,6 +2119,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------ |
 | Hold efccfabf for three helper blockers: catch syntax, canonical -0 ordering and optional-string metadata. Source-only small-fix checkpoint before separate owner correction: no PID operations after ECHILD, no null-id reap inference, bounded post-signal observation, fail unknown final stats/cleanup after recording evidence. Helper serialization does not verify lifecycle. No execution grant. `semantic` | Amp lead with Oracle | decided | next fixed source reread |
 
+### Owner-inclusive helper preflight release
+
+| decision                                                                                                                                                                                                                                                                                                                                                                           | who                  | status  | first tested by                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | -------------------------------- |
+| Source86b66e0 helper fixes and85edd344 owner corrections close prior blockers. Explicitly pin existing build900/five-helper1800 gate to85 on accepted60595692, fresh full composition/caches and stop-first. No real capture/full/ASan grant. Correct map to sampled five-second observation budget, not hard wall-clock limit; metadata tests remain serialization evidence only. | Amp lead with Oracle | decided | next independent helper receipts |
+
 ## Related
 
 - [[session-05]]

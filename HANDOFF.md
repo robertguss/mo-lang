@@ -173,6 +173,14 @@ before reap. Metadata test is serialization only. No execution; five helper
 filters may follow fixed reread, never real capture/full/ASan automatically.
 Static309 is not executed evidence.
 
+Helper86b66e0 and owner85edd344 pass source reread with Oracle. Existing
+build900/five-helper-filter1800 gate explicitly pinned to owner-inclusive85 on
+accepted60595692a0b0949955359e6c8ccad325880e9b4c, full composition/fresh caches,
+stop-first. No real large restart/full/ASan. Owner path remains unexecuted;
+metadata test proves serialization only. Worker doc-only correction must call
+five seconds a sampled observation budget, not a hard maximum (100ms sleeps,
+scheduling/syscall/finalization delays; outer guard owns unresolved cleanup).
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

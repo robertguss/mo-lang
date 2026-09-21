@@ -2933,3 +2933,12 @@
 - Source-only small-fix commit then separate ownership/finalization correction
   authorized. Unknown ownership forbids PID reuse; unknown cleanup cannot pass.
   No execution; metadata serialization is not process-lifecycle verification.
+
+## [2026-09-21] review | C helper preflight on owner-inclusive source
+
+- Verified86b66e0 and85edd344 bundles/diffs. Oracle closes prior source
+  blockers; pin the existing build/five-helper gate to owner85 on
+  accepted60595692, not the helper-only tree. No real capture or broader
+  execution grant.
+- Clarify sampled five-second cleanup budget in worker-owned map; no hard bound
+  or executed owner claim. Static309 and seven obligations remain unchanged.
