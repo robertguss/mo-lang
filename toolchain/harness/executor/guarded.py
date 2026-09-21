@@ -1,14 +1,14 @@
 """guarded.py SECONDS ATTEMPT [--cwd DIR] [--home DIR] -- COMMAND...
 
-Runs COMMAND under toolchain/bench/step36/guard.py in its own process group and
+Runs COMMAND through toolchain/bench/step36/guard.py's in-process supervisor and
 records, in the new directory ATTEMPT: command.json (argv, cwd, git head and
 dirty paths), output.log, and exit.json with the child's real return code.
 --home gives the child an empty HOME and a minimal PATH (node, npm, zig, /usr/bin,
 /bin) with npm configuration kept inside that home. Exits with the child's code
-(guard.py reports its own kill as 137), 124 if the guard outlives SECONDS+5 or
-output passes 16 MiB, or 125 if the process group survives a SIGKILL.
+(guard.py reports its own kill as 137), 124 if supervision exceeds SECONDS+5 or
+output passes 16 MiB, or 125 if supervision or cleanup is unknown/failed.
 """
-import argparse, json, os, shutil, signal, subprocess, sys, time
+import argparse, importlib.util, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
@@ -37,30 +37,43 @@ if args.home:
     record.update(tools=tools, environment=env)
 (args.attempt / 'command.json').write_text(json.dumps(record, indent=2) + '\n')
 start = time.monotonic()
+spec = importlib.util.spec_from_file_location('mo_process_guard', REPO / 'toolchain/bench/step36/guard.py')
+guard = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = guard
+spec.loader.exec_module(guard)
 with (args.attempt / 'output.log').open('xb') as log:
-    p = subprocess.Popen([sys.executable, str(REPO / 'toolchain/bench/step36/guard.py'), str(args.seconds), '--', *args.command],
-                         cwd=args.cwd, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-    def stop(*_):
-        try: os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError: pass
-    for sig in (signal.SIGINT, signal.SIGTERM): signal.signal(sig, stop)
-    timed_out = False
-    while p.poll() is None:
-        if time.monotonic() - start > args.seconds + 5 or log.tell() > BUDGET:
-            timed_out = True; stop(); break
-        time.sleep(.1)
-    child_exit = p.wait()
-stop()
-end, remaining = time.monotonic() + 3, True
-while remaining and time.monotonic() < end:
-    rows = subprocess.run(['ps', '-axo', 'pgid=,pid=,command='], capture_output=True, text=True).stdout.splitlines()
-    remaining = [row for row in rows if row.split(None, 1)[0] == str(p.pid)]
-    if remaining: time.sleep(.1)
+    def policy(_payload, _now):
+        return 'output_overflow' if log.tell() > BUDGET else None
+    outcome = guard.supervise(
+        args.seconds,
+        args.command,
+        cwd=args.cwd,
+        env=env,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        policy=policy,
+        forwarded_signal_grace=2.0,
+        outer_deadline=start + args.seconds + 5,
+    )
 size = (args.attempt / 'output.log').stat().st_size
-code = 124 if timed_out else 125 if remaining else child_exit
-result = {'child_exit': child_exit, 'exit': code, 'timed_out': timed_out, 'process_group': p.pid,
-          'group_absent': not remaining, 'remaining': remaining, 'output_bytes': size,
+policy_timeout = outcome.reason in ('output_overflow', 'outer_deadline')
+if not outcome.cleanup_confirmed or outcome.supervision_error or outcome.reason == 'rss_probe_failed':
+    code = 125
+elif policy_timeout:
+    code = 124
+elif outcome.child_exit is None:
+    code = 125
+else:
+    code = outcome.child_exit
+result = {'child_exit': outcome.child_exit, 'child_returncode': outcome.child_returncode,
+          'exit': code, 'reason': outcome.reason, 'timed_out': policy_timeout,
+          'process_group': outcome.process_group,
+          'cleanup_confirmed': outcome.cleanup_confirmed,
+          'group_state': outcome.group.state, 'group_absent': outcome.group.state == 'absent',
+          'remaining': outcome.group.rows, 'cleanup_error': outcome.group.error,
+          'supervision_error': outcome.supervision_error, 'output_bytes': size,
           'elapsed_seconds': round(time.monotonic() - start, 3)}
 (args.attempt / 'exit.json').write_text(json.dumps(result, indent=2) + '\n')
-print(f'guarded {args.attempt} child_exit={child_exit} exit={code} group_absent={not remaining}', flush=True)
+print(f"guarded {args.attempt} child_exit={outcome.child_exit} exit={code} "
+      f"group_state={outcome.group.state} reason={outcome.reason}", flush=True)
 sys.exit(code)
