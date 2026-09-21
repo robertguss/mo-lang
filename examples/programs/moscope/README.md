@@ -1,8 +1,12 @@
 # moscope
 
 `moscope` is a small, serial, local-only search CLI for Claude Code JSONL
-histories. This directory is source-only: the implementation and synthetic
-expectations have not been compiled or run.
+histories. Candidate `f961c686` passed one guarded interpreter phrase smoke with
+the accepted compiler: exit 0, 731 stdout bytes, 107 stderr bytes, and four
+matches, with both streams byte-exact to the hand-authored expectations. That
+was a narrow pre-integration check, not full app acceptance. The app-local
+program root, standard-corpus entries, broader verifier, native behavior, and
+release metadata added during acceptance preparation have not yet been run.
 
 ```text
 moscope search "connection refused" ./sessions/
@@ -187,12 +191,12 @@ demonstrates the documented operator-supplied anchor behavior. Depth, count,
 byte, record, retained-value, result, output, and deadline boundaries can be
 generated in a disposable tree; they are not committed as giant files.
 
-## Unexecuted readiness packet
+## Synthetic exact triples and narrow execution
 
 The working directory for every candidate command below is the repository root.
-No command has been run. Each stdout/stderr/status triple is independently
-hand-authored; manual source tracing predicts the shown match count and status,
-which is not execution evidence.
+Each stdout/stderr/status triple is independently hand-authored rather than
+recorded from the program. Only the phrase row has been run, as described at the
+top of this file; the other seven remain unexecuted at this checkpoint.
 
 | Case      | Exact argv after `mo run examples/programs/moscope/main.mo --`                         | Expected stdout / stderr / status                                                                                                                                                       | Manual trace  |
 | --------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -204,7 +208,7 @@ which is not execution evidence.
 The full candidate command prefix is:
 
 ```sh
-toolchain/zig-out/bin/mo run examples/programs/moscope/main.mo --
+/absolute/path/to/accepted-mo run examples/programs/moscope/main.mo --
 ```
 
 That tiny tree covers hidden recursion, two skipped symlinks (including a cycle
@@ -215,14 +219,15 @@ The `status2/*` roots and `expected/status2-*` triples separately cover the four
 top-level classification failures. The unreadable/FIFO/root-anchor cases above
 still require disposable filesystem setup.
 
-The misleading source-local `# run:` directives were removed: they did not map
-to these four triples. `main.mo` remains deliberately auto-enrolled as runnable
-source by the standard corpus; adding the corpus's expected files is a future
-integration prerequisite owned outside this app-only candidate. No shared corpus
-file is changed here. No source-complete claim implies runnable, safe, verified,
-or accepted.
+`main.mo` is auto-enrolled by the standard corpus with three whitespace-free,
+app-working-directory runs: one positive query, one absent query exiting 1, and
+one independently isolated classification error exiting 2. Their
+`moscope*.expected` files are hand-authored stdout expectations. The app-local
+acceptance verifier separately compares stdout, stderr, and status. No shared
+corpus file is changed here, and no source-complete claim implies full
+acceptance.
 
-### Manual compatibility checklist (unexecuted)
+### Manual compatibility checklist
 
 - Every local `var` binding uses `var NAME = EXPR`; empty lists and maps receive
   their type from subsequent use or a typed enclosing initializer.
@@ -234,6 +239,6 @@ or accepted.
   are separate functions so nesting is at most three.
 - Statement case arms use indented bodies. `FileFold` stores data only, and its
   `fold_lines` callback neither stores nor captures `Clock`.
-- `Clock.fixture()` remains limited to app-local test source. No formatter,
-  parser, checker, compiler, test, runtime, smoke command, or corpus command was
-  invoked for this checklist.
+- `Clock.fixture()` remains limited to app-local test source. These statements
+  are source-review observations; the release formatter, all-module tests,
+  native build/tests, and full corpus remain pending.

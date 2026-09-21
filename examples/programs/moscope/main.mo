@@ -1,10 +1,15 @@
-module Moscope.Main
+# run: search Please fixtures/smoke
+# run: search definitely-absent fixtures/smoke
+# exit: 1
+# run: search needle fixtures/status2/nonobject
+# exit: 2
+module Main
 expose Problem, options, analyze, main
 
-use Moscope.Limits{query_bytes, terms}
-use Moscope.Model{Mode, Options, Report}
-use Moscope.Scan{scan_tree}
-use Moscope.Search{report, query_terms, safe}
+use Limits{query_bytes, terms}
+use Model{Mode, Options, Report}
+use Scan{scan_tree}
+use Search{report, query_terms, safe}
 
 intent "Search Claude Code JSONL histories under one operator-supplied directory with a bounded serial read-only scan; complete matches exit 0, complete absence exits 1, and usage or incomplete results exit 2."
 

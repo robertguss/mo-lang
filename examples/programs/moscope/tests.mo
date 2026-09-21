@@ -1,8 +1,8 @@
-module Moscope.Tests
+module Tests
 
-use Moscope.Model{Mode, Options, Scan, Report, empty_scan}
-use Moscope.Parse{FileFold, start_file, folded_line}
-use Moscope.Search{report}
+use Model{Mode, Options, Scan, Report, empty_scan}
+use Parse{FileFold, start_file, folded_line}
+use Search{report}
 
 intent "Narrow source-level cases for message identity, phrase versus all-words matching, duplicate UUIDs, conflicts, and unsupported conversation shapes."
 

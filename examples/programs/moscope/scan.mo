@@ -1,9 +1,9 @@
-module Moscope.Scan
+module Scan
 expose scan_tree
 
-use Moscope.Limits{depth, entries, files, file_bytes, total_bytes, diagnostics, call_time, process_time}
-use Moscope.Model{Issue, Scan, Discovery, empty_scan, empty_discovery}
-use Moscope.Parse{start_file, folded_line}
+use Limits{depth, entries, files, file_bytes, total_bytes, diagnostics, call_time, process_time}
+use Model{Issue, Scan, Discovery, empty_scan, empty_discovery}
+use Parse{start_file, folded_line}
 
 intent "Discover JSONL files serially from one read-only root, without following discovered links, then size-admit and fold them in deterministic path order."
 

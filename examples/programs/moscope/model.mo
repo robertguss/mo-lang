@@ -1,4 +1,4 @@
-module Moscope.Model
+module Model
 expose Mode, Options, BlockKind, Block, Message, Seen, Issue, Scan, Discovery, Hit, Session, Report, empty_scan, empty_discovery
 
 intent "The bounded values shared by moscope's argument parser, serial scanner, search, and renderer."

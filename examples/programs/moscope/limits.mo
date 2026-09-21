@@ -1,4 +1,4 @@
-module Moscope.Limits
+module Limits
 expose query_bytes, terms, depth, entries, files, file_bytes, total_bytes, line_bytes, file_records, records, messages, blocks, results, diagnostics, excerpt, output_bytes, call_time, process_time
 
 intent "Fixed finite limits keep a local serial search useful without presenting admission limits as hostile-input memory guarantees."

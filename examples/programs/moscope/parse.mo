@@ -1,8 +1,8 @@
-module Moscope.Parse
+module Parse
 expose FileFold, start_file, folded_line
 
-use Moscope.Limits{line_bytes, file_records, records, messages, blocks, diagnostics}
-use Moscope.Model{BlockKind, Block, Message, Seen, Issue, Scan}
+use Limits{line_bytes, file_records, records, messages, blocks, diagnostics}
+use Model{BlockKind, Block, Message, Seen, Issue, Scan}
 
 intent "Decode admitted JSONL records, conservatively diagnose unsupported conversation shapes, and group messages file-locally without losing block provenance."
 

@@ -1,8 +1,8 @@
-module Moscope.Search
+module Search
 expose report, ascii_lower, query_terms, safe
 
-use Moscope.Limits{results, diagnostics, excerpt, output_bytes, process_time}
-use Moscope.Model{Mode, Options, BlockKind, Block, Message, Issue, Scan, Hit, Session, Report}
+use Limits{results, diagnostics, excerpt, output_bytes, process_time}
+use Model{Mode, Options, BlockKind, Block, Message, Issue, Scan, Hit, Session, Report}
 
 intent "Match eligible blocks with ASCII-only folding, order sessions by all eligible conversation activity, and render bounded terminal-safe plain text."
 
