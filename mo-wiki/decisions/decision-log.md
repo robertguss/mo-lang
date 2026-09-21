@@ -2281,6 +2281,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------------------------------- |
 | Keep f0e9bebc execution on HOLD. Missing/stat-failed observations must serialize unavailable lengths rather than final zero; a late output-limit violation must remain primary when metadata also fails, with lifecycle primary/reason in fallback reporting. Continue the existing corpus-only source assignment and add discriminating production-path controls. No runtime or control grant; seven obligations unchanged. | Amp lead with Oracle | decided | Corrected source diff and late-limit-plus-metadata/stat-fault controls |
 
+## 2026-09-21 — full serial moscope acceptance (semantic)
+
+| decision                                                                                                                                                                                                                                                                                                             | who                                      | status      | first tested by                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------- | ------------------------------------------------------------------ |
+| Proceed with [[moscope-serial-acceptance]]: app-local metadata/corpus integration, synthetic interpreter/native correctness and guarded independent normal regression. No private data, parallel scanner, Step42 or harness expansion. App changes remain unmerged until acceptance; safety failures stop execution. | Robert; bounded plan by lead with Oracle | in progress | Reviewed verifier manifest, app matrix and final integration gates |
+
 ## Related
 
 - [[session-05]]

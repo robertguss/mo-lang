@@ -4,6 +4,7 @@ created: 2026-09-21
 updated: 2026-09-21
 type: plan
 tags: [tooling, verification]
+sources: [plans/interpreter-step-42.md, decisions/decision-log.md]
 status: in-progress
 ---
 
@@ -87,3 +88,8 @@ required repository gate is unresolved. Code remains off main until accepted.
 In progress. Fresh worker owns preparation; its new execution manifest remains
 held for lead readiness review. The previous smoke remains the only independent
 app execution evidence at this checkpoint.
+
+## Related
+
+- [[decision-log]]
+- [[roadmap]]
