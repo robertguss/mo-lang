@@ -2052,6 +2052,13 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | Approve71f40382 three bounded arena fixture reads after direct reread. Restart the same positive-only sequence from toolchain; preserve root-workdir and embed-compilation failures separately. Build5/5 is not test execution.                                        | Amp lead with Oracle | decided | next fixed-revision focused outputs |
 | Hold benchmarkb955e7bb controls: watcher thread must start before Popen; validate synthetic supervisor and exact exit/join proof, retain realMo block, repair Python cleanup finally and stop-signal ownership. No measurements or synthetic execution yet. `semantic` | Amp lead with Oracle | decided | pending source reread               |
 
+### Synthetic watcher result and native diagnostic correction
+
+| decision                                                                                                                                                                                                                                                                                                                            | who                  | status                  | first tested by                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ----------------------- | ------------------------------------------------ |
+| Synthetic watcher72a49307 meets Oracle predicates independently:11/11, local sentinel reap, all exits0, literal absent group, no errors, matching clean command receipt. Do not release realMo or measurements from this result. The initial partial-overlay import failure was the lead's composition error, not a watcher result. | Amp lead with Oracle | verified synthetic only | audit/evidence/2026-09-21/orb-watcher-synthetic/ |
+| Memorye7e12385 Zig positives/chunks pass; native intentional-crash stderr requires exact full literals for three cases, not suppression or arbitrary stderr acceptance. Six normal cases stay empty; audited suffix is one canonical balance line. Source reread before native-only1800 retry.                                      | Amp lead with Oracle | decided                 | retained e7 native exit1 and next fixed oracle   |
+
 ## Related
 
 - [[session-05]]

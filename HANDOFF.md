@@ -81,23 +81,26 @@ orb-memory-normal/. Both correction workers must return source for review. The
 test-rejects assertion-masking defect is reproduced and queued separately;
 server uses an external positive lifecycle oracle, not the false-green test.
 
-Latest memory71f40382 replaces three illegal outside-package embeds with bounded
-fallible arena reads of the unchanged fixture from toolchain cwd. Lead reread
-satisfies Oracle's correction conditions. Earlier146d24b5 root-workdir failure
-and corrected-workdir build5/5/test-compilation failure are separate retained
-evidence, not runtime results. Worker may restart from toolchain: build900s,
-eleven exact positives plus chunks1800s each, native lifecycle1800s with9 normal
-and9 audit. Serial direct guard, MO_NATIVE_ASAN unset, stop first surprise. No
-full/mutants/ASan/stress/timing. Prior full288/289 remains unresolved.
+Memorye7e12385 passed build5/5, all eleven Zig positives and chunks2/2 each.
+Aggregate52/52/0 and other ownership counts are filed in worker raw archive
+/tmp/mo-memory-focused-e7e12385.tar.gz. Native waiter/timeout normal+audit
+passed, then due-down's intentional crash report violated the empty-stderr
+oracle. Oracle authorizes source-only literal complete reports for exactly
+due-down, crash-transaction,restart-drop; six others remain empty. Audit must
+append one canonical accounting line only. Lead rereadad748089 passed; worker
+granted one native-filter-only1800 retry, all9normal+9audit, stop first
+surprise. No full/mutants/ASan/stress/timing; prior full288/289 remains
+unresolved.
 
-Benchmarkb955e7bb integrated in verification tree; Oracle holds synthetic
-release. Watcher must launch Popen only after its thread starts, preventing
-unowned-child startup failure. Synthetic entry must validate supervisor,
-separate blocked realMo modes, prove failure-after-exit and thread join. Move
-stopped-build signal into watcher probe; use finally shutdown around Python
-_end. Source-only fixes assigned. Trusted schedulable-driver premise remains,
-not hard/aggregate memory containment. No benchmark/control execution. Neither
-candidate is on main.
+Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
+at integrated4161f7b9, literal absent group/zero exits, exact result and command
+receipt hash verified. Evidence:
+audit/evidence/2026-09-21/orb-watcher-synthetic/. Initial worker three-file
+overlay failed import before cases: lead composition instruction was incomplete.
+Full candidate plus accepted main fixed composition. Real-Mo modes and
+measurements remain blocked pending separate review/grant; trusted
+schedulable-driver premise is not hard/aggregate memory containment. Neither
+candidate is on main. All implementation remains in verification trees.
 
 Review their replies and fixed bundles in this thread; do not create
 replacements for the same assignment. Further grants follow exact evidence and

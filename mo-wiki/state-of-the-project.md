@@ -63,14 +63,15 @@ is unavailable and F3 remains a temporary whole-run Fs trust exception. The
 shared test-runner assertion-masking defect remains queued; the server uses an
 external lifecycle oracle instead.
 
-Memory413e006c failed its fresh normal full suite:288/289, one crash in seeded
-packed chunks. No ASan ran. The source trace fix now preserves seeded scheduling
-while omitting packed trace borrows. Oracle reread146d24b5 confirms handshake,
-normal/audited native coverage and final Job/ack ordering fixes. Only bounded
-build/focused positives are released, not full/mutant/ASan/stress/timing runs;
-all seven obligations remain. Benchmark watcher implementation is source-only,
-under an explicit trusted-driver scheduling premise. Neither candidate is
-accepted or merged.
+Memorye7e12385 passed all eleven focused Zig positives and chunks, including
+aggregate parcel52/52/0. Native waiter/timeout normal and audit passed; an
+intentional crash exposed the control's incorrect empty-stderr expectation.
+Source-derived exact reports are reviewed for one native-only retry. Prior
+full288/289 failure remains unresolved; no ASan or mutant run, seven obligations
+remain. The benchmark watcher now passes11/11 independently with exact clean
+receipts and literal group absence. Real-Mo controls and measurements stay
+blocked; this is sampled direct-child protection under a trusted schedulable
+driver, not hard/aggregate containment. Neither candidate is accepted or merged.
 
 **Historical acceptance, 20 Sep 2026, 8:30 AM ET:** [[interpreter-step-44]] is
 accepted on Darwin, merged locally at **db515f9b** after independent

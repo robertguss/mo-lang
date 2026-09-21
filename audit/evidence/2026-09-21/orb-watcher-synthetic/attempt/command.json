@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "/usr/local/bin/python3.11",
+    "-B",
+    "/tmp/mo-lead-orb-server/examples/programs/workspace-server/benchmark_supervision_control.py",
+    "--watcher-controls",
+    "/tmp/mo-lead-server-synthetic-72a49307/root",
+    "/tmp/mo-lead-server-synthetic-72a49307/result.json"
+  ],
+  "cwd": "/tmp/mo-lead-orb-server",
+  "seconds": 30,
+  "head": "4161f7b9143c75884b59c480a0675b270cd77169",
+  "dirty": []
+}

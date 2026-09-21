@@ -1,0 +1,1 @@
+{"count": 11, "sentinel": "locally_reaped", "watcher_controls": ["thread-start-failure-no-spawn", "low-rss-main-wait", "low-rss-stopped-child", "malformed-concurrent-exit", "timeout-concurrent-exit", "exception-concurrent-exit", "missing-live", "missing-confirmed-exit", "normal-zero", "normal-nonzero", "explicit-shutdown"]}

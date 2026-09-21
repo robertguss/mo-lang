@@ -2843,3 +2843,14 @@
   Released only build900s, named positive filters/chunks1800s each and native
   lifecycle1800s (nine normal/nine audit). Serial direct guard, no ASan, stop
   first surprise. Prior full RED and all acceptance obligations remain.
+
+## [2026-09-21] verify | synthetic watcher and memory ownership positives
+
+- Lead independently passed watcher11/11 at integrated4161f7b9, exact receipts
+  and literal group absence in4.91s. Worker equivalent passed11/11; its earlier
+  partial-overlay import failure was the lead's composition error, zero cases.
+  Real-Mo/lifecycle/measurement modes remain blocked.
+- Memorye7e12385 passed all eleven Zig positives and chunks2/2 each, including
+  aggregate parcel52/52/0. Native stopped on intentional crash stderr versus an
+  incorrect empty oracle. Source-derived full diagnostic literals in ad748089
+  passed reread; one native-only1800 retry granted, not broader acceptance.
