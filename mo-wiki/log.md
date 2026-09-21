@@ -2950,3 +2950,11 @@
 - Oracle releases one exact normal large-restart filter on fixedf54cf712,
   retained raw captures and strict exact-output/RSS/cleanup predicates. No retry
   or broader grant; sampled-budget documentation correction verified separately.
+
+## [2026-09-21] verify | real restart compilation RED
+
+- Exactf54cf712 real filter stopped before test execution:exit1,build2/5,
+  missing array address-of at path.join. No runtime/captures; cleanup confirmed.
+- Lead verified archive/hash/source/SDK. Oracle approves only &tmp.sub_path
+  source correction; no retry until reread. Prior helper greens retain their
+  narrower meaning; seven obligations unchanged.

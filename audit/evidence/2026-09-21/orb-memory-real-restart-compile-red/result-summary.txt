@@ -1,0 +1,13 @@
+failure_stage=compile test Debug native
+test_selection=0 (compile failed before execution)
+expected_selected=2
+run_exit=1
+capture_files=0
+metadata_files=0
+outer_payload_pgid=112376
+outer_pgid_absence_exit=1
+scoped_pids=112373,112376,113130,113134
+scoped_pid_absence_exit=1
+source_cause=toolchain/src/corpus.zig:1770:74: tmp.sub_path array requires address-of operator to coerce to []const u8 in std.fs.path.join component literal
+retry_performed=no
+source_modified=no

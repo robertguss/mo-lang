@@ -192,6 +192,13 @@ child check. Preserve all whole/partial captures. Stop-first; no retry or
 broader full309/ASan/stress/mutant/timing release. Result returns to review
 only.
 
+Real filterf54cf712 is compile-only RED:exit1,build2/5, no tests/runtime or
+capture files. path.join needs &tmp.sub_path, not its fixed-array value. Lead
+verified raw archive/SDK and Oracle permits only that source token correction,
+then reread before retry. Helper greens did not compile this unselected body.
+Owned group/scoped PIDs absent; evidence:
+audit/evidence/2026-09-21/orb-memory-real-restart-compile-red/.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

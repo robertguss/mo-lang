@@ -2131,6 +2131,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | -------------------------------------------------------------------------- |
 | Owner85 helper gate passes onf54cf712:build5/5,five filters2/2,exits0/groups absent. Release one real normal large-restart filter1800 on same composition with fresh caches and retained captures; both runtimes exact reports/RSS/completed-reaped metadata required. Stop-first, no retry or full/ASan/stress/mutants/timing. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-owner-helpers85/ and pending real run |
 
+### Real restart compile-only correction
+
+| decision                                                                                                                                                                                                                                                                                          | who                  | status  | first tested by                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | -------------------------------------------------------------- |
+| Preserve f54cf712 compile-only RED:exit1,build2/5,no runtime/captures,group absent. Authorize only address-of tmp.sub_path in path.join; SDK fixed-array coercion, path bytes/lifetime unchanged. Source reread before retry. Helper greens do not establish compilation of unselected test body. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-real-restart-compile-red/ |
+
 ## Related
 
 - [[session-05]]

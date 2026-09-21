@@ -1,0 +1,11 @@
+source excerpt from exact integrated revision (diagnostic context):
+  1763	    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+  1764	    const root = try Io.Dir.cwd().realPathFileAlloc(io, ".", arena);
+  1765	    const supplied_capture_root = std.testing.environ.getAlloc(arena, "MO_STEP42_CAPTURE_DIR") catch null;
+  1766	    const capture_root = if (supplied_capture_root) |path|
+  1767	        if (std.fs.path.isAbsolute(path)) path else try std.fs.path.join(arena, &.{ root, path })
+  1768	    else
+  1769	        try std.fs.path.join(arena, &.{ root, ".zig-cache", "step42-captures" });
+  1770	    const capture_dir = try std.fs.path.join(arena, &.{ capture_root, tmp.sub_path });
+  1771	    try Io.Dir.cwd().createDirPath(io, capture_dir);
+  1772	    const expected_stderr_path = try std.fs.path.join(arena, &.{ capture_dir, "expected.stderr" });

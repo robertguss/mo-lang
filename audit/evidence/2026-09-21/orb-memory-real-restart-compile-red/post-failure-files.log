@@ -1,0 +1,22 @@
+utc=2026-09-21T09:27:03+00:00
+capture_tree:
+capture_total:
+0	.amp/transfer/85edd344-large-restart/capture-f54cf712-normal
+evidence_tree:
+cleanup-outer-pgid.exit	2 bytes
+cleanup-outer-pgid.stderr.log	0 bytes
+cleanup-outer-pgid.stdout.log	115 bytes
+cleanup-scoped-children.exit	2 bytes
+cleanup-scoped-children.stderr.log	0 bytes
+cleanup-scoped-children.stdout.log	136 bytes
+composition-proof.exit	2 bytes
+composition-proof.log	617 bytes
+environment.txt	216 bytes
+post-failure-files.log	137 bytes
+post-failure-state.exit	2 bytes
+post-failure-state.log	195 bytes
+processes-during-start.log	8886 bytes
+real-large-restart.command	1055 bytes
+real-large-restart.exit	2 bytes
+real-large-restart.stderr.log	2143 bytes
+real-large-restart.stdout.log	0 bytes

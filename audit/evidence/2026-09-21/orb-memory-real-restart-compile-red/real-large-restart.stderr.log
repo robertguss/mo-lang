@@ -1,0 +1,22 @@
+test-corpus
++- run test
+   +- compile test Debug native 1 errors
+src/corpus.zig:1770:74: error: array literal requires address-of operator (&) to coerce to slice type '[]const u8'
+    const capture_dir = try std.fs.path.join(arena, &.{ capture_root, tmp.sub_path });
+                                                                      ~~~^~~~~~~~~
+referenced by:
+    corpus: src/root.zig:46:28
+    refAllDecls__anon_43035: /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:1216:14
+    1 reference(s) hidden; use '-freference-trace=3' to see all references
+error: 1 compilation errors
+failed command: /opt/zig-x86_64-linux-0.16.0/zig test --dep mo_rt.c --dep mo_rt.h -Mroot=/home/user/workspace/verify-memory-85edd344-large-restart/toolchain/src/root.zig -Mmo_rt.c=/home/user/workspace/verify-memory-85edd344-large-restart/toolchain/runtime/mo_rt.c -Mmo_rt.h=/home/user/workspace/verify-memory-85edd344-large-restart/toolchain/runtime/mo_rt.h --test-filter "corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary" --cache-dir .zig-cache-real-restart-fresh --global-cache-dir /home/user/workspace/verify-memory-85edd344-large-restart/.zig-global-cache-real-restart-fresh --name test --zig-lib-dir /opt/zig-x86_64-linux-0.16.0/lib/ --listen=-
+
+Build Summary: 2/5 steps succeeded (1 failed)
+test-corpus transitive failure
++- run test transitive failure
+   +- compile test Debug native 1 errors
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache-real-restart-fresh/o/bc0619dbfa9da73f98952af8d0005a12/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /home/user/workspace/verify-memory-85edd344-large-restart/toolchain .zig-cache-real-restart-fresh /home/user/workspace/verify-memory-85edd344-large-restart/.zig-global-cache-real-restart-fresh --seed 0x1a8c2784 -Z4dc23f2c7f7db441 test-corpus -j4 -Dtest-filter=corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary --summary all
