@@ -1,0 +1,14 @@
+asan-archive __asan_init=1
+asan-archive report_hooks=24
+asan-archive start_switch_fiber=1
+asan-archive finish_switch_fiber=1
+asan-archive leak_checks=2
+asan-archive fake_stack_malloc=11
+asan-archive uar_option=1
+asan-shared __asan_init=1
+asan-shared report_hooks=24
+asan-shared start_switch_fiber=1
+asan-shared finish_switch_fiber=1
+asan-shared leak_checks=2
+asan-shared fake_stack_malloc=11
+asan-shared uar_option=1

@@ -3054,3 +3054,14 @@
 - Later narrow native-runtime/fiber evidence may verify retained runtime object
   including fake-stack instrumentation; generated-C flags remain source-proven.
   No ptrace capture, suppression or disabled leak/fake-stack checks permitted.
+
+## [2026-09-21] review | host prerequisites resolve focused ASan release
+
+- Verified host packet/hash, matching Clang14/compiler-rt and symbolizer. Exact
+  Clang14/Debian source resolves config loading: literal clang/no explicit
+  config skips implicit search. Unsupported CLANG_NO_DEFAULT_CONFIG is unset.
+- One focused fiber-ASan1800 attempt released on same0a0de7f7, fresh roots,
+  controlled options, fake-stack/leak checks enabled. Retained runtime object
+  must prove compiler checks/fake-stack/fiber hooks; generated-C flags and
+  successful argv remain source-established. Raw packet/addendum preserved.
+- No retries, warnings exemption, suppressions, broader gate or acceptance.

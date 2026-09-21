@@ -1,0 +1,23 @@
+resource_dir=/usr/lib/llvm-14/lib/clang/14.0.6
+runtime_dir=/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux
+f38c590d5e3f81b2d813c72b1c8c67fe26740f277361bc3ed15e6ab0fc376a9b  /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.a
+d70126dfad47bc83841f09db63fd8f06e2a4bba9da3ebf776075858612694f39  /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.so
+06613b2a6b5a895fb0f5b79d9185287f2313088bc3a22347dd9dce030a69e9ed  /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.lsan-x86_64.a
+97a134d6d11f878bbe7cc5043d8ac4a3439afebc41087d7bc526bd6b7eaaca61  /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-preinit-x86_64.a
+3c37333a5833c7aca87ffd9a9a6887ff633252b43daad4a9e1ea12be59c6cc8b  /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan_cxx-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.a:  current ar archive
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.so: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=2c5433d00caeb9250fe2f4e673005aaddca5cef0, stripped
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.lsan-x86_64.a:  current ar archive
+archive object formats:
+elf64-x86-64
+elf64-x86-64
+shared ELF header:
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Type:                              DYN (Shared object file)
+  Machine:                           Advanced Micro Devices X86-64
+shared dynamic dependencies:
+ 0x0000000000000001 (NEEDED)             Shared library: [libstdc++.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+ 0x000000000000000e (SONAME)             Library soname: [libclang_rt.asan-x86_64.so]

@@ -97,6 +97,18 @@ reviewed source/link path; generated C remains source-established, not
 artifact-verified. No ptrace capture, suppression, fake-stack disable or
 leak-check waiver.
 
+Host packet verified: Debian Clang14.0.6/compiler-rt/fiber/fake-stack/leak
+symbols available. Config concern resolved by exact source: literal clang with
+no target prefix or --config skips implicit search. Unset unsupported
+CLANG_NO_DEFAULT_CONFIG, retain reviewed PATH and sanitized controls.
+Lead/Oracle release ONE focused fiber test-corpus-asan on SAME0a0de7f7,
+directguard1800, packet fresh roots/prefix, absolute symbolizer, UAR+leak checks
+enabled. Both interpreter/native70+20 exact outputs/empty stderr, quiet compile,
+actual runtime-object instrumentation and certain cleanup required. Successful
+compiler argv/generated-C instrumentation are source-established, not retained
+artifacts. Addendum: audit/evidence/2026-09-21/orb-memory-asan-host/README.md.
+Stop-first; no retry or broader gate/acceptance.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

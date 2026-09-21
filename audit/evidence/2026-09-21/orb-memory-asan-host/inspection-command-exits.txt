@@ -1,0 +1,23 @@
+Retained command/query exits:
+clang-dumpmachine=0
+clang-linker=0
+clang-resource-dir=0
+clang-runtime-dir=0
+clang-version=0
+ld-version=0
+nm-version=0
+ps-version=0
+python-version=0
+readelf-version=0
+symbolizer-version=0
+zig-version=0
+identity/source/guard read-only proof exit=0
+compiler-rt file/hash/architecture/symbol inspection exit=0
+host limits/security/disk/mount/permission inspection exit=0
+proposed-root absence inspection exit=0
+source recipe read exit=0
+clang config binary/config-location inspection exit=0
+package ownership/version inspection exit=0
+post-inspection identity/state proof exit=0
+permitted clang queries unsupported=none (-print-runtime-dir supported and exited0)
+CLANG_NO_DEFAULT_CONFIG capability=unsupported/unresolved by binary inspection; not exercised as a compile probe

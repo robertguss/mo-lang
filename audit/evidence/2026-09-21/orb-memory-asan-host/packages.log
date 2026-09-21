@@ -1,0 +1,11 @@
+clang-14: /usr/lib/llvm-14/bin/clang
+llvm-14: /usr/lib/llvm-14/bin/llvm-symbolizer
+libclang-rt-14-dev:amd64: /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.a
+libclang-rt-14-dev:amd64: /usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.so
+binutils-x86-64-linux-gnu: /usr/bin/x86_64-linux-gnu-ld.bfd
+clang-14	1:14.0.6-12	amd64
+llvm-14	1:14.0.6-12	amd64
+llvm-14-runtime	1:14.0.6-12	amd64
+libclang-common-14-dev	1:14.0.6-12	all
+libclang-rt-14-dev	1:14.0.6-12	amd64
+binutils	2.40-2	amd64

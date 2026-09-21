@@ -1,0 +1,5 @@
+Proposed later-run roots; inspected only, no mkdir/write:
+/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh absent=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache-asan-native-fresh absent=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/.zig-global-cache-asan-native-fresh absent=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh absent=yes

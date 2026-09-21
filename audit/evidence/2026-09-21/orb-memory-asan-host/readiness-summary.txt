@@ -1,0 +1,17 @@
+Identity: exact integrated 0a0de7f7de45d7c5b597ab01c43a5e85d8834053; candidate 69dc6df1f664c10a7e8319ec4a575ec5b46f1394; accepted base d02014c03eaa67531a48c1b5e0a6de2649d97b16. All 57 candidate paths match bytes/modes; accepted guards match; tracked/index clean.
+
+Statically ready:
+- Approved PATH resolves literal clang directly to Debian Clang 14.0.6 ELF, not a script/wrapper; matching LLVM symbolizer 14.0.6 is available by absolute path.
+- Clang resource/runtime directories and BFD linker resolve; all tool queries work with loader/include/compiler override variables removed.
+- x86-64 ASan archive/shared runtime and LSan archive exist, hash cleanly, and have ELF64 x86-64 members/files.
+- ASan archive and shared runtime each define __asan_init, 24 load/store report hooks, both fiber-switch hooks, both leak-check functions, 11 __asan_stack_malloc_* functions, and __asan_option_detect_stack_use_after_return.
+- Checkout, toolchain and .zig-cache/tmp are user-owned, writable/searchable, on rw executable ext4; proposed fresh roots are absent. Available disk was 51,471,765,504 bytes at inspection.
+- Source recipe applies ASan flags to runtime/generated C/final link and supplies MO_EXE/MO_CORPUS through test-corpus-asan.
+
+Unmet/unverified:
+- Installed Clang 14 has no evidenced CLANG_NO_DEFAULT_CONFIG or --no-default-config support. Current known user/system/installed directories contain no .cfg files, but robust suppression is unresolved. Do not silently switch compiler or proceed as though the variable works.
+- No compile/link probe was permitted, so project-flag compatibility, actual runtime selection/linkage, final instrumentation, and runtime ASan/LSan behavior remain unverified.
+- Proposed prefix is absent, so no installed mo exists yet and colocated-zig absence must be rechecked after installation setup.
+- Kernel yama ptrace_scope and lockdown files are unavailable in this orb; perf_event_paranoid=2 and unprivileged_bpf_disabled=2 are visible. This planning gate does not authorize tracing regardless.
+
+No sanitizer, Mo, Zig build/test, runtime, guard-control, compile, link, install, or write probe was run. Seven obligations remain unchanged.
