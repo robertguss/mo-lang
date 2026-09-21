@@ -69,14 +69,16 @@ def _rss(pid):
         check=False,
     )
     value = probe.stdout.strip()
+    if probe.returncode == 1 and not value:
+        return "missing", None, "rss probe selected no process"
     if probe.returncode:
-        return None, f"rss probe exited {probe.returncode}"
+        return "failure", None, f"rss probe exited {probe.returncode}"
     if not value:
-        return None, "rss probe selected no process"
+        return "missing", None, "rss probe selected no process"
     try:
-        return int(value) * 1024, None
+        return "sample", int(value) * 1024, None
     except ValueError:
-        return None, f"malformed rss sample: {value!r}"
+        return "failure", None, f"malformed rss sample: {value!r}"
 
 
 def _observe_group(pgid):
@@ -197,15 +199,20 @@ def supervise(
                 break
             if now >= next_rss:
                 try:
-                    sample, probe_error = _rss(payload.pid)
+                    probe_status, sample, probe_error = _rss(payload.pid)
                 except (OSError, subprocess.TimeoutExpired) as error:
                     reason = "rss_probe_failed"
                     supervision_error = f"{type(error).__name__}: {error}"
                     _signal_group(payload.pid, signal.SIGKILL)
                     break
-                if sample is None:
+                if probe_status == "missing":
                     if payload.poll() is not None:
                         continue
+                    reason = "rss_probe_failed"
+                    supervision_error = probe_error
+                    _signal_group(payload.pid, signal.SIGKILL)
+                    break
+                if probe_status == "failure":
                     reason = "rss_probe_failed"
                     supervision_error = probe_error
                     _signal_group(payload.pid, signal.SIGKILL)

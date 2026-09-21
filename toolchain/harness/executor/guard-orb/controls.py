@@ -128,6 +128,15 @@ def fake_ps(folder, mode):
         "      rss-empty-complete)\n"
         "        count=0; while [ ! -f \"$FAKE_READY_PATH\" ] && [ $count -lt 100 ]; do sleep .01; count=$((count + 1)); done\n"
         "        sleep .1; exit 0 ;;\n"
+        "      rss-no-selection-complete)\n"
+        "        count=0; while [ ! -f \"$FAKE_READY_PATH\" ] && [ $count -lt 100 ]; do sleep .01; count=$((count + 1)); done\n"
+        "        sleep .1; exit 1 ;;\n"
+        "      rss-malformed-complete)\n"
+        "        count=0; while [ ! -f \"$FAKE_READY_PATH\" ] && [ $count -lt 100 ]; do sleep .01; count=$((count + 1)); done\n"
+        "        sleep .1; echo broken; exit 0 ;;\n"
+        "      rss-nonzero-complete)\n"
+        "        count=0; while [ ! -f \"$FAKE_READY_PATH\" ] && [ $count -lt 100 ]; do sleep .01; count=$((count + 1)); done\n"
+        "        sleep .1; exit 9 ;;\n"
         "    esac\n"
         "    exec /usr/bin/ps \"$@\" ;;\n"
         "  *' -axo '*)\n"
@@ -541,6 +550,14 @@ def suite(wrapper, output, selected):
           "expected_child_exit": 137, "expected_returncode": -signal.SIGKILL,
           "expected_error": "selected no process"}),
         ("rss-empty-completed", "plain", 0, {"fake": "rss-empty-complete"}),
+        ("rss-no-selection-completed", "plain", 0,
+         {"fake": "rss-no-selection-complete"}),
+        ("rss-malformed-completed", "plain", 125,
+         {"fake": "rss-malformed-complete", "expected_reason": "rss_probe_failed",
+          "expected_error": "malformed rss sample"}),
+        ("rss-nonzero-completed", "plain", 125,
+         {"fake": "rss-nonzero-complete", "expected_reason": "rss_probe_failed",
+          "expected_error": "rss probe exited 9"}),
         ("cleanup-probe-hang", "plain", 125,
          {"fake": "cleanup-hang", "expected_group": "unknown", "expected_error": "TimeoutExpired"}),
         ("cleanup-probe-nonzero", "plain", 125,

@@ -47,6 +47,21 @@ child keeps its real status, while a still-live child fails supervision and is
 cleaned. The synthetic synchronized controls prove both branches; they do not
 claim an ordinary Linux exit race was reproduced.
 
+A follow-up source review found that the first correction represented all
+non-samples with the same tuple, so a completed child also suppressed malformed
+output and nonzero probe failures. `_rss` now returns an explicit `sample`,
+`missing`, or `failure` status. Only `missing`—empty successful output or the
+known `ps` no-selection status 1 with empty output—may preserve a completed
+child's status. Malformed output and other nonzero status remain supervision
+failures/125 even after child completion. The original 30/30 corrected evidence
+is unchanged; focused additive evidence records this distinction:
+
+| RSS distinction run             | Result     | Observation                                                                                | Raw files                                |
+| ------------------------------- | ---------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Completed-child RSS distinction | GREEN, 4/4 | empty/status-1 missing preserve 0; malformed/status-9 return 125 while retaining child 0/0 | `rss-distinction-corrected.log`, `.exit` |
+| Direct core after distinction   | GREEN, 6/6 | normal, signal, timeout, TERM, INT, and >4 GiB RSS unchanged                               | `direct-core-rss-corrected.log`, `.exit` |
+| Focused syntax parse            | GREEN      | guard and controls parsed                                                                  | `syntax-rss-corrected.log`, `.exit`      |
+
 The first TERM/INT receipt starts the wrapper's two-second cancellation grace,
 including while synchronous `Popen` is still running. Queued or repeated signals
 cannot reset it, and an already-expired grace escalates as soon as `Popen`
