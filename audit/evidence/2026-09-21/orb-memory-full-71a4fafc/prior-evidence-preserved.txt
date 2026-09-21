@@ -1,0 +1,4 @@
+Prior RED/filter archives retained unchanged:
+9bc1582a36568211db8e1cbce1185452ca14afce88277d20b03f289576e6b720  .amp/transfer/verification-fixed-413e006c.tar.gz
+58fe05e6f444e3f23b0ad452ad57d921d6da9d1e65b89b20e32e41ed1d51ca41  .amp/transfer/ad748089/verification-ad748089-normal.tar.gz
+e2761381d310cd382b2c28df5411def474f545febc99043c2bd3c54feea555b6  .amp/transfer/71a4fafc/verification-71a4fafc-filters.tar.gz

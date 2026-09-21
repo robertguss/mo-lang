@@ -111,6 +111,17 @@ no skips; stop first failure or cleanup uncertainty. No retry, ASan, mutants,
 stress or measurement grant. Evidence:
 audit/evidence/2026-09-21/orb-memory-filters-71a4fafc/.
 
+Exact194f1969 full-normal is GREEN:301/301, exit0, no skips/crashes, owned
+PGID55124 absent. Seventeen parcel audits balance with live0. Lead checked raw
+archive/hash and Oracle recognizes only the current Linux normal gate, not
+Step42 acceptance. Evidence:
+audit/evidence/2026-09-21/orb-memory-full-71a4fafc/. Next is
+implementation-worker source-only ASan/stress readiness packet: large restart
+test discards stderr; successful compiler diagnostics and child mode propagation
+need coverage mapping. Propose minimal corrections, no implementation or
+execution yet. Seven obligations remain unwaived; no ASan/stress/mutants or
+timing release. Prior REDs retained; candidate remains off main.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

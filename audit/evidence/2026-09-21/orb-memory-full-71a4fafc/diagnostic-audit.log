@@ -1,0 +1,50 @@
+Summary and formatter artifact lines:
+2:+- run test w
+435:failed command: MO_EXE=/home/user/workspace/verify-memory-71a4fafc-full-normal/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache-full-normal-fresh/o/5302cc9e52f12ce9998647472bd75521/test --cache-dir=./.zig-cache-full-normal-fresh --seed=0x7b5834e8 --listen=-
+437:Build Summary: 5/5 steps succeeded; 301/301 tests passed
+438:test-corpus success
+439:+- run test 301 pass (301 total) 9m MaxRSS:522M
+
+Potential severe diagnostics (empty is expected):
+
+Expected control crash reports:
+50-step42 case=parcel-lifecycle-due-down-normal term=.{ .exited = 0 } stdout=due-down: armed then Down
+51: stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+--
+57-step42 case=parcel-lifecycle-due-down-audit term=.{ .exited = 0 } stdout=due-down: armed then Down
+58: stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+--
+75-step42 case=parcel-lifecycle-crash-transaction-normal term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+76: stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+--
+81-step42 case=parcel-lifecycle-crash-transaction-audit term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+82: stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+--
+88-step42 case=parcel-lifecycle-restart-drop-normal term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+89: stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+--
+94-step42 case=parcel-lifecycle-restart-drop-audit term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+95: stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+
+Parcel audit reports:
+step42 parcel-audit case=current-lifecycle-matrix allocated=52 destroyed=52 live=0
+step42 parcel-audit case=transfer-lifecycle allocated=12 destroyed=12 live=0
+step42 parcel-audit case=answer-lifecycle allocated=7 destroyed=7 live=0
+step42 parcel-audit case=end-lifecycle allocated=2 destroyed=2 live=0
+step42 parcel-audit case=seeded-packed-no-trace allocated=2 destroyed=2 live=0
+step42 parcel-audit case=seeded-packed-log-churn allocated=27 destroyed=27 live=0
+step42 parcel-audit case=crashing-update allocated=6 destroyed=6 live=0
+step42 parcel-audit case=event-cleanup allocated=1 destroyed=1 live=0
+ stderr=MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+ stderr=MO_TEST_PARCEL_AUDIT allocated=4 destroyed=4 live=0
+MO_TEST_PARCEL_AUDIT allocated=6 destroyed=6 live=0
+ stderr=MO_TEST_PARCEL_AUDIT allocated=5 destroyed=5 live=0
+ stderr=MO_TEST_PARCEL_AUDIT allocated=2 destroyed=2 live=0
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+ stderr=MO_TEST_PARCEL_AUDIT allocated=19 destroyed=19 live=0
+ stderr=MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+
+process_crashed_count=6
+formatter_run_test_w_count=1
+formatter_failed_command_count=1

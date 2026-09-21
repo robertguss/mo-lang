@@ -1,0 +1,19 @@
+RESULT: GREEN for the one authorized unfiltered full-normal run on exact integrated revision 194f19697a2dfa542e95ac97529390995db16698.
+This returns to review only; it is not an acceptance claim.
+
+real_exit=0
+build_steps=5/5 succeeded
+actual_pass=301
+actual_total=301
+actual_skip=0
+actual_fail=0
+actual_crash=0
+timeout=no
+supervision_failure=no
+cleanup=confirmed; owned payload PGID 55124 absent; literal ps selection exit=1
+leak_evidence=all 17 parcel-audit reports show allocated==destroyed and live=0
+unexpected_diagnostics=none after direct raw-log audit
+
+The raw stderr has one `+- run test w` and one `failed command:` line around test-emitted audit stderr. These are the specifically pre-reviewed Zig formatter artifacts; their exact lines are retained. Six `process crashed:` reports are expected outputs of the due-down, crash-transaction, and restart-drop controls (normal and audit variants), all of whose recorded process terms exited 0. No panic, unreachable, sanitizer failure, runtime error, segmentation fault, test termination, transitive failure, failed build summary, skip, or crash summary was present.
+
+Scope limit: no retry, source edit, ASan, mutants, stress, benchmark, timing claim, push, PR, CI, wiki, or audit change.

@@ -2077,6 +2077,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------------------------------------------------- |
 | Source71a4fafc preserves exact complete-state equality; all five tx_src filters pass2/2 independently, groups absent. Release one fresh unfiltered normal7200 run on fixed194f1969 with accepted3ac2e9fe guards, fresh caches/output, expected301/301. Stop-first; no retries, ASan or acceptance. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-filters-71a4fafc/ and next full output |
 
+### Current Linux full-normal gate verified
+
+| decision                                                                                                                                                                                                                                                                                                                                               | who                  | status   | first tested by                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- | -------- | --------------------------------------------------- |
+| Exact194f1969 normal suite passes301/301, exit0, no skips/crashes,17 audit balances/live0 and literal owned-group absence. Recognize normal gate only; no Step42 acceptance. Next source-only ASan/stress readiness packet must map discarded diagnostics and effective child modes before any correction/execution grant. Seven obligations unwaived. | Amp lead with Oracle | recorded | audit/evidence/2026-09-21/orb-memory-full-71a4fafc/ |
+
 ## Related
 
 - [[session-05]]

@@ -2871,3 +2871,11 @@
   receipts checked. Wiki lint:287 pages,29 existing notices; diff check clean.
 - Oracle releases one fresh full-normal7200 run on fixed194f1969 composition,
   expected301/301; stop-first, no retry or ASan continuation. Prior REDs remain.
+
+## [2026-09-21] verify | current Linux full-normal gate green
+
+- Exact194f1969:301/301, exit0, no skips/crashes, owned group absent;17 parcel
+  audit balances with live0. Archive hash and raw receipts verified by lead.
+- Oracle recognizes normal gate only. Source-only ASan/stress readiness packet
+  assigned for hidden stderr and effective child-mode coverage; no execution or
+  implementation grant. Seven obligations remain, candidate off main.
