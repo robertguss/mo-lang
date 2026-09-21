@@ -23,6 +23,7 @@ build-backend = "uv_build"
 dev = [
     "mypy>=2.3.1",
     "pytest>=9.1.1",
+    "pytest-cov>=7.0.0",
     "ruff>=0.16.7",
 ]
 
@@ -38,3 +39,26 @@ files = ["src", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+norecursedirs = [
+    "evidence",
+    "audit",
+    ".*",
+    "*.egg",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv",
+    "zig-cache",
+    "zig-out",
+    ".zig-cache",
+]
+# Coverage is opt-in: `uv run pytest --cov` (report settings below apply).
+
+[tool.coverage.run]
+source = ["src/claim_check"]
+omit = ["*/evidence/*", "*/audit/*", "*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

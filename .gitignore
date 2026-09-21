@@ -10,3 +10,7 @@ __pycache__/
 # Local secrets (fnox, age-encrypted); never committed
 fnox.toml
 fnox.local.toml
+.coverage
+.coverage.*
+htmlcov/
+coverage/

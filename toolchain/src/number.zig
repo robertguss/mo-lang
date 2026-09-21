@@ -87,6 +87,7 @@ const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const check = @import("check.zig");
 const diag = @import("diag.zig");
+const corpus = @import("corpus.zig");
 
 fn checkSource(arena: std.mem.Allocator, src: []const u8) ![]const diag.Record {
     var diags: diag.List = .empty;
@@ -325,8 +326,7 @@ const refusals = [_]Refusal{
 };
 
 fn moExe(arena: std.mem.Allocator, io: Io) ![]const u8 {
-    const from_environ = std.testing.environ.getAlloc(arena, "MO_EXE") catch null;
-    return Io.Dir.cwd().realPathFileAlloc(io, from_environ orelse "zig-out/bin/mo", arena);
+    return corpus.integrationMo(arena, io);
 }
 
 fn exitCode(term: std.process.Child.Term) ?u8 {
@@ -419,7 +419,7 @@ test "number: the largest literals and bounds run alike under mo run and as a bi
         \\end
         \\
         },
-        .{ .name = "float-underscores", .exit = 0, .stderr = "", .stdout = "1000.5 1.5 10.25 1.5\n", .source = 
+        .{ .name = "float-underscores", .exit = 0, .stderr = "", .stdout = "1000.5 1.5 10.25 1.5\n", .source =
         \\module P.FloatUnderscores
         \\fn sign(x: Float64) : Float64
         \\  case x

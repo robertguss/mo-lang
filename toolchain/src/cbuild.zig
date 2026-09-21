@@ -24,11 +24,18 @@
 //! The bricks (step 35's `src/bricks/crypto.zig`, step 36's `src/bricks/tls.zig`) are inside `mo`
 //! too. A build compiles each for the build's target with `zig build-obj -OReleaseFast` (for this
 //! machine's CPU when the build has no `--target`, so AES and SHA use the CPU's instructions)
-//! once, into `zig-out/mo-build/.bricks/<hash>/<brick>.o`, the hash taken over that brick's own
+//! once, into `<cache>/.bricks/<hash>/<brick>.o`, the hash taken over that brick's own
 //! source, the target, and the zig that compiles it, so a change to one does not rebuild the
 //! other; every build for that target links both objects beside the runtime. A brick needs
 //! nothing from libc on Linux (`getrandom` is a system call) and only `arc4random_buf` from
 //! libSystem on macOS.
+//!
+//! The runtime is compiled the same way, once per target and set of flags, into
+//! `<cache>/.runtime/<hash>/mo_rt.o`, the hash taken over mo_rt.c, mo_rt.h, the target, the flags,
+//! and the zig; every build for that target links the object, so a build compiles only its own
+//! program. `mo_rt.c` and `mo_rt.h` are still written beside the program's C, so the folder holds
+//! everything the binary was made of. `<cache>` is `$MO_CACHE` when set, else `$HOME/.cache/mo`,
+//! else the build's own out_dir: one cache for every folder a user builds from.
 //!
 //! `zig` is found next to the running `mo`, else on PATH.
 const std = @import("std");
@@ -113,23 +120,25 @@ pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ
     const target: ?[]const u8 = options.target orelse if (builtin.os.tag == .linux) try std.fmt.allocPrint(gpa, "{t}-linux-musl", .{builtin.cpu.arch}) else null;
     // A build for this machine gets the bricks for this CPU (AES-NI, SHA-NI, carry-less
     // multiply, which std.crypto picks at compile time); a --target build the triple's baseline.
+    const cache_dir = try cacheDir(gpa, environ.get("MO_CACHE"), environ.get("HOME"), options.out_dir);
     var objects: [bricks.len][]const u8 = undefined;
     for (bricks, &objects) |brick, *object| {
-        object.* = switch (try brickObject(gpa, io, zig, options.out_dir, target, options.target == null, brick)) {
+        object.* = switch (try brickObject(gpa, io, zig, cache_dir, target, options.target == null, brick)) {
             .built => |path| path,
             .failed => |why| return .{ .failed = why },
         };
     }
+    const runtime_object = switch (try runtimeObject(gpa, io, zig, cache_dir, options, target)) {
+        .built => |path| path,
+        .failed => |why| return .{ .failed = why },
+    };
     const binary = try std.fmt.allocPrint(gpa, "{s}/{s}", .{ dir, options.name });
     var argv: std.ArrayList([]const u8) = .empty;
-    try argv.appendSlice(gpa, &.{ zig, "cc", "-std=c11", "-Wall", "-Werror", "-O2" });
-    if (options.wrap) try argv.appendSlice(gpa, &.{ "-fwrapv", "-DMO_WRAP" });
-    if (options.salt) |salt| try argv.append(gpa, try std.fmt.allocPrint(gpa, "-DMO_BUILD_SALT={d}", .{salt}));
+    try ccFlags(gpa, &argv, zig, options, target);
     if (target) |t| {
-        try argv.appendSlice(gpa, &.{ "-target", t });
         if (std.mem.indexOf(u8, t, "linux") != null) try argv.append(gpa, "-static");
     }
-    try argv.appendSlice(gpa, &.{ "-o", binary, c_path, rt_path });
+    try argv.appendSlice(gpa, &.{ "-o", binary, c_path, runtime_object });
     try argv.appendSlice(gpa, &objects);
     const ran = std.process.run(gpa, io, .{ .argv = argv.items }) catch |err| {
         return .{ .failed = try std.fmt.allocPrint(gpa, "{s} cc did not run: {t}", .{ zig, err }) };
@@ -146,16 +155,71 @@ pub fn build(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ
     } };
 }
 
+/// Where the runtime's and the bricks' objects are kept across builds: `$MO_CACHE`, else
+/// `$HOME/.cache/mo`, else the build's out_dir.
+pub fn cacheDir(gpa: std.mem.Allocator, mo_cache: ?[]const u8, home: ?[]const u8, out_dir: []const u8) ![]const u8 {
+    if (mo_cache) |dir| if (dir.len > 0) return dir;
+    if (home) |dir| if (dir.len > 0) return std.fs.path.join(gpa, &.{ dir, ".cache", "mo" });
+    return out_dir;
+}
+
+/// `zig cc` and the flags every translation unit of a build is compiled with.
+fn ccFlags(gpa: std.mem.Allocator, argv: *std.ArrayList([]const u8), zig: []const u8, options: Options, target: ?[]const u8) !void {
+    try argv.appendSlice(gpa, &.{ zig, "cc", "-std=c11", "-Wall", "-Werror", "-O2" });
+    if (options.wrap) try argv.appendSlice(gpa, &.{ "-fwrapv", "-DMO_WRAP" });
+    if (options.salt) |salt| try argv.append(gpa, try std.fmt.allocPrint(gpa, "-DMO_BUILD_SALT={d}", .{salt}));
+    if (target) |t| try argv.appendSlice(gpa, &.{ "-target", t });
+}
+
+/// The runtime compiled for `target` with the build's flags, from the cache when it is there.
+/// Concurrent builds each compile into a file of their own and rename it into place, as the
+/// bricks do.
+fn runtimeObject(gpa: std.mem.Allocator, io: Io, zig: []const u8, cache_dir: []const u8, options: Options, target: ?[]const u8) !union(enum) { built: []const u8, failed: []const u8 } {
+    var h = std.hash.Wyhash.init(0);
+    h.update(runtime_c);
+    h.update(runtime_h);
+    h.update(target orelse "native");
+    h.update(if (options.wrap) "wrap" else "checked");
+    if (options.salt) |salt| h.update(std.mem.asBytes(&salt));
+    h.update(zig);
+    const cache = try std.fmt.allocPrint(gpa, "{s}/.runtime/{x:0>16}", .{ cache_dir, h.final() });
+    const object = try std.fmt.allocPrint(gpa, "{s}/mo_rt.o", .{cache});
+    const cwd = Io.Dir.cwd();
+    if (cwd.access(io, object, .{})) |_| return .{ .built = object } else |_| {}
+    try cwd.createDirPath(io, cache);
+    var nonce: [8]u8 = undefined;
+    io.random(&nonce);
+    const tag = std.mem.readInt(u64, &nonce, .little);
+    const source_dir = try std.fmt.allocPrint(gpa, "{s}/src-{x}", .{ cache, tag });
+    try cwd.createDirPath(io, source_dir);
+    defer cwd.deleteTree(io, source_dir) catch {};
+    const source = try std.fmt.allocPrint(gpa, "{s}/mo_rt.c", .{source_dir});
+    try cwd.writeFile(io, .{ .sub_path = source, .data = runtime_c });
+    try cwd.writeFile(io, .{ .sub_path = try std.fmt.allocPrint(gpa, "{s}/mo_rt.h", .{source_dir}), .data = runtime_h });
+    const partial = try std.fmt.allocPrint(gpa, "{s}/mo_rt-{x}.o", .{ cache, tag });
+    var argv: std.ArrayList([]const u8) = .empty;
+    try ccFlags(gpa, &argv, zig, options, target);
+    try argv.appendSlice(gpa, &.{ "-c", "-o", partial, source });
+    const ran = std.process.run(gpa, io, .{ .argv = argv.items }) catch |err| {
+        return .{ .failed = try std.fmt.allocPrint(gpa, "{s} cc did not run on the runtime: {t}", .{ zig, err }) };
+    };
+    if (ran.term != .exited or ran.term.exited != 0) {
+        return .{ .failed = try std.fmt.allocPrint(gpa, "zig cc rejected the runtime in {s}:\n{s}", .{ cache, ran.stderr }) };
+    }
+    cwd.rename(partial, cwd, object, io) catch |err| return .{ .failed = try std.fmt.allocPrint(gpa, "the runtime's object did not move into {s}: {t}", .{ object, err }) };
+    return .{ .built = object };
+}
+
 /// One brick compiled for `target` (null: the host), from the cache when it is there.
 /// Concurrent builds each compile into a file of their own and rename it into place, so none
 /// links a half-written object.
-fn brickObject(gpa: std.mem.Allocator, io: Io, zig: []const u8, out_dir: []const u8, target: ?[]const u8, host_cpu: bool, brick: Brick) !union(enum) { built: []const u8, failed: []const u8 } {
+fn brickObject(gpa: std.mem.Allocator, io: Io, zig: []const u8, cache_dir: []const u8, target: ?[]const u8, host_cpu: bool, brick: Brick) !union(enum) { built: []const u8, failed: []const u8 } {
     var h = std.hash.Wyhash.init(0);
     h.update(brick.source);
     h.update(target orelse "native");
     h.update(if (host_cpu) "host cpu" else "baseline cpu");
     h.update(zig);
-    const cache = try std.fmt.allocPrint(gpa, "{s}/.bricks/{x:0>16}", .{ out_dir, h.final() });
+    const cache = try std.fmt.allocPrint(gpa, "{s}/.bricks/{x:0>16}", .{ cache_dir, h.final() });
     const object = try std.fmt.allocPrint(gpa, "{s}/{s}.o", .{ cache, brick.name });
     const cwd = Io.Dir.cwd();
     if (cwd.access(io, object, .{})) |_| return .{ .built = object } else |_| {}
