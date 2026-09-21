@@ -3032,3 +3032,15 @@
   or timing. Seven obligations unchanged; no candidate acceptance.
 - At Robert's morning request, archived the two accepted guard worker threads;
   retained lead, memory author, validator and unfinished server threads.
+
+## [2026-09-21] verify | exact candidate69 full-normal309 green
+
+- Lead/Oracle reviewed actual0/build5/5/tests309/309 and complete large
+  captures: both90,006,894-byte streams match, RSS growth61440/4317184
+  below16MiB; all9normal+9audit lifecycle cases pass with balanced positive
+  allocations/live0. Owned cleanup confirmed; prior evidence preserved. No
+  acceptance.
+- Source-only readiness inventory assigned for a focused native-fiber ASan gate:
+  actual modes, captured/asserted/retained streams, explicit ASAN_OPTIONS and
+  host prerequisites. Some corpus checks still drop term/diagnostic evidence. No
+  new execution grant; all seven obligations remain unwaived.

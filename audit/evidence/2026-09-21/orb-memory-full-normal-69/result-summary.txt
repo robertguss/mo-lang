@@ -1,0 +1,33 @@
+result=GREEN_FULL_NORMAL
+run_exit=0
+build_summary=5/5 steps succeeded; 309/309 tests passed
+static_inventory=309
+count_reconciliation=actual309 equals static309
+passed=309
+failed=0
+skipped=0
+unexpected_crashes=0 (parcel crash diagnostics and guard-kill controls reviewed as expected cases)
+interpreter=completed,reaped,exited0,all lifecycle errors null
+native=completed,reaped,exited0,all lifecycle errors null
+interpreter_pid=274835
+native_pid=274889
+expected_interpreter_native_stderr_bytes=90006894 each
+all_stderr_sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+reports=expected25,interpreter25,native25
+all_stderr_eof_newline=yes
+comparisons=byte-identical,first-mismatch null
+interpreter_stdout=25 restarts:25; before25354240; after25415680; strict delta61440 up and <16777216; kept1
+native_stdout=25 restarts:25; before7839744; after12156928; strict delta4317184 up and <16777216; kept1
+parcel_lifecycle=9 normal plus 9 audit cases; expected exits/stdout/diagnostic classes pass
+parcel_audit_balances=3,4,6,5,2,9,9,19,3; each allocated>0, allocated=destroyed, live0
+ordinary_stress_controls=direct -DMO_STRESS and case-local MO_STRESS=1 retained; positive outputs observed; no exhaustive stress claim
+outer_payload_pgid=256882
+outer_pgid_absence_exit=1
+scoped_observed_build_children_absence_exit=1
+interpreter_pid_and_pgid_absence_exit=1
+native_pid_and_pgid_absence_exit=1
+retry_performed=no
+source_modified=no
+subsequent_gate_run=no
+acceptance_claim=no
+seven_obligations_status=unwaived

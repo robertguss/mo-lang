@@ -1,0 +1,119 @@
+capture sizes:
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/expected.stderr	90006894 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.comparison	260 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.meta	1208 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stderr	90006894 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stdout	102 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.comparison	260 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.meta	1408 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stderr	90006894 bytes
+.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stdout	101 bytes
+capture hashes:
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/expected.stderr
+3eeab7083623d9d288409e30d240570c3051ce72ae529d6756295d6b51f80dc1  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.comparison
+ca962db9b1cb2d2f574d55214da32b59be0960864964246bc056c73d4db7b6f2  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.meta
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stderr
+3e86fa21f7375433fc48c345bef0e9cbb19337ddfd6b4943e5057b9cd4a97aa1  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stdout
+3eeab7083623d9d288409e30d240570c3051ce72ae529d6756295d6b51f80dc1  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.comparison
+8843e7efa3f47ab8e6a808ec9c2a5802227977ec3170c1d65e7210458228e712  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.meta
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stderr
+8eed188cd91e096808233ff69ce081e174cee3246307548d43d218fdf865c47e  .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stdout
+byte counts:
+ 90006894 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/expected.stderr
+      260 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.comparison
+     1208 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.meta
+ 90006894 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stderr
+      102 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stdout
+      260 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.comparison
+     1408 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.meta
+ 90006894 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stderr
+      101 .amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stdout
+270024021 total
+report counts:
+expected=25
+interpreter=25
+native=25
+EOF bytes:
+expected.stderr= 0a
+interpreter.stderr= 0a
+native.stderr= 0a
+expected_interpreter_cmp=0
+expected_native_cmp=0
+interpreter metadata:
+cwd=.zig-cache/tmp/RpI4_kGhMatzmfGS
+argv={ { 47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 119, 111, 114, 107, 115, 112, 97, 99, 101, 47, 118, 101, 114, 105, 102, 121, 45, 109, 101, 109, 111, 114, 121, 45, 54, 57, 100, 99, 54, 100, 102, 49, 45, 108, 97, 114, 103, 101, 45, 114, 101, 115, 116, 97, 114, 116, 47, 116, 111, 111, 108, 99, 104, 97, 105, 110, 47, 122, 105, 103, 45, 111, 117, 116, 47, 98, 105, 110, 47, 109, 111 }, { 114, 117, 110 }, { 108, 101, 97, 107, 46, 109, 111 } }
+stdout-path=/home/user/workspace/repo/.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stdout
+stderr-path=/home/user/workspace/repo/.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/interpreter.stderr
+reason=completed
+spawned-pid=274835
+ownership=reaped
+primary-error=null
+observation-error=null
+signal-error=null
+reap-error=null
+cleanup-error=null
+stdout-stat-error=null
+stderr-stat-error=null
+term=.{ .exited = 0 }
+poll-ms=100
+timeout-s=300
+cleanup-timeout-s=5
+stdout-limit=4096
+stderr-limit=106784110
+sampled-stdout=0
+sampled-stderr=86406617
+final-stdout=102
+final-stderr=90006894
+overshoot-stdout=0
+overshoot-stderr=0
+elapsed-ns=2508427406
+interpreter comparison:
+expected-bytes=90006894
+actual-bytes=90006894
+expected-sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+actual-sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+first-mismatch=null
+expected-context=
+actual-context=
+interpreter stdout:
+25 restarts: 25; rss before 25354240; after 25415680; under 16 MiB more: true; delta up 0 MiB
+kept: 1
+native metadata:
+cwd=.zig-cache/tmp/RpI4_kGhMatzmfGS
+argv={ { 47, 104, 111, 109, 101, 47, 117, 115, 101, 114, 47, 119, 111, 114, 107, 115, 112, 97, 99, 101, 47, 118, 101, 114, 105, 102, 121, 45, 109, 101, 109, 111, 114, 121, 45, 54, 57, 100, 99, 54, 100, 102, 49, 45, 108, 97, 114, 103, 101, 45, 114, 101, 115, 116, 97, 114, 116, 47, 116, 111, 111, 108, 99, 104, 97, 105, 110, 47, 46, 122, 105, 103, 45, 99, 97, 99, 104, 101, 47, 116, 109, 112, 47, 82, 112, 73, 52, 95, 107, 71, 104, 77, 97, 116, 122, 109, 102, 71, 83, 47, 122, 105, 103, 45, 111, 117, 116, 47, 109, 111, 45, 98, 117, 105, 108, 100, 47, 108, 101, 97, 107, 45, 115, 101, 114, 118, 101, 100, 47, 108, 101, 97, 107, 45, 115, 101, 114, 118, 101, 100 } }
+stdout-path=/home/user/workspace/repo/.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stdout
+stderr-path=/home/user/workspace/repo/.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal/RpI4_kGhMatzmfGS/native.stderr
+reason=completed
+spawned-pid=274889
+ownership=reaped
+primary-error=null
+observation-error=null
+signal-error=null
+reap-error=null
+cleanup-error=null
+stdout-stat-error=null
+stderr-stat-error=null
+term=.{ .exited = 0 }
+poll-ms=100
+timeout-s=300
+cleanup-timeout-s=5
+stdout-limit=4096
+stderr-limit=106784110
+sampled-stdout=0
+sampled-stderr=79206066
+final-stdout=101
+final-stderr=90006894
+overshoot-stdout=0
+overshoot-stderr=0
+elapsed-ns=805861550
+native comparison:
+expected-bytes=90006894
+actual-bytes=90006894
+expected-sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+actual-sha256=a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28
+first-mismatch=null
+expected-context=
+actual-context=
+native stdout:
+25 restarts: 25; rss before 7839744; after 12156928; under 16 MiB more: true; delta up 4 MiB
+kept: 1

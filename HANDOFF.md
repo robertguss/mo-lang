@@ -74,11 +74,17 @@ tests2/2; both runtimes completed/reaped/exited0, exact25 reports and90,006,894
 stderr bytes each, matching full hashes. RSS increases65536/4325376 bytes,
 strictly below16MiB; all owned groups/children absent. Lead/Oracle checked raw
 full captures. Evidence:
-audit/evidence/2026-09-21/orb-memory-large-restart-green/. Validator now has ONE
-fresh unfiltered normal7200 grant on SAME0a0de7f7, fresh absolute
-caches/output/retained captures, no rebase. Observe/reconcile309 inventory, no
-skips/failures/uncertain cleanup. Existing case-local stress controls remain; no
-separate stress/ASan/mutants/timing or acceptance grant.
+audit/evidence/2026-09-21/orb-memory-large-restart-green/. Fresh unfiltered
+SAME0a0de7f7 full-normal is now GREEN: actual0/build5/5, 309/309, no
+skips/failures, all9normal+9audit lifecycle cases balanced as expected. Repeated
+large reports match completely; RSS increases61440/4317184 bytes, cleanup
+certain. Lead/Oracle checked full raw evidence:
+audit/evidence/2026-09-21/orb-memory-full-normal-69/. Validator HOLD.
+Implementation worker has source-only updated readiness packet for focused
+native-fiber ASan: exact modes, stream assertion/retention gaps, explicit
+sanitizer environment and host prerequisites. Some corpus children still omit
+term/full stderr checks; no blanket raw-ASan claim. No execution, separate
+exhaustive stress, mutants, timing or acceptance released.
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
