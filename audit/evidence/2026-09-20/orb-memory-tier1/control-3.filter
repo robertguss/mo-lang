@@ -1,0 +1,1 @@
+step 42: enqueue failure B frees one popped timer without publication

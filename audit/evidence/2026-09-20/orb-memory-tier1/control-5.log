@@ -1,0 +1,56 @@
+test-corpus
++- run test 1 pass, 1 fail (2 total)
+error: 'sim.test.step 42: commit failure I frees only the untransferred suffix' failed:
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:282:9: 0x18702da in failAt (root.zig)
+               return error.Rejected;
+               ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:277:9: 0x18700a0 in fail (root.zig)
+               return p.failAt(p.tok, code, what, why);
+               ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:1036:45: 0x1876842 in parseArm (root.zig)
+                       .eq, .plus_eq, .minus_eq => return p.fail("MO0101", arm_assignment, why_token),
+                                                   ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:1007:24: 0x1873f75 in parseCase (root.zig)
+                   try p.push(try p.parseArm());
+                              ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:995:22: 0x1873ae1 in parseCaseStmt (root.zig)
+               const node = try p.parseCase(.case_stmt);
+                            ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:1597:22: 0x18941f5 in parseUpdate (root.zig)
+               const body = try p.parseCaseStmt();
+                            ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:1525:24: 0x1891a7e in parseProcess (root.zig)
+               const update = try p.parseUpdate();
+                              ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:517:9: 0x188557d in parseDecl (root.zig)
+               return switch (p.peek()) {
+               ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:410:54: 0x186eff3 in parseModule (root.zig)
+                   while (isDeclStart(p.peek())) try p.push(try p.parseDecl());
+                                                            ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:150:5: 0x186d2c7 in parseModules (root.zig)
+           try p.parseModule();
+           ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/parser.zig:130:5: 0x186cd4e in parse (root.zig)
+           return parseModules(gpa, source, tokens, diags, false);
+           ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/sim.zig:1599:18: 0x140d46d in compile (root.zig)
+           const tree = try parser.parse(arena, src, tokens, &diags);
+                        ^
+       /tmp/mo-lead-orb-memory-corrected/toolchain/src/sim.zig:1874:21: 0x140e2d5 in test.step 42: commit failure I frees only the untransferred suffix (root.zig)
+           const program = try compile(arena, commit_failure_src);
+                           ^
+failed command: MO_EXE=/tmp/mo-lead-orb-memory-corrected/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/de57da5804d16b8918b3de06b48761ed/test --cache-dir=./.zig-cache --seed=0xed502271 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 2s MaxRSS:244M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 7ms MaxRSS:40M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/869aea086da2c5fd005acee1fb4640fa/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /tmp/mo-lead-orb-memory-corrected/toolchain .zig-cache /home/user/.cache/zig --seed 0xed502271 -Zb1302ee98bed17be test-corpus -j4 -Dtest-filter=step 42: commit failure I frees only the untransferred suffix --summary all
+real 2.78
+user 4.30
+sys 0.64

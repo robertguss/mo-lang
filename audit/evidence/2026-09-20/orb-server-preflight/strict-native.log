@@ -1,0 +1,56 @@
+test-corpus
++- run test 1 pass, 1 fail (2 total)
+error: 'corpus.test.corpus: workspace server strict process fixture is seeded without faults and has native parity' failed:
+       corpus: programs/workspace-server/strict.mo differs from the interpreter
+         mo:  .{ .exited = 0 }
+       pass  test "the binding is the first row, and each record rewrites the whole journal"
+       pass  test "an intent the journal could not hold with its largest reply is refused, and a repeat too"
+       pass  test "a delivery that is not known leaves delivery.json beside the journal"
+       pass  test "one call at a time: a second is busy, and after the first finishes it is admitted"
+       pass  test "overlapping refusals use busy, conflict, closed, limit, then journal capacity"
+       pass  test "a journal that cannot hold the intent refuses the call, and nothing is active"
+       pass  test "a file call runs, is journaled by the worker, and frees admission"
+       pass  test "an exhausted operation deadline does not erase an outcome whose journal write times out"
+       pass  test "outcome persistence gets two seconds after the operation caller has timed out"
+       9 passed, 0 failed, 0 skipped
+       verified: types, contracts, tests (9), property (0 seeds), sim (not run)
+                 proven: not run
+       
+         C:   .{ .exited = 1 }
+       pass  test "the binding is the first row, and each record rewrites the whole journal"
+       pass  test "an intent the journal could not hold with its largest reply is refused, and a repeat too"
+       pass  test "a delivery that is not known leaves delivery.json beside the journal"
+       pass  test "one call at a time: a second is busy, and after the first finishes it is admitted"
+       pass  test "overlapping refusals use busy, conflict, closed, limit, then journal capacity"
+       pass  test "a journal that cannot hold the intent refuses the call, and nothing is active"
+       pass  test "a file call runs, is journaled by the worker, and frees admission"
+       FAIL  test "an exhausted operation deadline does not erase an outcome whose journal write times out": programs/workspace-server/strict.mo:155:3: assert worker.ask(Do(call: call, core_id: "1"), within: 100.ms) == Error(Timeout) failed; left = Ok(Envelope(ids: Some(Ids(run_id: "r", workspace_id: "00000000000000000000000000000000", call_id: "c1")), accepted: true, state: "success", execution: "completed", error: None, result: Some("{"items": [], "truncated": false}"))), right = Error(Timeout)
+       FAIL  test "outcome persistence gets two seconds after the operation caller has timed out": programs/workspace-server/strict.mo:175:3: assert worker.ask(Do(call: call, core_id: "1"), within: 500.ms) == Error(Timeout) failed; left = Ok(Envelope(ids: Some(Ids(run_id: "r", workspace_id: "00000000000000000000000000000000", call_id: "c1")), accepted: true, state: "success", execution: "completed", error: None, result: Some("{"items": [], "truncated": false}"))), right = Error(Timeout)
+       7 passed, 2 failed, 0 skipped
+       verified: types
+                 proven: not run
+       
+       expected 0, found 1
+       /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:118:17: 0x1463204 in expectEqualInner__anon_175965 (std.zig)
+                       return error.TestExpectedEqual;
+                       ^
+       /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:83:5: 0x1468729 in expectEqual (root.zig)
+           return expectEqualInner(T, expected, actual);
+           ^
+       /tmp/mo-lead-orb-server/toolchain/src/corpus.zig:952:5: 0x1468821 in test.corpus: workspace server strict process fixture is seeded without faults and has native parity (root.zig)
+           try std.testing.expectEqual(@as(u32, 0), built.wrong);
+           ^
+failed command: MO_EXE=/tmp/mo-lead-orb-server/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/73f9d902dd3ca5670815412267c5084f/test --cache-dir=./.zig-cache --seed=0x8235c118 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 2s MaxRSS:250M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/41889133140468068e0ee52bce95df28/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /tmp/mo-lead-orb-server/toolchain .zig-cache /home/user/.cache/zig --seed 0x8235c118 -Z55521bbb30d977ab test-corpus -j4 -Dtest-filter=workspace server strict process fixture --summary all
+real 89.11
+user 90.45
+sys 4.68

@@ -1,0 +1,15 @@
+test-corpus
++- run test w
+step42 case=trace-reserve mailbox=0 trace=0 seq=0 packs=false induced=true
+failed command: MO_EXE=/tmp/mo-lead-orb-memory-corrected/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/cd9e1e70ca78d06dc3e0be3262b881fd/test --cache-dir=./.zig-cache --seed=0x102229cb --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 14ms MaxRSS:9M
+   +- compile test Debug native success 2s MaxRSS:243M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 7ms MaxRSS:40M
+
+real 2.57
+user 4.09
+sys 0.55

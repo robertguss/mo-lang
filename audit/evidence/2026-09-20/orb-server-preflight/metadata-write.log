@@ -1,0 +1,108 @@
+pass  test "a whole head gives the body's length and the token offered"
+pass  test "each departure from the request line earns its own refusal"
+pass  test "headers: extra, repeated, unknown, missing, and bad lengths"
+pass  test "a head is bounded in bytes, and past 32 fields it is malformed"
+pass  test "a response carries its length and closes"
+5 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run
+module=wire.mo kind=write exit=0
+pass  test "a whole call reads back"
+pass  test "repeated keys, at the top or deeper, are malformed"
+pass  test "not JSON, not an object, nonfinite, a lone surrogate: malformed"
+pass  test "types, extras and IDs"
+pass  test "another run or workspace is unbound, after the shape is whole"
+pass  test "a command's timeout is an integer of 500 to 120,000"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+module=schema.mo kind=write exit=0
+pass  test "a refusal before admission names no identities and started nothing"
+pass  test "a success carries its operation's result, or it is invalid_result"
+pass  test "a refusal keeps its completed execution and has no result"
+pass  test "a response past its cap is response_too_large, not truncated"
+pass  test "command output past 65,536 bytes is cut at a character and marked truncated"
+5 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run
+module=envelope.mo kind=write exit=0
+pass  test "paths are lexical: escapes and odd components are invalid_path"
+pass  test "the five tools on a small tree"
+pass  test "exact_edit changes nothing unless exactly one non-empty match"
+pass  test "a file past 64 KiB is oversized, even for a write elsewhere in its tree, and a reply past the controller's cap is refused whole"
+pass  test "search stops at 200 hits and says so; a listing is cut by its bytes"
+pass  test "a call past its deadline is a timeout of unknown execution"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+module=tools.mo kind=write exit=0
+pass  test "an execution with no intent before it is refused"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+module=journal.mo kind=write exit=0
+pass  test "the door lets main go once, whenever it is asked": 200 simulated runs
+1 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults
+verified: types, contracts, tests (1), property (0 seeds), sim (200 runs)
+          proven: not run
+module=door.mo kind=write exit=0
+pass  test "closed stays closed, and a lease not opened admits nothing": 200 simulated runs
+pass  test "the pure refusal order and waits stay fixed"
+invariant "no more than 16 calls are ever admitted" in Admission: kept, and no seed's message tripped it in a test rejects
+2 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults
+verified: types, contracts, tests (2), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run
+module=admission.mo kind=write exit=0
+pass  test "the scripted commands are test_owner.py's"
+pass  test "the production worker serves no command"
+2 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (2), property (0 seeds), sim (not run)
+          proven: not run
+module=worker.mo kind=write exit=0
+pass  test "a complete unchanged-wire body is whole before EOF across arbitrary chunks"
+pass  test "body byte length, trailing bytes and UTF-8 are decided only when complete"
+pass  test "the full header section has an exact byte cap and unfinished EOF is malformed"
+pass  test "the gate lets four in, and compares the token in constant time": 200 simulated runs
+pass  test "a wait past its deadline is 504 with execution unknown; an owner lost is 200 owner_unknown"
+invariant "no more connections are inside than the limit" in Gate: kept, and no seed's message tripped it in a test rejects
+5 passed, 0 failed, 0 skipped; 1 test under 200 seeds with 5% faults: 1 held under faults, 0 passed only without faults
+verified: types, contracts, tests (5), property (0 seeds), sim (200 runs, invariants (kept 1, tripped 0))
+          proven: not run
+module=connection.mo kind=write exit=0
+pass  test "an operator line is its token, a space, and its command"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+module=operator.mo kind=write exit=0
+pass  test "settings accept a lowercase source hash and reject malformed hashes"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+module=server.mo kind=write exit=0
+0 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run
+module=main.mo kind=write exit=0
+0 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run
+module=double.mo kind=write exit=0
+0 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (0), property (0 seeds), sim (not run)
+          proven: not run
+module=hostile_fs.mo kind=write exit=0
+pass  test "the binding is the first row, and each record rewrites the whole journal": 200 simulated runs
+pass  test "an intent the journal could not hold with its largest reply is refused, and a repeat too": 200 simulated runs
+pass  test "a delivery that is not known leaves delivery.json beside the journal": 200 simulated runs
+pass  test "one call at a time: a second is busy, and after the first finishes it is admitted": 200 simulated runs
+pass  test "overlapping refusals use busy, conflict, closed, limit, then journal capacity": 200 simulated runs
+pass  test "a journal that cannot hold the intent refuses the call, and nothing is active": 200 simulated runs
+pass  test "a file call runs, is journaled by the worker, and frees admission": 200 simulated runs
+pass  test "an exhausted operation deadline does not erase an outcome whose journal write times out": 200 simulated runs
+pass  test "outcome persistence gets two seconds after the operation caller has timed out": 200 simulated runs
+9 passed, 0 failed, 0 skipped; 9 tests under 200 seeds without faults
+verified: types, contracts, tests (9), property (0 seeds), sim (200 runs)
+          proven: not run
+module=strict.mo kind=write exit=0
+expected_tests=44 strict=9 strict_faults=0 tolerant=3 tolerant_faults=5 seed=1
+kind=write modules=15 failures=0

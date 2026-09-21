@@ -1,0 +1,15 @@
+test-corpus
++- run test w
+step42 case=pack-errdefer allocated=1 destroyed=1 live=0 allocator_allocations=1 allocator_deallocations=1
+failed command: MO_EXE=/tmp/mo-lead-orb-memory-corrected/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/4c9414859c8264ee74c4a8d25c3c5983/test --cache-dir=./.zig-cache --seed=0xab2852e7 --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 7ms MaxRSS:5M
+   +- compile test Debug native success 1s MaxRSS:182M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 8ms MaxRSS:40M
+
+real 1.16
+user 1.81
+sys 0.32

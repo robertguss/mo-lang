@@ -1,0 +1,16 @@
+module=wire.mo kind=fmt exit=0
+module=schema.mo kind=fmt exit=0
+module=envelope.mo kind=fmt exit=0
+module=tools.mo kind=fmt exit=0
+module=journal.mo kind=fmt exit=0
+module=door.mo kind=fmt exit=0
+module=admission.mo kind=fmt exit=0
+module=worker.mo kind=fmt exit=0
+module=connection.mo kind=fmt exit=0
+module=operator.mo kind=fmt exit=0
+module=server.mo kind=fmt exit=0
+module=main.mo kind=fmt exit=0
+module=double.mo kind=fmt exit=0
+module=hostile_fs.mo kind=fmt exit=0
+module=strict.mo kind=fmt exit=0
+kind=fmt modules=15 failures=0

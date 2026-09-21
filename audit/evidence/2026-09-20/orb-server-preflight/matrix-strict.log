@@ -1,0 +1,15 @@
+pass  test "the binding is the first row, and each record rewrites the whole journal": 200 simulated runs
+pass  test "an intent the journal could not hold with its largest reply is refused, and a repeat too": 200 simulated runs
+pass  test "a delivery that is not known leaves delivery.json beside the journal": 200 simulated runs
+pass  test "one call at a time: a second is busy, and after the first finishes it is admitted": 200 simulated runs
+pass  test "overlapping refusals use busy, conflict, closed, limit, then journal capacity": 200 simulated runs
+pass  test "a journal that cannot hold the intent refuses the call, and nothing is active": 200 simulated runs
+pass  test "a file call runs, is journaled by the worker, and frees admission": 200 simulated runs
+pass  test "an exhausted operation deadline does not erase an outcome whose journal write times out": 200 simulated runs
+pass  test "outcome persistence gets two seconds after the operation caller has timed out": 200 simulated runs
+9 passed, 0 failed, 0 skipped; 9 tests under 200 seeds without faults
+verified: types, contracts, tests (9), property (0 seeds), sim (200 runs)
+          proven: not run
+module=strict.mo kind=strict exit=0
+expected_tests=9 expected_simulated=9 expected_fault_free_only=0 faults=0 seed=1
+kind=strict modules=1 failures=0
