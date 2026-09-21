@@ -1,8 +1,7 @@
 module Moscope.Scan
 expose scan_tree
 
-use Moscope.Limits{depth, entries, files, file_bytes, total_bytes, diagnostics,
-  call_time, process_time}
+use Moscope.Limits{depth, entries, files, file_bytes, total_bytes, diagnostics, call_time, process_time}
 use Moscope.Model{Issue, Scan, Discovery, empty_scan, empty_discovery}
 use Moscope.Parse{start_file, folded_line}
 
