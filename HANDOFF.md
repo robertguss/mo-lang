@@ -186,6 +186,15 @@ exact accepted7ee9edc2. Independent fresh roots, frozen source and all previous
 strict environment/output/instrumentation/cleanup gates remain. No new runtime
 result or acceptance; preserve prior REDs and all seven obligations.
 
+21 Sep, 10:08 AM ET: all four672b1b54/7dcf48ac stages GREEN, each actual0,
+build5/5/tests2/2. Lead/Oracle verified full archive, exact20 runtime receipts,
+instrumented runtime objects and final cleanup. Evidence:
+audit/evidence/2026-09-21/orb-memory-four-stage-green/. Scoped regression
+recovery only. ONE fresh full-normal directguard7200 run released on SAME
+integration, no fetch/recomposition/edit/retry. Reconcile310/310, complete
+large25-report captures/strictRSS, parcel9+9 and shutdown/lifecycle results. No
+broader ASan until diagnostic gaps resolved; seven obligations unwaived.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

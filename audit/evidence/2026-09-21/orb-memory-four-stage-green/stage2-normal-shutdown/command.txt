@@ -1,0 +1,7 @@
+cwd=/home/user/workspace/verify-memory-672b1b54-stage2/toolchain
+revision=7dcf48acabaf4b5623021baeb08d0de132943003
+MO_CACHE=/home/user/workspace/verify-memory-672b1b54-stage2/.mo-cache-s2
+ZIG_LOCAL_CACHE_DIR=/home/user/workspace/verify-memory-672b1b54-stage2/toolchain/.zig-cache-s2
+ZIG_GLOBAL_CACHE_DIR=/home/user/workspace/verify-memory-672b1b54-stage2/.zig-global-s2
+prefix=/home/user/workspace/verify-memory-672b1b54-stage2/toolchain/zig-out-s2
+filter=corpus: step 42 shutdown retires only completed pooled fibers

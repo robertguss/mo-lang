@@ -1,0 +1,5 @@
+worktree=/home/user/workspace/verify-memory-672b1b54-compose head=7dcf48acabaf4b5623021baeb08d0de132943003 tracked=0 index=0
+worktree=/home/user/workspace/verify-memory-672b1b54-stage2 head=7dcf48acabaf4b5623021baeb08d0de132943003 tracked=0 index=0
+worktree=/home/user/workspace/verify-memory-672b1b54-stage3 head=7dcf48acabaf4b5623021baeb08d0de132943003 tracked=0 index=0
+worktree=/home/user/workspace/verify-memory-672b1b54-stage4 head=7dcf48acabaf4b5623021baeb08d0de132943003 tracked=0 index=0
+candidate_paths=57 mismatches=0

@@ -1,0 +1,10 @@
+/home/user/workspace/verify-memory-672b1b54-compose/.mo-cache-s1 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-compose/toolchain/.zig-cache-s1 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-compose/.zig-global-s1 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-compose/toolchain/zig-out-s1 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-compose/toolchain/zig-out absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-compose/toolchain/zig-out-s1/bin/zig absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-compose/.mo-cache-s1 created_empty=yes
+/home/user/workspace/verify-memory-672b1b54-compose/toolchain/.zig-cache-s1 created_empty=yes
+/home/user/workspace/verify-memory-672b1b54-compose/.zig-global-s1 created_empty=yes
+/home/user/workspace/verify-memory-672b1b54-compose/toolchain/zig-out-s1 created_empty=yes

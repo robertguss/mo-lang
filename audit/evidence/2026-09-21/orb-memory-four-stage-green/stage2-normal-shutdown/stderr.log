@@ -1,0 +1,29 @@
+test-corpus
++- run test w
+step42 case=shutdown-fibers-build term=.{ .exited = 0 } stdout=zig-out/mo-build/shutdown-fibers/shutdown-fibers
+ stderr=
+step42 case=shutdown-fibers-empty-one-scheduler-interp term=.{ .exited = 11 } stdout=empty pool
+ stderr=
+step42 case=shutdown-fibers-empty-one-scheduler-native term=.{ .exited = 11 } stdout=empty pool
+ stderr=
+step42 case=shutdown-fibers-empty-multi-scheduler-interp term=.{ .exited = 11 } stdout=empty pool
+ stderr=
+step42 case=shutdown-fibers-empty-multi-scheduler-native term=.{ .exited = 11 } stdout=empty pool
+ stderr=
+step42 case=shutdown-fibers-pooled-and-parked-one-scheduler-interp term=.{ .exited = 23 } stdout=completed pool; parked 12
+ stderr=
+step42 case=shutdown-fibers-pooled-and-parked-one-scheduler-native term=.{ .exited = 23 } stdout=completed pool; parked 12
+ stderr=
+step42 case=shutdown-fibers-pooled-and-parked-multi-scheduler-interp term=.{ .exited = 23 } stdout=completed pool; parked 12
+ stderr=
+step42 case=shutdown-fibers-pooled-and-parked-multi-scheduler-native term=.{ .exited = 23 } stdout=completed pool; parked 12
+ stderr=
+failed command: MO_EXE=/home/user/workspace/verify-memory-672b1b54-stage2/toolchain/zig-out-s2/bin/mo MO_CORPUS=1 ./.zig-cache-s2/o/313ca7986d49a74cfab6f5b4147d2e00/test --cache-dir=./.zig-cache-s2 --seed=0x113c9296 --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 36s MaxRSS:266M
+   +- compile test Debug native success 1s MaxRSS:191M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+

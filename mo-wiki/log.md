@@ -3146,3 +3146,13 @@
 - Full candidate transferred for composition on accepted7ee9edc2. Same four
   serialized normal compiler/shutdown and ASan lifecycle/shutdown filters
   released with fresh roots and unchanged strict gates; stop-first, no retry.
+
+## [2026-09-21] verify | 10:08 AM ET, focused normal and ASan green
+
+- Lead/Oracle independently verified archive/manifest, all4 actual0/build5/5/
+  tests2/2, exact20 runtime outcomes, both fresh instrumented objects and final
+  owned cleanup. Successful formatter artifacts and prior REDs retained.
+- Recognize scoped regression recovery only. Release one unfiltered NORMAL
+  directguard7200 on same7dcf48ac, fresh roots/capture, expected310 inventory
+  with strict large-restart/parcel/shutdown/lifecycle receipts. No broader ASan,
+  separate exhaustive stress, mutants, timing or acceptance.

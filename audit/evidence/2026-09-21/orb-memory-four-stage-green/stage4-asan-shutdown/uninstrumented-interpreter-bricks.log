@@ -1,0 +1,11 @@
+interpreter:
+a2cb386456b1e69386fd4658a1d6e230882c06b52660c86fea08156cee6d7d38  /home/user/workspace/verify-memory-672b1b54-stage4/toolchain/zig-out-s4/bin/mo
+/home/user/workspace/verify-memory-672b1b54-stage4/toolchain/zig-out-s4/bin/mo: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, with debug_info, not stripped
+interpreter_undefined_asan_count=0
+bricks:
+6ffa895a5d0cf5b228e35732fbb52325df2a68214cdd7f64ec5a5eb8451b7a41  /home/user/workspace/verify-memory-672b1b54-stage4/.mo-cache-s4/.bricks/387ff2aebe517146/crypto.o
+/home/user/workspace/verify-memory-672b1b54-stage4/.mo-cache-s4/.bricks/387ff2aebe517146/crypto.o: ELF 64-bit LSB relocatable, x86-64, version 1 (SYSV), not stripped
+undefined_asan_count=0
+8850f5c2dee54a0901422cb50f24fd53772a22ecdec3d13c1652f5b1b39cd9df  /home/user/workspace/verify-memory-672b1b54-stage4/.mo-cache-s4/.bricks/e718555b36715597/tls.o
+/home/user/workspace/verify-memory-672b1b54-stage4/.mo-cache-s4/.bricks/e718555b36715597/tls.o: ELF 64-bit LSB relocatable, x86-64, version 1 (SYSV), not stripped
+undefined_asan_count=0

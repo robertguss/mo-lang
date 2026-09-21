@@ -1,0 +1,14 @@
+cwd=/home/user/workspace/verify-memory-672b1b54-stage4/toolchain
+revision=7dcf48acabaf4b5623021baeb08d0de132943003
+PATH=/usr/local/bin:/usr/bin:/bin
+HOME=/home/user
+ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-14/bin/llvm-symbolizer
+ASAN_OPTIONS=detect_stack_use_after_return=1:detect_leaks=1:halt_on_error=1:abort_on_error=1:symbolize=1:log_path=stderr:leak_check_at_exit=1
+MO_CACHE=/home/user/workspace/verify-memory-672b1b54-stage4/.mo-cache-s4
+ZIG_LOCAL_CACHE_DIR=/home/user/workspace/verify-memory-672b1b54-stage4/toolchain/.zig-cache-s4
+ZIG_GLOBAL_CACHE_DIR=/home/user/workspace/verify-memory-672b1b54-stage4/.zig-global-s4
+MO_STRESS=1
+MO_NATIVE_ASAN=1
+CLANG_NO_DEFAULT_CONFIG=unset
+prefix=/home/user/workspace/verify-memory-672b1b54-stage4/toolchain/zig-out-s4
+filter=corpus: step 42 shutdown retires only completed pooled fibers

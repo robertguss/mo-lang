@@ -1,0 +1,6 @@
+/home/user/workspace/verify-memory-672b1b54-stage3/.mo-cache-s3 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-stage3/toolchain/.zig-cache-s3 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-stage3/.zig-global-s3 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-stage3/toolchain/zig-out-s3 absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-stage3/toolchain/zig-out absent_before=yes
+/home/user/workspace/verify-memory-672b1b54-stage3/toolchain/zig-out-s3/bin/zig absent_before=yes

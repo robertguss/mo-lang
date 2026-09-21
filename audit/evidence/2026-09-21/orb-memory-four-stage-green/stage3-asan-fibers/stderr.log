@@ -1,0 +1,21 @@
+test-corpus-asan
++- run test w
+step42 case=fiber-lifecycle-build term=.{ .exited = 0 } stdout=zig-out/mo-build/fiber-lifecycle/fiber-lifecycle
+ stderr=
+step42 case=fiber-lifecycle-retirement-one-scheduler-interp term=.{ .exited = 0 } stdout=held 70; released 70; done 70; sum 490
+ stderr=
+step42 case=fiber-lifecycle-retirement-one-scheduler-native term=.{ .exited = 0 } stdout=held 70; released 70; done 70; sum 490
+ stderr=
+step42 case=fiber-lifecycle-caller-reuse-multi-scheduler-interp term=.{ .exited = 0 } stdout=held 20; released 20; done 20; sum 140
+ stderr=
+step42 case=fiber-lifecycle-caller-reuse-multi-scheduler-native term=.{ .exited = 0 } stdout=held 20; released 20; done 20; sum 140
+ stderr=
+failed command: MO_EXE=/home/user/workspace/verify-memory-672b1b54-stage3/toolchain/zig-out-s3/bin/mo MO_CORPUS=1 ./.zig-cache-s3/o/80436dfdbbbd8baf156690ba2c4064dc/test --cache-dir=./.zig-cache-s3 --seed=0x28dd5c86 --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus-asan success
++- run test 2 pass (2 total) 30s MaxRSS:260M
+   +- compile test Debug native success 1s MaxRSS:194M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
