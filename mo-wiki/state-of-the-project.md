@@ -46,6 +46,15 @@ Native integration is included via test-corpus; the faster test command alone is
 not acceptance. The old OrbStack executor is unavailable here, so machine
 cutover remains a separate prerequisite.
 
+The follow-up [[orb-guard-wrapper]] is now active: the harness wrapper kills the
+guard's group, not its separate payload group, on cancellation/overflow. Oracle
+confirmed this integration regression. A fresh medium xxlarge worker repairs
+shared ownership; current verification uses the accepted direct guard only. The
+server has passed compiler/formatter preflight, but an expected-crash test can
+hide failed postconditions, so its lifecycle oracle needs repair before
+acceptance. Memory's bounded first controls follow source corrections; no memory
+or server full-suite acceptance is claimed.
+
 **Historical acceptance, 20 Sep 2026, 8:30 AM ET:** [[interpreter-step-44]] is
 accepted on Darwin, merged locally at **db515f9b** after independent
 verification of cdf1e966: build, focused5/5, **272/272** full-suite tests

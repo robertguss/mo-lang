@@ -2788,3 +2788,20 @@
   and expired outcome recording budget issues, plus reconstructed control
   defects. No server or Step42 A–D acceptance; no machine, provider, Darwin or
   CI claim.
+
+## [2026-09-20] verify | orb candidates and wrapper follow-up
+
+- Provider-independent executor checks passed71 local,14 runner-integrity and22
+  HTTP-double tests under the accepted direct guard. These are not machine
+  isolation evidence; no Docker socket/orbctl and no delegated workload CPU
+  controller. Raw evidence is under orb-executor-local/ for this date.
+- Server independent preflight passed build5/5 and formatter2/2. The Journal
+  rejects negative independently reproduced a masked assertion (inner0,
+  wrapper1); the external positive lifecycle oracle passed. Raw evidence is
+  under orb-server-preflight/. Shared runner repair is queued separately.
+- Oracle released memory4e1be90e for focused positives and servere56db9c8 for
+  metadata/module/simulation and two native filters. Neither is accepted.
+- [[orb-guard-wrapper]] owns the discovered wrapper-to-guard cleanup gap in a
+  fresh medium xxlarge worker. Initial candidate73831667 needs stricter probe
+  parsing, status policy, grace timing and finite discriminating controls. No
+  wrapper acceptance or CI claim.

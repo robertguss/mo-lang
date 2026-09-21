@@ -1,0 +1,7 @@
+journal_down_control=passed
+process crashed: /tmp/mo-journal-down-fhi93zt1/workspace-server/../workspace-server/journal.mo:54:3: invariant "every execution recorded follows its call's intent, and no call executes twice" no longer holds in Journal; state = Journal(binding: "", calls: Map.new(), cleanup: "{"cleanup": "unresolved", "execution": "unknown"}", frozen: "null", size: 0, stray: 1, unwritten: 0)
+      in process Journal, seed 0
+      messages since it started: Executed(call_id: "missing", execution: "completed", result: "{}")
+      state before the last message: Journal(binding: "", calls: Map.new(), cleanup: "{"cleanup": "unresolved", "execution": "unknown"}", frozen: "null", size: 0, stray: 0, unwritten: 0)
+      not restarted: Journals says restart: :never, so Journal stays down
+positive_inner_exit=0 authoritative_postconditions=True

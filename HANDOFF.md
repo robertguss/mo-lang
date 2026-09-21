@@ -51,6 +51,25 @@ All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
   files are excluded from its ownership.
 - Server: T-01a0c18a-cc44-7380-8650-bf09bfec9954, static chunks recovery.
 
+The completed guard lane is replaced by wrapper repair worker
+T-01a0c1db-5a25-76c3-b289-9c2db968ba3d, fresh medium/a1.xxlarge from1839785e.
+**Do not use executor/guarded.py yet:** it kills the supervisor group while the
+accepted guard's payload has its own group, so overflow/cancellation can orphan
+the payload and falsely report cleanup. Oracle confirmed the integration
+regression; the worker owns guard.py and guarded.py under
+`mo-wiki/plans/orb-guard-wrapper.md`. Other workers continue using the accepted
+direct guard and exclude both files. No containment claim follows from the
+direct guard's tests.
+
+Memory corrected source b11bd186 has a narrow initial build/control grant after
+localized fixes; fiber/stress/runnable discrimination and full lifecycle
+controls remain outstanding. Server0608ebb5 passed format/fmt15 after the
+retained initial Begin-pattern failure; build and formatter2/2 passed
+independently. Its real Journal-Down rejects test can mask later assertion
+failures, so an external positive lifecycle oracle is required before broader
+module/sim execution. No compiler runner semantics change is granted in the
+server lane.
+
 Review their replies and fixed bundles in this thread; do not create
 replacements for the same assignment. Memory/server runtime grants still need
 source/manifest review; guard is available. Lead baseline tree is

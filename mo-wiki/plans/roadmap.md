@@ -24,7 +24,8 @@ progress and accepted code/docs pushes to main are authorized. No CI.
 **Current checkpoint, 20 Sep 2026, evening ET:** orb workflow migration and
 Linux baseline complete: build **5/5**, native-enabled suite **276/276**. Step42
 guard-only part E accepted after independent core6/6, startup2/2 and cleanup1/1
-controls. Memory parts A–D and server remain static candidates under review.
+controls. Memory parts A–D and server are in bounded runtime verification;
+[[orb-guard-wrapper]] repairs the separately discovered wrapper cleanup defect.
 Last documented Darwin acceptance: Step44, **272/272** plus30 controls. No
 live-provider task or Pi comparison yet.
 

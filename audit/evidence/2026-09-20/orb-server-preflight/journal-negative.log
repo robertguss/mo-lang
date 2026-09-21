@@ -1,0 +1,6 @@
+pass  test rejects "a later assertion must not be masked by the expected Journal crash": tripped invariant "every execution recorded follows its call's intent, and no call executes twice"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+negative_inner_exit=0
+negative_control=failed masked_assertion=true

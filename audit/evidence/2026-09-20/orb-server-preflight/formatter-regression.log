@@ -1,0 +1,16 @@
+test-corpus
++- run test w
+corpus: pure-main.mo at byte 135: MO0501 this for has a pure body; write it as map, filter, or reduce
+corpus: interrupted-pure.mo at byte 169: MO0501 this for has a pure body; write it as map, filter, or reduce
+failed command: MO_EXE=/tmp/mo-lead-orb-server/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/08744f1ce39afb606e6a3a12df6778e3/test --cache-dir=./.zig-cache --seed=0xe2740ba3 --listen=-
+
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 37ms MaxRSS:8M
+   +- compile test Debug native success 2s MaxRSS:216M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 8ms MaxRSS:40M
+
+real 3.25
+user 5.18
+sys 0.78

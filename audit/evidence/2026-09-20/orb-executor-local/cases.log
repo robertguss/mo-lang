@@ -1,0 +1,23 @@
+test_application (__main__.Offline.test_application) ... ok
+test_selftest (__main__.Offline.test_selftest) ... ok
+test_stopping_suites (__main__.Offline.test_stopping_suites) ... ok
+test_workspace_live (__main__.Offline.test_workspace_live) ... ok
+test_application_rows_with_stubbed_success (__main__.Returns.test_application_rows_with_stubbed_success)
+Every row made only of success() and lifecycle(), both stubbed to succeed and ... ok
+test_every_action_returns_none_or_fields (__main__.Returns.test_every_action_returns_none_or_fields) ... ok
+test_the_walk_sees_leaks (__main__.Returns.test_the_walk_sees_leaks) ... ok
+test_actions_return_none_or_fields (__main__.Runner.test_actions_return_none_or_fields) ... ok
+test_choose_refuses_before_anything (__main__.Runner.test_choose_refuses_before_anything) ... ok
+test_cleanup_failure_never_hides_the_case_failure (__main__.Runner.test_cleanup_failure_never_hides_the_case_failure) ... ok
+test_records_stop_and_after (__main__.Runner.test_records_stop_and_after) ... ok
+test_shared_creation_failure_is_kept (__main__.Runner.test_shared_creation_failure_is_kept) ... ok
+test_no_case_lost_or_reordered (__main__.Tables.test_no_case_lost_or_reordered) ... ok
+test_selection_refused_before_output (__main__.Tables.test_selection_refused_before_output) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 7.219s
+
+OK
+real 7.53
+user 6.70
+sys 0.91
