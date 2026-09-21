@@ -106,3 +106,21 @@ test "blank and oversized queries and malformed positional counts are usage erro
   assert options(["search", "needle"]) is Error(Usage(_))
   assert options(["search", "needle", "one", "two"]) is Error(Usage(_))
 end
+
+test "all six ASCII separators are blank and query and term boundaries are exact"
+  assert options(["search", " \t\n\u{000B}\u{000C}\r", "sessions"]) is Error(Usage(_))
+  assert options(["search", "x".repeat(4_096), "sessions"]) is Ok(_)
+  assert options(["search", "x ".repeat(64), "sessions", "--all-words"]) is Ok(_)
+  assert options(["search", "x ".repeat(65), "sessions", "--all-words"]) is Error(Usage(_))
+  assert options(["search", "x ".repeat(65), "sessions"]) is Ok(_)
+end
+
+test "flags are allowed around positionals while every missing duplicate and option shape rejects"
+  assert options(["search", "--all-words", "needle", "--include-tools", "sessions"]) is Ok(_)
+  assert options(["search", "--include-tools", "needle", "sessions", "--all-words"]) is Ok(_)
+  assert options([]) is Error(Usage(_))
+  assert options(["find", "needle", "sessions"]) is Error(Usage(_))
+  assert options(["search", "needle", "sessions", "--include-tools", "--include-tools"]) is Error(Usage(_))
+  assert options(["search", "needle", "sessions", "--bad\u{0007}"]) is Error(Usage(_))
+  assert options(["search", "needle", ""]) is Error(Usage(_))
+end

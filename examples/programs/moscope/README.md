@@ -4,9 +4,12 @@
 histories. Candidate `f961c686` passed one guarded interpreter phrase smoke with
 the accepted compiler: exit 0, 731 stdout bytes, 107 stderr bytes, and four
 matches, with both streams byte-exact to the hand-authored expectations. That
-was a narrow pre-integration check, not full app acceptance. The app-local
-program root, standard-corpus entries, broader verifier, native behavior, and
-release metadata added during acceptance preparation have not yet been run.
+was a narrow pre-integration check, not full app acceptance. The frozen
+app-local candidate has since passed the serial interpreter stage: 46 exact
+cases, including all eight original triples, 39 CLI/filesystem/boundary cases,
+and all seven modules' 24 non-writing tests. Every payload had literal absent
+process-group cleanup. Native behavior, formatter/`--write` release metadata,
+and the full corpus remain unexecuted and unaccepted.
 
 ```text
 moscope search "connection refused" ./sessions/
@@ -195,8 +198,7 @@ generated in a disposable tree; they are not committed as giant files.
 
 The working directory for every candidate command below is the repository root.
 Each stdout/stderr/status triple is independently hand-authored rather than
-recorded from the program. Only the phrase row has been run, as described at the
-top of this file; the other seven remain unexecuted at this checkpoint.
+recorded from the program. All eight passed byte-exactly under the interpreter.
 
 | Case      | Exact argv after `mo run examples/programs/moscope/main.mo --`                         | Expected stdout / stderr / status                                                                                                                                                       | Manual trace  |
 | --------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -240,5 +242,6 @@ acceptance.
 - Statement case arms use indented bodies. `FileFold` stores data only, and its
   `fold_lines` callback neither stores nor captures `Clock`.
 - `Clock.fixture()` remains limited to app-local test source. These statements
-  are source-review observations; the release formatter, all-module tests,
-  native build/tests, and full corpus remain pending.
+  are source-review observations. All-module interpreter tests passed without
+  writing metadata; the release formatter/`--write`, native build/tests, and
+  full corpus remain pending.

@@ -2,7 +2,7 @@ module Parse
 expose FileFold, start_file, folded_line
 
 use Limits{line_bytes, file_records, records, messages, blocks, diagnostics}
-use Model{BlockKind, Block, Message, Seen, Issue, Scan}
+use Model{BlockKind, Block, Message, Seen, Issue, Scan, empty_scan}
 
 intent "Decode admitted JSONL records, conservatively diagnose unsupported conversation shapes, and group messages file-locally without losing block provenance."
 
@@ -55,6 +55,7 @@ fn folded_line(state: FileFold, line: String) : FileFold
   var next = state
   next.lines += 1
   next.bytes = next.bytes.saturating_add(line.byte_size + 1)
+  replacement = line.contains?("\u{FFFD}")
   if next.stopped
     return next
   end
@@ -63,7 +64,10 @@ fn folded_line(state: FileFold, line: String) : FileFold
     next.stopped = true
     return next
   end
-  if next.bytes > next.admitted.saturating_add(1)
+  # fold_lines replaces each malformed byte with the three-byte UTF-8 U+FFFD spelling. When that
+  # happened, transformed byte size cannot prove file growth; the U+FFFD diagnostic below already
+  # refuses complete success for both malformed input and a genuine replacement character.
+  if !replacement and next.bytes > next.admitted.saturating_add(1)
     next.scan = problem(next.scan, next.path, next.lines,
       "the file grew after size admission; results use only the admitted prefix")
     next.stopped = true
@@ -83,7 +87,7 @@ fn folded_line(state: FileFold, line: String) : FileFold
   next.scan.records += 1
   # U+FFFD can be genuine input or fold_lines' replacement for malformed UTF-8. The API does not
   # expose which, so complete success is refused in either case.
-  if line.contains?("\u{FFFD}")
+  if replacement
     next.scan = problem(next.scan, next.path, next.lines,
       "U+FFFD is present; fold_lines cannot distinguish it from replaced invalid UTF-8")
   end
@@ -461,4 +465,47 @@ fn problem(scan: Scan, path: String, line: UInt64, detail: String) : Scan
     next.issues = next.issues.push(Issue(path: path, line: line, detail: detail))
   end
   next
+end
+
+test "decoded UUID equality ignores object order and JSON spelling"
+  first = "{\"type\":\"user\",\"uuid\":\"u\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"a\"}}"
+  same = "{\"message\":{\"content\":\"\\u0061\",\"id\":\"m\",\"role\":\"user\"},\"uuid\":\"u\",\"type\":\"user\"}"
+  one = folded_line(start_file(empty_scan(), "one.jsonl", 10_000), first)
+  two = folded_line(one, same)
+  assert two.scan.messages.size == 1 and !two.scan.incomplete and two.scan.records == 2
+end
+
+test "file-local UUID state resets and malformed middle input retains neighboring messages"
+  before = "{\"type\":\"user\",\"uuid\":\"u\",\"message\":{\"role\":\"user\",\"id\":\"a\",\"content\":\"before\"}}"
+  after = "{\"type\":\"user\",\"uuid\":\"v\",\"message\":{\"role\":\"user\",\"id\":\"b\",\"content\":\"after\"}}"
+  one = folded_line(start_file(empty_scan(), "one.jsonl", 10_000), before)
+  broken = folded_line(one, "{")
+  kept = folded_line(broken, after)
+  assert kept.scan.messages.size == 2 and kept.scan.incomplete and kept.scan.records == 3
+  other = folded_line(start_file(kept.scan, "two.jsonl", 10_000), before)
+  assert other.scan.messages.size == 3
+end
+
+test "replacement characters and conflicting payloads preserve first results but are incomplete"
+  first = "{\"type\":\"user\",\"uuid\":\"u\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"kept\"}}"
+  conflict = "{\"type\":\"user\",\"uuid\":\"u\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"changed\"}}"
+  one = folded_line(start_file(empty_scan(), "one.jsonl", 10_000), first)
+  two = folded_line(one, conflict)
+  marked = folded_line(two, "{\"type\":\"progress\",\"text\":\"\u{FFFD}\"}")
+  assert marked.scan.messages.size == 1 and marked.scan.incomplete
+  assert marked.scan.unknown_kinds.get("progress") == Some(1)
+end
+
+test "production per-file total-record and retained-block counters refuse the next value"
+  var per_file = start_file(empty_scan(), "one.jsonl", 10_000)
+  per_file.file_records = 200_000
+  assert folded_line(per_file, "{}").scan.incomplete
+  var total_scan = empty_scan()
+  total_scan.records = 1_000_000
+  assert folded_line(start_file(total_scan, "two.jsonl", 10_000), "{}").scan.incomplete
+  var block_scan = empty_scan()
+  block_scan.retained_blocks = 500_000
+  record = "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"kept\"}}"
+  capped = folded_line(start_file(block_scan, "three.jsonl", 10_000), record).scan
+  assert capped.incomplete and capped.retained_blocks == 500_000
 end

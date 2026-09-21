@@ -164,3 +164,41 @@ fn scan_problem(scan: Scan, path: String, line: UInt64, detail: String) : Scan
   end
   next
 end
+
+test "production discovery reads nested JSONL, ignores other files, and diagnoses JSONL folders"
+  fs = Fs.fixture()
+  assert fs.mkdir("nested", within: 1.minute) is Ok(_)
+  assert fs.mkdir("nested/folder.jsonl", within: 1.minute) is Ok(_)
+  assert fs.write("nested/a.jsonl", "{\"type\":\"progress\"}\n", within: 1.minute) is Ok(_)
+  assert fs.write("nested/no.txt", "ignored", within: 1.minute) is Ok(_)
+  clock = Clock.fixture()
+  scan = scan_tree(fs, clock, clock.now)
+  assert scan.files_read == 1 and scan.records == 1 and scan.admitted_bytes == 20
+  assert scan.unknown_kinds.get("progress") == Some(1) and scan.incomplete
+end
+
+test "production filesystem timeout and aggregate admission paths are incomplete"
+  clock = Clock.fixture()
+  timed = scan_tree(Fs.fixture(delay: 11.seconds), clock, clock.now)
+  assert timed.incomplete and timed.files_read == 0
+  fs = Fs.fixture()
+  assert fs.write("a.jsonl", "{}\n", within: 1.minute) is Ok(_)
+  var full = empty_scan()
+  full.admitted_bytes = total_bytes()
+  refused = scan_file(fs, "a.jsonl", full, clock, clock.now)
+  assert refused.incomplete and refused.files_read == 0
+  assert refused.admitted_bytes == total_bytes()
+end
+
+test "processing expiry after a successful fold preserves admitted results"
+  fs = Fs.fixture(delay: 2.seconds)
+  record = "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"kept\"}}\n"
+  assert fs.write("a.jsonl", record, within: 1.minute) is Ok(_)
+  clock = Clock.fixture()
+  started = clock.now
+  assert Fs.fixture(delay: 53.seconds).list(within: 1.minute) is Ok(_)
+  scan = scan_tree(fs, clock, started)
+  assert scan.incomplete
+  assert scan.files_read == 1
+  assert scan.messages.size == 1
+end

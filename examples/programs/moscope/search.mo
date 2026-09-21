@@ -303,3 +303,18 @@ end
 test "safe output has no raw controls or non-ASCII bytes"
   assert safe("a\u{001B}[31m café\\z") == "a\\x1B[31m caf\\xC3\\xA9\\\\z"
 end
+
+test "terminal safety covers NUL DEL and bidi while doubling backslash"
+  assert safe("A\\\u{0000}\u{007F}é") == "A\\\\\\x00\\x7F\\xC3\\xA9"
+  assert safe("\u{202E}") == "\\xE2\\x80\\xAE"
+end
+
+test "excerpt boundaries and output admission differ on both sides of the limit"
+  assert bounded_excerpt("x".repeat(239)).size == 239
+  assert bounded_excerpt("x".repeat(240)).size == 240
+  assert bounded_excerpt("x".repeat(241)).size == 243
+  full = append_limit(Render(text: "1234", truncated: false), "5", 4)
+  assert full.text == "1234" and full.truncated
+  room = append_limit(Render(text: "1234", truncated: false), "5", 5)
+  assert room.text == "12345" and !room.truncated
+end

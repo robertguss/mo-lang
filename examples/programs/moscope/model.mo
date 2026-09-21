@@ -106,3 +106,13 @@ fn empty_discovery() : Discovery
   Discovery(files: [], issues: [], entries: 0, skipped_links: 0, incomplete: false,
     stopped: false)
 end
+
+test "empty production state starts every counter and stop flag clear"
+  scan = empty_scan()
+  assert scan.messages.size == 0 and scan.issues.size == 0 and scan.unknown_kinds.size == 0
+  assert scan.skipped_links == 0 and scan.files_read == 0 and scan.admitted_bytes == 0
+  assert scan.records == 0 and scan.retained_blocks == 0 and !scan.incomplete
+  found = empty_discovery()
+  assert found.files.size == 0 and found.issues.size == 0 and found.entries == 0
+  assert found.skipped_links == 0 and !found.incomplete and !found.stopped
+end

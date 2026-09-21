@@ -57,3 +57,18 @@ application compile/assertion/output failures are retained as attempts before a
 source fix and serial rerun. Source inventory uses no-follow entry inspection:
 it records directories, regular-file sizes/hashes, symlink targets, other entry
 types, and the app-local `.mo.ids` when present.
+
+## Interpreter checkpoint
+
+The final interpreter attempt ran 46 serial cases: all eight original triples,
+31 additional CLI/filesystem/boundary cases, and all seven modules with 24
+non-writing tests. It covered query/term/line boundaries, LF/CRLF/no-LF,
+malformed and replacement input, ordering, root and discovered symlinks, FIFO,
+directory candidates, sparse file admission, genuine non-root unreadable file
+and subtree controls, exact and over-limit lines, production counters, aggregate
+admission, filesystem timeout, post-fold processing expiry, terminal escaping,
+excerpt/output admission, and fixed constants. All final expectations were exact
+for status and both streams; all groups were literally absent. The earlier
+attempts and their ordinary failures remain in the external evidence archive.
+This checkpoint does not include native execution, release metadata, or the full
+corpus.
