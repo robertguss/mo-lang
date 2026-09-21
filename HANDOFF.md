@@ -51,32 +51,29 @@ All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
   files are excluded from its ownership.
 - Server: T-01a0c18a-cc44-7380-8650-bf09bfec9954, static chunks recovery.
 
-The completed guard lane is replaced by wrapper repair worker
-T-01a0c1db-5a25-76c3-b289-9c2db968ba3d, fresh medium/a1.xxlarge from1839785e.
-**Do not use executor/guarded.py yet:** it kills the supervisor group while the
-accepted guard's payload has its own group, so overflow/cancellation can orphan
-the payload and falsely report cleanup. Oracle confirmed the integration
-regression; the worker owns guard.py and guarded.py under
-`mo-wiki/plans/orb-guard-wrapper.md`. Other workers continue using the accepted
-direct guard and exclude both files. No containment claim follows from the
-direct guard's tests.
+Wrapper worker T-01a0c1db-5a25-76c3-b289-9c2db968ba3d completed and is accepted
+at6b35871e (worker18825853, independent verification6a9f5898). Wrapper33/33,
+direct6/6,2/2,1/1 pass; old-wrapper overflow RED independently reproduced with
+live payload/descendant before fallback. The wrapper now owns its payload
+directly. Failed/unknown supervision or cleanup returns125, also for standalone
+guard; zombie-only is not literal absence. Evidence: orb-wrapper/ for this date.
+Direct-child RSS and process groups are still not container isolation.
 
-Memory corrected source b11bd186 has a narrow initial build/control grant after
-localized fixes; fiber/stress/runnable discrimination and full lifecycle
-controls remain outstanding. Server0608ebb5 passed format/fmt15 after the
-retained initial Begin-pattern failure; build and formatter2/2 passed
-independently. Its real Journal-Down rejects test can mask later assertion
-failures, so an external positive lifecycle oracle is required before broader
-module/sim execution. No compiler runner semantics change is granted in the
-server lane.
+Memory4e1be90e built5/5; pack/A/runnable/B/trace passed before commit-I stopped
+on test-fixture MO0101. Worker corrects fixture syntax under existing grant.
+Serveref09dc31 passed independent metadata15, fixed44, strict9/9 zero-fault,
+production35/3/3 with5% faults, strict native2/2 and Step44 2/2. Full native
+suite is running in /tmp/mo-lead-orb-server; worker has staged broader
+correctness/socket grants, no benchmarks. Neither memory nor server is accepted.
+The test-rejects assertion-masking defect is reproduced and queued separately;
+server uses an external positive lifecycle oracle, not the false-green test.
 
 Review their replies and fixed bundles in this thread; do not create
-replacements for the same assignment. Memory/server runtime grants still need
-source/manifest review; guard is available. Lead baseline tree is
-`/tmp/mo-lead-orb-baseline` on `lead/verify-orb-baseline`, not main. The runtime
-baseline is green as above. `orbctl` is absent and Docker's socket is absent;
-machine cutover needs a separately established execution boundary. No daemon was
-started.
+replacements for the same assignment. Further grants follow exact evidence and
+source review. Lead baseline tree is `/tmp/mo-lead-orb-baseline` on
+`lead/verify-orb-baseline`, not main. The runtime baseline is green as above.
+`orbctl` is absent and Docker's socket is absent; machine cutover needs a
+separately established execution boundary. No daemon was started.
 
 ## Historical Mac checkpoints below
 

@@ -67,9 +67,9 @@ from an input no suite sent.
 
 ## The instruments
 
-[[orb-guard-wrapper]] tracks the wrapper cleanup repair. Use the accepted direct
-guard until wrapper ownership and cleanup are independently verified; neither
-process-group mechanism establishes container isolation.
+[[orb-guard-wrapper]] records the accepted wrapper cleanup repair: independent
+33/33 controls plus unchanged direct6/6,2/2,1/1. Use the accepted revision;
+neither process-group mechanism establishes container isolation.
 
 [[mo-executor-foundation]] is the accepted bounded fixture executor and
 protected verdict path for [[mo-first-coding-harness]].

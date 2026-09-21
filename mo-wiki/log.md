@@ -2805,3 +2805,15 @@
   fresh medium xxlarge worker. Initial candidate73831667 needs stricter probe
   parsing, status policy, grace timing and finite discriminating controls. No
   wrapper acceptance or CI claim.
+
+## [2026-09-20] accept | wrapper payload ownership
+
+- Accepted worker18825853 at main6b35871e after Oracle review and independent
+  wrapper33/33, direct6/6,2/2,1/1 and old-wrapper overflow0/1 RED. Actual source
+  tree6a9f5898 and raw exits are recorded under orb-wrapper/ for this date.
+- The receipt owner now owns the payload group. Failed/unknown cleanup or
+  supervision returns125, including standalone; child status remains separate.
+  Literal absence, zombie-only and unknown observations are distinguished.
+- Server strict-native and Step44 independent reruns are green after the
+  fixture-only timing correction; full server suite and worker socket stages
+  continue. Memory focused fixture corrections continue. Neither is accepted.

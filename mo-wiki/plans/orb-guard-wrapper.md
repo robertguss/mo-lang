@@ -5,10 +5,29 @@ updated: 2026-09-20
 type: plan
 tags: [verification, tooling, security]
 sources: [plans/interpreter-step-42.md, plans/mo-executor-foundation.md]
-status: in-progress
+status: complete
 ---
 
 # Orb guard wrapper
+
+## Result — 20 Sep 2026, evening ET
+
+Accepted at main6b35871e, worker18825853, independently verified tree6a9f5898.
+Lead wrapper33/33, unchanged direct6/6,2/2,1/1 pass; old-wrapper overflow fails
+0/1 with payload and descendant live and output growing before fallback cleanup.
+Oracle reviewed the corrections and final evidence; no blockers remained. Raw
+logs/exits are under `audit/evidence/2026-09-20/orb-wrapper/`.
+
+The shared in-process supervisor owns the actual payload. Failed/unknown probes
+or cleanup return125 in wrapper and standalone; real child status remains
+separate. Missing RSS selection differs from genuine probe failure. Signals
+retain one grace deadline even during startup; final output size enforces the
+abort threshold. Zombie-only cleanup is not literal group absence.
+
+Limits remain explicit: synchronous Popen is not hard-bounded; direct-child RSS
+is not aggregate memory; escaped sessions are not contained;16MiB is a trigger,
+not a hard cap. Outer-deadline coverage is clock-injected branch proof. No
+Darwin or machine-isolation acceptance follows.
 
 ## Orientation
 

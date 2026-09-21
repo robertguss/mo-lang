@@ -7,6 +7,11 @@ same history next to the text it changed.
 
 ## Linux guard acceptance and native-enabled baseline — 20 Sep 2026, evening ET
 
+- Follow-up wrapper ownership repair accepted after independent33/33 controls,
+  direct6/6,2/2,1/1 and old-wrapper overflow RED. Wrapper and standalone now
+  fail with125 when supervision or cleanup cannot be verified; actual child
+  status remains recorded separately. RSS is still direct-child only;16MiB is an
+  abort threshold, not a hard output cap. Evidence: orb-wrapper/ for this date.
 - Step42 part E: the execution guard owns and cleans a child process group,
   including natural/signal leader exit and TERM/INT during startup. Oracle
   review and independent lead controls pass6/6 core,2/2 startup and1/1

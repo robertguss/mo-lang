@@ -41,19 +41,26 @@ historical audit records new to this orb's receiver ledger already have replies
 on main; no duplicate publication is needed. No auditor reading or hidden suite
 was opened during migration. Three medium/xxlarge workers now own guard cleanup
 proof, memory-safety source recovery and server source recovery. Guard work is
-complete; the two source lanes await corrections and review before runtime runs.
-Native integration is included via test-corpus; the faster test command alone is
-not acceptance. The old OrbStack executor is unavailable here, so machine
-cutover remains a separate prerequisite.
+complete; memory and server are in bounded runtime verification. Native
+integration is included via test-corpus; the faster test command alone is not
+acceptance. The old OrbStack executor is unavailable here, so machine cutover
+remains a separate prerequisite.
 
-The follow-up [[orb-guard-wrapper]] is now active: the harness wrapper kills the
-guard's group, not its separate payload group, on cancellation/overflow. Oracle
-confirmed this integration regression. A fresh medium xxlarge worker repairs
-shared ownership; current verification uses the accepted direct guard only. The
-server has passed compiler/formatter preflight, but an expected-crash test can
-hide failed postconditions, so its lifecycle oracle needs repair before
-acceptance. Memory's bounded first controls follow source corrections; no memory
-or server full-suite acceptance is claimed.
+The follow-up [[orb-guard-wrapper]] is accepted after Oracle review and
+independent33/33 wrapper controls plus6/6,2/2,1/1 direct controls. An
+old-wrapper RED proved the leaked payload before fallback cleanup. Failed or
+unknown cleanup now returns125 even if the child itself succeeded. The
+supervisor and wrapper share one payload owner; process-group containment still
+excludes escaped sessions and is not a machine sandbox.
+
+Server fixed44 and strict9/9/production35/3/3 simulation gates pass
+independently; strict native and Step44 gates also pass after correcting a
+fixture-clock mismatch. Full native suite and broader socket verification
+continue. Its expected-crash test revealed assertion masking in the shared test
+runner; an external positive lifecycle oracle replaces that false-green control.
+The runner defect remains queued. Memory built5/5 and passed its first five
+focused checks before a new fixture syntax error stopped the sequence. Neither
+candidate is accepted yet.
 
 **Historical acceptance, 20 Sep 2026, 8:30 AM ET:** [[interpreter-step-44]] is
 accepted on Darwin, merged locally at **db515f9b** after independent
