@@ -60,6 +60,12 @@ Oracle authorizes only four inline statement arms becoming block arms in the
 fixture, preserving all bodies/retries/oracles. Worker has source-only brief; no
 retry before reread. Seven obligations and all earlier REDs unchanged.
 
+Follow-up: verified e73504d0 expands exactly the four statement arms.
+Lead/Oracle reread authorizes one normal exact large-restart attempt on full
+candidate composed onto accepted fe29ea7a. Validator has the bundle/grant; fresh
+caches/output, retained captures, all both-runtime report/RSS/cleanup predicates
+unchanged. Stop-first, no further retry or broader execution.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.

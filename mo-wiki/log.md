@@ -2994,3 +2994,12 @@
 - Lead/Oracle identified all four inline statement arms, including returns.
   Source-only conversion to block arms authorized; no expected-report changes,
   retry or broader execution. Full partial captures and prior REDs retained.
+
+## [2026-09-21] review | block-arm correction releases one normal attempt
+
+- Verified e73504d0 full bundle/hash and exact four-arm diff. Oracle confirms
+  patterns, bodies, retry logic and invariant location unchanged; expected
+  reports are not adjusted. One normal exact filter released on full candidate
+  composed onto accepted fe29ea7a; transferred bundle and sent bounded grant.
+- Results pending. Existing both-runtime report/RSS/cleanup predicates remain;
+  no broader execution or acceptance. Prior REDs and full captures preserved.

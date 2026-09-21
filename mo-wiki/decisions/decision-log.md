@@ -2161,6 +2161,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------------------------------------- |
 | Preserve eb665371/efbccec1 RED: exit1/build3/5, tests1 pass/1 fail; interpreter completed/reaped/exited1 on MO0101, native unexecuted. Convert exactly four inline assignment/return case arms to block form, preserving patterns, bodies, order, retry3, sentinel and invariant location. No parser or oracle changes; source reread before retry. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-fixture-parse-red/ |
 
+### Block-arm correction reread releases one attempt
+
+| decision                                                                                                                                                                                                                                                                                                                                                                        | who                  | status  | first tested by                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------------- |
+| Verified e73504d0 changes only four inline statement arms to block form. Release one normal exact large-restart filter on full candidate composed onto accepted fe29ea7a with fresh caches/output and retained captures; unchanged both-runtime 25-report/RSS/cleanup predicates, stop-first. Prior REDs preserved; no further retry, full309, ASan, stress, mutants or timing. | Amp lead with Oracle | decided | pending independent exact-filter receipts |
+
 ## Related
 
 - [[session-05]]
