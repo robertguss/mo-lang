@@ -152,8 +152,7 @@ end
 fn conversation(scan: Scan, path: String, line: UInt64, kind: String,
   fields: Map(String, Json)) : Scan
   var next = scan
-  if marked?(fields, "isMeta") or marked?(fields, "isCompactSummary") or
-    marked?(fields, "isApiErrorMessage")
+  if marked?(fields, "isMeta") or marked?(fields, "isCompactSummary") or marked?(fields, "isApiErrorMessage")
     return next
   end
   if fields.get("uuid") is Some(value)

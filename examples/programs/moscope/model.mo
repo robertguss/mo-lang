@@ -79,7 +79,7 @@ struct Discovery
 end
 
 struct Hit
-  message: Message
+  entry: Message
   blocks: List(Block)
 end
 

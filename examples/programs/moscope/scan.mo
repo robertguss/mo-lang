@@ -8,7 +8,7 @@ use Moscope.Parse{start_file, folded_line}
 intent "Discover JSONL files serially from one read-only root, without following discovered links, then size-admit and fold them in deterministic path order."
 
 struct EntryPlace
-  child: String
+  entry_path: String
   next_level: UInt64
 end
 
@@ -53,11 +53,11 @@ fn discover(root: Fs, path: String, level: UInt64, so_far: Discovery, clock: Clo
       return discovery_stop(found, path, "traversal exceeds 50000 entries")
     end
     found.entries += 1
-    child = joined(path, name)
-    place = EntryPlace(child: child, next_level: level + 1)
-    case root.kind_of(child, within: call_time())
+    entry_path = joined(path, name)
+    place = EntryPlace(entry_path: entry_path, next_level: level + 1)
+    case root.kind_of(entry_path, within: call_time())
       Error(error):
-        found = discovery_problem(found, child, "cannot stat entry: #{fs_error(error)}")
+        found = discovery_problem(found, entry_path, "cannot stat entry: #{fs_error(error)}")
       Ok(entry):
         found = discovered_entry(root, place, found, clock, started, entry.kind)
     end
@@ -75,17 +75,17 @@ fn discovered_entry(root: Fs, place: EntryPlace, so_far: Discovery, clock: Clock
     Link:
       found.skipped_links += 1
     Folder:
-      if place.child.ends_with?(".jsonl")
-        found = discovery_problem(found, place.child,
+      if place.entry_path.ends_with?(".jsonl")
+        found = discovery_problem(found, place.entry_path,
           "a .jsonl candidate is a directory, not a regular file")
       end
-      found = discover(root, place.child, place.next_level, found, clock, started)
+      found = discover(root, place.entry_path, place.next_level, found, clock, started)
     File:
-      if place.child.ends_with?(".jsonl")
+      if place.entry_path.ends_with?(".jsonl")
         if found.files.size >= files()
-          return discovery_stop(found, place.child, "discovery exceeds 5000 JSONL files")
+          return discovery_stop(found, place.entry_path, "discovery exceeds 5000 JSONL files")
         end
-        found.files = found.files.push(place.child)
+        found.files = found.files.push(place.entry_path)
       end
   end
   found

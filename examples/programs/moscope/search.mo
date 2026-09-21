@@ -33,7 +33,7 @@ fn report(scan: Scan, options: Options, clock: Clock, started: Time) : Report
       break
     end
     for hit in session.hits.sort_by(fn(one)
-      (one.message.path, one.message.first_line, one.message.role, one.message.id)
+      (one.entry.path, one.entry.first_line, one.entry.role, one.entry.id)
     end)
       if clock.now >= started + process_time()
         final_scan = problem(final_scan, "<search>", 0,
@@ -65,13 +65,13 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
   var result = Searched(scan: scan, hits: [])
   lowered = ascii_lower(options.query)
   words = query_terms(options.query)
-  for message in scan.messages.values.sort_by(fn(one) one.key end)
+  for entry in scan.messages.values.sort_by(fn(one) one.key end)
     if clock.now >= started + process_time()
       result.scan = problem(result.scan, "<search>", 0,
         "the 60 second processing deadline was exceeded")
       break
     end
-    eligible = message.blocks.filter(fn(block)
+    eligible = entry.blocks.filter(fn(block)
       block.kind == Conversation or (options.include_tools and block.kind == Tool)
     end)
     shown = case options.mode
@@ -87,11 +87,11 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
     end
     if shown.size > 0
       if result.hits.size >= results()
-        result.scan = problem(result.scan, message.path, message.first_line,
+        result.scan = problem(result.scan, entry.path, entry.first_line,
           "search exceeds 10000 matching logical messages")
         break
       end
-      result.hits = result.hits.push(Hit(message: message, blocks: shown))
+      result.hits = result.hits.push(Hit(entry: entry, blocks: shown))
     end
   end
   result
@@ -102,17 +102,16 @@ fn searchable(block: Block) : String
 end
 
 fn sessions_of(messages: List(Message), hits: List(Hit)) : List(Session)
-  var latest = Map.new()
-  var labels = Map.new()
-  for message in messages
-    labels = labels.set(message.session_key, message.session_label)
-    latest = latest.set(message.session_key,
-      later(latest.get(message.session_key) or None, message.conversation_at))
-  end
-  var grouped = Map.new()
-  for hit in hits
-    grouped = grouped.update(hit.message.session_key, [], fn(before) before.push(hit) end)
-  end
+  labels = messages.reduce(Map.new(), fn(known, entry)
+    known.set(entry.session_key, entry.session_label)
+  end)
+  latest = messages.reduce(Map.new(), fn(known, entry)
+    known.set(entry.session_key,
+      later(known.get(entry.session_key) or None, entry.conversation_at))
+  end)
+  grouped = hits.reduce(Map.new(), fn(known, hit)
+    known.update(hit.entry.session_key, [], fn(before) before.push(hit) end)
+  end)
   built = grouped.entries.map(fn(pair)
     Session(key: pair.0, label: labels.get(pair.0) or pair.0,
       latest: latest.get(pair.0) or None, hits: pair.1)
@@ -136,7 +135,7 @@ end
 
 fn render_hit(rendered: Render, hit: Hit) : Render
   var next = append(rendered,
-    "  #{safe_prefix(hit.message.role, 256)} message #{safe_prefix(hit.message.id, 256)}\n")
+    "  #{safe_prefix(hit.entry.role, 256)} message #{safe_prefix(hit.entry.id, 256)}\n")
   for block in hit.blocks
     if next.truncated
       break
@@ -204,9 +203,9 @@ fn incomplete_text(rendered: Render, scan: Scan, limit: UInt64) : Render
   end)
   for issue in output.concat(other)
     path = safe_prefix(issue.path, 512)
-    where = if issue.line == 0: path else: "#{path}:#{issue.line}"
+    location = if issue.line == 0: path else: "#{path}:#{issue.line}"
     next = append_limit(next,
-      "moscope: incomplete: #{where}: #{safe_prefix(issue.detail, 512)}\n", limit)
+      "moscope: incomplete: #{location}: #{safe_prefix(issue.detail, 512)}\n", limit)
     if next.truncated
       break
     end
@@ -298,8 +297,7 @@ test "ASCII folding leaves non-ASCII exact, and punctuation remains literal"
 end
 
 test "all-words uses exactly the six ASCII whitespace bytes"
-  assert query_terms("  one\ttwo\nTHREE\u{000B}four\u{000C}five\r ") ==
-    ["one", "two", "three", "four", "five"]
+  assert query_terms("  one\ttwo\nTHREE\u{000B}four\u{000C}five\r ") == ["one", "two", "three", "four", "five"]
 end
 
 test "safe output has no raw controls or non-ASCII bytes"
