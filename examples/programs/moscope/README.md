@@ -119,14 +119,17 @@ incomplete. It may still show partial results.
 
 All transcript-derived text, filenames, session/message IDs, labels, unknown
 kinds, unsupported options, and diagnostic fields use one terminal-safe
-encoding. Rendering first takes a bounded prefix, then escapes it; it never
-builds a whole rendered logical message before enforcing the output limit.
-Printable ASCII passes except backslash, which doubles. Controls and every byte
-of non-ASCII UTF-8 become uppercase `\xNN`; this conservative rule prevents raw
-C0, DEL, C1, bidi, and other Unicode terminal controls from reaching output.
-Result rendering reserves 512 bytes so truncation can still produce a short
-incomplete diagnostic; headers/paths/labels and diagnostic fields have fixed
-256/512-grapheme source-prefix bounds before escaping.
+encoding. Rendering first takes a bounded source-grapheme prefix, then escapes
+it; it never builds a whole rendered logical message before enforcing the output
+limit. Printable ASCII passes except backslash, which doubles. Controls and
+every byte of non-ASCII UTF-8 become uppercase `\xNN`; this conservative rule
+prevents raw C0, DEL, C1, bidi, and other Unicode terminal controls from
+reaching output. Result rendering leaves a 512-byte best-effort diagnostic
+reserve; headers/paths/labels and diagnostic fields have fixed 256/512-grapheme
+source prefixes before escaping. The reserve does not guarantee that a
+particular truncation reason or an explicit sentinel is rendered when the
+retained issue list is already full or diagnostics alone fill the remaining
+space. The result still remains incomplete and therefore status 2.
 
 ## Fixed limits
 
@@ -149,10 +152,19 @@ They are admission/retention bounds, not hostile-input memory or cancellation
 guarantees. `list` materializes a directory before the app can count it.
 `fold_lines` reads synchronously, only bounds its pending partial line
 internally, and cannot stop the underlying read when the callback stops
-decoding. Deadlines are checked inside each discovered-entry iteration, between
-filesystem calls, and between folded lines. JSON's depth limit is not a
-total-byte bound. The file size gate and stable-local-input assumption are
-therefore necessary.
+decoding. `FileFold` is data-only: the processing deadline is observed
+immediately before and after each whole fold, not between lines, and an expiry
+observed after a successful fold retains those results but marks them
+incomplete. There is no per-line interruption promise. Discovery still checks
+inside each entry iteration and the 10-second filesystem-call deadline remains.
+JSON's depth limit is not a total-byte bound. The file size gate and
+stable-local-input assumption are therefore necessary.
+
+The 240-grapheme excerpt prefix is not a small byte or allocation guarantee. A
+prefix dominated by combining marks can approach the admitted 1 MiB line size,
+and bytewise terminal escaping can expand it toward 4 MiB plus intermediate
+allocations. Incremental message rendering avoids constructing a whole rendered
+logical message, but does not remove those bounds.
 
 ## Synthetic source cases
 
@@ -220,6 +232,8 @@ or accepted.
 - Source inspection places every function at six or fewer parameters and every
   body below 70 lines. Discovery entry handling and tool-result part handling
   are separate functions so nesting is at most three.
+- Statement case arms use indented bodies. `FileFold` stores data only, and its
+  `fold_lines` callback neither stores nor captures `Clock`.
 - `Clock.fixture()` remains limited to app-local test source. No formatter,
   parser, checker, compiler, test, runtime, smoke command, or corpus command was
   invoked for this checklist.

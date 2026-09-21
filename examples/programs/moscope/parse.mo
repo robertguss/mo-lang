@@ -1,8 +1,7 @@
 module Moscope.Parse
 expose FileFold, start_file, folded_line
 
-use Moscope.Limits{line_bytes, file_records, records, messages, blocks, diagnostics,
-  process_time}
+use Moscope.Limits{line_bytes, file_records, records, messages, blocks, diagnostics}
 use Moscope.Model{BlockKind, Block, Message, Seen, Issue, Scan}
 
 intent "Decode admitted JSONL records, conservatively diagnose unsupported conversation shapes, and group messages file-locally without losing block provenance."
@@ -16,8 +15,6 @@ struct FileFold
   bytes: UInt64
   admitted: UInt64
   stopped: Bool
-  clock: Clock
-  started: Time
 end
 
 struct ParsedBlocks
@@ -47,9 +44,9 @@ struct ResultPlace
   id: String
 end
 
-fn start_file(scan: Scan, path: String, admitted: UInt64, clock: Clock, started: Time) : FileFold
+fn start_file(scan: Scan, path: String, admitted: UInt64) : FileFold
   FileFold(scan: scan, seen: Map.new(), path: path, lines: 0, file_records: 0, bytes: 0,
-    admitted: admitted, stopped: false, clock: clock, started: started)
+    admitted: admitted, stopped: false)
 end
 
 # fold_lines cannot stop the underlying synchronous read. Once stopped, this callback only counts
@@ -59,11 +56,6 @@ fn folded_line(state: FileFold, line: String) : FileFold
   next.lines += 1
   next.bytes = next.bytes.saturating_add(line.byte_size + 1)
   if next.stopped
-    return next
-  end
-  if next.clock.now >= next.started + process_time()
-    next.scan = problem(next.scan, next.path, next.lines, "the 60 second processing deadline was exceeded")
-    next.stopped = true
     return next
   end
   if line.byte_size > line_bytes()
@@ -113,7 +105,8 @@ fn accepted_uuid(state: FileFold, payload: Json) : (FileFold, Bool)
   var next = state
   fields = case payload
     Object(given): given
-    String(_) | Array(_) | Number(_) | Bool(_) | Null: return (next, true)
+    String(_) | Array(_) | Number(_) | Bool(_) | Null:
+      return (next, true)
   end
   case fields.get("uuid")
     None: (next, true)

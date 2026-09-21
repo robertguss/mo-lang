@@ -59,7 +59,8 @@ fn discover(root: Fs, path: String, level: UInt64, so_far: Discovery, clock: Clo
     case root.kind_of(child, within: call_time())
       Error(error):
         found = discovery_problem(found, child, "cannot stat entry: #{fs_error(error)}")
-      Ok(entry): found = discovered_entry(root, place, found, clock, started, entry.kind)
+      Ok(entry):
+        found = discovered_entry(root, place, found, clock, started, entry.kind)
     end
     if found.stopped
       break
@@ -72,7 +73,8 @@ fn discovered_entry(root: Fs, place: EntryPlace, so_far: Discovery, clock: Clock
   started: Time, kind: EntryKind) : Discovery
   var found = so_far
   case kind
-    Link: found.skipped_links += 1
+    Link:
+      found.skipped_links += 1
     Folder:
       if place.child.ends_with?(".jsonl")
         found = discovery_problem(found, place.child,
@@ -106,17 +108,25 @@ fn scan_file(root: Fs, path: String, scan: Scan, clock: Clock, started: Time) : 
     return scan_problem(next, path, 0, "aggregate admitted input exceeds 1 GiB")
   end
   next.admitted_bytes = admitted or next.admitted_bytes
-  initial = start_file(next, path, bytes, clock, started)
-  case root.fold_lines(path, initial, within: call_time(), fn(state, line)
+  initial = start_file(next, path, bytes)
+  if clock.now >= started + process_time()
+    return scan_problem(next, path, 0, "the 60 second processing deadline was exceeded")
+  end
+  folded = root.fold_lines(path, initial, within: call_time(), fn(state, line)
     folded_line(state, line)
   end)
+  case folded
     Ok(done):
       next = done.scan
       next.files_read += 1
-      next
     Error(error):
-      scan_problem(next, path, 0, "cannot read admitted .jsonl input: #{fs_error(error)}")
+      next = scan_problem(next, path, 0,
+        "cannot read admitted .jsonl input: #{fs_error(error)}")
   end
+  if clock.now >= started + process_time()
+    next = scan_problem(next, path, 0, "the 60 second processing deadline was exceeded")
+  end
+  next
 end
 
 fn joined(parent: String, name: String) : String
