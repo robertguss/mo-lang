@@ -3203,3 +3203,13 @@
   audit/evidence/2026-09-21/step42-pause-77163596/. Source remains unreviewed,
   uncompiled and unaccepted. Earlier310/310 does not cover this correction.
 - Resume with bounded source reread. No gate released; seven obligations open.
+
+## [2026-09-21] verification | 5:52 PM ET, moscope first smoke stopped
+
+- Robert authorized one guarded accepted-toolchain build and one synthetic
+  interpreter smoke on app-only candidate7aa1e81e. Build5/5 exit0; smoke exit1
+  on MO0101 at limits.mo:2:87, before search execution. Source review missed the
+  multiline expose incompatibility. Both owned groups absent.
+- No edit/retry. Source bundle and raw receipts preserved under
+  audit/evidence/2026-09-21/moscope-first-smoke/. Candidate unaccepted;
+  Step42/harness paused, no private data or broader execution.

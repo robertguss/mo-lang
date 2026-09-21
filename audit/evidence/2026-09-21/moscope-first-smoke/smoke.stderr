@@ -1,0 +1,4 @@
+examples/programs/moscope/../moscope/limits.mo:2:87: MO0101 expected a name to expose
+  expose query_bytes, terms, depth, entries, files, file_bytes, total_bytes, line_bytes,
+                                                                                        ^
+  why: spec/grammar.md allows only this at this point in the production.

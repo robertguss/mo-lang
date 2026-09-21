@@ -1,0 +1,18 @@
+{
+  "child_exit": 1,
+  "child_returncode": 1,
+  "exit": 1,
+  "reason": "child_exit",
+  "reason_source": "supervision",
+  "supervision_reason": "child_exit",
+  "timed_out": false,
+  "process_group": 645176,
+  "cleanup_confirmed": true,
+  "group_state": "absent",
+  "group_absent": true,
+  "remaining": [],
+  "cleanup_error": null,
+  "supervision_error": null,
+  "output_bytes": 0,
+  "elapsed_seconds": 0.129
+}

@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "/opt/zig-x86_64-linux-0.16.0/zig",
+    "build",
+    "--summary",
+    "all",
+    "--cache-dir",
+    "/tmp/mo-moscope-evidence-7aa1e81e/local-cache",
+    "--global-cache-dir",
+    "/tmp/mo-moscope-evidence-7aa1e81e/global-cache",
+    "--prefix",
+    "/tmp/mo-moscope-evidence-7aa1e81e/prefix"
+  ],
+  "cwd": "/tmp/mo-moscope-7aa1e81e/toolchain",
+  "seconds": 900,
+  "head": "7aa1e81ea6dc0126214424bef24ae69f85a149f3",
+  "dirty": [],
+  "tools": {
+    "node": "/usr/local/bin/node",
+    "npm": "/usr/local/bin/npm",
+    "zig": "/usr/local/bin/zig"
+  },
+  "environment": {
+    "PATH": "/usr/local/bin:/usr/bin:/bin",
+    "HOME": "/tmp/mo-moscope-evidence-7aa1e81e/home",
+    "NO_COLOR": "1",
+    "npm_config_cache": "/tmp/mo-moscope-evidence-7aa1e81e/home/npm",
+    "npm_config_userconfig": "/tmp/mo-moscope-evidence-7aa1e81e/home/user.npmrc",
+    "npm_config_globalconfig": "/tmp/mo-moscope-evidence-7aa1e81e/home/global.npmrc",
+    "npm_config_registry": "https://registry.npmjs.org"
+  }
+}

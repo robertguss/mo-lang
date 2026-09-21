@@ -1,5 +1,19 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
+## Moscope first bounded execution — 21 Sep 2026, 5:52 PM ET
+
+Robert chose the smaller serial session-search CLI; harness and Step42 remain
+paused. Source-only worker T-01a0c564-1945-743a-8454-fba66b32a941 produced
+7aa1e81ea6dc0126214424bef24ae69f85a149f3 on accepted dad7b374. After source
+corrections and Oracle review, Robert authorized exactly one guarded normal
+compiler build and one tiny synthetic interpreter smoke, stop-first/no retry.
+Build passed 5/5, exit0. Smoke exited1 before application execution: MO0101 in
+limits.mo:2:87, multiline expose declaration. Stdout0 bytes, stderr338 bytes.
+Both owned process groups absent; no cleanup/supervision errors. No edit or
+retry followed. Candidate remains unaccepted/unmerged; further execution HOLD.
+Full source bundle and raw command/output/exit receipts are preserved under
+audit/evidence/2026-09-21/moscope-first-smoke/. No private data was used.
+
 ## PAUSED — 21 Sep 2026, 11:37 AM ET
 
 Robert requested an economical stopping point because his OpenAI subscription is
