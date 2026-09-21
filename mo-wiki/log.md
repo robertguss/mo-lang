@@ -2770,3 +2770,21 @@
   audit/evidence/2026-09-20/orb-migration/. Orbctl and Docker's socket are
   absent; no daemon was started. Lead baseline tree prepared at
   /tmp/mo-lead-orb-baseline; no runtime baseline accepted yet.
+
+## [2026-09-20] accept | Linux process-group guard; native baseline
+
+- Guard worker7939578e accepted at70c07d32 after two Oracle reviews and lead
+  execution. Core baseline0/6,WIP4/6,candidate6/6; startup baseline/WIP0/2,
+  candidate2/2; forced inspection failure cleanup1/1. Actual exits1 for REDs, 0
+  for GREENs. Startup and readiness defects corrected; report bounds narrowed
+  honestly. Production code matches4f36e065; final change is report-only.
+- Unchanged compiler baseline05285b52 built5/5 exit0/114.90s and passed full
+  native-enabled test-corpus276/276 exit0/567.78s. Verification tree clean; no
+  live mo/zig/test/guard process found afterward. Raw output/exits retained
+  under audit/evidence/2026-09-20/orb-baseline/; guard controls under
+  orb-guard/.
+- Server static reconstruction4b3d0eb3 is imported only in
+  lead/verify-orb-server. Oracle found initialization/request-deadline ordering
+  and expired outcome recording budget issues, plus reconstructed control
+  defects. No server or Step42 A–D acceptance; no machine, provider, Darwin or
+  CI claim.

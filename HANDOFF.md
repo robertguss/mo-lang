@@ -22,16 +22,19 @@ isolated execution and the model-driven task/Pi comparison when ready. The old
 OrbStack executor is not automatically available inside an Amp orb. Linux checks
 now run here; Darwin-specific obligations remain separate.
 
-Before runtime runs, independently accept the bounded process-group guard
-recovery from Step42 part E. Main's guard currently kills only its direct child.
+Step42 part E's process-group guard is accepted on Linux at70c07d32,
+worker7939578e. Independent core6/6, startup2/2 and failure-cleanup1/1 pass;
+baseline/WIP REDs retained. Direct-child RSS only; no escaped-session guarantee.
 Current full acceptance is `zig build test-corpus --summary all`; `test` now
 skips native integration. Use equivalent full coverage for before/after timings.
 
 Arrival: clean local `main` matched fetched `origin/main` at
-fffff158b0737aff2d13f2b64787e90686473e95. No fresh build acceptance yet. Latest
-documented Darwin acceptance is Step44,272/272 plus30 controls. Step42 and
-server remain unaccepted. Server42/42 is generator coverage only. Step39
-unresolved; Program7 suspended; no live-provider/Pi acceptance.
+fffff158b0737aff2d13f2b64787e90686473e95. Fresh Linux baseline now passed:
+build5/5 exit0/114.90s; full test-corpus276/276 exit0/567.78s, exact
+tree05285b52. Raw evidence: audit/evidence/2026-09-20/orb-baseline/ and
+orb-guard/. Latest documented Darwin acceptance is Step44,272/272 plus30
+controls. Step42 and server remain unaccepted. Server42/42 is generator coverage
+only. Step39 unresolved; Program7 suspended; no live-provider/Pi acceptance.
 
 The pointer-only intake found ten historical records new to this orb ledger,
 plus one invalid transport canary. Reconciliation confirmed existing replies for
@@ -43,17 +46,17 @@ hidden suite was opened. Evidence and reply mapping:
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
-- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, bounded Python cleanup proof.
+- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.
 - Memory: T-01a0c18a-5e4e-729b-96fb-39ccb6c9d1cc, static A–D recovery; guard
   files are excluded from its ownership.
 - Server: T-01a0c18a-cc44-7380-8650-bf09bfec9954, static chunks recovery.
 
 Review their replies and fixed bundles in this thread; do not create
-replacements for the same assignment. Memory/server runtime runs await guard
-acceptance and source/manifest review. Lead baseline tree is
-`/tmp/mo-lead-orb-baseline` on `lead/verify-orb-baseline`, not main. No runtime
-baseline accepted yet. `orbctl` is absent and Docker's socket is absent; machine
-cutover needs a separately established execution boundary. No daemon was
+replacements for the same assignment. Memory/server runtime grants still need
+source/manifest review; guard is available. Lead baseline tree is
+`/tmp/mo-lead-orb-baseline` on `lead/verify-orb-baseline`, not main. The runtime
+baseline is green as above. `orbctl` is absent and Docker's socket is absent;
+machine cutover needs a separately established execution boundary. No daemon was
 started.
 
 ## Historical Mac checkpoints below

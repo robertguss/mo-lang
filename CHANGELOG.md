@@ -5,6 +5,17 @@ reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the
 per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the
 same history next to the text it changed.
 
+## Linux guard acceptance and native-enabled baseline — 20 Sep 2026, evening ET
+
+- Step42 part E: the execution guard owns and cleans a child process group,
+  including natural/signal leader exit and TERM/INT during startup. Oracle
+  review and independent lead controls pass6/6 core,2/2 startup and1/1
+  harness-failure cleanup, with original and recovered-WIP REDs retained.
+- Fresh orb build passed5/5; full native-enabled test-corpus passed276/276,
+  exit0/567.78s. This is a Linux readiness result, not Step42 A–D, server,
+  machine isolation or Darwin durability acceptance. No CI added.
+- Evidence: `audit/evidence/2026-09-20/orb-guard/` and `orb-baseline/`.
+
 ## Amp orb workflow — 20 Sep 2026, evening ET
 
 - Persistent coordinating lead with mandatory Oracle planning, substantive

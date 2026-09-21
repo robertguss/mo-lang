@@ -1,0 +1,2 @@
+forced-ps-timeout: exit=None expected=None; child=not-live; descendant=not-live; dedicated-group=yes; unrelated=live; elapsed=0.17s; issue="TimeoutExpired:Command '['/tmp/guard-forced-ps-timeout-kz1ryk6m/hanging-ps', '-o', 'stat=', '-p', '25653']' timed out after 0.05 seconds"; stderr=''; PASS
+guard_regression[harness-failure]: 1/1 passed

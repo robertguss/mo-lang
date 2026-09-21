@@ -234,12 +234,13 @@ of credentials.
 - A historical Herdr VM memory incident motivates the retained guard, not
   host-wide process mutation. Every brief requires every `mo`, server, bench and
   test process to run under `toolchain/bench/step36/guard.py` (timeout and 4 GB
-  direct-child RSS watchdog). Verify process-group cleanup before execution; the
-  historical main guard is not group-safe and Step42's guard-only recovery must
-  be accepted separately before other lanes use it. Do not describe this RSS
-  check as aggregate process-tree enforcement. Do not reset unrelated processes'
-  OOM settings. Avoid competing benchmarks on one host; machine capacity does
-  not waive bounded execution.
+  direct-child RSS watchdog). Verify process-group cleanup before execution;
+  Step42 part E's guard-only recovery is independently accepted on Linux (20 Sep
+  evening, worker7939578e). Earlier snapshots lack that protection; supply the
+  accepted guard when testing them. Do not describe this RSS check as aggregate
+  process-tree enforcement. Do not reset unrelated processes' OOM settings.
+  Avoid competing benchmarks on one host; machine capacity does not waive
+  bounded execution.
 - Nothing is final until measured; every step ends in a numbers table, best of
   five, both runtimes. Before any measurement read `uptime` and
   `ps -eo pid,etimes,pcpu,args --sort=-pcpu | head`, kill what is an orphan (17

@@ -31,12 +31,21 @@ exit files, once its execution guard is verified. Unfiltered suite and
 measurements follow lead review. The final report must distinguish recovered
 source, reconstructed implementation and new Linux evidence.
 
-Part E's guard-only recovery is separately owned; do not edit it concurrently.
-Wait for that accepted guard before runtime checks. Its memory limit observes
+Part E's guard-only recovery is accepted on Linux at lead merge `70c07d32`
+(worker `7939578e`); do not edit it in the memory lane. Independent core 6/6,
+startup 2/2 and failure-cleanup 1/1 controls pass, with original/WIP REDs
+retained under `audit/evidence/2026-09-20/orb-guard/`. Its memory limit observes
 direct-child RSS, not aggregate tree memory. Current full acceptance and suite
 timings use `zig build test-corpus --summary all`, with equivalent native
 coverage before/after; `test` alone skips native integration. Filtered native
 checks also use `test-corpus` and must show the expected tests actually ran.
+
+The first A–D reconstruction `910c0b89` is static only. Oracle requires ASan
+resume bookkeeping, secondary-scheduler stress propagation and pre-commit error
+cleanup corrections plus current-base controls before the first runtime grant.
+Historical control snapshots are immutable, not current evidence. All seven
+evidence obligations remain open. The unchanged-compiler Linux baseline passed
+build 5/5 and full native-enabled suite 276/276; it does not accept A–D.
 
 ## Orientation
 
