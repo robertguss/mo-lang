@@ -2101,6 +2101,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------- |
 | b6a1fb67 closes source control gaps. Release independent build900 plus three exact filters1800 on acceptedc7c84d10 composition, fresh caches and stop-first; no full/sanitizer/stress/mutants/timing. Authorize C source-only with corrected exact grammar, inherited outer group, sampled capture bounds and unchanged RSS predicate. Static inventory304 is not a result. | Amp lead with Oracle | decided | next independent preflight and C source reread |
 
+### A+B bounded preflight verified
+
+| decision                                                                                                                                                                                                                                                                  | who                  | status   | first tested by                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- | ------------------------------------------------- |
+| Recognize b6a1fb67 composed as1109b581 bounded preflight only:build5/5 and three filters2/2 each, exits0 and owned groups absent. ASan-named filter is fake compiler policy evidence. Hold validator pending C source review; no full304 or broader execution/acceptance. | Amp lead with Oracle | recorded | audit/evidence/2026-09-21/orb-memory-ab-b6a1fb67/ |
+
 ## Related
 
 - [[session-05]]

@@ -149,6 +149,12 @@ in corpus.zig/control map: corrected exact report, bounded retained captures,
 immediate Ok(0) or Down/retry legal, original RSS contract unchanged. No C
 execution; return fixed source for reread. Prior301/301 remains prior revision.
 
+A+B bounded preflight verified GREEN on1109b581:build5/5 and three exact
+filters2/2 each, all exits0 and all owned groups absent. Archive hash/raw
+receipts checked by lead, Oracle agrees narrow result. Evidence:
+audit/evidence/2026-09-21/orb-memory-ab-b6a1fb67/. Validator HOLD pending C
+source review; no full304, real ASan, stress, mutants, timing or acceptance.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:

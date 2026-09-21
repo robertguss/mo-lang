@@ -2906,3 +2906,12 @@
 - C source authoring released with exact25-report oracle, retained file capture,
   inherited outer group and unchanged RSS threshold. No C execution or broader
   gate grant. Prior301/301 remains attributed to71a4fafc.
+
+## [2026-09-21] verify | A+B bounded preflight green
+
+- Lead verified archive hash, composition and raw build/filter/cleanup receipts:
+  build5/5, three filters2/2 each, exits0 and all owned groups absent. Oracle
+  confirms bounded preflight only; ASan-named fake control is not sanitizer
+  proof.
+- Validator held pending C source reread. No full304 or broader grant; prior
+  evidence unchanged. Wiki lint287 pages/29 existing notices; diff check clean.
