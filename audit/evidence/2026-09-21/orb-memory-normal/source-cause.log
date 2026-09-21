@@ -1,0 +1,266 @@
+=== candidate failing test ===
+  2857	test "chunks drains pending fixture bytes before one directional EOF and leaves reverse writes open" {
+  2858	    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+  2859	    defer arena_state.deinit();
+  2860	    const arena = arena_state.allocator();
+  2861	    const program = try compile(arena,
+  2862	        \\module T.Chunks
+  2863	        \\process Ends()
+  2864	        \\  state
+  2865	        \\    bytes: List(UInt8)
+  2866	        \\    chunks: UInt64
+  2867	        \\    closed: UInt64
+  2868	        \\  end
+  2869	        \\  message Chunk(bytes: List(UInt8))
+  2870	        \\  message Closed
+  2871	        \\  message Idle
+  2872	        \\  fn update(state, message)
+  2873	        \\    case message
+  2874	        \\      Chunk(bytes):
+  2875	        \\        state.bytes = state.bytes.concat(bytes)
+  2876	        \\        state.chunks += 1
+  2877	        \\      Closed:
+  2878	        \\        state.closed += 1
+  2879	        \\      Idle:
+  2880	        \\        state.closed += 100
+  2881	        \\    end
+  2882	        \\  end
+  2883	        \\end
+  2884	        \\supervisor Top
+  2885	        \\  child Ends, restart: :always
+  2886	        \\end
+  2887	    );
+  2888	    var machine: Vm = .init(arena, program, 1);
+  2889	    var sim: Sim = .seeded(&machine, 1, "chunks directional eof", 0);
+  2890	    machine.sim = &sim;
+  2891	    sim.packs = true;
+  2892	    try sim.fixture.conns.append(arena, .{ .peer = 1 });
+  2893	    try sim.fixture.conns.append(arena, .{ .peer = 0 });
+  2894	    try sim.fixture.conns.items[0].inbound.appendSlice(arena, "abc");
+  2895	    sim.fixture.conns.items[1].write_closed = true;
+  2896	    const id = try sim.start(0, &.{});
+  2897	    for ([_]i128{ 0, 65_537, std.math.maxInt(u64) }) |bad_max| {
+  2898	        try std.testing.expectError(error.Crash, sources_mod.row(&machine, .chunks, &.{
+  2899	            .{ .cap = .{ .kind = .conn, .handle = 0 } },
+  2900	            .{ .handle = id },
+  2901	            .{ .int = bad_max },
+  2902	            .{ .duration = 60_000 },
+  2903	        }));
+  2904	        try std.testing.expect(!sim.fixture.conns.items[0].lining);
+  2905	        try std.testing.expectEqualStrings("", sim.fixture.conns.items[0].used);
+  2906	        try std.testing.expectEqual(@as(usize, 0), sim.sources.list.items.len);
+  2907	        machine.report = null;
+  2908	    }
+  2909	    _ = try sources_mod.row(&machine, .chunks, &.{
+  2910	        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+  2911	        .{ .handle = id },
+  2912	        .{ .int = 2 },
+  2913	        .{ .duration = 60_000 },
+  2914	    });
+  2915	    try std.testing.expectEqualStrings("Conn.chunks", sim.fixture.conns.items[0].used);
+  2916	    try std.testing.expectError(error.Crash, sources_mod.row(&machine, .chunks, &.{
+  2917	        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+  2918	        .{ .handle = id },
+  2919	        .{ .int = 2 },
+  2920	        .{ .duration = 60_000 },
+  2921	    }));
+  2922	    try std.testing.expectEqual(@as(usize, 1), sim.sources.list.items.len);
+  2923	    machine.report = null;
+  2924	    try std.testing.expectError(error.Crash, sources_mod.row(&machine, .lines, &.{
+  2925	        .{ .cap = .{ .kind = .conn, .handle = 0 } },
+  2926	        .{ .handle = id },
+  2927	        .{ .duration = 60_000 },
+  2928	    }));
+  2929	    try std.testing.expectEqual(@as(usize, 1), sim.sources.list.items.len);
+  2930	    machine.report = null;
+  2931	    try sim.finish();
+  2932	    const state = sim.procs.items[id].state.record.fields;
+  2933	    try std.testing.expectEqual(@as(usize, 3), state[0].list.len);
+  2934	    try std.testing.expectEqual(@as(i128, 'a'), state[0].list[0].int);
+  2935	    try std.testing.expectEqual(@as(i128, 'b'), state[0].list[1].int);
+  2936	    try std.testing.expectEqual(@as(i128, 'c'), state[0].list[2].int);
+  2937	    try std.testing.expectEqual(@as(i128, 2), state[1].int);
+  2938	    try std.testing.expectEqual(@as(i128, 1), state[2].int);
+=== candidate enqueue ===
+  1034	    /// Puts a message in `to`'s mailbox. Ownership transfers only on success. Every fallible
+  1035	    /// preparation happens before the runnable/mailbox/trace publication commit.
+  1036	    pub fn enqueue(sim: *Sim, from: u32, to: u32, message: ParcelValue) Error!u64 {
+  1037	        const mailbox = &sim.procs.items[to].mailbox;
+  1038	        try mailbox.ensureUnusedCapacity(sim.gpa, 1);
+  1039	        if (sim.schedule != null) {
+  1040	            std.debug.assert(!sim.packs and message.parcel == null);
+  1041	            try sim.trace.ensureUnusedCapacity(sim.gpa, 1);
+  1042	        }
+  1043	        if (sim.turns) |t| try t.prepareRunnable(to);
+  1044	
+  1045	        const seq = sim.next_seq;
+  1046	        sim.next_seq += 1;
+  1047	        mailbox.appendAssumeCapacity(.{ .message = message, .seq = seq });
+  1048	        if (sim.schedule != null) sim.trace.appendAssumeCapacity(.{ .from = from, .to = to, .message = message.value, .took = false });
+  1049	        if (sim.turns) |t| t.markRunnable(to);
+  1050	        return seq;
+  1051	    }
+=== candidate source send/chunks ===
+   249	/// A message from the runtime to process `to`, packed under `mo run`.
+   250	fn send(sim: *Sim, to: u32, name: []const u8, fields: []const Value) Error!void {
+   251	    const vm = sim.vm;
+   252	    const message = try vm.variant(name, fields);
+   253	    const parcel = if (sim.packs) try vm.pack(message) else null;
+   254	    const sent: sim_mod.ParcelValue = .{ .value = if (parcel) |p| p.value else message, .parcel = parcel };
+   255	    _ = sim.enqueue(runtime_sender, to, sent) catch |err| {
+   256	        sent.free();
+   257	        return err;
+   258	    };
+   259	}
+   434	    const c = &f.conns.items[s.handle];
+   435	    const tls = c.tls != null;
+   436	    const start = if (tls) &c.clear_start else &c.start;
+   437	    const bytes = if (tls) c.clear.items else c.inbound.items;
+   438	    const pending = bytes[start.*..];
+   439	    if (pending.len == 0 and !f.peerEnded(s.handle)) {
+   440	        if (elapsed(sim) - s.since < s.idle_ms or !room(sim, s, 0)) return false;
+   441	        try send(sim, s.to, "Idle", &.{});
+   442	        c.closed = true;
+   443	        s.done = true;
+   444	        return true;
+   445	    }
+   446	    if (!room(sim, s, 0)) return false;
+   447	    if (sim.fault(.closed, s.idle_ms)) |fault| {
+   448	        try send(sim, s.to, if (fault == .timeout) "Idle" else "Closed", &.{});
+   449	        c.closed = true;
+   450	        s.done = true;
+   451	        return true;
+   452	    }
+   453	    if (pending.len == 0) {
+   454	        try send(sim, s.to, "Closed", &.{});
+   455	        s.done = true;
+   456	        return true;
+   457	    }
+   458	    const n = @min(pending.len, s.max_bytes);
+   459	    try send(sim, s.to, "Chunk", &.{try byteList(sim, pending[0..n])});
+   460	    start.* += n;
+   461	    compactInbound(c);
+   462	    s.since = elapsed(sim);
+   463	    return true;
+   464	}
+=== introducing commit ===
+commit b11bd18608bd70c518016d075635620f68448fc7
+Author:     Amp <amp@ampcode.com>
+AuthorDate: Mon Sep 21 02:40:30 2026 +0000
+Commit:     Amp <amp@ampcode.com>
+CommitDate: Mon Sep 21 02:40:38 2026 +0000
+
+    Correct Step 42 ownership and source controls
+    
+    Co-authored-by: OpenAI GPT-5.4 <noreply@openai.com>
+    Amp-Thread-ID: https://ampcode.com/threads/T-01a0c18a-5e4e-729b-96fb-39ccb6c9d1cc
+    Co-authored-by: Robert Guss <robertguss@gmail.com>
+
+diff --git a/toolchain/src/sim.zig b/toolchain/src/sim.zig
+index 76dc7ad9..f846015b 100644
+--- a/toolchain/src/sim.zig
++++ b/toolchain/src/sim.zig
+@@ -86,8 +86,9 @@ const Outgoing = struct { to: u32, message: ParcelValue, delay: i64 = 0 };
+ /// A delayed send the runtime holds until `at` on the runtime's clock (Sim.deadlineNow): `order`
+ /// keeps two due at once in the order they were sent.
+ pub const Later = struct { at: i64, order: u64, from: u32, to: u32, message: ParcelValue };
+-/// One step of a seeded run's trace: a message put in a mailbox, by the test
+-/// (`from` is `test_runner`) or by a process whose update committed, or taken out of it.
++/// One step of a seeded no-packs run's trace: a raw arena value put in a mailbox, by the test
++/// (`from` is `test_runner`) or by a process whose update committed, or taken out of it. A trace
++/// never borrows from a parcel: seeded simulation and packed server execution are disjoint modes.
+ pub const Step = struct { from: u32, to: u32, message: Value, took: bool };
+ 
+ pub const Proc = struct {
+@@ -1033,9 +1034,12 @@ pub const Sim = struct {
+     /// Puts a message in `to`'s mailbox. Ownership transfers only on success. Every fallible
+     /// preparation happens before the runnable/mailbox/trace publication commit.
+     pub fn enqueue(sim: *Sim, from: u32, to: u32, message: ParcelValue) Error!u64 {
+-        var mailbox = &sim.procs.items[to].mailbox;
++        const mailbox = &sim.procs.items[to].mailbox;
+         try mailbox.ensureUnusedCapacity(sim.gpa, 1);
+-        if (sim.schedule != null) try sim.trace.ensureUnusedCapacity(sim.gpa, 1);
++        if (sim.schedule != null) {
++            std.debug.assert(!sim.packs and message.parcel == null);
++            try sim.trace.ensureUnusedCapacity(sim.gpa, 1);
++        }
+         if (sim.turns) |t| try t.prepareRunnable(to);
+ 
+         const seq = sim.next_seq;
+@@ -1112,6 +1116,7 @@ pub const Sim = struct {
+         p.reply_seq = entry.seq;
+         p.deferring = false;
+         if (sim.schedule) |*rng| {
++            std.debug.assert(!sim.packs and entry.message.parcel == null);
+             sim.now += sim.lag + rng.random().intRangeAtMost(i64, 0, max_tick_ms);
+             sim.lag = 0;
+             sim.trace.appendAssumeCapacity(.{ .from = id, .to = id, .message = entry.message.value, .took = true });
+@@ -1161,23 +1166,20 @@ pub const Sim = struct {
+             error.Crash => {
+                 vm.stack.shrinkRetainingCapacity(base);
+                 vm.rollBack();
+-                for (p.outbox.items) |o| o.message.free();
+-                sim.held -= p.outbox.items.len;
+-                p.outbox.clearRetainingCapacity();
+-                for (p.emits.items) |event| event.free();
+-                p.emits.clearRetainingCapacity();
++                sim.discardUpdate(p);
+                 p.wait = null;
+                 p.asking = none;
+                 p.doomed = null;
+-                for (p.answers.items) |a| a.value.free();
+-                p.answers.clearRetainingCapacity();
+                 if (sim.gave_up) return error.Crash;
+                 try sim.crashed(id, before);
+                 try sim.routeAnswer(entry.seq, null);
+                 if (regioned) try sim.settleRegion(id, mark);
+                 return .{ .seq = entry.seq, .reply = null };
+             },
+-            else => return err,
++            else => {
++                sim.discardUpdate(p);
+=== prerequisite proves test already packed+seeded ===
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2454-    try std.testing.expect(closed > 0 and idled > 0);
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2455-}
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2456-
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig:2457:test "chunks drains pending fixture bytes before one directional EOF and leaves reverse writes open" {
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2458-    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2459-    defer arena_state.deinit();
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2460-    const arena = arena_state.allocator();
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2461-    const program = try compile(arena,
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2462-        \\module T.Chunks
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2463-        \\process Ends()
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2464-        \\  state
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2465-        \\    bytes: List(UInt8)
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2466-        \\    chunks: UInt64
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2467-        \\    closed: UInt64
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2468-        \\  end
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2469-        \\  message Chunk(bytes: List(UInt8))
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2470-        \\  message Closed
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2471-        \\  message Idle
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2472-        \\  fn update(state, message)
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2473-        \\    case message
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2474-        \\      Chunk(bytes):
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2475-        \\        state.bytes = state.bytes.concat(bytes)
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2476-        \\        state.chunks += 1
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2477-        \\      Closed:
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2478-        \\        state.closed += 1
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2479-        \\      Idle:
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2480-        \\        state.closed += 100
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2481-        \\    end
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2482-        \\  end
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2483-        \\end
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2484-        \\supervisor Top
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2485-        \\  child Ends, restart: :always
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2486-        \\end
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2487-    );
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2488-    var machine: Vm = .init(arena, program, 1);
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2489-    var sim: Sim = .seeded(&machine, 1, "chunks directional eof", 0);
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2490-    machine.sim = &sim;
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2491-    sim.packs = true;
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2492-    try sim.fixture.conns.append(arena, .{ .peer = 1 });
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2493-    try sim.fixture.conns.append(arena, .{ .peer = 0 });
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2494-    try sim.fixture.conns.items[0].inbound.appendSlice(arena, "abc");
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2495-    sim.fixture.conns.items[1].write_closed = true;
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2496-    const id = try sim.start(0, &.{});
+1839785eead517324e63232dc2261a5be8882dc2:toolchain/src/sim.zig-2497-    for ([_]i128{ 0, 65_537, std.math.maxInt(u64) }) |bad_max| {

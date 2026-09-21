@@ -1,0 +1,16 @@
+zig-out/mo-build/hostile-fs/hostile-fs
+filesystem_refusal
+filesystem_refusal
+unsupported_entry
+filesystem_refusal
+unsupported_mode
+invalid_path
+invalid_path
+invalid_path
+invalid_path
+invalid_path
+missing_match
+multiple_matches
+empty_old
+oversized
+runtime=binary hostile_direct_cases=14 passed=14

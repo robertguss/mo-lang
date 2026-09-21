@@ -1,0 +1,4 @@
+case=H2_half_close response=true later_request=true operator=true passed
+case=H6_graceful_close execution=completed local_write=completed receipt=unknown cleanup=confirmed operator=true passed
+case=D2_reset execution=completed local_write=failed admission=closed execution_count=1 cleanup=confirmed exit=true operator=true passed
+eof_lifecycle_cases=3 passed=3

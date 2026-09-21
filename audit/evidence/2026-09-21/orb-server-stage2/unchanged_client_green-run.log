@@ -1,0 +1,11 @@
+runtime=run
+client_implementation=workspace_http.client.connect
+client_body_newline_added=false
+client_shutdown_called=false
+production_entry=examples/programs/workspace-server/main.mo
+file_tools=5 passed=5
+journal_calls=5
+operator_freeze=true operator_close=true
+server_exit=0
+server_log_bytes=0
+unchanged_client_actual_server=passed

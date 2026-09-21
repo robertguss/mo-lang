@@ -1,0 +1,16 @@
+case=last_symlink error=filesystem_refusal passed
+case=middle_symlink error=filesystem_refusal passed
+case=hardlink error=unsupported_entry passed
+case=fifo error=filesystem_refusal passed
+case=setuid error=unsupported_mode passed
+case=escape_parent error=invalid_path passed
+case=escape_absolute error=invalid_path passed
+case=escape_empty error=invalid_path passed
+case=escape_dot error=invalid_path passed
+case=escape_back error=invalid_path passed
+case=edit_missing error=missing_match passed
+case=edit_multiple error=multiple_matches passed
+case=edit_empty error=empty_old passed
+case=edit_oversized error=oversized passed
+runtime=run
+hostile_actual_server_cases=14 passed=14

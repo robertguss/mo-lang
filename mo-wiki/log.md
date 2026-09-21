@@ -2817,3 +2817,25 @@
 - Server strict-native and Step44 independent reruns are green after the
   fixture-only timing correction; full server suite and worker socket stages
   continue. Memory focused fixture corrections continue. Neither is accepted.
+
+## [2026-09-21] verify | server green, memory full RED, source gates held
+
+- At 12:22 AM ET, independent server full corpus278/278 and both-runtime live
+  checks passed. Raw logs/exits are under orb-server-stage2 for this date.
+  Oracle found no production correctness blocker within part-A limits, but
+  benchmark nested-group/startup cleanup blocks measurements.
+- Independent fixed-memory413 validation stopped at288/289, one seeded-packed
+  chunks crash; ASan not run. Raw worker evidence was downloaded and inspected
+  under orb-memory-normal. Oracle approved the trace contract correction, not
+  runtime acceptance.
+- Source521d15c9 still needs deterministic, safe blocking-error controls and
+  ordinary native lifecycle execution beside audited execution. Sourced14be7cf
+  benchmark controls have unsafe RED/fallback ownership and a readiness parser
+  error; per-Mo RSS supervision is still absent. Corrections are assigned under
+  source-only grants. No mutants, ASan or measurements authorized.
+- Wiki lint exited0 with existing size/notices; git diff --check passed.
+- Follow-up93b56f2d repairs handshake/normal-native coverage, but acknowledgment
+  must follow the final Job write. Benchmark81eb48e7 reports unsafe RED removal;
+  lead/Oracle grant source-only owned-child RSS watcher under the explicit
+  schedulable-driver premise, with bounded fail-closed probe/reap/join controls.
+  Neither change is an execution grant.

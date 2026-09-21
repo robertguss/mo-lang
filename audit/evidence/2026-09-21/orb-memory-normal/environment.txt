@@ -1,0 +1,36 @@
+date_utc=2026-09-21T03:55:17+00:00
+date_et=2026-09-20T23:55:17-04:00
+uname=Linux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Tue Jul 28 15:38:05 UTC 2026 x86_64 GNU/Linux
+zig_path=/usr/local/bin/zig
+zig_version=0.16.0
+clang_path=/usr/bin/clang
+clang_version: Debian clang version 14.0.6
+clang_version: Target: x86_64-pc-linux-gnu
+clang_version: Thread model: posix
+clang_version: InstalledDir: /usr/bin
+clang_realpath=/usr/lib/llvm-14/bin/clang
+package=clang version=1:14.0-55.7~deb12u1
+package=clang-14 version=1:14.0.6-12
+package=libc6 version=2.36-9+deb12u14
+package=libc6-dev version=2.36-9+deb12u14
+package=libclang-rt-14-dev version=1:14.0.6-12
+asan_runtime_files:
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-i386.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-i386.so
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-preinit-i386.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-preinit-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan-x86_64.so
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan_cxx-i386.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan_cxx-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan_static-i386.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.asan_static-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.gwp_asan-i386.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.gwp_asan-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.hwasan-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.hwasan-x86_64.so
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.hwasan_aliases-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.hwasan_aliases-x86_64.so
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.hwasan_aliases_cxx-x86_64.a
+/usr/lib/llvm-14/lib/clang/14.0.6/lib/linux/libclang_rt.hwasan_cxx-x86_64.a
+PATH=/home/user/.amp/bin:/opt/git/bin:/home/user/.local/bin:/home/user/.local/bin:/home/user/.local/bin:/usr/local/bin:/usr/bin:/bin

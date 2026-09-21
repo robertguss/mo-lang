@@ -1,0 +1,7 @@
+zig-out/mo-build/main/main
+module=main.mo kind=build exit=0 executables=1
+zig-out/mo-build/double/double
+module=double.mo kind=build exit=0 executables=1
+zig-out/mo-build/hostile-fs/hostile-fs
+module=hostile_fs.mo kind=build exit=0 executables=1
+kind=build modules=3 failures=0

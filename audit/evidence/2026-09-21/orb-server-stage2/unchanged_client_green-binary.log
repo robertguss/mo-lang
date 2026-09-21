@@ -1,0 +1,15 @@
+guarded cwd=/tmp/mo-unchanged-client-green-lpeuxiw0
+guarded argv=['python3', '/tmp/mo-lead-orb-server/toolchain/bench/step36/guard.py', '180', '--', '/tmp/mo-lead-orb-server/toolchain/zig-out/bin/mo', 'build', '/tmp/mo-lead-orb-server/examples/programs/workspace-server/main.mo', '-o', 'workspace-server']
+zig-out/mo-build/workspace-server/workspace-server
+guarded exit=0
+runtime=binary
+client_implementation=workspace_http.client.connect
+client_body_newline_added=false
+client_shutdown_called=false
+production_entry=examples/programs/workspace-server/main.mo
+file_tools=5 passed=5
+journal_calls=5
+operator_freeze=true operator_close=true
+server_exit=0
+server_log_bytes=0
+unchanged_client_actual_server=passed

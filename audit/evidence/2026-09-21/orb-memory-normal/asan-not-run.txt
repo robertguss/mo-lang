@@ -1,0 +1,2 @@
+NOT RUN: required stop-first rule triggered by normal `test-corpus` failure (normal.exit=1).
+Consequently there is no ASan smoke result, explicit n10 ASan result, or instrumentation claim.

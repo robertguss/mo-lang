@@ -1,7 +1,7 @@
 ---
 title: "Roadmap: now, next, later"
 created: 2026-09-12
-updated: 2026-09-20
+updated: 2026-09-21
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -29,6 +29,14 @@ controls. Memory parts A–D and server are in bounded runtime verification;
 unchanged direct controls; failed cleanup now returns125. Last documented Darwin
 acceptance: Step44, **272/272** plus30 controls. No live-provider task or Pi
 comparison yet.
+
+**21 Sep, 12:22 AM ET:** server independent full278/278 and both-runtime live
+checks pass; benchmark supervision/RSS protocol remains blocked. Memory full
+normal validation stopped at288/289, one seeded-packed trace crash; no ASan ran.
+Source correction is reviewed, but lifecycle/control corrections are still
+required before focused execution. Both candidates remain outside accepted main.
+Next: review bounded corrections, then safe measurements/normal validation; no
+mutant, ASan or measurement grant follows from the current green subsets.
 
 | board                        | current work                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

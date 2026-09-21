@@ -59,14 +59,42 @@ directly. Failed/unknown supervision or cleanup returns125, also for standalone
 guard; zombie-only is not literal absence. Evidence: orb-wrapper/ for this date.
 Direct-child RSS and process groups are still not container isolation.
 
-Memory4e1be90e built5/5; pack/A/runnable/B/trace passed before commit-I stopped
-on test-fixture MO0101. Worker corrects fixture syntax under existing grant.
-Serveref09dc31 passed independent metadata15, fixed44, strict9/9 zero-fault,
-production35/3/3 with5% faults, strict native2/2 and Step44 2/2. Full native
-suite is running in /tmp/mo-lead-orb-server; worker has staged broader
-correctness/socket grants, no benchmarks. Neither memory nor server is accepted.
-The test-rejects assertion-masking defect is reproduced and queued separately;
+Checkpoint 21 Sep, 12:22 AM ET: serveref09dc31 independently passed full native
+corpus278/278 and all Stage2 checks in both runtimes: builds3, compatible11,
+client5, hostile14/directFs14, request2, EOF3, size15 modules. Oracle found no
+remaining production correctness blocker. It found benchmark
+startup/nested-group cleanup gaps; source-only benchmark repair is assigned to
+the same server worker. No measurements are granted. Removing inner guards also
+removes per-Mo RSS sampling; resolve that before execution. F1 unavailable, F3
+temporary whole-run Fs exception, partB and excluded lifecycle predicates remain
+explicit. Candidate stays in /tmp/mo-lead-orb-server, not main.
+
+Memory413e006c focused positives passed, but fresh validation worker
+T-01a0c217-68f4-70c6-84b5-8283e6125331 stopped full normal corpus at288/289, one
+crash: seeded chunks with packs violates the new trace assertion. No ASan ran.
+Oracle directs trace reserve/append only in seeded no-packs mode, while
+retaining all seeded scheduling in packed mode. Implementation worker has
+source-only correction authority and lifecycle/control work; fresh normal
+validation precedes ASan. Seven obligations remain. Neither candidate is
+accepted. Raw checkpoints: audit/evidence/2026-09-21/orb-server-stage2/ and
+orb-memory-normal/. Both correction workers must return source for review. The
+test-rejects assertion-masking defect is reproduced and queued separately;
 server uses an external positive lifecycle oracle, not the false-green test.
+
+Latest source rechecks: memory93b56f2d fixes handshake and normal/audit native
+execution, but completion_ack precedes final Job access. Worker must move ack
+after final done store using captured external lifetime, retain both return
+interlocks, update mutants and complete Zig nested-payload assertions. Source
+recheck before any positives. Trace correction is sound, not full acceptance.
+Benchmark81eb48e7 reportedly removes unsafe RED/fallback and hard-blocks
+execution. Lead/Oracle authorize source-only per-owned-Popen RSS watcher: one
+owner of poll/signal/reap, same4GiB sampled threshold, bounded fail-closed
+probes and join, no groups/scans/janitor. Trusted premise: driver/watcher remain
+schedulable; SIGSTOP control targets only Mo child. Not hard/aggregate
+containment. Synthetic controls must prove watcher failure/cleanup,
+missing-vs-failure and normal exit. No execution grant. Candidates remain only
+in lead verification worktrees; 81eb48e7 bundle still needs downloading
+(previous integrated serverd14be7cf).
 
 Review their replies and fixed bundles in this thread; do not create
 replacements for the same assignment. Further grants follow exact evidence and

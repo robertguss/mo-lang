@@ -1,0 +1,16 @@
+STOP: required normal lane failed; ASan lane was not started.
+
+Observed result:
+- command exit: 1
+- Build Summary: 3/5 steps succeeded (1 failed); 288/289 tests passed (1 crashed)
+- failing test: sim.test.chunks drains pending fixture bytes before one directional EOF and leaves reverse writes open
+- assertion: toolchain/src/sim.zig:1040 `!sim.packs and message.parcel == null`
+- caller: sources.zig:255 send -> sources.zig:459 chunksFixture -> sim.zig:976 round -> sim.zig:955 drain -> sim.zig:942 finish
+
+Source cause at fixed candidate 413e006cc4eba3c7b669bf950754dbe5770fb509:
+- The pre-existing test deliberately constructs `Sim.seeded(...)` (therefore schedule != null) and then sets `sim.packs = true` before its fixture source emits chunks.
+- Candidate commit b11bd18608bd70c518016d075635620f68448fc7 added an enqueue assertion that seeded scheduling and packed messages are disjoint: `assert(!sim.packs and message.parcel == null)` whenever schedule != null.
+- Candidate sources.zig now packs fixture-source messages whenever sim.packs is true and passes that parcel to enqueue.
+- Therefore the unchanged packed+seeded fixture regression necessarily trips the new assertion when finish pumps the first pending Chunk. This is a candidate-internal contract/test incompatibility, not accepted-main infrastructure: candidate and integrated build/runtime/src bytes are identical, and main changed no candidate path.
+
+No production files were fixed or modified. Per brief, stopped before filtered ASan smoke and explicit ASan native build/run/instrumentation probes.

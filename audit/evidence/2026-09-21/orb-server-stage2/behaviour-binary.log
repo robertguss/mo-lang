@@ -1,0 +1,20 @@
+zig-out/mo-build/workspace-server-double/workspace-server-double
+LOCAL SUBPROCESS DOUBLES; NOT REAL WORKSPACE ACCEPTANCE
+target=python3 /tmp/mo-lead-orb-server/toolchain/bench/step36/guard.py 120 -- /tmp/mo-behaviour-binary-ofq1811o/build/zig-out/mo-build/workspace-server-double/workspace-server-double
+groups=six-tools,schema,framing,byte-bounds,identities-capability,duplicate-calls,concurrent-admission,file-refusals,deadlines,journal-order-bound,shutdown
+test_six_tools (local.Controls.test_six_tools) ... ok
+test_schema (local.Controls.test_schema) ... ok
+test_framing (local.Controls.test_framing) ... ok
+test_byte_bounds (local.Controls.test_byte_bounds) ... ok
+test_identities_capability (local.Controls.test_identities_capability) ... ok
+test_duplicate_calls (local.Controls.test_duplicate_calls) ... ok
+test_concurrent_admission (local.Controls.test_concurrent_admission) ... ok
+test_file_refusals (local.Controls.test_file_refusals) ... ok
+test_deadlines (local.Controls.test_deadlines) ... ok
+test_journal_order_bound (local.Controls.test_journal_order_bound) ... ok
+test_shutdown (local.Controls.test_shutdown) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 21.276s
+
+OK

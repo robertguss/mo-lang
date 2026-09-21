@@ -1,0 +1,116 @@
+{
+  "features_added": [
+    "four durable observations plus cleanup",
+    "independent operator listener and token",
+    "source/verifier hash binding",
+    "byte-oriented framing and explicit EOF/delivery controls"
+  ],
+  "features_dropped": [
+    "command through Exec, container policy, machine lifecycle, and protected verification are part B",
+    "Python subprocess/orb controller lifecycle is not implemented by this local part-A server"
+  ],
+  "mo_module_count": 15,
+  "mo_modules_source_and_embedded_tests": {
+    "admission.mo": {
+      "embedded_tests": 20,
+      "source": 105
+    },
+    "connection.mo": {
+      "embedded_tests": 51,
+      "source": 413
+    },
+    "door.mo": {
+      "embedded_tests": 5,
+      "source": 34
+    },
+    "double.mo": {
+      "embedded_tests": 0,
+      "source": 25
+    },
+    "envelope.mo": {
+      "embedded_tests": 42,
+      "source": 163
+    },
+    "hostile_fs.mo": {
+      "embedded_tests": 0,
+      "source": 52
+    },
+    "journal.mo": {
+      "embedded_tests": 6,
+      "source": 143
+    },
+    "main.mo": {
+      "embedded_tests": 0,
+      "source": 25
+    },
+    "operator.mo": {
+      "embedded_tests": 4,
+      "source": 138
+    },
+    "schema.mo": {
+      "embedded_tests": 46,
+      "source": 161
+    },
+    "server.mo": {
+      "embedded_tests": 7,
+      "source": 114
+    },
+    "strict.mo": {
+      "embedded_tests": 167,
+      "source": 33
+    },
+    "tools.mo": {
+      "embedded_tests": 68,
+      "source": 222
+    },
+    "wire.mo": {
+      "embedded_tests": 44,
+      "source": 119
+    },
+    "worker.mo": {
+      "embedded_tests": 13,
+      "source": 149
+    }
+  },
+  "python_file_dispatch_complete_blocks": {
+    "dispatch": 86
+  },
+  "python_production": {
+    "toolchain/harness/executor/workspace_http/bridge.py": 312,
+    "toolchain/harness/executor/workspace_http/owner.py": 185,
+    "toolchain/harness/executor/workspace_http/protocol.py": 117
+  },
+  "python_test_files": {
+    "toolchain/harness/executor/test_workspace.py": {
+      "embedded_tests": 176,
+      "source": 47
+    },
+    "toolchain/harness/executor/workspace_http/local.py": {
+      "embedded_tests": 281,
+      "source": 174
+    },
+    "toolchain/harness/executor/workspace_http/test_owner.py": {
+      "embedded_tests": 0,
+      "source": 126
+    }
+  },
+  "python_workspace_files_complete_blocks": {
+    "exact_edit": 23,
+    "inventory": 33,
+    "list_files": 2,
+    "read_file": 8,
+    "search": 15,
+    "write_file": 3
+  },
+  "runners": {
+    "behaviour.py": 39,
+    "benchmark.py": 136,
+    "eof_controls.py": 180,
+    "hostile_fs.py": 114,
+    "hostile_server.py": 163,
+    "journal_down_control.py": 115,
+    "request_controls.py": 74,
+    "unchanged_client_green.py": 170,
+    "verify.py": 151
+  }
+}

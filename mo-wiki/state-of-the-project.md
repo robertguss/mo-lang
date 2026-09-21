@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-20
+updated: 2026-09-21
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -53,14 +53,24 @@ unknown cleanup now returns125 even if the child itself succeeded. The
 supervisor and wrapper share one payload owner; process-group containment still
 excludes escaped sessions and is not a machine sandbox.
 
-Server fixed44 and strict9/9/production35/3/3 simulation gates pass
-independently; strict native and Step44 gates also pass after correcting a
-fixture-clock mismatch. Full native suite and broader socket verification
-continue. Its expected-crash test revealed assertion masking in the shared test
-runner; an external positive lifecycle oracle replaces that false-green control.
-The runner defect remains queued. Memory built5/5 and passed its first five
-focused checks before a new fixture syntax error stopped the sequence. Neither
-candidate is accepted yet.
+**21 Sep, 12:22 AM ET:** server correctness now passes independently: full
+native corpus278/278, three builds, and both runtimes' compatible11, client5,
+hostile14/directFs14, request2 and EOF3 controls. Oracle found no remaining
+production correctness blocker within part-A limits. Measurements remain blocked
+on benchmark startup/nested-group supervision; the source repair must also
+resolve the loss of per-Mo RSS sampling before execution. F1 historical source
+is unavailable and F3 remains a temporary whole-run Fs trust exception. The
+shared test-runner assertion-masking defect remains queued; the server uses an
+external lifecycle oracle instead.
+
+Memory413e006c failed its fresh normal full suite:288/289, one crash in seeded
+packed chunks. No ASan ran. The source trace fix now preserves seeded scheduling
+while omitting packed trace borrows. Recheck of93b56f2d confirms handshake and
+normal/audited native coverage fixes, but the independent acknowledgment still
+precedes the worker's final Job access. That ordering correction remains
+source-only; all seven obligations remain. Benchmark watcher implementation is
+also source-only, under an explicit trusted-driver scheduling premise. Neither
+candidate is accepted or merged.
 
 **Historical acceptance, 20 Sep 2026, 8:30 AM ET:** [[interpreter-step-44]] is
 accepted on Darwin, merged locally at **db515f9b** after independent
