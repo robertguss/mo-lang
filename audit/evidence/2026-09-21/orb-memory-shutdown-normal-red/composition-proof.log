@@ -1,0 +1,12 @@
+bundle_sha256=d9c175b6bddc4f6e90791f29753d683f05108d76cbe3f19d03664544ee8259a7
+bundle_size=109298
+integrated=f86da977436540cc62fba73e4bd94ca15ca2552b
+accepted_base=b52cac15cf4a3c19f29944214b0cf24a0fcd5b8f
+candidate=d2a9541f4cc9bb84df02587983ee02562b87c2cc
+candidate_parent=3457fdf21e497f6b916b182426978e8952164a09
+candidate_path_count=57 mismatches=0
+runtime=100644 3d2ade0e1e9b9b2ab9ff147109de6ba6979ea100 0	toolchain/runtime/mo_rt.c
+guard=100755 711862a7018e37a0925c351a2bfbc60df5bbdfd7 0	toolchain/bench/step36/guard.py
+guarded=100644 c7f911f3456a863f6420429e8268768e1afba85f 0	toolchain/harness/executor/guarded.py
+tracked_diff_count=0
+index_diff_count=0

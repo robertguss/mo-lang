@@ -1,0 +1,49 @@
+test-corpus
++- run test 1 pass, 1 fail (2 total)
+error: 'corpus.test.corpus: step 42 shutdown retires only completed pooled fibers' failed:
+       step42 case=shutdown-fibers-build term=.{ .exited = 0 } stdout=zig-out/mo-build/shutdown-fibers/shutdown-fibers
+        stderr=
+       step42 case=shutdown-fibers-empty-one-scheduler-interp term=.{ .exited = 11 } stdout=empty pool
+        stderr=
+       step42 case=shutdown-fibers-empty-one-scheduler-native term=.{ .exited = 11 } stdout=empty pool
+        stderr=
+       step42 case=shutdown-fibers-empty-multi-scheduler-interp term=.{ .exited = 11 } stdout=empty pool
+        stderr=
+       step42 case=shutdown-fibers-empty-multi-scheduler-native term=.{ .exited = 11 } stdout=empty pool
+        stderr=
+       step42 case=shutdown-fibers-pooled-and-parked-one-scheduler-interp term=.{ .exited = 23 } stdout=completed pool; parked 0
+        stderr=
+       
+       ====== expected this output: =========
+       completed pool; parked 12
+       ␃
+       
+       ======== instead found this: =========
+       completed pool; parked 0
+       ␃
+       
+       ======================================
+       First difference occurs on line 1:
+       expected:
+       completed pool; parked 12
+                              ^ ('\x31')
+       found:
+       completed pool; parked 0
+                              ^ ('\x30')
+       /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:682:9: 0x13abad5 in expectEqualStrings (std.zig)
+               return error.TestExpectedEqual;
+               ^
+       /home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/src/corpus.zig:2234:9: 0x13ad077 in test.corpus: step 42 shutdown retires only completed pooled fibers (root.zig)
+               try std.testing.expectEqualStrings(c.want, interp.stdout);
+               ^
+failed command: MO_EXE=/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/zig-out-s2/bin/mo MO_CORPUS=1 ./.zig-cache-s2/o/78d0c9ea9eb57ee81cbff7b84bd7ce1c/test --cache-dir=./.zig-cache-s2 --seed=0xd79c428 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 1s MaxRSS:196M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache-s2/o/bc0619dbfa9da73f98952af8d0005a12/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /home/user/workspace/verify-memory-d2a9541f-stage2/toolchain .zig-cache-s2 /home/user/workspace/verify-memory-d2a9541f-stage2/.zig-global-cache-s2 --seed 0xd79c428 -Zbfafc709941d1cf5 test-corpus -j4 --prefix /home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/zig-out-s2 -Dtest-filter=corpus: step 42 shutdown retires only completed pooled fibers --summary all

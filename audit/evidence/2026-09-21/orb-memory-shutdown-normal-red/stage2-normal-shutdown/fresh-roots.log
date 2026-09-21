@@ -1,0 +1,10 @@
+/home/user/workspace/verify-memory-d2a9541f-stage2/.mo-cache-s2 absent_before=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/.zig-cache-s2 absent_before=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/.zig-global-cache-s2 absent_before=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/zig-out-s2 absent_before=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/zig-out absent_before=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/zig-out-s2/bin/zig absent_before=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/.mo-cache-s2 created_empty=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/.zig-cache-s2 created_empty=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/.zig-global-cache-s2 created_empty=yes
+/home/user/workspace/verify-memory-d2a9541f-stage2/toolchain/zig-out-s2 created_empty=yes

@@ -1,0 +1,12 @@
+pgid:
+    PID    PPID    PGID STAT COMMAND
+pgid_exit=1
+scoped_count=0
+zombies=0
+    PID    PPID    PGID STAT COMMAND
+pid_370164_exit=1
+    PID    PPID    PGID STAT COMMAND
+pid_370167_exit=1
+    PID    PPID    PGID STAT COMMAND
+pid_370948_exit=1
+prefix_zig=ABSENT

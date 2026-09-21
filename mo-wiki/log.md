@@ -3127,3 +3127,13 @@
   guarded filters released: normal compiler/shutdown, ASan lifecycle/shutdown.
   Independently fresh roots, exact prior environment, strict outputs and
   per-stage cleanup; stop-first. No new results or acceptance yet.
+
+## [2026-09-21] verify | 9:38 AM ET, shutdown synchronization RED
+
+- d2a9541f stage1 passes2/2; stage2 fails1/2 after four empty-mode passes. First
+  mixed interpreter prints parked0, expected12. No ASan stages ran. Lead
+  verified archive/manifest and cleanup; raw text receipts preserved.
+- Lead/Oracle trace main settlement and immediate asks: polling inside one
+  top-level branch observes before queued Waiters run. Source-only deferred
+  Ready barrier plus one HeldCount correction assigned; exact expectations,
+  marker invariant and runtime unchanged. No retries or acceptance.

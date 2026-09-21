@@ -167,6 +167,17 @@ no skips, full raw receipts and certain cleanup. Preserve exact Clang14/UAR/LSan
 controls, all8 shutdown and all4 lifecycle results, per-ASan-stage artifact
 proofs. Stop-first, no retry/edits/broader gates. No new runtime result yet.
 
+21 Sep, 9:38 AM ET: d2a9541f/f86da977 stage1 normal control GREEN2/2; stage2
+shutdown RED1/2. Four empty runtime cases pass; first mixed interp1 prints
+parked0 instead of12. Cleanup certain; ASan stages3/4 not run. Archive and full
+manifest verified, raw evidence orb-memory-shutdown-normal-red. Lead/Oracle
+trace: top-level-if settlement occurs after printing; direct Gate polls never
+force queued Waiters to run. Source-only fixture correction assigned: deferred
+Ready barrier at twelve held replies, then one HeldCount confirmation; bounded
+main asks and explicit failure branch, invariant/runtime/oracles intact. No
+extra handle roots, sleeps, forced stress or relaxed expected counts. Return
+source before execution; prior LSan RED remains open.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
