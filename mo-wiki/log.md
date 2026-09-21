@@ -2879,3 +2879,12 @@
 - Oracle recognizes normal gate only. Source-only ASan/stress readiness packet
   assigned for hidden stderr and effective child-mode coverage; no execution or
   implementation grant. Seven obligations remain, candidate off main.
+
+## [2026-09-21] review | raw-ASan readiness source correction
+
+- Direct source inspection and Oracle support A+B source authoring only: parent
+  environment copy/overrides and quiet ASan compiler checks at every stage
+  before cache publication. Ordinary mode remains unchanged.
+- Large report capture remains design-only, retaining outer process group and
+  original memory threshold. No execution granted; prior301/301 is not proof of
+  the next source revision. Seven obligations remain unwaived.

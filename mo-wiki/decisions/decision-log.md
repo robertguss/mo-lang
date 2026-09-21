@@ -2083,6 +2083,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- | -------- | --------------------------------------------------- |
 | Exact194f1969 normal suite passes301/301, exit0, no skips/crashes,17 audit balances/live0 and literal owned-group absence. Recognize normal gate only; no Step42 acceptance. Next source-only ASan/stress readiness packet must map discarded diagnostics and effective child modes before any correction/execution grant. Seven obligations unwaived. | Amp lead with Oracle | recorded | audit/evidence/2026-09-21/orb-memory-full-71a4fafc/ |
 
+### Raw-ASan readiness source correction
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                          | who                  | status  | first tested by                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ------------------------------------------ |
+| Authorize source-only A+B: inherited environment copy plus case overrides at five corpus sites; ASan-mode quiet compiler policy across runtime, both bricks and final link before cache publication, preserving ordinary behavior. C requires exact report/capture design first, no nested process groups or RSS waiver. No execution; existing301/301 applies only to prior revision. `semantic` | Amp lead with Oracle | decided | pending fixed source and negative controls |
+
 ## Related
 
 - [[session-05]]

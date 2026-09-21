@@ -122,6 +122,16 @@ need coverage mapping. Propose minimal corrections, no implementation or
 execution yet. Seven obligations remain unwaived; no ASan/stress/mutants or
 timing release. Prior REDs retained; candidate remains off main.
 
+Readiness packet reviewed with Oracle: source-only A+B now authorized in
+corpus.zig/cbuild.zig and their controls. Copy parent environments then overlay
+case controls (no incomplete allowlist). ASan-mode runtime, both brick and final
+compiler invocations must exit0 with empty streams before cache publication;
+ordinary behavior unchanged, bricks remain uninstrumented. No execution yet. C
+stays design-only: independent exact large-report oracle, file-backed capture,
+bounded wait and retention; children stay in outer guard group. Preserve
+original RSS threshold/counts under ASan. Source reread precedes any validation
+grant.
+
 Benchmark72a49307 watcher synthetic passes worker11/11 and independent lead11/11
 at integrated4161f7b9, literal absent group/zero exits, exact result and command
 receipt hash verified. Evidence:
