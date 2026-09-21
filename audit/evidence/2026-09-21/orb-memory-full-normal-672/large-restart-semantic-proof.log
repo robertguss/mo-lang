@@ -1,0 +1,2 @@
+interpreter: before=25370624 after=25432064 increase=61440 strict_under_16777216=true restarts=25 kept=1 completed_reaped_exit0_errors_null=true bytes_hash_cmp_eof=true
+native: before=7843840 after=12161024 increase=4317184 strict_under_16777216=true restarts=25 kept=1 completed_reaped_exit0_errors_null=true bytes_hash_cmp_eof=true

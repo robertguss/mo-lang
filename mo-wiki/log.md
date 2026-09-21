@@ -3156,3 +3156,12 @@
   directguard7200 on same7dcf48ac, fresh roots/capture, expected310 inventory
   with strict large-restart/parcel/shutdown/lifecycle receipts. No broader ASan,
   separate exhaustive stress, mutants, timing or acceptance.
+
+## [2026-09-21] verify | 10:32 AM ET, exact full NORMAL310 green
+
+- Lead/Oracle independently verified both archives/manifests, raw310/310, exact
+  restart bytes/RSS, parcel9+9, shutdown8/fiber4 and certain cleanup. Preserve
+  expected diagnostics/formatter artifacts; no suite timing claim.
+- Normal evidence only. Source-only diagnostic-contract readiness assigned for
+  generic/module, surface/crash-kept and large/n10 build paths. No edits or
+  execution released; known discarded-child-stream gaps block broader ASan.

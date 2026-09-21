@@ -1,0 +1,11 @@
+head=7dcf48acabaf4b5623021baeb08d0de132943003
+candidate=672b1b54aa799ebc38a915d62f8eaa350ecb7d9d
+accepted=7ee9edc2cca78578ffa29d313a0ac1b3cdc64547
+candidate_paths=57 mismatches=0
+100755 711862a7018e37a0925c351a2bfbc60df5bbdfd7 0	toolchain/bench/step36/guard.py
+100644 c7f911f3456a863f6420429e8268768e1afba85f 0	toolchain/harness/executor/guarded.py
+100644 3d2ade0e1e9b9b2ab9ff147109de6ba6979ea100 0	toolchain/runtime/mo_rt.c
+100644 4947cbfe1527331d629194ca959526706a137d7d 0	toolchain/src/corpus.zig
+tracked=0 index=0
+corpus_test_inventory=25
+inventory_note=corpus_test_inventory above counts Zig test declarations only; harness case inventory is independently reconciled from executed summary and source inventory as 310

@@ -1,0 +1,33 @@
+normal_receipts=9
+audit_receipts=9
+audit_balance_receipts=9
+all_allocated_positive=True
+all_allocated_equal_destroyed=True
+all_live_zero=True
+step42 case=parcel-lifecycle-waiter-normal term=.{ .exited = 0 } stdout=waiter: nested payload exact
+step42 case=parcel-lifecycle-timeout-normal term=.{ .exited = 0 } stdout=timeout: Error(Timeout)
+step42 case=parcel-lifecycle-due-down-normal term=.{ .exited = 0 } stdout=due-down: armed then Down
+step42 case=parcel-lifecycle-exit-later-normal term=.{ .exited = 3 } stdout=exit-later: armed exact
+step42 case=parcel-lifecycle-push-after-exit-normal term=.{ .exited = 4 } stdout=push-after-exit: scheduled after exit
+step42 case=parcel-lifecycle-crash-transaction-normal term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+step42 case=parcel-lifecycle-restart-drop-normal term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+step42 case=parcel-lifecycle-log-eviction-normal term=.{ .exited = 0 } stdout=log-eviction: all 16 asymmetric labels exact
+step42 case=parcel-lifecycle-end-normal term=.{ .exited = 0 } stdout=end: nested start and log exact
+step42 case=parcel-lifecycle-waiter-audit term=.{ .exited = 0 } stdout=waiter: nested payload exact
+step42 case=parcel-lifecycle-timeout-audit term=.{ .exited = 0 } stdout=timeout: Error(Timeout)
+step42 case=parcel-lifecycle-due-down-audit term=.{ .exited = 0 } stdout=due-down: armed then Down
+step42 case=parcel-lifecycle-exit-later-audit term=.{ .exited = 3 } stdout=exit-later: armed exact
+step42 case=parcel-lifecycle-push-after-exit-audit term=.{ .exited = 4 } stdout=push-after-exit: scheduled after exit
+step42 case=parcel-lifecycle-crash-transaction-audit term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+step42 case=parcel-lifecycle-restart-drop-audit term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+step42 case=parcel-lifecycle-log-eviction-audit term=.{ .exited = 0 } stdout=log-eviction: all 16 asymmetric labels exact
+step42 case=parcel-lifecycle-end-audit term=.{ .exited = 0 } stdout=end: nested start and log exact
+MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+MO_TEST_PARCEL_AUDIT allocated=4 destroyed=4 live=0
+MO_TEST_PARCEL_AUDIT allocated=6 destroyed=6 live=0
+MO_TEST_PARCEL_AUDIT allocated=5 destroyed=5 live=0
+MO_TEST_PARCEL_AUDIT allocated=2 destroyed=2 live=0
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+MO_TEST_PARCEL_AUDIT allocated=19 destroyed=19 live=0
+MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0

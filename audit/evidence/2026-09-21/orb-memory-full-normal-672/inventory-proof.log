@@ -1,0 +1,7 @@
+baseline69_src_test_declarations=309
+candidate_src_test_declarations=310
+added shutdown declaration:
++test "corpus: step 42 shutdown retires only completed pooled fibers" {
+executed:
+Build Summary: 5/5 steps succeeded; 310/310 tests passed
++- run test 310 pass (310 total) 9m MaxRSS:554M

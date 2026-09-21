@@ -1,0 +1,31 @@
+RESULT: GREEN for the one authorized unfiltered NORMAL corpus run on exact integration 7dcf48acabaf4b5623021baeb08d0de132943003. This is not acceptance and makes no suite timing claim.
+
+Identity and inventory
+- source candidate 672b1b54aa799ebc38a915d62f8eaa350ecb7d9d on accepted 7ee9edc2cca78578ffa29d313a0ac1b3cdc64547
+- 57/57 candidate paths byte/mode equal; runtime and accepted guard blobs exact; tracked/index clean before and after
+- source inventory: baseline69 had 309 Zig tests; candidate has 310, with the one added shutdown test
+- actual exit 0; Build Summary 5/5; 310/310 tests passed; no skips
+
+Large restart
+- expected, interpreter, and native stderr are each 90006894 bytes, SHA256 a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28, cmp-equal, newline EOF, and contain exactly 25 crash reports
+- both metadata records: completed, reaped, exited 0, all primary/observation/signal/reap/cleanup/stat errors null
+- interpreter stdout: 25 restarts, kept 1, RSS 25370624 -> 25432064, strict positive increase 61440 < 16777216
+- native stdout: 25 restarts, kept 1, RSS 7843840 -> 12161024, strict positive increase 4317184 < 16777216
+
+Step42 receipts
+- all 9 normal and 9 audit parcel-lifecycle receipts present with expected exits/diagnostics
+- all 9 audit allocation balances have allocated>0, allocated=destroyed, live=0
+- shutdown build plus all 8 interpreter/native cores1/2 receipts are exact: empty exit11/"empty pool\n" and mixed exit23/"completed pool; parked 12\n", child stderr empty
+- fiber lifecycle build plus all 4 interpreter/native n70/n20 receipts are exact, exit0, child stderr empty
+- positive crash/guard controls present: 16 guard-killed records, two 8-of-8 summaries, six expected parcel crash diagnostics
+- no unexpected sanitizer, UB, segmentation, panic, warning, or error diagnostic tokens
+- successful Zig captured-stream formatter artifacts are retained verbatim and reconciled against actual exit0/5of5/310of310
+
+Cleanup
+- owned PGID 441615 absent (header only, ps exit 1)
+- scoped process count 0, zombie count 0, known guard/build/compiler PIDs absent
+- prefix/bin/zig absent; post-run tracked/index clean
+
+Archives
+- the raw 270028187-byte retained capture tree is packaged separately with all nine files and hashes
+- the evidence archive holds exact command/environment, split logs, real exit, identity/inventory, semantic proofs, process receipts, capture manifest/hash, and prior archive hashes

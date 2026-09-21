@@ -1,0 +1,3 @@
+expected.stderr_process_crashed_reports=25
+interpreter.stderr_process_crashed_reports=25
+native.stderr_process_crashed_reports=25

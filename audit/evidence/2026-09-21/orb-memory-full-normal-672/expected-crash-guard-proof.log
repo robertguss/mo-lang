@@ -1,0 +1,17 @@
+guard_killed_records=16
+guard_8of8_summaries=2
+parcel_expected_crash_diagnostics=6
+step42 case=parcel-lifecycle-due-down-normal term=.{ .exited = 0 } stdout=due-down: armed then Down
+ stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+step42 case=parcel-lifecycle-due-down-audit term=.{ .exited = 0 } stdout=due-down: armed then Down
+ stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+step42 case=parcel-lifecycle-crash-transaction-normal term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+ stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+step42 case=parcel-lifecycle-crash-transaction-audit term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+ stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+step42 case=parcel-lifecycle-restart-drop-normal term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+ stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+step42 case=parcel-lifecycle-restart-drop-audit term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+ stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+---- /home/user/workspace/verify-memory-672b1b54-full-normal/toolchain/zig-out-full-normal/bin/mo: 8 of 8 rounds killed, 8 temporary files left, 6 of them whole (killed between write and rename); the target whole every time
+---- ./zig-out/mo-build/flip/flip: 8 of 8 rounds killed, 7 temporary files left, 3 of them whole (killed between write and rename); the target whole every time

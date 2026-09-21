@@ -195,6 +195,15 @@ integration, no fetch/recomposition/edit/retry. Reconcile310/310, complete
 large25-report captures/strictRSS, parcel9+9 and shutdown/lifecycle results. No
 broader ASan until diagnostic gaps resolved; seven obligations unwaived.
 
+21 Sep, 10:32 AM ET: SAME7dcf48ac full NORMAL310/310 GREEN, actual0/build5/5, no
+skips. Lead/Oracle verified raw logs, both archives/manifests, exact large
+streams/RSS, parcel9+9, shutdown8/fiber4 and cleanup. Evidence:
+audit/evidence/2026-09-21/orb-memory-full-normal-672/. Normal coverage only, not
+acceptance/timing. Validator HOLD. Author assigned source-only diagnostic
+contracts for generic/module, surface/crash-kept and large/n10 build streams;
+derive complete expected outputs and minimal raw retention before assertions. No
+edits or execution; broader ASan remains blocked, seven obligations open.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

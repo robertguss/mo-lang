@@ -1,0 +1,11 @@
+cwd=/home/user/workspace/verify-memory-672b1b54-full-normal/toolchain
+revision=7dcf48acabaf4b5623021baeb08d0de132943003
+MO_CACHE=/home/user/workspace/verify-memory-672b1b54-full-normal/.mo-cache-full-normal
+ZIG_LOCAL_CACHE_DIR=/home/user/workspace/verify-memory-672b1b54-full-normal/toolchain/.zig-cache-full-normal
+ZIG_GLOBAL_CACHE_DIR=/home/user/workspace/verify-memory-672b1b54-full-normal/.zig-global-full-normal
+MO_STEP42_CAPTURE_DIR=/home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal
+MO_NATIVE_ASAN=unset
+MO_STRESS=unset
+MO_CORPUS=unset (test-corpus target supplies case-local corpus control)
+ASAN_OPTIONS=unset and all reviewed sanitizer/loader/compiler/header controls unset
+python3 bench/step36/guard.py 7200 -- zig build test-corpus -j4 --prefix /home/user/workspace/verify-memory-672b1b54-full-normal/toolchain/zig-out-full-normal --summary all

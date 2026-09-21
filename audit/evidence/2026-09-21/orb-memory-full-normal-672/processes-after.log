@@ -1,0 +1,15 @@
+2026-09-21T14:20:35+00:00
+    PID    PPID    PGID STAT COMMAND
+pgid_exit=1
+scoped_count=0
+zombies=0
+    PID    PPID    PGID STAT COMMAND
+pid_441612_exit=1
+    PID    PPID    PGID STAT COMMAND
+pid_441615_exit=1
+    PID    PPID    PGID STAT COMMAND
+pid_442394_exit=1
+    PID    PPID    PGID STAT COMMAND
+pid_442398_exit=1
+prefix_zig_absent=0
+tracked

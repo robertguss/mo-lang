@@ -1,0 +1,15 @@
+fiber-build=exact_once
+fiber-retirement-one-scheduler-interp=exact_once
+fiber-retirement-one-scheduler-native=exact_once
+fiber-caller-reuse-multi-scheduler-interp=exact_once
+fiber-caller-reuse-multi-scheduler-native=exact_once
+shutdown-build=exact_once
+shutdown-empty-one-scheduler-interp=exact_once
+shutdown-mixed-one-scheduler-interp=exact_once
+shutdown-empty-one-scheduler-native=exact_once
+shutdown-mixed-one-scheduler-native=exact_once
+shutdown-empty-multi-scheduler-interp=exact_once
+shutdown-mixed-multi-scheduler-interp=exact_once
+shutdown-empty-multi-scheduler-native=exact_once
+shutdown-mixed-multi-scheduler-native=exact_once
+total_exact_receipts=14

@@ -1,0 +1,12 @@
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  /home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal/nz5Gc_U22X8_pHZr/expected.stderr
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  /home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal/nz5Gc_U22X8_pHZr/interpreter.stderr
+a879d3cf18a5c5544d1d4d348ff627647b8c8d09f160bcb6118f894eced19c28  /home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal/nz5Gc_U22X8_pHZr/native.stderr
+ 90006894 /home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal/nz5Gc_U22X8_pHZr/expected.stderr
+ 90006894 /home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal/nz5Gc_U22X8_pHZr/interpreter.stderr
+ 90006894 /home/user/workspace/verify-memory-672b1b54-full-normal/.step42-captures-full-normal/nz5Gc_U22X8_pHZr/native.stderr
+270020682 total
+expected_interpreter_cmp=0
+expected_native_cmp=0
+expected.stderr_last_byte=10
+interpreter.stderr_last_byte=10
+native.stderr_last_byte=10
