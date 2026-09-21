@@ -119,6 +119,16 @@ bricks/cache. Existing fake control checks per-stage exact counts0/0/0/1 versus
 all0 ordinary/nonLinux. Evidence-only nonPIE tradeoff; sanitizer checks
 unchanged. No retry before source reread.
 
+21 Sep, 8:17 AM ET: lead/Oracle reviewed fa98233e, the exact cbuild-only 10-line
+correction. Full bundle transferred to validator; compose anew on
+accepted6ea9abc6 with all57 candidate identities and accepted guards preserved.
+Two serial directguard1800 stages released: normal exact compiler-entrypoint
+fake control first; only actual0/tests2/2/no skips/certain cleanup permits the
+focused native-fiber ASan test. Independently fresh absolute caches/prefix per
+stage; reviewed Clang14, sanitized environment, UAR/leak options and artifact
+checks unchanged. Stop-first, no retries or broader gates. No new result yet;
+prior309/309 is still prior normal evidence, not acceptance.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

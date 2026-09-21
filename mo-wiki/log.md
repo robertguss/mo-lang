@@ -3074,3 +3074,15 @@
 - Lead/Oracle authorize only Linux-ASan final-link -no-pie plus existing fake
   per-stage control. Ordinary/runtime-object/brick flags and caches unchanged.
   NonPIE is evidence-only, no sanitizer disable. No retry before reread.
+
+## [2026-09-21] review | 8:17 AM ET, serial link-fix validation released
+
+- Lead/Oracle verified fa98233e full bundle and exact cbuild-only 10-line diff.
+  Existing FakeCompiler uses fit four counters; exact placement checks cover
+  ordinary, quiet ASan and noisy-stage prefixes. No source blocker found.
+- Full candidate transferred for new composition on accepted6ea9abc6. One normal
+  compiler-control filter must pass 2/2 with certain cleanup before one focused
+  fiber-ASan run. Each uses directguard1800 and independent fresh roots. Prior
+  environment, instrumentation and strict output gates unchanged.
+- No new runtime result or acceptance. Confirmed completed guard and wrapper
+  threads archived; unfinished memory, validator and server threads retained.
