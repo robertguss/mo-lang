@@ -1,5 +1,24 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
+## PAUSED — 21 Sep 2026, 11:37 AM ET
+
+Robert requested an economical stopping point because his OpenAI subscription is
+running low. The pending source correction has arrived; stop here without
+another Oracle review or execution grant.
+Candidate771635960264263d8180825dda06c8df7429e392 is unreviewed/uncompiled and
+unaccepted, parent f0e9bebc. Author reports only corpus.zig changed (+92/-24),
+correcting unavailable size certification and late-limit/metadata error
+precedence. These claims need lead/Oracle reread on resumption, before any
+bounded control-only grant. All seven obligations open.
+
+Lead verified bundle identity/prerequisite and SHA-256
+976d889aaf2c5da87cffa8d70fe35381f3572eab7508d2bd94bd3def96192e9a. Durable source
+bundle: audit/evidence/2026-09-21/step42-pause-77163596/.
+Requires1839785eead517324e63232dc2261a5be8882dc2. Earlier normal310/310 and
+four-stage green evidence belongs to672b1b54/7dcf48ac, not this correction. No
+candidate code merged; no gates released. Resume from this checkpoint rather
+than restarting the completed investigation. Existing HOLDs remain in effect.
+
 ## START HERE: orb migration, 20 Sep 2026, evening ET
 
 Robert confirms GitHub is up to date. This persistent lead thread is

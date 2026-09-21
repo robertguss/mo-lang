@@ -3194,3 +3194,12 @@
   must not become certified zero lengths; late limit failures must survive
   simultaneous metadata failure. Assigned source-only follow-up and controls.
 - Ten-call scope, supervision limits and all seven obligations unchanged.
+
+## [2026-09-21] pause | 11:37 AM ET, subscription-budget checkpoint
+
+- Robert asked for a stopping point. Pending correction77163596 arrived;
+  preserve it without another Oracle review or execution round.
+- Bundle SHA and prerequisite independently verified; source bundle retained at
+  audit/evidence/2026-09-21/step42-pause-77163596/. Source remains unreviewed,
+  uncompiled and unaccepted. Earlier310/310 does not cover this correction.
+- Resume with bounded source reread. No gate released; seven obligations open.
