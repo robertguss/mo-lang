@@ -140,6 +140,15 @@ through sanitizer protocol before off-stack destruction; never touch parked
 workers, saved VMs or reports. Add shutdown regression source; no execution
 before reread. All seven obligations and prior REDs remain.
 
+21 Sep, 8:59 AM ET: eaaf4dab bundle/diff verified; runtime retirement portion
+passes lead/Oracle source review. Execution still HOLD. New fixture needs only
+corpus corrections: depth4 polling becomes sibling guard/case at depth3, exact
+build-path stdout replaces empty expectation, and undefined empty=empty arms
+become marker mutations guarded by a process invariant. This makes premature
+Waiter completion observable; held reply tokens alone outlive timeouts. Keep
+outer if/else because platform.exit returns normally. No runtime edits, retries
+or acceptance; return source for reread.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

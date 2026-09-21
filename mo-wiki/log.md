@@ -3099,3 +3099,14 @@
   workers, saved VMs and reports excluded; no blanket TLS destruction.
 - No retry or acceptance. Wiki lint:287 pages,29 inherited notices, exit0 at
   preceding release checkpoint; current checkpoint reruns lint before commit.
+
+## [2026-09-21] review | 8:59 AM ET, cleanup source and fixture blockers
+
+- Verified eaaf4dab bundle108252/hash and two-path +133 diff. Runtime cleanup
+  passes source review with Oracle; no execution evidence yet.
+- Returned new corpus test only: remove depth4 nesting, assert actual build-path
+  stdout, replace undefined no-ops with invariant-backed marker mutations so
+  timeout/completion cannot silently count as still parked. Preserve outer else
+  because platform.exit returns. Existing tests and runtime remain unchanged.
+- Execution HOLD; seven obligations unchanged. Previous checkpoint lint passed
+  287 pages/29 inherited notices, exit0.
