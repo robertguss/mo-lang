@@ -1,5 +1,12 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
+Robert now requests full serial moscope acceptance. Oracle-reviewed plan:
+mo-wiki/plans/moscope-serial-acceptance.md. Fresh medium/xxlarge worker
+T-01a0c62c-9b9d-7559-a87e-68af9704e18f owns app-local integration, verifier and
+synthetic coverage from frozen f961c686; first new execution manifest awaits
+lead review. Lead owns independent native/interpreter replay and final normal
+build/full-corpus. No private-data, parallel, Step42 or harness work resumed.
+
 Latest moscope checkpoint: Robert authorized continuing app-only fixes until the
 synthetic smoke works. Candidate f961c686cacf513daec22e771e73832a227298e5 now
 has worker and independent lead exact phrase-smoke passes: exit0,

@@ -772,3 +772,6 @@ type: index
   out of Redis's suite, expiries on rewrite, one size cap, the lead's skip list,
   RC2's core operation, R2 to R7 pinned, a package behind `/metrics`; sealed 18
   Sep
+
+- [[moscope-serial-acceptance]] — app-local serial search integration and
+  independent Linux interpreter/native acceptance; Step42 remains paused.

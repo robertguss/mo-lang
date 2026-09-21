@@ -3234,3 +3234,12 @@
   retained under audit/evidence/2026-09-21/moscope-phrase-green/.
 - Narrow working checkpoint, not full app acceptance. App unmerged; no native,
   private-data or broader execution; Step42/harness remain paused.
+
+## [2026-09-21] plan | full serial moscope acceptance authorized
+
+- Robert requested full app acceptance. Oracle scoped Linux interpreter/native
+  synthetic correctness and proper corpus integration, followed by independent
+  final normal build/full-corpus. No Step42 or harness expansion.
+- Fresh medium/xxlarge worker owns app-only preparation and returns a verifier
+  manifest before new execution. [[moscope-serial-acceptance]] records scope,
+  staged gates, limits and acceptance meaning; private data remains excluded.
