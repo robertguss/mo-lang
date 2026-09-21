@@ -124,6 +124,8 @@ Judgment: combined with Ravenscar's ban on relative delays, the evidence favours
 
 ## Related
 
+- [[hermes-weekly-2026-09-21]] — Hermes partial-week synthesis: ranked lifecycle, verifier and authority/recovery evidence; six daily notes, no new experiments.
+
 - [[hermes-daily-2026-09-21]] — Hermes follow-up on external-child owner death, stable process identity and reaping evidence.
 
 - [[hermes-daily-2026-09-20]] — Hermes follow-up on process heap limits, cgroup containment and observed cleanup boundaries.
