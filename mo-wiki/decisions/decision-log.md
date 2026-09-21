@@ -2045,6 +2045,13 @@ direct guard, MO_NATIVE_ASAN unset, stop first surprise. No mutants/full/ASan/
 stress/bench/timing. Status: decided by Amp lead with Oracle; first tested by
 pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 
+### Fixture packaging and watcher source follow-up
+
+| decision                                                                                                                                                                                                                                                               | who                  | status  | first tested by                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------- |
+| Approve71f40382 three bounded arena fixture reads after direct reread. Restart the same positive-only sequence from toolchain; preserve root-workdir and embed-compilation failures separately. Build5/5 is not test execution.                                        | Amp lead with Oracle | decided | next fixed-revision focused outputs |
+| Hold benchmarkb955e7bb controls: watcher thread must start before Popen; validate synthetic supervisor and exact exit/join proof, retain realMo block, repair Python cleanup finally and stop-signal ownership. No measurements or synthetic execution yet. `semantic` | Amp lead with Oracle | decided | pending source reread               |
+
 ## Related
 
 - [[session-05]]

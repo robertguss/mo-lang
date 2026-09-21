@@ -1,0 +1,1 @@
+command=env -u MO_NATIVE_ASAN python3 bench/step36/guard.py 1800 -- zig build test-corpus -j4 -Dtest-filter=step 42: packs=true lifecycle matrix reclaims transfer timer down timeout crash restart log end and event parcels --summary all

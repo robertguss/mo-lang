@@ -1,0 +1,5 @@
+revision=146d24b5611990ec5a1f9950436d19f6ca9ad50f
+pwd=/home/user/workspace/repo/toolchain
+guard=env -u MO_NATIVE_ASAN python3 bench/step36/guard.py
+mode=serialized stop-first
+prior_root_workdir_evidence=.amp/transfer/step42-final-positive-146d24b5

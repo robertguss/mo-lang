@@ -1,0 +1,10 @@
+revision=146d24b5611990ec5a1f9950436d19f6ca9ad50f
+origin_main=e79806fcc1571fbc763f54db2c07c639fe4e459c
+cwd=/home/user/workspace/repo
+command=env -u MO_NATIVE_ASAN python3 toolchain/bench/step36/guard.py 900 -- zig build -j4 --summary all
+raw_exit=1
+result=STOP_FIRST_UNEXPECTED
+reason=zig build was invoked from the repository root, where no build.zig exists
+retry=none
+later_controls_started=none
+source_changes_after_failure=none

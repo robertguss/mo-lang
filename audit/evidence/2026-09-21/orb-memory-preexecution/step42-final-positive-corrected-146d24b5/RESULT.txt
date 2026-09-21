@@ -1,0 +1,9 @@
+build_raw_exit=0
+build_result=5/5 steps succeeded
+first_positive=step 42: packs=true lifecycle matrix reclaims transfer timer down timeout crash restart log end and event parcels
+first_positive_raw_exit=1
+first_positive_result=compile failure before selection
+failure=src/sim.zig:1722 @embedFile outside package path
+later_controls_started=none
+source_changes_after_failure=none
+prior_288_of_289_red=unresolved

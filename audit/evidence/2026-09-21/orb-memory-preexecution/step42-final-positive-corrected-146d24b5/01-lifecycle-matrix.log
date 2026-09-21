@@ -1,0 +1,22 @@
+test-corpus
++- run test
+   +- compile test Debug native 1 errors
+src/sim.zig:1722:51: error: embed of file outside package path: '../bench/step42/native-parcel-lifecycle-current.mo'
+    const program = try compile(arena, @embedFile("../bench/step42/native-parcel-lifecycle-current.mo"));
+                                                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+referenced by:
+    sim: src/root.zig:27:25
+    refAllDecls__anon_43034: /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:1216:14
+    1 reference(s) hidden; use '-freference-trace=3' to see all references
+error: 1 compilation errors
+failed command: /opt/zig-x86_64-linux-0.16.0/zig test --dep mo_rt.c --dep mo_rt.h -Mroot=/home/user/workspace/repo/toolchain/src/root.zig -Mmo_rt.c=/home/user/workspace/repo/toolchain/runtime/mo_rt.c -Mmo_rt.h=/home/user/workspace/repo/toolchain/runtime/mo_rt.h --test-filter "step 42: packs=true lifecycle matrix reclaims transfer timer down timeout crash restart log end and event parcels" --cache-dir .zig-cache --global-cache-dir /home/user/.cache/zig --name test --zig-lib-dir /opt/zig-x86_64-linux-0.16.0/lib/ --listen=-
+
+Build Summary: 2/5 steps succeeded (1 failed)
+test-corpus transitive failure
++- run test transitive failure
+   +- compile test Debug native 1 errors
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 7ms MaxRSS:40M
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/869aea086da2c5fd005acee1fb4640fa/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /home/user/workspace/repo/toolchain .zig-cache /home/user/.cache/zig --seed 0xd2c449be -Z98da9a0366a86d62 test-corpus -j4 -Dtest-filter=step 42: packs=true lifecycle matrix reclaims transfer timer down timeout crash restart log end and event parcels --summary all

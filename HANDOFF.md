@@ -81,21 +81,23 @@ orb-memory-normal/. Both correction workers must return source for review. The
 test-rejects assertion-masking defect is reproduced and queued separately;
 server uses an external positive lifecycle oracle, not the false-green test.
 
-Latest source recheck: memory146d24b5 fixes final Job/ack ordering and completes
-matrix semantics. Oracle cleared bounded positives only: one build900s, eleven
-exact Zig filters plus chunks1800s each, native lifecycle1800s with9 normal and9
-audited cases. Serial accepted direct guard, MO_NATIVE_ASAN unset, stop first
-surprise. Worker has this grant. No full/mutants/ASan/stress/timing. Full288/289
-RED remains unresolved until separately granted full green; no acceptance.
-Benchmark81eb48e7 reportedly removes unsafe RED/fallback and hard-blocks
-execution. Lead/Oracle authorize source-only per-owned-Popen RSS watcher: one
-owner of poll/signal/reap, same4GiB sampled threshold, bounded fail-closed
-probes and join, no groups/scans/janitor. Trusted premise: driver/watcher remain
-schedulable; SIGSTOP control targets only Mo child. Not hard/aggregate
-containment. Synthetic controls must prove watcher failure/cleanup,
-missing-vs-failure and normal exit. No execution grant. Candidates remain only
-in lead verification worktrees; 81eb48e7 bundle still needs downloading
-(previous integrated serverd14be7cf).
+Latest memory71f40382 replaces three illegal outside-package embeds with bounded
+fallible arena reads of the unchanged fixture from toolchain cwd. Lead reread
+satisfies Oracle's correction conditions. Earlier146d24b5 root-workdir failure
+and corrected-workdir build5/5/test-compilation failure are separate retained
+evidence, not runtime results. Worker may restart from toolchain: build900s,
+eleven exact positives plus chunks1800s each, native lifecycle1800s with9 normal
+and9 audit. Serial direct guard, MO_NATIVE_ASAN unset, stop first surprise. No
+full/mutants/ASan/stress/timing. Prior full288/289 remains unresolved.
+
+Benchmarkb955e7bb integrated in verification tree; Oracle holds synthetic
+release. Watcher must launch Popen only after its thread starts, preventing
+unowned-child startup failure. Synthetic entry must validate supervisor,
+separate blocked realMo modes, prove failure-after-exit and thread join. Move
+stopped-build signal into watcher probe; use finally shutdown around Python
+_end. Source-only fixes assigned. Trusted schedulable-driver premise remains,
+not hard/aggregate memory containment. No benchmark/control execution. Neither
+candidate is on main.
 
 Review their replies and fixed bundles in this thread; do not create
 replacements for the same assignment. Further grants follow exact evidence and
