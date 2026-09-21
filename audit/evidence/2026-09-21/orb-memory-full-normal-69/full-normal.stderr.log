@@ -1,0 +1,443 @@
+test-corpus
++- run test w
+step42 case=pack-errdefer allocated=1 destroyed=1 live=0 allocator_allocations=1 allocator_deallocations=1
+step42 parcel-audit case=current-lifecycle-matrix allocated=52 destroyed=52 live=0
+step42 parcel-audit case=transfer-lifecycle allocated=12 destroyed=12 live=0
+step42 parcel-audit case=answer-lifecycle allocated=7 destroyed=7 live=0
+step42 parcel-audit case=end-lifecycle allocated=2 destroyed=2 live=0
+step42 case=enqueue-A allocated=1 destroyed=1 live=0 mailbox=0 trace=0 seq=0
+step42 case=runnable-reserve allocated=1 destroyed=0 live=1 induced=true mailbox=0 trace=0 seq=0 runnable=0
+step42 case=enqueue-B allocated=1 destroyed=1 live=0 timers=0 mailbox=0 seq=0
+step42 case=trace-reserve mailbox=0 trace=0 seq=0 packs=false induced=true
+step42 case=delivery-trace-reserve induced=true mailbox=1 head=0 log=0 trace=0 ticks=0
+step42 case=commit-I allocated=4 destroyed=2 live=2 first=1 second=0 events=0 held=0 induced=true
+step42 case=event-reserve allocated=4 destroyed=1 live=3 first=1 second=1 events=0 held=0 induced=true
+step42 case=update-allocation allocated=4 destroyed=3 live=1 outbox=0 emits=0 held=0 first=0 second=0 induced=true
+step42 parcel-audit case=seeded-packed-no-trace allocated=2 destroyed=2 live=0
+step42 parcel-audit case=seeded-packed-log-churn allocated=27 destroyed=27 live=0
+step42 parcel-audit case=crashing-update allocated=6 destroyed=6 live=0
+step42 parcel-audit case=event-cleanup allocated=1 destroyed=1 live=0
+step42 case=secondary-stress scheduler=1 frame_budget=0 loop_budget=0 scratch_poison=a5
+step42 case=answer-reserve allocated=1 destroyed=0 live=1 awaiting=true answers=0 induced=true
+step42 case=n10-stress-build term=.{ .exited = 0 } stdout= stderr=
+step42 case=n10-positive argument=10 term=.{ .exited = 0 } stdout=answered 45 bytes and code 3, whole: true
+ stderr=
+step42 case=n10-positive argument=1000 term=.{ .exited = 0 } stdout=answered 4005 bytes and code 3, whole: true
+ stderr=
+step42 case=fiber-lifecycle-build term=.{ .exited = 0 } stdout=zig-out/mo-build/fiber-lifecycle/fiber-lifecycle
+ stderr=
+step42 case=fiber-lifecycle-retirement-one-scheduler-interp term=.{ .exited = 0 } stdout=held 70; released 70; done 70; sum 490
+ stderr=
+step42 case=fiber-lifecycle-retirement-one-scheduler-native term=.{ .exited = 0 } stdout=held 70; released 70; done 70; sum 490
+ stderr=
+step42 case=fiber-lifecycle-caller-reuse-multi-scheduler-interp term=.{ .exited = 0 } stdout=held 20; released 20; done 20; sum 140
+ stderr=
+step42 case=fiber-lifecycle-caller-reuse-multi-scheduler-native term=.{ .exited = 0 } stdout=held 20; released 20; done 20; sum 140
+ stderr=
+step42 case=parcel-lifecycle-build term=.{ .exited = 0 } stdout=zig-out/mo-build/parcel-lifecycle/parcel-lifecycle
+ stderr=
+step42 case=parcel-lifecycle-audit-build term=.{ .exited = 0 } stdout= stderr=
+step42 case=parcel-lifecycle-waiter-normal term=.{ .exited = 0 } stdout=waiter: nested payload exact
+ stderr=
+step42 case=parcel-lifecycle-waiter-audit term=.{ .exited = 0 } stdout=waiter: nested payload exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+
+step42 case=parcel-lifecycle-timeout-normal term=.{ .exited = 0 } stdout=timeout: Error(Timeout)
+ stderr=
+step42 case=parcel-lifecycle-timeout-audit term=.{ .exited = 0 } stdout=timeout: Error(Timeout)
+ stderr=MO_TEST_PARCEL_AUDIT allocated=4 destroyed=4 live=0
+
+step42 case=parcel-lifecycle-due-down-normal term=.{ .exited = 0 } stdout=due-down: armed then Down
+ stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+      in process DropTarget, seed 0
+      messages since it started: Crash(Payload(label: "down-target|long:0123456789abcdef", parts: ["down-target|left:abc", "down-target|middle:012345", "down-target|right:uvwxyz"]))
+      state before the last message: DropTarget(count: 0, seen: "")
+      not restarted: DropTargets says restart: :never, so DropTarget stays down
+
+step42 case=parcel-lifecycle-due-down-audit term=.{ .exited = 0 } stdout=due-down: armed then Down
+ stderr=process crashed: native-parcel-lifecycle-current.mo:64:3: invariant "Crash takes the target down before its delayed payload is due" no longer holds in DropTarget; state = DropTarget(count: 1, seen: "down-target|long:0123456789abcdef")
+      in process DropTarget, seed 0
+      messages since it started: Crash(Payload(label: "down-target|long:0123456789abcdef", parts: ["down-target|left:abc", "down-target|middle:012345", "down-target|right:uvwxyz"]))
+      state before the last message: DropTarget(count: 0, seen: "")
+      not restarted: DropTargets says restart: :never, so DropTarget stays down
+MO_TEST_PARCEL_AUDIT allocated=6 destroyed=6 live=0
+
+step42 case=parcel-lifecycle-exit-later-normal term=.{ .exited = 3 } stdout=exit-later: armed exact
+ stderr=
+step42 case=parcel-lifecycle-exit-later-audit term=.{ .exited = 3 } stdout=exit-later: armed exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=5 destroyed=5 live=0
+
+step42 case=parcel-lifecycle-push-after-exit-normal term=.{ .exited = 4 } stdout=push-after-exit: scheduled after exit
+ stderr=
+step42 case=parcel-lifecycle-push-after-exit-audit term=.{ .exited = 4 } stdout=push-after-exit: scheduled after exit
+ stderr=MO_TEST_PARCEL_AUDIT allocated=2 destroyed=2 live=0
+
+step42 case=parcel-lifecycle-crash-transaction-normal term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+ stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+      in process Exploder, seed 0
+      messages since it started: Explode(sink: Sink #0, value: Payload(label: "crash|long:0123456789abcdef", parts: ["crash|left:abc", "crash|middle:012345", "crash|right:uvwxyz"]))
+      state before the last message: Exploder(count: 0, held: [])
+
+step42 case=parcel-lifecycle-crash-transaction-audit term=.{ .exited = 0 } stdout=crash-transaction: Down, rolled back, sink untouched
+ stderr=process crashed: native-parcel-lifecycle-current.mo:129:3: invariant "the transaction rolls back instead of committing one" no longer holds in Exploder; state = Exploder(count: 1, held: [])
+      in process Exploder, seed 0
+      messages since it started: Explode(sink: Sink #0, value: Payload(label: "crash|long:0123456789abcdef", parts: ["crash|left:abc", "crash|middle:012345", "crash|right:uvwxyz"]))
+      state before the last message: Exploder(count: 0, held: [])
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+
+step42 case=parcel-lifecycle-restart-drop-normal term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+ stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+      in process RestartTarget, seed 0
+      messages since it started: Crash(Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"]))
+      state before the last message: RestartTarget(count: 0, seen: [])
+
+step42 case=parcel-lifecycle-restart-drop-audit term=.{ .exited = 0 } stdout=restart-drop: reset state and rejected trailing payload
+ stderr=process crashed: native-parcel-lifecycle-current.mo:164:3: invariant "the first queued message crashes before the trailing one" no longer holds in RestartTarget; state = RestartTarget(count: 1, seen: [Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"])])
+      in process RestartTarget, seed 0
+      messages since it started: Crash(Payload(label: "restart|long:0123456789abcdef", parts: ["restart|left:abc", "restart|middle:012345", "restart|right:uvwxyz"]))
+      state before the last message: RestartTarget(count: 0, seen: [])
+MO_TEST_PARCEL_AUDIT allocated=9 destroyed=9 live=0
+
+step42 case=parcel-lifecycle-log-eviction-normal term=.{ .exited = 0 } stdout=log-eviction: all 16 asymmetric labels exact
+ stderr=
+step42 case=parcel-lifecycle-log-eviction-audit term=.{ .exited = 0 } stdout=log-eviction: all 16 asymmetric labels exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=19 destroyed=19 live=0
+
+step42 case=parcel-lifecycle-end-normal term=.{ .exited = 0 } stdout=end: nested start and log exact
+ stderr=
+step42 case=parcel-lifecycle-end-audit term=.{ .exited = 0 } stdout=end: nested start and log exact
+ stderr=MO_TEST_PARCEL_AUDIT allocated=3 destroyed=3 live=0
+
+---- mo run, exit 0
+read a.txt: ok safe
+read hard: ok safe
+read out_link: missing out_link
+read in_link: missing in_link
+read dirlink/a.txt: missing dirlink/a.txt
+read dirout_link/x.txt: missing dirout_link/x.txt
+read_lines in_link: missing in_link
+read_bytes in_link: missing in_link
+size in_link: missing in_link
+fold_lines in_link: missing in_link
+scoped dirout_link: missing x.txt
+scoped dirlink: missing a.txt
+scoped dirlink, listed: unlisted
+operator's link: ok safe
+operator's link, then in_link: missing in_link
+device: missing null
+list: a.txt, dirlink, dirout_link, fifo, hard, in_link, out_link, sub
+list_kinds: a.txt file, dirlink link, dirout_link link, fifo file, hard file, in_link link, out_link link, sub folder
+write out_link: missing out_link
+write in_link: missing in_link
+append in_link: missing in_link
+write dirlink/new.txt: missing dirlink/new.txt
+mkdir dirlink: missing dirlink
+mkdir dirlink/made: missing dirlink/made
+remove in_link: missing in_link
+rename in_link to moved: missing in_link
+rename sub/b.txt to in_link: missing in_link
+rename sub/b.txt to dirlink/b.txt: missing dirlink/b.txt
+read a.txt after: ok safe
+write fifo: missing fifo
+read fifo: missing fifo
+size fifo: missing fifo
+---- binary, exit 0
+read a.txt: ok safe
+read hard: ok safe
+read out_link: missing out_link
+read in_link: missing in_link
+read dirlink/a.txt: missing dirlink/a.txt
+read dirout_link/x.txt: missing dirout_link/x.txt
+read_lines in_link: missing in_link
+read_bytes in_link: missing in_link
+size in_link: missing in_link
+fold_lines in_link: missing in_link
+scoped dirout_link: missing x.txt
+scoped dirlink: missing a.txt
+scoped dirlink, listed: unlisted
+operator's link: ok safe
+operator's link, then in_link: missing in_link
+device: missing null
+list: a.txt, dirlink, dirout_link, fifo, hard, in_link, out_link, sub
+list_kinds: a.txt file, dirlink link, dirout_link link, fifo file, hard file, in_link link, out_link link, sub folder
+write out_link: missing out_link
+write in_link: missing in_link
+append in_link: missing in_link
+write dirlink/new.txt: missing dirlink/new.txt
+mkdir dirlink: missing dirlink
+mkdir dirlink/made: missing dirlink/made
+remove in_link: missing in_link
+rename in_link to moved: missing in_link
+rename sub/b.txt to in_link: missing in_link
+rename sub/b.txt to dirlink/b.txt: missing dirlink/b.txt
+read a.txt after: ok safe
+write fifo: missing fifo
+read fifo: missing fifo
+size fifo: missing fifo
+---- mo run, exit 0
+a.txt: a.txt file, setuid false
+a.txt links: 2
+suid: suid file, setuid true
+suid links: 1
+in_link: in_link link, setuid false
+out_link: out_link link, setuid false
+sub: sub folder, setuid false
+sub/b.txt: sub/b.txt file, setuid false
+dirlink/a.txt: missing dirlink/a.txt
+../outside.txt: missing ../outside.txt
+nothing: missing nothing
+fifo: fifo file, setuid false
+---- binary, exit 0
+a.txt: a.txt file, setuid false
+a.txt links: 2
+suid: suid file, setuid true
+suid links: 1
+in_link: in_link link, setuid false
+out_link: out_link link, setuid false
+sub: sub folder, setuid false
+sub/b.txt: sub/b.txt file, setuid false
+dirlink/a.txt: missing dirlink/a.txt
+../outside.txt: missing ../outside.txt
+nothing: missing nothing
+fifo: fifo file, setuid false
+---- mo test, exit 0
+pass  test "a fixture's file and folder are what kind_of says, one link each and never setuid"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "a fixture's file and folder are what kind_of says, one link each and never setuid"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- mo run, exit 0
+replace t.txt: ok
+read t.txt: ok new
+replace fresh.txt: ok
+replace sub/b.txt: ok
+replace in_link: missing in_link
+replace out_link: missing out_link
+replace dirlink/t.txt: missing dirlink/t.txt
+replace nofolder/t.txt: missing nofolder/t.txt
+replace sub: missing sub
+replace fifo: missing fifo
+replace ../outside.txt: missing ../outside.txt
+replace a 255-byte name: ok
+read it: ok long
+remove it: ok
+list: a.txt, dirlink, dirout_link, fifo, fresh.txt, hard, in_link, out_link, sub, t.txt
+list sub: b.txt
+---- binary, exit 0
+replace t.txt: ok
+read t.txt: ok new
+replace fresh.txt: ok
+replace sub/b.txt: ok
+replace in_link: missing in_link
+replace out_link: missing out_link
+replace dirlink/t.txt: missing dirlink/t.txt
+replace nofolder/t.txt: missing nofolder/t.txt
+replace sub: missing sub
+replace fifo: missing fifo
+replace ../outside.txt: missing ../outside.txt
+replace a 255-byte name: ok
+read it: ok long
+remove it: ok
+list: a.txt, dirlink, dirout_link, fifo, fresh.txt, hard, in_link, out_link, sub, t.txt
+list sub: b.txt
+---- mo test, exit 0
+pass  test "on a fixture, replace is write"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "on a fixture, replace is write"
+1 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run
+---- /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out/bin/mo: 1000 replaced
+4180 reads, 0 partial, 0 not there, exit .{ .exited = 0 }
+---- ./zig-out/mo-build/flip/flip: 1000 replaced
+3693 reads, 0 partial, 0 not there, exit .{ .exited = 0 }
+8000000: guard: killed 275830 (rss 61 MB, 1 s)
+
+8000000: guard: killed 275839 (rss 61 MB, 1 s)
+
+8000000: guard: killed 275849 (rss 61 MB, 2 s)
+
+8000000: guard: killed 275860 (rss 61 MB, 2 s)
+
+8000000: guard: killed 275872 (rss 61 MB, 2 s)
+
+8000000: guard: killed 275886 (rss 61 MB, 3 s)
+
+8000000: guard: killed 275900 (rss 61 MB, 3 s)
+
+8000000: guard: killed 275931 (rss 61 MB, 2 s)
+
+---- /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out/bin/mo: 8 of 8 rounds killed, 8 temporary files left, 6 of them whole (killed between write and rename); the target whole every time
+8000000: guard: killed 275945 (rss 27 MB, 1 s)
+
+8000000: guard: killed 275952 (rss 27 MB, 1 s)
+
+8000000: guard: killed 275961 (rss 27 MB, 2 s)
+
+8000000: guard: killed 275972 (rss 27 MB, 2 s)
+
+8000000: guard: killed 275990 (rss 27 MB, 2 s)
+
+8000000: guard: killed 276003 (rss 27 MB, 3 s)
+
+8000000: guard: killed 276193 (rss 27 MB, 3 s)
+
+8000000: guard: killed 276622 (rss 27 MB, 2 s)
+
+---- ./zig-out/mo-build/flip/flip: 8 of 8 rounds killed, 8 temporary files left, 5 of them whole (killed between write and rename); the target whole every time
+---- mo run, exit 0, 1581 ms
+exit 0: exited 0
+exit 1: exited 1
+exit 255: exited 255
+signal: signalled 9
+stubborn: timeout
+leaver: exited 0
+big stdout, bound 1000: 1000 0 true exited 0
+big stderr, bound 1000: 0 1000 true exited 0
+big stdout, default bound: 65536 0 true exited 0
+big stdout, bound 2 MiB: 1048576 0 false exited 0
+odd hole: true
+dash hole: 3
+[-x][--help][end]
+empty hole: 3
+[-x][][end]
+NUL hole: refused
+no value: refused
+two values: refused
+missing: missing
+a folder as the program: failed
+env by default: []
+env given: A=1
+B=two words
+
+in work: true
+in the operator's link: true
+in a link inside: failed
+in a folder not there: failed
+in a scope that climbed out: failed
+default folder is new: true
+default folder empty: []
+default folder gone after: exited 1
+stdin: hello
+world
+no stdin: []
+1 MiB through cat: 1048576 0 false exited 0
+descriptors: 0,1,2,
+terminal: none
+
+group: leads
+
+took, a fast run: true
+took, a 0.2-second sleep: true
+---- binary, exit 0, 1383 ms
+exit 0: exited 0
+exit 1: exited 1
+exit 255: exited 255
+signal: signalled 9
+stubborn: timeout
+leaver: exited 0
+big stdout, bound 1000: 1000 0 true exited 0
+big stderr, bound 1000: 0 1000 true exited 0
+big stdout, default bound: 65536 0 true exited 0
+big stdout, bound 2 MiB: 1048576 0 false exited 0
+odd hole: true
+dash hole: 3
+[-x][--help][end]
+empty hole: 3
+[-x][][end]
+NUL hole: refused
+no value: refused
+two values: refused
+missing: missing
+a folder as the program: failed
+env by default: []
+env given: A=1
+B=two words
+
+in work: true
+in the operator's link: true
+in a link inside: failed
+in a folder not there: failed
+in a scope that climbed out: failed
+default folder is new: true
+default folder empty: []
+default folder gone after: exited 1
+stdin: hello
+world
+no stdin: []
+1 MiB through cat: 1048576 0 false exited 0
+descriptors: 0,1,2,
+terminal: none
+
+group: leads
+
+took, a fast run: true
+took, a 0.2-second sleep: true
+---- mo run, exit 70
+before
+stderr: main crashed: exec.program("bin/sh"): "bin/sh" is not an absolute path; a program is named by its absolute path, and no PATH is searched
+
+---- binary, exit 70
+before
+stderr: main crashed: exec.program("bin/sh"): "bin/sh" is not an absolute path; a program is named by its absolute path, and no PATH is searched
+
+---- mo test, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did"
+pass  test "no run ever times out"
+pass  test "no run ever fails"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+---- mo build --tests, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did"
+pass  test "no run ever times out"
+pass  test "no run ever fails"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run
+---- mo test --sim, exit 0
+pass  test "a fixture answers every run, with the program's path first and the holes filled"
+pass  test "a fixture hands the function what stdin was given"
+pass  test "a fixture refuses what the real Exec refuses"
+pass  test "every run is counted, whatever the child did": 40 simulated runs
+pass  test "no run ever times out": 40 simulated runs, but passes only without faults
+      seed 1, with faults: remover.mo:94:3: assert runner.ask(Timeouts, within: 1.minute) is Ok(0) failed
+      mo test --sim 1 --seed 1 --faults 50 runs it again
+pass  test "no run ever fails": 40 simulated runs, but passes only without faults
+      seed 4, with faults: remover.mo:101:3: assert runner.ask(Failures, within: 1.minute) is Ok(0) failed
+      mo test --sim 1 --seed 4 --faults 50 runs it again
+6 passed, 0 failed, 0 skipped; 3 tests under 40 seeds with 50% faults: 1 held under faults, 2 passed only without faults
+verified: types, contracts, tests (6), property (0 seeds), sim (40 runs)
+          proven: not run
+---- mo run, exit 0
+main went on while the child ran: true
+another process answered meanwhile: true
+the run then answered: true
+and the child had finished: true
+---- binary, exit 0
+main went on while the child ran: true
+another process answered meanwhile: true
+the run then answered: true
+and the child had finished: true
+failed command: MO_EXE=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache-full-normal-fresh/o/cb424c74a5b42d8b6fb065ce01634563/test --cache-dir=./.zig-cache-full-normal-fresh --seed=0x2df93b3b --listen=-
+
+Build Summary: 5/5 steps succeeded; 309/309 tests passed
+test-corpus success
++- run test 309 pass (309 total) 9m MaxRSS:592M
+   +- compile test Debug native success 4s MaxRSS:337M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+

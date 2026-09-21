@@ -52,15 +52,69 @@ insertions in corpus.zig, then source reread. No retry or broader execution
 grant. Both compile-only REDs remain preserved; no acceptance. Raw receipts:
 audit/evidence/2026-09-21/orb-memory-duration-compile-red/.
 
-Follow-up: verified eb665371 changes exactly the three duration accesses.
-Lead/Oracle reread releases one normal exact large-restart attempt on full eb
-composed onto accepted cc2f2f0d, with fresh caches/output and retained captures.
-Validator has the bundle and grant. All prior both-runtime report/RSS/cleanup
-predicates remain mandatory; stop-first, no further retry or broader gate.
+Latest eb665371 attempt on cc2f2f0d, integrated efbccec1, compiled but is RED:
+exit1/build3/5, tests1 pass/1 fail. Interpreter exited1 on fixture MO0101,
+completed/reaped/error-null; stdout empty, native never reached. Raw captures
+and cleanup receipts: audit/evidence/2026-09-21/orb-memory-fixture-parse-red/.
+Oracle authorizes only four inline statement arms becoming block arms in the
+fixture, preserving all bodies/retries/oracles. Worker has source-only brief; no
+retry before reread. Seven obligations and all earlier REDs unchanged.
+
+Latest e73504d0/92e2589f attempt is shape-check RED: exit1/build3/5, tests1
+pass/1 fail. Interpreter completed/reaped/exited1 on MO0304 depth4; no restart,
+RSS or native evidence. Receipts:
+audit/evidence/2026-09-21/orb-memory-fixture-shape-red/. Source-only correction:
+remove enclosing if !empty, add break after empty=true in successful retry arm.
+Depth becomes3; asks/retry bound/oracles unchanged. Break skips inner-loop
+collection, so identical GC/RSS is not assumed; strict RSS bound remains. Worker
+has brief; no execution before source reread.
+
+Latest69dc6df1 on0a0de7f7 is normal large-restart GREEN: actual0/build5/5,
+tests2/2; both runtimes completed/reaped/exited0, exact25 reports and90,006,894
+stderr bytes each, matching full hashes. RSS increases65536/4325376 bytes,
+strictly below16MiB; all owned groups/children absent. Lead/Oracle checked raw
+full captures. Evidence:
+audit/evidence/2026-09-21/orb-memory-large-restart-green/. Fresh unfiltered
+SAME0a0de7f7 full-normal is now GREEN: actual0/build5/5, 309/309, no
+skips/failures, all9normal+9audit lifecycle cases balanced as expected. Repeated
+large reports match completely; RSS increases61440/4317184 bytes, cleanup
+certain. Lead/Oracle checked full raw evidence:
+audit/evidence/2026-09-21/orb-memory-full-normal-69/. Validator HOLD.
+Implementation worker has source-only updated readiness packet for focused
+native-fiber ASan: exact modes, stream assertion/retention gaps, explicit
+sanitizer environment and host prerequisites. Some corpus children still omit
+term/full stderr checks; no blanket raw-ASan claim. No execution, separate
+exhaustive stress, mutants, timing or acceptance released.
+
+Readiness packet reviewed: --prefix correctly supplies installed MO_EXE; focused
+fiber build/runs expose streams and require exact runtime output/empty stderr.
+Validator now has HOST INSPECTION ONLY: exact integration, resolved tool/version
+queries, compiler-rt symbols, symbolizer, safe environment controls and existing
+filesystem prerequisites. No compile/link/probe/Mo/test or installation grant.
+Return packet before execution. Later narrow fiber-ASan evidence may use
+retained runtime-object ASan/access-check/fake-stack/fiber-hook symbols plus
+reviewed source/link path; generated C remains source-established, not
+artifact-verified. No ptrace capture, suppression, fake-stack disable or
+leak-check waiver.
+
+Host packet verified: Debian Clang14.0.6/compiler-rt/fiber/fake-stack/leak
+symbols available. Config concern resolved by exact source: literal clang with
+no target prefix or --config skips implicit search. Unset unsupported
+CLANG_NO_DEFAULT_CONFIG, retain reviewed PATH and sanitized controls.
+Lead/Oracle release ONE focused fiber test-corpus-asan on SAME0a0de7f7,
+directguard1800, packet fresh roots/prefix, absolute symbolizer, UAR+leak checks
+enabled. Both interpreter/native70+20 exact outputs/empty stderr, quiet compile,
+actual runtime-object instrumentation and certain cleanup required. Successful
+compiler argv/generated-C instrumentation are source-established, not retained
+artifacts. Addendum: audit/evidence/2026-09-21/orb-memory-asan-host/README.md.
+Stop-first; no retry or broader gate/acceptance.
 
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
-- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.
+- Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and
+  archived at Robert's morning request, alongside completed wrapper worker
+  T-01a0c1db-5a25-76c3-b289-9c2db968ba3d. Active memory/server/validator
+  retained.
 - Memory: T-01a0c18a-5e4e-729b-96fb-39ccb6c9d1cc, static A–D recovery; guard
   files are excluded from its ownership.
 - Server: T-01a0c18a-cc44-7380-8650-bf09bfec9954, static chunks recovery.

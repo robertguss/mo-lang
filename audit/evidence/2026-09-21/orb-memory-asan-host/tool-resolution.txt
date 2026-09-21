@@ -1,0 +1,13 @@
+approved_path=/usr/local/bin:/usr/bin:/bin
+clang=/usr/bin/clang -> /usr/lib/llvm-14/bin/clang
+zig=/usr/local/bin/zig -> /opt/zig-x86_64-linux-0.16.0/zig
+python3=/usr/local/bin/python3 -> /usr/local/bin/python3.11
+ps=/usr/bin/ps -> /usr/bin/ps
+nm=/usr/bin/nm -> /usr/bin/x86_64-linux-gnu-nm
+readelf=/usr/bin/readelf -> /usr/bin/x86_64-linux-gnu-readelf
+ld=/usr/bin/ld -> /usr/bin/x86_64-linux-gnu-ld.bfd
+llvm-symbolizer_PATH=absent
+symbolizer_absolute=/usr/lib/llvm-14/bin/llvm-symbolizer
+type_all_clang:
+clang is /usr/bin/clang
+clang is /bin/clang

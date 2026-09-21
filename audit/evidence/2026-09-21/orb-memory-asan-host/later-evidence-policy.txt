@@ -1,0 +1,7 @@
+Required later-run artifact evidence (not collected now because no compile/link/run was authorized):
+- Locate the actual MO_CACHE .runtime/*/mo_rt.o selected by the run; retain path, SHA-256, ELF architecture, and producer/comment evidence.
+- Prove mo_rt.o has undefined ASan initialization/access-check/report references, both __sanitizer_start_switch_fiber and __sanitizer_finish_switch_fiber references, __asan_stack_malloc_* fake-stack references, and __asan_option_detect_stack_use_after_return or version-equivalent UAR-option reference. Hook references alone are insufficient.
+- Retain actual compiler/link argv and quiet outputs so literal clang and -fsanitize=address are proven, not inferred.
+- The final generated-C instrumentation is source-established by cbuild.zig; this narrow native-runtime/fiber gate does not require final-binary capture machinery.
+- Do not use ptrace, strace, or a debugger around LSan.
+- No warning/sanitizer suppression and no fake-stack disable.

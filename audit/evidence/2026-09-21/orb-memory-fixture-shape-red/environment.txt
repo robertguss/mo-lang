@@ -1,0 +1,5 @@
+date_utc=2026-09-21T10:13:41+00:00
+date_et=2026-09-21T06:13:41-04:00
+uname=Linux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Tue Jul 28 15:38:05 UTC 2026 x86_64 GNU/Linux
+zig_path=/usr/local/bin/zig
+zig_version=0.16.0

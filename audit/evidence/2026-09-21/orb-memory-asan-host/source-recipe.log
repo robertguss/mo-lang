@@ -1,0 +1,192 @@
+Source-established recipe (exact integrated source excerpts):
+   169	    const zig = compiler_runner.zig orelse (try findZig(gpa, io, environ)) orelse return .{ .failed = "there is no zig next to mo or on PATH, and mo build compiles with zig cc" };
+   170	    // Evidence-only host builds may opt into Clang ASan. It is deliberately absent from ordinary
+   171	    // builds and cross compilation; the runtime's custom-fiber hooks are enabled with it.
+   172	    const asan = if (environ.get("MO_NATIVE_ASAN")) |v| v.len > 0 and !std.mem.eql(u8, v, "0") else false;
+   173	    if (asan and options.target != null) return .{ .failed = "MO_NATIVE_ASAN is a host-only build mode" };
+   174	    const cc = if (asan) "clang" else zig;
+   175	    const target: ?[]const u8 = if (asan) null else options.target orelse if (builtin.os.tag == .linux) try std.fmt.allocPrint(gpa, "{t}-linux-musl", .{builtin.cpu.arch}) else null;
+   176	    // A build for this machine gets the bricks for this CPU (AES-NI, SHA-NI, carry-less
+   177	    // multiply, which std.crypto picks at compile time); a --target build the triple's baseline.
+   178	    const cache_dir = try cacheDir(gpa, environ.get("MO_CACHE"), environ.get("HOME"), options.out_dir);
+   179	    var objects: [bricks.len][]const u8 = undefined;
+   180	    for (bricks, &objects) |brick, *object| {
+   181	        object.* = switch (try brickObject(gpa, io, compiler_runner, zig, cwd_path, cache_dir, target, options.target == null, asan, brick)) {
+   182	            .built => |path| path,
+   183	            .failed => |why| return .{ .failed = why },
+   184	        };
+   185	    }
+   186	    const runtime_object = switch (try runtimeObject(gpa, io, compiler_runner, cc, cwd_path, cache_dir, options, target, asan)) {
+   187	        .built => |path| path,
+   188	        .failed => |why| return .{ .failed = why },
+   189	    };
+   190	    const binary = try std.fmt.allocPrint(gpa, "{s}/{s}", .{ dir, options.name });
+   191	    var argv: std.ArrayList([]const u8) = .empty;
+   192	    try ccFlags(gpa, &argv, cc, options, target, asan);
+   193	    if (target) |t| {
+   194	        if (!asan and std.mem.indexOf(u8, t, "linux") != null) try argv.append(gpa, "-static");
+   195	    }
+   196	    try argv.appendSlice(gpa, &.{ "-o", binary, c_path, runtime_object });
+   197	    try argv.appendSlice(gpa, &objects);
+   198	    if (try runCompiler(gpa, io, compiler_runner, "final compile/link", cc, cwd_path, argv.items, asan)) |why| return .{ .failed = why };
+   199	    const t2 = Io.Clock.Timestamp.now(io, .awake);
+   216	/// `zig cc` and the flags every translation unit of a build is compiled with.
+   217	fn ccFlags(gpa: std.mem.Allocator, argv: *std.ArrayList([]const u8), compiler: []const u8, options: Options, target: ?[]const u8, asan: bool) !void {
+   218	    if (asan) {
+   219	        try argv.appendSlice(gpa, &.{ compiler, "-std=c11", "-Wall", "-Werror", "-O1", "-g", "-fsanitize=address", "-fno-omit-frame-pointer", "-DMO_ADDRESS_SANITIZER" });
+   220	    } else try argv.appendSlice(gpa, &.{ compiler, "cc", "-std=c11", "-Wall", "-Werror", "-O2" });
+   221	    if (options.wrap) try argv.appendSlice(gpa, &.{ "-fwrapv", "-DMO_WRAP" });
+   222	    if (options.salt) |salt| try argv.append(gpa, try std.fmt.allocPrint(gpa, "-DMO_BUILD_SALT={d}", .{salt}));
+   223	    if (target) |t| try argv.appendSlice(gpa, &.{ "-target", t });
+   224	}
+   225	
+   226	/// The runtime compiled for `target` with the build's flags, from the cache when it is there.
+   227	/// Concurrent builds each compile into a file of their own and rename it into place, as the
+   228	/// bricks do.
+   229	fn runtimeObject(gpa: std.mem.Allocator, io: Io, compiler_runner: CompilerRunner, compiler: []const u8, cwd_path: []const u8, cache_dir: []const u8, options: Options, target: ?[]const u8, asan: bool) !union(enum) { built: []const u8, failed: []const u8 } {
+   230	    var h = std.hash.Wyhash.init(0);
+   231	    h.update(runtime_c);
+   232	    h.update(runtime_h);
+   233	    h.update(target orelse "native");
+   234	    h.update(if (options.wrap) "wrap" else "checked");
+   235	    h.update(if (asan) "host clang asan" else "zig cc");
+   236	    if (options.salt) |salt| h.update(std.mem.asBytes(&salt));
+   237	    h.update(compiler);
+   238	    const cache = try std.fmt.allocPrint(gpa, "{s}/.runtime/{x:0>16}", .{ cache_dir, h.final() });
+   239	    const object = try std.fmt.allocPrint(gpa, "{s}/mo_rt.o", .{cache});
+   240	    const cwd = Io.Dir.cwd();
+   241	    if (cwd.access(io, object, .{})) |_| return .{ .built = object } else |_| {}
+   242	    try cwd.createDirPath(io, cache);
+   243	    var nonce: [8]u8 = undefined;
+   244	    io.random(&nonce);
+   245	    const tag = std.mem.readInt(u64, &nonce, .little);
+   246	    const source_dir = try std.fmt.allocPrint(gpa, "{s}/src-{x}", .{ cache, tag });
+   247	    try cwd.createDirPath(io, source_dir);
+   248	    defer cwd.deleteTree(io, source_dir) catch {};
+   249	    const source = try std.fmt.allocPrint(gpa, "{s}/mo_rt.c", .{source_dir});
+   250	    try cwd.writeFile(io, .{ .sub_path = source, .data = runtime_c });
+   251	    try cwd.writeFile(io, .{ .sub_path = try std.fmt.allocPrint(gpa, "{s}/mo_rt.h", .{source_dir}), .data = runtime_h });
+   252	    const partial = try std.fmt.allocPrint(gpa, "{s}/mo_rt-{x}.o", .{ cache, tag });
+   253	    var argv: std.ArrayList([]const u8) = .empty;
+   254	    try ccFlags(gpa, &argv, compiler, options, target, asan);
+   255	    try argv.appendSlice(gpa, &.{ "-c", "-o", partial, source });
+   256	    if (try runCompiler(gpa, io, compiler_runner, "runtime object", compiler, cwd_path, argv.items, asan)) |why| return .{ .failed = why };
+   293	/// `zig` next to the running `mo`, else the first on PATH.
+   294	pub fn findZig(gpa: std.mem.Allocator, io: Io, environ: *const std.process.Environ.Map) !?[]const u8 {
+   295	    const cwd = Io.Dir.cwd();
+   296	    if (std.process.executableDirPathAlloc(io, gpa)) |dir| {
+   297	        const beside = try std.fs.path.join(gpa, &.{ dir, "zig" });
+   298	        if (cwd.access(io, beside, .{})) |_| return beside else |_| {}
+   299	    } else |_| {}
+   300	    const path = environ.get("PATH") orelse return null;
+   301	    var it = std.mem.tokenizeScalar(u8, path, ':');
+   302	    while (it.next()) |entry| {
+   303	        const candidate = try std.fs.path.join(gpa, &.{ entry, "zig" });
+   304	        if (cwd.access(io, candidate, .{})) |_| return candidate else |_| {}
+   305	    }
+   306	    return null;
+    35	            .target = target,
+    36	            .optimize = optimize,
+    37	            .imports = &.{.{ .name = "mo", .module = mo }},
+    38	        }),
+    39	    });
+    40	    const install_exe = b.addInstallArtifact(exe, .{});
+    41	    b.getInstallStep().dependOn(&install_exe.step);
+    42	    const mo_path = b.getInstallPath(.bin, "mo");
+    43	
+    60	    // The integration tests (named `corpus: ...`, plus number.zig's over mo build) spawn the
+    61	    // installed mo to build every module and program natively and compare with the interpreter,
+    62	    // exercise the filesystem, the network, and TLS. They run only when MO_CORPUS is set, which
+    63	    // this step does; zig build test reports them as skipped.
+    64	    const corpus_step = b.step("test-corpus", "Run every test, the mo build integration tests included");
+    65	    const run_corpus = b.addRunArtifact(mod_tests);
+    66	    run_corpus.setEnvironmentVariable("MO_EXE", mo_path);
+    67	    run_corpus.setEnvironmentVariable("MO_CORPUS", "1");
+    68	    run_corpus.step.dependOn(&install_exe.step);
+    69	    corpus_step.dependOn(&run_corpus.step);
+    70	
+    71	    // Step 42's exhaustive memory-safety gates. Stress covers the interpreter and every built
+    72	    // program through the same runtime switch. ASan is explicitly opt-in and makes native builds
+    73	    // use host Clang plus the runtime's region and custom-fiber sanitizer protocol.
+    74	    const stress_corpus_step = b.step("test-corpus-stress", "Run the complete corpus in stress mode, interpreter and native");
+    75	    const run_stress_corpus = b.addRunArtifact(mod_tests);
+    76	    run_stress_corpus.setEnvironmentVariable("MO_EXE", mo_path);
+    77	    run_stress_corpus.setEnvironmentVariable("MO_CORPUS", "1");
+    78	    run_stress_corpus.setEnvironmentVariable("MO_STRESS", "1");
+    79	    run_stress_corpus.step.dependOn(&install_exe.step);
+    80	    stress_corpus_step.dependOn(&run_stress_corpus.step);
+    81	
+    82	    const asan_corpus_step = b.step("test-corpus-asan", "Run the complete stress corpus with host-Clang ASan native builds");
+    83	    const run_asan_corpus = b.addRunArtifact(mod_tests);
+    84	    run_asan_corpus.setEnvironmentVariable("MO_EXE", mo_path);
+    85	    run_asan_corpus.setEnvironmentVariable("MO_CORPUS", "1");
+    86	    run_asan_corpus.setEnvironmentVariable("MO_STRESS", "1");
+    87	    run_asan_corpus.setEnvironmentVariable("MO_NATIVE_ASAN", "1");
+    88	    run_asan_corpus.step.dependOn(&install_exe.step);
+    89	    asan_corpus_step.dependOn(&run_asan_corpus.step);
+    90	
+72-static char empty_bytes[1];
+73-
+74:#ifdef MO_ADDRESS_SANITIZER
+75-void __asan_poison_memory_region(void const volatile *addr, size_t size);
+76-void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
+77:void __sanitizer_start_switch_fiber(void **fake_stack_save, const void *bottom, size_t size);
+78:void __sanitizer_finish_switch_fiber(void *fake_stack_save, const void **bottom_old, size_t *size_old);
+79-#define ASAN_POISON(addr, size) __asan_poison_memory_region((addr), (size))
+80-#define ASAN_UNPOISON(addr, size) __asan_unpoison_memory_region((addr), (size))
+--
+6795-typedef struct {
+6796-    void *sp;
+6797:#ifdef MO_ADDRESS_SANITIZER
+6798-    void *fake_stack;
+6799-    const void *stack_bottom;
+--
+6806-    void *memory;
+6807-    size_t size;
+6808:#ifdef MO_ADDRESS_SANITIZER
+6809-    /* The context whose stack the first entry must report to ASan. */
+6810-    FiberContext *first_from;
+--
+6899-    f->memory = memory;
+6900-    f->size = size;
+6901:#ifdef MO_ADDRESS_SANITIZER
+6902-    f->context.stack_bottom = (char *)memory + FIBER_GUARD;
+6903-    f->context.stack_size = FIBER_STACK;
+--
+7470-
+7471-static void switch_context(FiberContext *from, FiberContext *to) {
+7472:#ifdef MO_ADDRESS_SANITIZER
+7473:    __sanitizer_start_switch_fiber(&from->fake_stack, to->stack_bottom, to->stack_size);
+7474-#endif
+7475-    mo_fiber_swap(from, to);
+7476:#ifdef MO_ADDRESS_SANITIZER
+7477:    __sanitizer_finish_switch_fiber(from->fake_stack, NULL, NULL);
+7478-#endif
+7479-}
+--
+7481-/* Leaves `from` permanently, so ASan destroys its fake stack rather than saving it for a resume. */
+7482-static void leave_context(FiberContext *from, FiberContext *to) {
+7483:#ifdef MO_ADDRESS_SANITIZER
+7484:    __sanitizer_start_switch_fiber(NULL, to->stack_bottom, to->stack_size);
+7485-#endif
+7486-    mo_fiber_swap(from, to);
+--
+7579-        } else {
+7580-            f = fiber_create();
+7581:#ifdef MO_ADDRESS_SANITIZER
+7582-            f->first_from = context_of(holder);
+7583-#endif
+--
+7606- * process it was given, then gives the thread back and goes back to the pool. */
+7607-void mo_fiber_start(Fiber *f) {
+7608:#ifdef MO_ADDRESS_SANITIZER
+7609:    __sanitizer_finish_switch_fiber(NULL, &f->first_from->stack_bottom, &f->first_from->stack_size);
+7610-    f->first_from = NULL;
+7611-#endif
+Interpretation:
+- test-corpus-asan supplies MO_EXE/MO_CORPUS/MO_STRESS/MO_NATIVE_ASAN to its test child.
+- --prefix changes b.getInstallPath(.bin, mo), so the test child receives the fresh-prefix mo path.
+- MO_NATIVE_ASAN selects literal clang for runtime/generated-C compile and final link.
+- Generated C and runtime source use -fsanitize=address -O1 -g -fno-omit-frame-pointer -DMO_ADDRESS_SANITIZER.
+- Generated-C instrumentation is source-established only; no artifact was built or inspected in this grant.
+- Zig remains required for brick objects; findZig first checks beside installed mo, then approved PATH.

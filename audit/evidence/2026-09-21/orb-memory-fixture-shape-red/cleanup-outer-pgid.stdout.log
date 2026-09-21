@@ -1,0 +1,3 @@
+command=ps -o pid,ppid,pgid,stat,args -g 143835
+utc=2026-09-21T10:16:03+00:00
+    PID    PPID    PGID STAT COMMAND

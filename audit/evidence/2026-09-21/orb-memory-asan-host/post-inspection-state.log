@@ -1,0 +1,20 @@
+inspection_shell_cwd=/home/user/workspace/repo
+checkout=/home/user/workspace/verify-memory-69dc6df1-large-restart
+eventual_toolchain_cwd=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain
+head=0a0de7f7de45d7c5b597ab01c43a5e85d8834053
+candidate_path_count=57
+candidate_path_equality_exit=0
+accepted_guard_identity_exit=0
+corpus_entry=100644 blob d6628c86cbe613f4fd729ae84797b2d94eb81ac8	toolchain/src/corpus.zig
+fixture_entry=100644 blob 0b5b03551ad408a3bd6af1cb517e699658171070	toolchain/bench/step42/native-parcel-lifecycle-current.mo
+guard_entry=100755 blob 711862a7018e37a0925c351a2bfbc60df5bbdfd7	toolchain/bench/step36/guard.py
+guarded_entry=100644 blob c7f911f3456a863f6420429e8268768e1afba85f	toolchain/harness/executor/guarded.py
+tracked_diff_exit=0
+index_diff_exit=0
+status_porcelain:
+?? .mo-cache-full-normal-fresh/
+?? .mo-cache-real-restart-fresh/
+?? .zig-global-cache-full-normal-fresh/
+?? .zig-global-cache-real-restart-fresh/
+?? toolchain/.zig-cache-full-normal-fresh/
+?? toolchain/.zig-cache-real-restart-fresh/

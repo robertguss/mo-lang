@@ -1,0 +1,37 @@
+Status: conditional proposal only; no run authorized. CLANG_NO_DEFAULT_CONFIG=1 is listed as requested but installed Clang 14 does not evidence support, so this environment is not gate-ready until lead/Oracle resolves compiler config control.
+
+Working directory:
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain
+
+Fresh roots (currently absent; not created):
+MO_CACHE=/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh
+ZIG_LOCAL_CACHE_DIR=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache-asan-native-fresh
+ZIG_GLOBAL_CACHE_DIR=/home/user/workspace/verify-memory-69dc6df1-large-restart/.zig-global-cache-asan-native-fresh
+prefix=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh
+
+Exact controlled values:
+PATH=/usr/local/bin:/usr/bin:/bin
+HOME=/home/user
+CLANG_NO_DEFAULT_CONFIG=1  # unresolved/unsupported by selected Clang 14
+ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-14/bin/llvm-symbolizer
+ASAN_OPTIONS=detect_stack_use_after_return=1:detect_leaks=1:halt_on_error=1:abort_on_error=1:symbolize=1:log_path=stderr:leak_check_at_exit=1
+
+Unset before assigning the controlled values:
+ASAN_OPTIONS LSAN_OPTIONS UBSAN_OPTIONS LSAN_SYMBOLIZER_PATH LLVM_SYMBOLIZER_OPTS LLVM_ADDR2LINE_OPTS LD_PRELOAD LD_AUDIT LD_LIBRARY_PATH CCC_OVERRIDE_OPTIONS CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH OBJCPLUS_INCLUDE_PATH LIBRARY_PATH COMPILER_PATH
+all inherited MO_* variables
+all inherited ZIG_* variables, including ZIG_LIB_DIR, except the freshly assigned ZIG_LOCAL_CACHE_DIR and ZIG_GLOBAL_CACHE_DIR
+
+Resolution under exact PATH:
+clang -> /usr/bin/clang -> /usr/lib/llvm-14/bin/clang
+zig -> /usr/local/bin/zig -> /opt/zig-x86_64-linux-0.16.0/zig
+python3 -> /usr/local/bin/python3 -> /usr/local/bin/python3.11
+ps -> /usr/bin/ps
+nm -> /usr/bin/nm -> /usr/bin/x86_64-linux-gnu-nm
+readelf -> /usr/bin/readelf -> /usr/bin/x86_64-linux-gnu-readelf
+ld -> /usr/bin/ld -> /usr/bin/x86_64-linux-gnu-ld.bfd
+llvm-symbolizer is intentionally addressed by absolute path because no unsuffixed name is on PATH.
+
+Future command shape only (duration and exact filter require a later explicit grant):
+python3 bench/step36/guard.py <granted-seconds> -- zig build --prefix /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh test-corpus-asan -j4 -Dtest-filter='<later-granted-exact-filter>' --summary all
+
+Before that run, assert that fresh-prefix/bin/zig is absent after install setup; source installs mo there and otherwise findZig would prefer a colocated zig over PATH.

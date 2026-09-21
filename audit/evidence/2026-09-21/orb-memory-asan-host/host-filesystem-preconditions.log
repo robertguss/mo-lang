@@ -1,0 +1,77 @@
+uname=Linux 6.1.158+ x86_64
+ulimit_all:
+real-time non-blocking time  (microseconds, -R) unlimited
+core file size              (blocks, -c) 0
+data seg size               (kbytes, -d) unlimited
+scheduling priority                 (-e) 0
+file size                   (blocks, -f) unlimited
+pending signals                     (-i) 128418
+max locked memory           (kbytes, -l) 4110100
+max memory size             (kbytes, -m) unlimited
+open files                          (-n) 1024
+pipe size                (512 bytes, -p) 8
+POSIX message queues         (bytes, -q) 819200
+real-time priority                  (-r) 0
+stack size                  (kbytes, -s) 8192
+cpu time                   (seconds, -t) unlimited
+max user processes                  (-u) 128418
+virtual memory              (kbytes, -v) unlimited
+file locks                          (-x) unlimited
+cgroup:
+/sys/fs/cgroup/memory.max=unavailable
+/sys/fs/cgroup/memory.swap.max=unavailable
+/sys/fs/cgroup/pids.max=unavailable
+/sys/fs/cgroup/cpu.max=unavailable
+security_controls:
+/proc/sys/kernel/yama/ptrace_scope=unavailable
+/proc/sys/kernel/perf_event_paranoid=2
+/proc/sys/kernel/unprivileged_bpf_disabled=2
+/proc/sys/kernel/kptr_restrict=0
+/proc/sys/kernel/dmesg_restrict=0
+/proc/sys/fs/suid_dumpable=0
+/sys/kernel/security/lockdown=unavailable
+CapInh:	0000000000000000
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+CapBnd:	000001ffffffffff
+CapAmb:	0000000000000000
+NoNewPrivs:	0
+Seccomp:	0
+Seccomp_filters:	0
+disk_bytes:
+Filesystem       1B-blocks        Used   Available Use% Mounted on
+/dev/root      68219949056 16460836864 51471765504  25% /
+/dev/root      68219949056 16460836864 51471765504  25% /
+/dev/root      68219949056 16460836864 51471765504  25% /
+mount_checkout:
+TARGET SOURCE   FSTYPE OPTIONS
+/      /dev/vda ext4   rw,relatime,discard
+mount_tmp:
+TARGET SOURCE   FSTYPE OPTIONS
+/      /dev/vda ext4   rw,relatime,discard
+ownership_permissions:
+/home/user owner=user:user uid=1000 gid=1000 mode=drwxr-xr-x(755) type=directory
+/home/user/workspace owner=user:user uid=1000 gid=1000 mode=drwxr-xr-x(755) type=directory
+/home/user/workspace/verify-memory-69dc6df1-large-restart owner=user:user uid=1000 gid=1000 mode=drwxr-xr-x(755) type=directory
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain owner=user:user uid=1000 gid=1000 mode=drwxr-xr-x(755) type=directory
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache owner=user:user uid=1000 gid=1000 mode=drwxr-xr-x(755) type=directory
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache/tmp owner=user:user uid=1000 gid=1000 mode=drwxr-xr-x(755) type=directory
+path_components:
+f: /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache/tmp
+drwxr-xr-x root root /
+drwxr-xr-x root root home
+drwxr-xr-x user user user
+drwxr-xr-x user user workspace
+drwxr-xr-x user user verify-memory-69dc6df1-large-restart
+drwxr-xr-x user user toolchain
+drwxr-xr-x user user .zig-cache
+drwxr-xr-x user user tmp
+access_predicates_without_write_probe:
+/home/user/workspace exists=yes directory=yes writable=yes searchable=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart exists=yes directory=yes writable=yes searchable=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain exists=yes directory=yes writable=yes searchable=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache exists=yes directory=yes writable=yes searchable=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache/tmp exists=yes directory=yes writable=yes searchable=yes
+mount_noexec_check:
+rw,relatime,discard
+executable_mount=yes

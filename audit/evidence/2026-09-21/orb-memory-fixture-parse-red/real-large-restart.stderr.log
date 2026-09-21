@@ -1,0 +1,24 @@
+test-corpus
++- run test 1 pass, 1 fail (2 total)
+error: 'corpus.test.corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary' failed:
+       step 42 stdout oracle failed (UnexpectedTerm); capture retained at /home/user/workspace/repo/.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal/6wmCRvvrHs0f-_gy
+       /home/user/workspace/verify-memory-eb665371-large-restart/toolchain/src/corpus.zig:1077:50: 0x13b3bf8 in validateStdout (root.zig)
+               if (term != .exited or term.exited != 0) return error.UnexpectedTerm;
+                                                        ^
+       /home/user/workspace/verify-memory-eb665371-large-restart/toolchain/src/corpus.zig:1660:9: 0x13b56d3 in checkLargeRestartCapture (root.zig)
+               return err;
+               ^
+       /home/user/workspace/verify-memory-eb665371-large-restart/toolchain/src/corpus.zig:1785:5: 0x13b74a5 in test.corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary (root.zig)
+           try checkLargeRestartCapture(arena, io, interp, expected_stderr_path, capture_dir, "interpreter");
+           ^
+failed command: MO_EXE=/home/user/workspace/verify-memory-eb665371-large-restart/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache-real-restart-fresh/o/e74201fb66c35c8aeba37cdd50e52f34/test --cache-dir=./.zig-cache-real-restart-fresh --seed=0x34f20859 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 1s MaxRSS:190M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache-real-restart-fresh/o/bc0619dbfa9da73f98952af8d0005a12/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /home/user/workspace/verify-memory-eb665371-large-restart/toolchain .zig-cache-real-restart-fresh /home/user/workspace/verify-memory-eb665371-large-restart/.zig-global-cache-real-restart-fresh --seed 0x34f20859 -Z235442b791e449bc test-corpus -j4 -Dtest-filter=corpus: a process whose state is megabytes restarts twenty times and its reports do not stay, under mo run and in a binary --summary all

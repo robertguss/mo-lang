@@ -1,0 +1,18 @@
+utc=2026-09-21T10:35:43+00:00
+_548VJ_lAvgucH_H/expected.stderr	90006894 bytes
+_548VJ_lAvgucH_H/interpreter.comparison	260 bytes
+_548VJ_lAvgucH_H/interpreter.meta	1212 bytes
+_548VJ_lAvgucH_H/interpreter.stderr	90006894 bytes
+_548VJ_lAvgucH_H/interpreter.stdout	102 bytes
+_548VJ_lAvgucH_H/native.comparison	260 bytes
+_548VJ_lAvgucH_H/native.meta	1409 bytes
+_548VJ_lAvgucH_H/native.stderr	90006894 bytes
+_548VJ_lAvgucH_H/native.stdout	101 bytes
+total:
+258M	.amp/transfer/69dc6df1-real-large-restart/capture-0a0de7f7-normal
+exit:
+0
+logs:
+  0 .amp/transfer/69dc6df1-real-large-restart/real-large-restart.stdout.log
+263 .amp/transfer/69dc6df1-real-large-restart/real-large-restart.stderr.log
+263 total

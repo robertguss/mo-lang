@@ -1,0 +1,31 @@
+Static and runtime evidence for unchanged ordinary stress controls:
+1799-    // printed raw memory from a binary and one of 0.8 MB panicked the interpreter (programs/agent,
+1800-    // 19 Sep 2026). The answer is packed when `answer` runs now, as a send is. A binary built from
+1801:    // C with -DMO_STRESS compacts at every safe point, so it finds the class at any size.
+1802-    const gpa = std.testing.allocator;
+1803-    const io = std.testing.io;
+--
+1831-    const home = std.testing.environ.getAlloc(arena, "HOME") catch null;
+1832-    const bricks = try cbuild.cacheDir(arena, mo_cache, home, "zig-out/mo-build");
+1833:    const stress = try std.fmt.allocPrint(arena, "zig cc -std=c11 -Wall -Werror -O2 -DMO_STRESS -o stressed zig-out/mo-build/deferred/deferred.c zig-out/mo-build/deferred/mo_rt.c {s}/.bricks/*/*.o", .{bricks});
+1834-    const compiled = try std.process.run(arena, io, .{ .argv = &.{ "/bin/sh", "-c", stress }, .cwd = .{ .path = cwd } });
+1835:    std.debug.print("step42 case=n10-stress-build term={any} stdout={s} stderr={s}\n", .{ compiled.term, compiled.stdout, compiled.stderr });
+1836-    try std.testing.expect(compiled.term == .exited and compiled.term.exited == 0);
+1837-    for ([_]struct { n: []const u8, want: []const u8 }{
+--
+1840-    }) |case| {
+1841-        const ran = try std.process.run(arena, io, .{ .argv = &.{ "./stressed", case.n }, .cwd = .{ .path = cwd } });
+1842:        std.debug.print("step42 case=n10-positive argument={s} term={any} stdout={s} stderr={s}\n", .{ case.n, ran.term, ran.stdout, ran.stderr });
+1843-        try std.testing.expect(ran.term == .exited and ran.term.exited == 0);
+1844-        try std.testing.expectEqualStrings(case.want, ran.stdout);
+--
+2121-        try environ.put("MO_CORES", c.cores);
+2122-        try environ.put("MO_PLACE", c.placing);
+2123:        try environ.put("MO_STRESS", "1");
+2124-        const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "fiber-lifecycle.mo", "--", c.n }, .cwd = .{ .path = cwd }, .environ_map = &environ });
+2125-        std.debug.print("step42 case=fiber-lifecycle-{s}-interp term={any} stdout={s} stderr={s}\n", .{ c.label, interp.term, interp.stdout, interp.stderr });
+Raw emitted control lines:
+step42 case=secondary-stress scheduler=1 frame_budget=0 loop_budget=0 scratch_poison=a5
+step42 case=n10-stress-build term=.{ .exited = 0 } stdout= stderr=
+step42 case=n10-positive argument=10 term=.{ .exited = 0 } stdout=answered 45 bytes and code 3, whole: true
+step42 case=n10-positive argument=1000 term=.{ .exited = 0 } stdout=answered 4005 bytes and code 3, whole: true

@@ -1,0 +1,14 @@
+utc=2026-09-21T09:59:36+00:00
+6wmCRvvrHs0f-_gy/expected.stderr	90006894 bytes
+6wmCRvvrHs0f-_gy/interpreter.comparison	380 bytes
+6wmCRvvrHs0f-_gy/interpreter.meta	1195 bytes
+6wmCRvvrHs0f-_gy/interpreter.stderr	283 bytes
+6wmCRvvrHs0f-_gy/interpreter.stdout	0 bytes
+total:
+86M	.amp/transfer/eb665371-real-large-restart/capture-efbccec1-normal
+exit:
+1
+logs:
+   0 .amp/transfer/eb665371-real-large-restart/real-large-restart.stdout.log
+2375 .amp/transfer/eb665371-real-large-restart/real-large-restart.stderr.log
+2375 total

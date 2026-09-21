@@ -1,0 +1,16 @@
+TARGET         SOURCE  FSTYPE  OPTIONS
+/sys/fs/cgroup cgroup2 cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot
+self_cgroup=0::/amp.slice/amp-workload.slice/amp-run-295263-15336.scope
+/sys/fs/cgroup/amp.slice/memory.max=max
+/sys/fs/cgroup/amp.slice/memory.swap.max=max
+/sys/fs/cgroup/amp.slice/pids.max=max
+/sys/fs/cgroup/amp.slice/cpu.max=max 100000
+/sys/fs/cgroup/amp.slice/memory.current=14314110976
+/sys/fs/cgroup/amp.slice/pids.current=45
+resolved amp.slice controls:
+/sys/fs/cgroup/amp.slice/memory.max=max
+/sys/fs/cgroup/amp.slice/memory.swap.max=max
+/sys/fs/cgroup/amp.slice/pids.max=max
+/sys/fs/cgroup/amp.slice/cpu.max=max 100000
+/sys/fs/cgroup/amp.slice/memory.current=14318710784
+/sys/fs/cgroup/amp.slice/pids.current=37

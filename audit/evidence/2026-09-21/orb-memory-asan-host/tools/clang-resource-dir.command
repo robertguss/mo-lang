@@ -1,0 +1,1 @@
+clang -print-resource-dir 

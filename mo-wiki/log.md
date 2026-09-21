@@ -2985,3 +2985,83 @@
 - Existing exact both-runtime output/RSS/cleanup predicates unchanged. Both
   compile-only REDs preserved; no full309, ASan, stress, mutants or timing.
   Documentation lint:287 pages,29 existing notices, exit0; diff check clean.
+
+## [2026-09-21] verify | fixture parse failure after successful compilation
+
+- Verified eb665371/efbccec1 raw archive, captures and cleanup: exit1, build3/5,
+  tests1 pass/1 fail. Interpreter exited1 on inline assignment syntax, with
+  completed/reaped metadata and null errors. No native or RSS evidence.
+- Lead/Oracle identified all four inline statement arms, including returns.
+  Source-only conversion to block arms authorized; no expected-report changes,
+  retry or broader execution. Full partial captures and prior REDs retained.
+
+## [2026-09-21] review | block-arm correction releases one normal attempt
+
+- Verified e73504d0 full bundle/hash and exact four-arm diff. Oracle confirms
+  patterns, bodies, retry logic and invariant location unchanged; expected
+  reports are not adjusted. One normal exact filter released on full candidate
+  composed onto accepted fe29ea7a; transferred bundle and sent bounded grant.
+- Results pending. Existing both-runtime report/RSS/cleanup predicates remain;
+  no broader execution or acceptance. Prior REDs and full captures preserved.
+
+## [2026-09-21] verify | fixture shape-check RED
+
+- Verified e73504d0/92e2589f archive/hash and captures: exit1/build3/5, tests1
+  pass/1 fail. Interpreter exited1 on MO0304 depth4; completed/reaped, null
+  lifecycle errors and cleanup confirmed. Native and RSS unexecuted.
+- Lead/Oracle approve only removal of the enclosing retry guard and break on
+  Ok(0). Asks unchanged, depth3; break skips inner-loop collection, not outer.
+  Strict RSS gate unchanged. Source-only worker brief; no retry grant.
+
+## [2026-09-21] review | depth-three retry correction releases one attempt
+
+- Verified69dc6df1 bundle/hash and exact retry-block diff. Oracle confirms
+  inner-loop break, unchanged bounded ask/report behavior and invariant11:3. No
+  identical collection timing or RSS claim; strict predicate unchanged.
+- Transferred full candidate and released one normal exact filter composed onto
+  accepted d02014c0, fresh caches/output and retained captures. Stop-first, all
+  both-runtime report/RSS/cleanup checks required; no broader grant.
+
+## [2026-09-21] verify | normal large restart green, fresh full-normal released
+
+- Lead/Oracle checked full69 captures: exit0/build5/5/tests2/2, both runtimes
+  exact25 reports/90,006,894 stderr bytes and matching hashes, completed/reaped,
+  null errors. RSS growth65536/4325376 bytes below16MiB; cleanup confirmed.
+- One unfiltered normal7200 run released on same0a0de7f7, fresh caches/output
+  and retained captures. Observe/reconcile309; no separate stress/ASan/mutants
+  or timing. Seven obligations unchanged; no candidate acceptance.
+- At Robert's morning request, archived the two accepted guard worker threads;
+  retained lead, memory author, validator and unfinished server threads.
+
+## [2026-09-21] verify | exact candidate69 full-normal309 green
+
+- Lead/Oracle reviewed actual0/build5/5/tests309/309 and complete large
+  captures: both90,006,894-byte streams match, RSS growth61440/4317184
+  below16MiB; all9normal+9audit lifecycle cases pass with balanced positive
+  allocations/live0. Owned cleanup confirmed; prior evidence preserved. No
+  acceptance.
+- Source-only readiness inventory assigned for a focused native-fiber ASan gate:
+  actual modes, captured/asserted/retained streams, explicit ASAN_OPTIONS and
+  host prerequisites. Some corpus checks still drop term/diagnostic evidence. No
+  new execution grant; all seven obligations remain unwaived.
+
+## [2026-09-21] review | focused sanitizer host inspection only
+
+- Reviewed source69 readiness map and command paths with Oracle. Full-corpus
+  term/stream gaps remain; focused fiber test has usable raw result checks.
+- Validator granted only host/tool/version/library-symbol/environment/filesystem
+  inspection, no build/runtime. Return exact prerequisite packet before release.
+- Later narrow native-runtime/fiber evidence may verify retained runtime object
+  including fake-stack instrumentation; generated-C flags remain source-proven.
+  No ptrace capture, suppression or disabled leak/fake-stack checks permitted.
+
+## [2026-09-21] review | host prerequisites resolve focused ASan release
+
+- Verified host packet/hash, matching Clang14/compiler-rt and symbolizer. Exact
+  Clang14/Debian source resolves config loading: literal clang/no explicit
+  config skips implicit search. Unsupported CLANG_NO_DEFAULT_CONFIG is unset.
+- One focused fiber-ASan1800 attempt released on same0a0de7f7, fresh roots,
+  controlled options, fake-stack/leak checks enabled. Retained runtime object
+  must prove compiler checks/fake-stack/fiber hooks; generated-C flags and
+  successful argv remain source-established. Raw packet/addendum preserved.
+- No retries, warnings exemption, suppressions, broader gate or acceptance.

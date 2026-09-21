@@ -1,0 +1,21 @@
+Clang configuration control inspection (no compilation/invocation probe):
+selected=/usr/lib/llvm-14/bin/clang
+driver_library=/usr/lib/llvm-14/lib/libclang-cpp.so.14
+4c07b5860a1d9b800dd5cdb449a0b3ac5858e8b576cc1f7131f28f2fc89bd419  /usr/lib/llvm-14/lib/libclang-cpp.so.14
+CLANG_NO_DEFAULT_CONFIG_exact_token_count=0
+--no-default-config_exact_token_count=0
+available_config_controls:
+--config-system-dir=
+System directory for configuration files
+--config-user-dir=
+User directory for configuration files
+--config
+Specifies configuration file
+known_config_locations:
+/etc/clang exists=no cfg=
+/home/user/.config/clang exists=no cfg=
+/usr/lib/llvm-14/etc/clang exists=no cfg=
+/usr/lib/llvm-14/bin exists=yes cfg=
+/usr/bin exists=yes cfg=
+/usr/local/bin exists=yes cfg=
+conclusion=CLANG_NO_DEFAULT_CONFIG support not present; current known config dirs have no cfg files, but robust default-config suppression is unresolved

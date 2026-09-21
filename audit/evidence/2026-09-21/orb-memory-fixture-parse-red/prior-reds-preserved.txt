@@ -1,0 +1,3 @@
+Prior RED archives preserved unchanged:
+563511ab0af557415fbf7ba6669891dabfed8212f7859cb20888cfef0bdf9016  .amp/transfer/85edd344-large-restart/verification-85edd344-real-large-restart-red.tar.gz
+a225217e93dc28f2056ccdd58898e380525ec53fb5b3aba06477ae7fced25e50  .amp/transfer/49b69a65-real-large-restart/verification-49b69a65-real-large-restart-red.tar.gz

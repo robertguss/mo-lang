@@ -30,13 +30,15 @@ unchanged direct controls; failed cleanup now returns125. Last documented Darwin
 acceptance: Step44, **272/272** plus30 controls. No live-provider task or Pi
 comparison yet.
 
-**21 Sep, 12:22 AM ET:** server independent full278/278 and both-runtime live
-checks pass; benchmark supervision/RSS protocol remains blocked. Memory full
-normal validation stopped at288/289, one seeded-packed trace crash; no ASan ran.
-Source correction is reviewed, but lifecycle/control corrections are still
-required before focused execution. Both candidates remain outside accepted main.
-Next: review bounded corrections, then safe measurements/normal validation; no
-mutant, ASan or measurement grant follows from the current green subsets.
+**21 Sep, morning ET:** server independent full278/278 and both-runtime live
+checks pass; watcher synthetic11/11 passes, real benchmark verification remains
+outstanding. Earlier memory source passed full301/301. Latest memory source now
+passes fresh full-normal309/309 with exact90,006,894-byte report streams, strict
+RSS bounds and all9normal+9audit lifecycle cases. Next is source-only readiness
+for a focused native-fiber ASan gate; full raw-ASan still needs complete
+inner-stream/termination evidence. Both candidates remain outside accepted main.
+ASan, exhaustive stress, mutants and equivalent measurements remain owed; no
+broader acceptance claim.
 
 | board                        | current work                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

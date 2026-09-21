@@ -1,0 +1,18 @@
+utc=2026-09-21T10:56:34+00:00
+RpI4_kGhMatzmfGS/expected.stderr	90006894 bytes
+RpI4_kGhMatzmfGS/interpreter.comparison	260 bytes
+RpI4_kGhMatzmfGS/interpreter.meta	1208 bytes
+RpI4_kGhMatzmfGS/interpreter.stderr	90006894 bytes
+RpI4_kGhMatzmfGS/interpreter.stdout	102 bytes
+RpI4_kGhMatzmfGS/native.comparison	260 bytes
+RpI4_kGhMatzmfGS/native.meta	1408 bytes
+RpI4_kGhMatzmfGS/native.stderr	90006894 bytes
+RpI4_kGhMatzmfGS/native.stdout	101 bytes
+total:
+258M	.amp/transfer/69dc6df1-full-normal/capture-0a0de7f7-full-normal
+exit:
+0
+logs:
+    0 .amp/transfer/69dc6df1-full-normal/full-normal.stdout.log
+20537 .amp/transfer/69dc6df1-full-normal/full-normal.stderr.log
+20537 total
