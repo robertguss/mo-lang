@@ -2958,3 +2958,12 @@
 - Lead verified archive/hash/source/SDK. Oracle approves only &tmp.sub_path
   source correction; no retry until reread. Prior helper greens retain their
   narrower meaning; seven obligations unchanged.
+
+## [2026-09-21] review | path-slice correction permits one normal retry
+
+- Verified49b69a65 bundle and exact one-token source correction. Oracle approves
+  one normal real large-restart filter on full49 composed onto accepted728b7a91.
+  Transferred bundle and sent the bounded grant to the independent validator.
+- Fresh caches/output and retained captures; both runtimes and every existing
+  exact-output/RSS/cleanup predicate required. Stop-first, no broader execution
+  or acceptance. Compile-only RED remains unchanged; results pending.

@@ -2137,6 +2137,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | -------------------------------------------------------------- |
 | Preserve f54cf712 compile-only RED:exit1,build2/5,no runtime/captures,group absent. Authorize only address-of tmp.sub_path in path.join; SDK fixed-array coercion, path bytes/lifetime unchanged. Source reread before retry. Helper greens do not establish compilation of unselected test body. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-real-restart-compile-red/ |
 
+### Path-slice reread and single normal retry
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                                                            | who                  | status  | first tested by                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------------- |
+| Exact49b69a65 adds only the required address-of to the capture path array, atop doc336. Release one normal large-restart filter on full49 composed onto accepted728b7a91, with fresh caches/output, retained full captures and unchanged both-runtime exact-report/RSS/cleanup predicates. Stop-first; no additional retry, full309, ASan, stress, mutants or timing. Prior compile-only RED remains evidence, not runtime failure. | Amp lead with Oracle | decided | pending independent exact-filter receipts |
+
 ## Related
 
 - [[session-05]]

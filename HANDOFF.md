@@ -44,6 +44,14 @@ hidden suite was opened. Evidence and reply mapping:
 
 ### Active orb workers
 
+Latest bounded grant: lead/Oracle reread approves the one-token path-slice
+correction at49b69a65. Validator has the verified bundle and may run exactly one
+normal large-restart filter on full49 composed onto accepted728b7a91, with fresh
+caches/output and retained raw captures. Require both runtimes, exact25 reports,
+canonical stdout/nonzero RSS/strict growth bound and complete cleanup.
+Stop-first; no retry or full309/ASan/stress/mutants/timing grant. Priorf54cf712
+compile-only RED remains preserved; no runtime green or acceptance yet.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.
