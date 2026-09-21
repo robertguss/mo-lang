@@ -1,0 +1,2 @@
+overflow-sleep: exit=124 expected=124; reason=None; source=None; child-status=None/-9; receipt-pgid=26763; group=None; child=not-live; descendant=not-live; dedicated=True; observed-before-fallback=child:True,descendant:True; repeated-after-grace=None; bytes=17825936; stable=False; elapsed=0.61s; issue=None; cleanup-errors=[]; final-observation-error=None; wrapper='guarded /tmp/mo-guarded-corrected-baseline/overflow-sleep/attempt child_exit=-9 exit=124 group_absent=True'; FAIL; sentinel=live
+guarded_controls: 0/1 passed

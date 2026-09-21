@@ -1,0 +1,3 @@
+startup-term: exit=143 expected=143; child=not-live; descendant=not-live; dedicated-group=yes; unrelated=live; elapsed=0.29s; issue=None; stderr=''; PASS
+startup-int: exit=130 expected=130; child=not-live; descendant=not-live; dedicated-group=yes; unrelated=live; elapsed=0.29s; issue=None; stderr=''; PASS
+guard_regression[startup]: 2/2 passed
