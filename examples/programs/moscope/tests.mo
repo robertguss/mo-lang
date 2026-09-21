@@ -50,12 +50,40 @@ test "an exact decoded duplicate UUID is removed and a conflicting payload is in
   assert disagreed.messages.size == 1 and disagreed.incomplete
 end
 
-test "unknown bookkeeping is counted, but an unknown conversation block is incomplete"
+test "physical fallback identity cannot collide with a provided physical-looking id"
+  clock = Clock.fixture()
+  missing = "{\"type\":\"user\",\"sessionId\":\"s\",\"message\":{\"role\":\"user\",\"content\":\"alpha\"}}"
+  provided = "{\"type\":\"user\",\"sessionId\":\"s\",\"message\":{\"role\":\"user\",\"id\":\"physical:1\",\"content\":\"omega\"}}"
+  scan = folded([missing, provided], clock).scan
+  assert scan.messages.size == 2
+  assert searched(scan, options("alpha omega", AllWords, false), clock).matches == 0
+  assert searched(scan, options("alpha", Phrase, false), clock).matches == 1
+  assert searched(scan, options("omega", Phrase, false), clock).matches == 1
+end
+
+test "invalid top-level classification cases independently make a result incomplete"
+  clock = Clock.fixture()
+  nonobject = folded(["[]"], clock).scan
+  missing = folded(["{\"payload\":{}}"], clock).scan
+  nonstring = folded(["{\"type\":42,\"payload\":{}}"], clock).scan
+  conversation = folded([
+    "{\"type\":\"future_conversation\",\"message\":{\"role\":\"user\",\"content\":\"needle\"}}"
+  ], clock).scan
+  wanted = options("needle", Phrase, false)
+  assert searched(nonobject, wanted, clock).incomplete
+  assert searched(missing, wanted, clock).incomplete
+  assert searched(nonstring, wanted, clock).incomplete
+  assert searched(conversation, wanted, clock).incomplete
+end
+
+test "unknown bookkeeping is counted, but unknown conversation shapes are incomplete"
   clock = Clock.fixture()
   bookkeeping = "{\"type\":\"future_bookkeeping\",\"payload\":{}}"
+  unknown_conversation = "{\"type\":\"future_conversation\",\"message\":{\"role\":\"user\",\"content\":\"needle\"}}"
   future = "{\"type\":\"assistant\",\"uuid\":\"future\",\"sessionId\":\"s\",\"message\":{\"role\":\"assistant\",\"id\":\"m\",\"content\":[{\"type\":\"future_block\"}]}}"
   known_unknown = folded([bookkeeping], clock).scan
   assert !known_unknown.incomplete
   assert known_unknown.unknown_kinds.get("future_bookkeeping") == Some(1)
+  assert folded([unknown_conversation], clock).scan.incomplete
   assert folded([future], clock).scan.incomplete
 end

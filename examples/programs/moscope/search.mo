@@ -29,6 +29,9 @@ fn report(scan: Scan, options: Options, clock: Clock, started: Time) : Report
       break
     end
     rendered = append(rendered, session_heading(session))
+    if rendered.truncated
+      break
+    end
     for hit in session.hits.sort_by(fn(one)
       (one.message.path, one.message.first_line, one.message.role, one.message.id)
     end)
@@ -38,9 +41,12 @@ fn report(scan: Scan, options: Options, clock: Clock, started: Time) : Report
         deadline_hit = true
         break
       end
-      rendered = append(rendered, message_text(hit))
+      rendered = render_hit(rendered, hit)
+      if rendered.truncated
+        break
+      end
     end
-    if deadline_hit
+    if deadline_hit or rendered.truncated
       break
     end
   end
@@ -96,14 +102,14 @@ fn searchable(block: Block) : String
 end
 
 fn sessions_of(messages: List(Message), hits: List(Hit)) : List(Session)
-  var latest: Map(String, Option(Time)) = Map.new()
-  var labels: Map(String, String) = Map.new()
+  var latest = Map.new()
+  var labels = Map.new()
   for message in messages
     labels = labels.set(message.session_key, message.session_label)
     latest = latest.set(message.session_key,
       later(latest.get(message.session_key) or None, message.conversation_at))
   end
-  var grouped: Map(String, List(Hit)) = Map.new()
+  var grouped = Map.new()
   for hit in hits
     grouped = grouped.update(hit.message.session_key, [], fn(before) before.push(hit) end)
   end
@@ -125,54 +131,41 @@ fn session_heading(session: Session) : String
     Some(at): at.to_iso8601
     None: "timestamp missing"
   end
-  "Session #{safe(session.label)} — latest #{latest}\n"
+  "Session #{safe_prefix(session.label, 256)} — latest #{latest}\n"
 end
 
-fn message_text(hit: Hit) : String
-  var text = "  #{safe(hit.message.role)} message #{safe(hit.message.id)}\n"
+fn render_hit(rendered: Render, hit: Hit) : Render
+  var next = append(rendered,
+    "  #{safe_prefix(hit.message.role, 256)} message #{safe_prefix(hit.message.id, 256)}\n")
   for block in hit.blocks
+    if next.truncated
+      break
+    end
     api = case block.api_index
       Some(index): " apiBlockIndex=#{index}"
       None: ""
     end
-    text = "#{text}    #{safe(block.path)}:#{block.line} #{safe(block.label)} content[#{block.local_index}]#{api}\n"
-    text = "#{text}      #{bounded_excerpt(block.text)}\n"
+    next = append(next,
+      "    #{safe_prefix(block.path, 512)}:#{block.line} #{safe_prefix(block.label, 256)} content[#{block.local_index}]#{api}\n")
+    if next.truncated
+      break
+    end
+    next = append(next, "      #{bounded_excerpt(block.text)}\n")
   end
-  text
+  next
 end
 
 fn bounded_excerpt(text: String) : String
-  escaped = safe(text)
-  return escaped if escaped.size <= excerpt()
-  "#{escaped.slice(0, excerpt())}..."
+  safe_prefix(text, excerpt())
 end
 
 fn diagnostics_text(scan: Scan, limit: UInt64) : Render
   var rendered = Render(text: "", truncated: false)
-  if scan.skipped_links > 0
-    rendered = append_limit(rendered,
-      "moscope: diagnostic: skipped #{scan.skipped_links} discovered symlinks\n", limit)
-  end
-  for pair in scan.unknown_kinds.entries.sort_by(fn(entry) entry.0 end)
-    rendered = append_limit(rendered,
-      "moscope: diagnostic: ignored #{pair.1} records of kind #{safe(pair.0)}\n", limit)
-    if rendered.truncated
-      break
-    end
+  if scan.incomplete
+    rendered = incomplete_text(rendered, scan, limit)
   end
   if !rendered.truncated
-    for issue in scan.issues
-      where = if issue.line == 0: safe(issue.path) else: "#{safe(issue.path)}:#{issue.line}"
-      rendered = append_limit(rendered,
-        "moscope: incomplete: #{where}: #{safe(issue.detail)}\n", limit)
-      if rendered.truncated
-        break
-      end
-    end
-  end
-  if !rendered.truncated and scan.incomplete and scan.issues.size >= diagnostics()
-    rendered = append_limit(rendered,
-      "moscope: incomplete: diagnostic retention limit reached\n", limit)
+    rendered = notices_text(rendered, scan, limit)
   end
   if rendered.truncated
     sentinel = "moscope: incomplete: diagnostics exceed the 8 MiB rendered-output limit\n"
@@ -183,8 +176,51 @@ fn diagnostics_text(scan: Scan, limit: UInt64) : Render
   rendered
 end
 
+fn notices_text(rendered: Render, scan: Scan, limit: UInt64) : Render
+  var next = rendered
+  if scan.skipped_links > 0
+    next = append_limit(next,
+      "moscope: diagnostic: skipped #{scan.skipped_links} discovered symlinks\n", limit)
+  end
+  return next if next.truncated
+  for pair in scan.unknown_kinds.entries.sort_by(fn(entry) entry.0 end)
+    next = append_limit(next,
+      "moscope: diagnostic: ignored #{pair.1} records of kind #{safe_prefix(pair.0, 256)}\n",
+      limit)
+    if next.truncated
+      break
+    end
+  end
+  next
+end
+
+fn incomplete_text(rendered: Render, scan: Scan, limit: UInt64) : Render
+  var next = rendered
+  output = scan.issues.filter(fn(issue)
+    issue.path == "<output>" and issue.detail == "rendered output exceeds 8 MiB"
+  end)
+  other = scan.issues.filter(fn(issue)
+    issue.path != "<output>" or issue.detail != "rendered output exceeds 8 MiB"
+  end)
+  for issue in output.concat(other)
+    path = safe_prefix(issue.path, 512)
+    where = if issue.line == 0: path else: "#{path}:#{issue.line}"
+    next = append_limit(next,
+      "moscope: incomplete: #{where}: #{safe_prefix(issue.detail, 512)}\n", limit)
+    if next.truncated
+      break
+    end
+  end
+  if !next.truncated and scan.issues.size >= diagnostics()
+    next = append_limit(next,
+      "moscope: incomplete: diagnostic retention limit reached\n", limit)
+  end
+  next
+end
+
 fn append(rendered: Render, addition: String) : Render
-  append_limit(rendered, addition, output_bytes())
+  # Keep room for at least a short incomplete explanation after result truncation.
+  append_limit(rendered, addition, output_bytes().saturating_sub(512))
 end
 
 fn append_limit(rendered: Render, addition: String, limit: UInt64) : Render
@@ -222,6 +258,12 @@ fn safe(text: String) : String
       if byte == 92: "\\\\" else: "\\x#{hex(byte)}"
     end
   end), "")
+end
+
+fn safe_prefix(text: String, limit: UInt64) : String
+  clipped = text.slice(0, min_of(text.size, limit))
+  escaped = safe(clipped)
+  if text.size > limit: "#{escaped}..." else: escaped
 end
 
 fn hex(byte: UInt8) : String

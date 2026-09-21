@@ -1,5 +1,3 @@
-# run: search connection fixtures/smoke
-# run: search refused fixtures/smoke --all-words --include-tools
 module Moscope.Main
 expose Problem, options, analyze, main
 
@@ -22,7 +20,7 @@ fn options(args: List(String)) : Result(Options, Problem)
   if args.first != Some("search")
     return Error(Usage(detail: "the first argument must be search"))
   end
-  var positionals: List(String) = []
+  var positionals = []
   var all_words = false
   var include_tools = false
   for arg in args.drop(1)
@@ -34,7 +32,7 @@ fn options(args: List(String)) : Result(Options, Problem)
         return Error(Usage(detail: "duplicate --include-tools")) if include_tools
         include_tools = true
       else
-        return Error(Usage(detail: "unsupported option #{safe(arg)}")) if arg.starts_with?("-")
+        return Error(Usage(detail: unsupported(arg))) if arg.starts_with?("-")
         positionals = positionals.push(arg)
       end
     end
@@ -44,14 +42,21 @@ fn options(args: List(String)) : Result(Options, Problem)
   end
   query = positionals.get(0) or ""
   dir = positionals.get(1) or ""
-  return Error(Usage(detail: "query is empty or ASCII whitespace only")) if query_terms(query).size == 0
   return Error(Usage(detail: "query exceeds 4096 bytes")) if query.byte_size > query_bytes()
-  if all_words and query_terms(query).size > terms()
+  words = query_terms(query)
+  return Error(Usage(detail: "query is empty or ASCII whitespace only")) if words.size == 0
+  if all_words and words.size > terms()
     return Error(Usage(detail: "--all-words query exceeds 64 terms"))
   end
   return Error(Usage(detail: "directory is empty")) if dir == ""
   mode = if all_words: AllWords else: Phrase
   Ok(Options(query: query, dir: dir, mode: mode, include_tools: include_tools))
+end
+
+fn unsupported(arg: String) : String
+  clipped = arg.slice(0, min_of(arg.size, 256))
+  suffix = if arg.size > 256: "..." else: ""
+  "unsupported option #{safe(clipped)}#{suffix}"
 end
 
 fn analyze(fs: Fs, clock: Clock, parsed: Options) : Report

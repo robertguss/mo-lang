@@ -36,8 +36,11 @@ stdout consumer received all output.
   images, and records marked `isMeta`, `isCompactSummary`, or
   `isApiErrorMessage` are deliberately excluded.
 - Images are not searchable text. Unknown conversation block/content shapes make
-  the search incomplete. Unknown top-level bookkeeping kinds are counted
-  diagnostically and ignored, not globally rejected.
+  the search incomplete. A nonobject record or a record whose top-level `type`
+  is missing or nonstring is also incomplete. An unknown string `type` with an
+  object `message` is conversation-shaped and incomplete; other well-formed
+  unknown string types are counted as bookkeeping and ignored. Unknown metadata
+  is therefore neither globally rejected nor silently treated as conversation.
 - A user-role record is not claimed to be human-authored. Unmarked injected
   prose cannot be reliably identified and remains eligible.
 
@@ -52,22 +55,31 @@ stdout consumer received all output.
 | `tool_use` with string `name` and any JSON `input`                                    | labelled tool block, opt-in                              |
 | `tool_result` with string content or array text/image parts                           | independent labelled text parts, opt-in; images excluded |
 | any other conversation shape or malformed field used above                            | diagnosed incomplete                                     |
-| any other top-level `type`                                                            | counted as unknown bookkeeping and not searched          |
+| nonobject record; missing/nonstring top-level `type`                                  | diagnosed incomplete                                     |
+| unknown string `type` with object `message`                                           | conversation-shaped; diagnosed incomplete                |
+| unknown string `type` without object `message`                                        | counted as bookkeeping and not searched                  |
 
 ## Identity and ordering
 
 Logical messages are grouped **within one file** by session identity, role, and
-`message.id`. A missing message ID uses that physical line, so two missing IDs
-never merge. Repeated assistant IDs may contribute distinct blocks; blocks are
-not concatenated into synthetic text. Every retained block keeps source path,
-physical line, local content-array index, and an explicit `apiBlockIndex` when
-supplied. A local index of zero is never substituted for a missing API index.
+`message.id`. The internal key explicitly tags identity as `provided` or
+`physical`; a missing ID uses that physical line, so it cannot collide with a
+provided string such as `physical:1`, and two missing IDs never merge. The
+display label can still read `physical:N`. Repeated genuine assistant IDs may
+contribute distinct blocks; blocks are not concatenated into synthetic text.
+Every retained block keeps source path, physical line, local content-array
+index, and an explicit `apiBlockIndex` when supplied. A local index of zero is
+never substituted for a missing API index.
 
 UUID handling is also file-local. The first record for a UUID is kept. A later
 record is deduplicated only when its **complete decoded `Json` value is
 structurally equal** to the first; JSON spelling and object key order are
 therefore not the policy. A structurally different record with the same UUID is
-diagnosed incomplete and neither overwrites nor augments the first.
+diagnosed incomplete and neither overwrites nor augments the first. The per-file
+UUID `seen` map retains each first complete decoded `Json` payload, including
+excluded conversation content and bookkeeping, up to the file's admitted input
+plus representation/map overhead. It is not a lossy hash and is not a
+hard-memory guarantee.
 
 Equal session IDs across files share one output heading, but messages are never
 reconciled or deduplicated across files; paths and lines remain visible. A
@@ -106,10 +118,15 @@ replacement, so moscope conservatively marks any line containing U+FFFD
 incomplete. It may still show partial results.
 
 All transcript-derived text, filenames, session/message IDs, labels, unknown
-kinds, and diagnostic fields use one terminal-safe encoding. Printable ASCII
-passes except backslash, which doubles. Controls and every byte of non-ASCII
-UTF-8 become uppercase `\xNN`; this conservative rule prevents raw C0, DEL, C1,
-bidi, and other Unicode terminal controls from reaching output.
+kinds, unsupported options, and diagnostic fields use one terminal-safe
+encoding. Rendering first takes a bounded prefix, then escapes it; it never
+builds a whole rendered logical message before enforcing the output limit.
+Printable ASCII passes except backslash, which doubles. Controls and every byte
+of non-ASCII UTF-8 become uppercase `\xNN`; this conservative rule prevents raw
+C0, DEL, C1, bidi, and other Unicode terminal controls from reaching output.
+Result rendering reserves 512 bytes so truncation can still produce a short
+incomplete diagnostic; headers/paths/labels and diagnostic fields have fixed
+256/512-grapheme source-prefix bounds before escaping.
 
 ## Fixed limits
 
@@ -121,7 +138,7 @@ bidi, and other Unicode terminal controls from reaching output.
 | one line / records per file / total records | 1 MiB / 200,000 / 1,000,000 |
 | retained logical messages / blocks          |           100,000 / 500,000 |
 | matching messages / retained diagnostics    |             10,000 / 10,000 |
-| escaped excerpt / rendered output           |           240 bytes / 8 MiB |
+| excerpt source prefix / rendered output     |       240 graphemes / 8 MiB |
 | one filesystem call / processing deadline   |                 10 s / 60 s |
 
 These are deliberately fixed: large enough for realistic local histories, small
@@ -132,7 +149,8 @@ They are admission/retention bounds, not hostile-input memory or cancellation
 guarantees. `list` materializes a directory before the app can count it.
 `fold_lines` reads synchronously, only bounds its pending partial line
 internally, and cannot stop the underlying read when the callback stops
-decoding. Deadlines are checked between calls/lines. JSON's depth limit is not a
+decoding. Deadlines are checked inside each discovered-entry iteration, between
+filesystem calls, and between folded lines. JSON's depth limit is not a
 total-byte bound. The file size gate and stable-local-input assumption are
 therefore necessary.
 
@@ -159,21 +177,49 @@ generated in a disposable tree; they are not committed as giant files.
 
 ## Unexecuted readiness packet
 
-Candidate interpreter smoke command from the repository root:
+The working directory for every candidate command below is the repository root.
+No command has been run. Each stdout/stderr/status triple is independently
+hand-authored; manual source tracing predicts the shown match count and status,
+which is not execution evidence.
+
+| Case      | Exact argv after `mo run examples/programs/moscope/main.mo --`                         | Expected stdout / stderr / status                                                                                                                                                       | Manual trace  |
+| --------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| phrase    | `search "connection refused" examples/programs/moscope/fixtures/smoke`                 | `examples/programs/moscope/expected/smoke-phrase.stdout` / `examples/programs/moscope/expected/smoke-phrase.stderr` / `examples/programs/moscope/expected/smoke-phrase.status`          | 4 matches / 0 |
+| all words | `search "connection refused" examples/programs/moscope/fixtures/smoke --all-words`     | `examples/programs/moscope/expected/smoke-all-words.stdout` / `examples/programs/moscope/expected/smoke-all-words.stderr` / `examples/programs/moscope/expected/smoke-all-words.status` | 5 matches / 0 |
+| tools     | `search "connection refused" examples/programs/moscope/fixtures/smoke --include-tools` | `examples/programs/moscope/expected/smoke-tools.stdout` / `examples/programs/moscope/expected/smoke-tools.stderr` / `examples/programs/moscope/expected/smoke-tools.status`             | 5 matches / 0 |
+| no match  | `search "definitely absent" examples/programs/moscope/fixtures/smoke`                  | `examples/programs/moscope/expected/no-match.stdout` / `examples/programs/moscope/expected/no-match.stderr` / `examples/programs/moscope/expected/no-match.status`                      | 0 matches / 1 |
+
+The full candidate command prefix is:
 
 ```sh
-toolchain/zig-out/bin/mo run examples/programs/moscope/main.mo -- \
-  search "connection refused" examples/programs/moscope/fixtures/smoke
+toolchain/zig-out/bin/mo run examples/programs/moscope/main.mo --
 ```
-
-Independently expected artifacts:
-
-- stdout: `expected/smoke-phrase.stdout`
-- stderr: `expected/smoke-phrase.stderr`
-- status: `expected/smoke-phrase.status` (0)
 
 That tiny tree covers hidden recursion, two skipped symlinks (including a cycle
 and a would-be match), default eligibility, query-independent ordering, shared
 and missing sessions, timezone normalization, unknown bookkeeping, and a valid
 final record without LF. The source must be reviewed before any execution grant.
-No source-complete claim here implies runnable, safe, verified, or accepted.
+The `status2/*` roots and `expected/status2-*` triples separately cover the four
+top-level classification failures. The unreadable/FIFO/root-anchor cases above
+still require disposable filesystem setup.
+
+The misleading source-local `# run:` directives were removed: they did not map
+to these four triples. `main.mo` remains deliberately auto-enrolled as runnable
+source by the standard corpus; adding the corpus's expected files is a future
+integration prerequisite owned outside this app-only candidate. No shared corpus
+file is changed here. No source-complete claim implies runnable, safe, verified,
+or accepted.
+
+### Manual compatibility checklist (unexecuted)
+
+- Every local `var` binding uses `var NAME = EXPR`; empty lists and maps receive
+  their type from subsequent use or a typed enclosing initializer.
+- Top-level `Json` and `Option` matches enumerate their closed alternatives;
+  wildcard patterns remain only nested under named variants or for open string
+  values.
+- Source inspection places every function at six or fewer parameters and every
+  body below 70 lines. Discovery entry handling and tool-result part handling
+  are separate functions so nesting is at most three.
+- `Clock.fixture()` remains limited to app-local test source. No formatter,
+  parser, checker, compiler, test, runtime, smoke command, or corpus command was
+  invoked for this checklist.

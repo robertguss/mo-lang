@@ -25,6 +25,28 @@ struct ParsedBlocks
   blocks: List(Block)
 end
 
+struct ConversationInput
+  path: String
+  line: UInt64
+  kind: String
+  session: String
+  at: Option(Time)
+end
+
+struct Identity
+  kind: String
+  value: String
+  label: String
+end
+
+struct ResultPlace
+  path: String
+  line: UInt64
+  local: UInt64
+  api: Option(UInt64)
+  id: String
+end
+
 fn start_file(scan: Scan, path: String, admitted: UInt64, clock: Clock, started: Time) : FileFold
   FileFold(scan: scan, seen: Map.new(), path: path, lines: 0, file_records: 0, bytes: 0,
     admitted: admitted, stopped: false, clock: clock, started: started)
@@ -91,7 +113,7 @@ fn accepted_uuid(state: FileFold, payload: Json) : (FileFold, Bool)
   var next = state
   fields = case payload
     Object(given): given
-    _: return (next, true)
+    String(_) | Array(_) | Number(_) | Bool(_) | Null: return (next, true)
   end
   case fields.get("uuid")
     None: (next, true)
@@ -116,13 +138,19 @@ end
 fn decoded_record(scan: Scan, path: String, line: UInt64, payload: Json) : Scan
   fields = case payload
     Object(given): given
-    _: return unknown(scan, "<non-object>")
+    String(_) | Array(_) | Number(_) | Bool(_) | Null:
+      return problem(scan, path, line, "top-level JSON record is not an object")
   end
   kind = case fields.get("type")
     Some(String(name)): name
-    _: return unknown(scan, "<missing-or-non-string>")
+    None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      return problem(scan, path, line, "top-level record type is missing or not a string")
   end
   if kind != "user" and kind != "assistant"
+    if fields.get("message") is Some(Object(_))
+      return problem(scan, path, line,
+        "unknown type #{kind} has a conversation-shaped message")
+    end
     return unknown(scan, kind)
   end
   conversation(scan, path, line, kind, fields)
@@ -140,80 +168,112 @@ fn conversation(scan: Scan, path: String, line: UInt64, kind: String,
       next = problem(next, path, line, "conversation uuid is not a string")
     end
   end
-  session = case fields.get("sessionId")
-    Some(String(id)): id
-    None: ""
-    Some(_):
-      next = problem(next, path, line, "conversation sessionId is not a string")
-      ""
+  session = session_of(next, path, line, fields)
+  next = session.0
+  timed = timestamp_of(next, path, line, fields)
+  next = timed.0
+  input = ConversationInput(path: path, line: line, kind: kind, session: session.1, at: timed.1)
+  message_record(next, input, fields)
+end
+
+fn session_of(scan: Scan, path: String, line: UInt64,
+  fields: Map(String, Json)) : (Scan, String)
+  case fields.get("sessionId")
+    Some(String(id)): (scan, id)
+    None: (scan, "")
+    Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      (problem(scan, path, line, "conversation sessionId is not a string"), "")
   end
-  at = case fields.get("timestamp")
+end
+
+
+fn timestamp_of(scan: Scan, path: String, line: UInt64,
+  fields: Map(String, Json)) : (Scan, Option(Time))
+  case fields.get("timestamp")
     Some(String(text)):
       case Time.parse(text)
-        Some(parsed): Some(parsed)
-        None:
-          next = problem(next, path, line, "conversation timestamp is not supported RFC 3339")
-          None
+        Some(parsed): (scan, Some(parsed))
+        None: (problem(scan, path, line,
+          "conversation timestamp is not supported RFC 3339"), None)
       end
-    None: None
-    Some(_):
-      next = problem(next, path, line, "conversation timestamp is not a string")
-      None
+    None: (scan, None)
+    Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      (problem(scan, path, line, "conversation timestamp is not a string"), None)
   end
+end
+
+fn message_record(scan: Scan, input: ConversationInput,
+  fields: Map(String, Json)) : Scan
   message_fields = case fields.get("message")
     Some(Object(given)): given
-    _:
-      return problem(next, path, line, "conversation message is not an object")
+    None | Some(String(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      return problem(scan, input.path, input.line, "conversation message is not an object")
   end
   role = case message_fields.get("role")
     Some(String(name)): name
-    _:
-      return problem(next, path, line, "conversation message role is not a string")
+    None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      return problem(scan, input.path, input.line, "conversation message role is not a string")
   end
-  if role != kind
-    return problem(next, path, line, "top-level type and message role disagree")
+  if role != input.kind
+    return problem(scan, input.path, input.line, "top-level type and message role disagree")
   end
-  id = case message_fields.get("id")
-    Some(String(value)): value
-    None: "physical:#{line}"
-    Some(_):
-      next = problem(next, path, line, "message id is not a string")
-      "physical:#{line}"
-  end
+  identified = identity_of(scan, input.path, input.line, message_fields)
   parsed = case message_fields.get("content")
     Some(String(text)):
-      ParsedBlocks(scan: next, blocks: [conversation_block(role, text, path, line, 0, None)])
-    Some(Array(items)): blocks_of(next, role, path, line, items)
-    _:
-      return problem(next, path, line, "conversation content is neither text nor a block array")
+      ParsedBlocks(scan: identified.0,
+        blocks: [conversation_block(role, text, input.path, input.line, 0, None)])
+    Some(Array(items)): blocks_of(identified.0, role, input.path, input.line, items)
+    None | Some(Object(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      return problem(identified.0, input.path, input.line,
+        "conversation content is neither text nor a block array")
   end
-  next = parsed.scan
-  return next if parsed.blocks.size == 0
-  session_key = if session == "": "file:#{path}" else: "session:#{session}"
-  session_label = if session == "": "(missing session id in #{path})" else: session
-  key = Json.encode((path, session_key, role, id))
+  retain_message(parsed.scan, input, identified.1, parsed.blocks)
+end
+
+fn identity_of(scan: Scan, path: String, line: UInt64,
+  fields: Map(String, Json)) : (Scan, Identity)
+  case fields.get("id")
+    Some(String(value)): (scan, Identity(kind: "provided", value: value, label: value))
+    None:
+      label = "physical:#{line}"
+      (scan, Identity(kind: "physical", value: "#{line}", label: label))
+    Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      label = "physical:#{line}"
+      (problem(scan, path, line, "message id is not a string"),
+        Identity(kind: "physical", value: "#{line}", label: label))
+  end
+end
+
+fn retain_message(scan: Scan, input: ConversationInput, identity: Identity,
+  parsed: List(Block)) : Scan
+  var next = scan
+  return next if parsed.size == 0
+  session_key = if input.session == "": "file:#{input.path}" else: "session:#{input.session}"
+  session_label = if input.session == "": "(missing session id in #{input.path})" else: input.session
+  key = Json.encode((input.path, session_key, input.kind, identity.kind, identity.value))
   existing = next.messages.get(key)
   if existing is None and next.messages.size >= messages()
-    return problem(next, path, line, "more than 100000 logical messages would be retained")
+    return problem(next, input.path, input.line, "more than 100000 logical messages would be retained")
   end
   room = blocks().saturating_sub(next.retained_blocks)
-  kept = parsed.blocks.take(room)
-  if kept.size < parsed.blocks.size
-    next = problem(next, path, line, "more than 500000 searchable blocks would be retained")
+  kept = parsed.take(room)
+  if kept.size < parsed.size
+    next = problem(next, input.path, input.line,
+      "more than 500000 searchable blocks would be retained")
   end
   next.retained_blocks += kept.size
-  record_at = if kept.any?(fn(block) block.kind == Conversation end): at else: None
+  record_at = if kept.any?(fn(block) block.kind == Conversation end): input.at else: None
   case existing
     Some(before):
       merged = Message(key: key, session_key: session_key, session_label: session_label,
-        role: role, id: id, path: path, first_line: before.first_line,
+        role: input.kind, id: identity.label, path: input.path, first_line: before.first_line,
         conversation_at: later(before.conversation_at, record_at),
         blocks: before.blocks.concat(kept))
       next.messages = next.messages.set(key, merged)
     None:
       made = Message(key: key, session_key: session_key, session_label: session_label,
-        role: role, id: id, path: path, first_line: line, conversation_at: record_at,
-        blocks: kept)
+        role: input.kind, id: identity.label, path: input.path, first_line: input.line,
+        conversation_at: record_at, blocks: kept)
       next.messages = next.messages.set(key, made)
   end
   next
@@ -234,13 +294,13 @@ fn block_of(scan: Scan, role: String, path: String, line: UInt64, local: UInt64,
   value: Json) : ParsedBlocks
   fields = case value
     Object(given): given
-    _:
+    String(_) | Array(_) | Number(_) | Bool(_) | Null:
       return ParsedBlocks(scan: problem(scan, path, line,
         "content block #{local} is not an object"), blocks: [])
   end
   kind = case fields.get("type")
     Some(String(name)): name
-    _:
+    None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       return ParsedBlocks(scan: problem(scan, path, line,
         "content block #{local} has no string type"), blocks: [])
   end
@@ -252,7 +312,7 @@ fn block_of(scan: Scan, role: String, path: String, line: UInt64, local: UInt64,
         Some(String(text)):
           ParsedBlocks(scan: next,
             blocks: [conversation_block(role, text, path, line, local, api.1)])
-        _:
+        None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
           ParsedBlocks(scan: problem(next, path, line,
             "text block #{local} has no string text"), blocks: [])
       end
@@ -275,7 +335,7 @@ fn tool_use(scan: Scan, path: String, line: UInt64, local: UInt64,
   api: Option(UInt64), fields: Map(String, Json)) : ParsedBlocks
   name = case fields.get("name")
     Some(String(value)): value
-    _:
+    None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       return ParsedBlocks(scan: problem(scan, path, line,
         "tool_use block #{local} has no string name"), blocks: [])
   end
@@ -304,43 +364,53 @@ fn tool_result(scan: Scan, path: String, line: UInt64, local: UInt64,
       block = Block(kind: Tool, label: "tool result #{id}", text: text, path: path,
         line: line, local_index: local, api_index: api)
       ParsedBlocks(scan: scan, blocks: [block])
-    Some(Array(items)): result_parts(scan, path, line, local, api, id, items)
-    _:
+    Some(Array(items)):
+      place = ResultPlace(path: path, line: line, local: local, api: api, id: id)
+      result_parts(scan, place, items)
+    None | Some(Object(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       ParsedBlocks(scan: problem(scan, path, line,
         "tool_result block #{local} has unsupported content"), blocks: [])
   end
 end
 
-fn result_parts(scan: Scan, path: String, line: UInt64, local: UInt64,
-  api: Option(UInt64), id: String, items: List(Json)) : ParsedBlocks
-  var next = scan
-  var kept: List(Block) = []
+fn result_parts(scan: Scan, place: ResultPlace, items: List(Json)) : ParsedBlocks
+  var parsed = ParsedBlocks(scan: scan, blocks: [])
   for pair in items.enumerate
-    case pair.1
-      Object(fields):
-        case fields.get("type")
-          Some(String("text")):
-            case fields.get("text")
-              Some(String(text)):
-                kept = kept.push(Block(kind: Tool, label: "tool result #{id} part #{pair.0}",
-                  text: text, path: path, line: line, local_index: local, api_index: api))
-              _:
-                next = problem(next, path, line,
-                  "tool result text part #{pair.0} has no string text")
-            end
-          Some(String(kind)):
-            if kind != "image"
-              next = problem(next, path, line, "unsupported tool result part type #{kind}")
-            end
-          _:
-            next = problem(next, path, line,
-              "tool result part #{pair.0} has no string type")
-        end
-      _:
-        next = problem(next, path, line, "tool result part #{pair.0} is not an object")
-    end
+    one = result_part(parsed.scan, place, pair.0, pair.1)
+    parsed.scan = one.scan
+    parsed.blocks = parsed.blocks.concat(one.blocks)
   end
-  ParsedBlocks(scan: next, blocks: kept)
+  parsed
+end
+
+fn result_part(scan: Scan, place: ResultPlace, part: UInt64,
+  value: Json) : ParsedBlocks
+  fields = case value
+    Object(given): given
+    String(_) | Array(_) | Number(_) | Bool(_) | Null:
+      return ParsedBlocks(scan: problem(scan, place.path, place.line,
+        "tool result part #{part} is not an object"), blocks: [])
+  end
+  case fields.get("type")
+    Some(String("text")):
+      case fields.get("text")
+        Some(String(text)):
+          block = Block(kind: Tool, label: "tool result #{place.id} part #{part}", text: text,
+            path: place.path, line: place.line, local_index: place.local,
+            api_index: place.api)
+          ParsedBlocks(scan: scan, blocks: [block])
+        None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+          ParsedBlocks(scan: problem(scan, place.path, place.line,
+            "tool result text part #{part} has no string text"), blocks: [])
+      end
+    Some(String("image")): ParsedBlocks(scan: scan, blocks: [])
+    Some(String(kind)):
+      ParsedBlocks(scan: problem(scan, place.path, place.line,
+        "unsupported tool result part type #{kind}"), blocks: [])
+    None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
+      ParsedBlocks(scan: problem(scan, place.path, place.line,
+        "tool result part #{part} has no string type"), blocks: [])
+  end
 end
 
 # Returns the possibly diagnosed scan and the explicit API block index. A local array index is

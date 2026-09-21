@@ -8,6 +8,11 @@ use Moscope.Parse{start_file, folded_line}
 
 intent "Discover JSONL files serially from one read-only root, without following discovered links, then size-admit and fold them in deterministic path order."
 
+struct EntryPlace
+  child: String
+  next_level: UInt64
+end
+
 fn scan_tree(fs: Fs, clock: Clock, started: Time) : Scan
   found = discover(fs, ".", 0, empty_discovery(), clock, started)
   var scan = empty_scan()
@@ -42,35 +47,45 @@ fn discover(root: Fs, path: String, level: UInt64, so_far: Discovery, clock: Clo
   end
   # list materializes the directory before this application can count it.
   for name in names
+    if clock.now >= started + process_time()
+      return discovery_stop(found, path, "the 60 second processing deadline was exceeded")
+    end
     if found.entries >= entries()
       return discovery_stop(found, path, "traversal exceeds 50000 entries")
     end
     found.entries += 1
     child = joined(path, name)
+    place = EntryPlace(child: child, next_level: level + 1)
     case root.kind_of(child, within: call_time())
       Error(error):
         found = discovery_problem(found, child, "cannot stat entry: #{fs_error(error)}")
-      Ok(entry):
-        case entry.kind
-          Link: found.skipped_links += 1
-          Folder:
-            if child.ends_with?(".jsonl")
-              found = discovery_problem(found, child,
-                "a .jsonl candidate is a directory, not a regular file")
-            end
-            found = discover(root, child, level + 1, found, clock, started)
-          File:
-            if child.ends_with?(".jsonl")
-              if found.files.size >= files()
-                return discovery_stop(found, child, "discovery exceeds 5000 JSONL files")
-              end
-              found.files = found.files.push(child)
-            end
-        end
+      Ok(entry): found = discovered_entry(root, place, found, clock, started, entry.kind)
     end
     if found.stopped
       break
     end
+  end
+  found
+end
+
+fn discovered_entry(root: Fs, place: EntryPlace, so_far: Discovery, clock: Clock,
+  started: Time, kind: EntryKind) : Discovery
+  var found = so_far
+  case kind
+    Link: found.skipped_links += 1
+    Folder:
+      if place.child.ends_with?(".jsonl")
+        found = discovery_problem(found, place.child,
+          "a .jsonl candidate is a directory, not a regular file")
+      end
+      found = discover(root, place.child, place.next_level, found, clock, started)
+    File:
+      if place.child.ends_with?(".jsonl")
+        if found.files.size >= files()
+          return discovery_stop(found, place.child, "discovery exceeds 5000 JSONL files")
+        end
+        found.files = found.files.push(place.child)
+      end
   end
   found
 end
