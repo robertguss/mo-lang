@@ -46,6 +46,26 @@ acceptance and filtered native/integration checks use
 runs), not `test`, which now skips native integration. Require actual expected
 test executions and equivalent full coverage for any before/after suite timing.
 
+### Current orb gate and explicit exception
+
+The accepted guard is on main at `5625f4fa` (guard merge `70c07d32`). Candidate
+`5f4a9aff` has source counts 15 modules and 43 tests (35 ordinary + 8 strict),
+not executed results. Oracle grants only serialized build (900s),
+imported-effect formatter regression via test-corpus (1800s), and
+format/fmt-check all 15 modules. Stop at the first failure. Deadline capture
+before admission waiting, retained outcomes after failed journal
+acknowledgments, discriminating budget controls and size classification still
+need correction before further grants.
+
+Part A temporarily trusts Journal with run-folder Fs authority, including access
+to capability.json, although its implementation replaces only owner.json and
+delivery.json. Requirement 6's separate journal scope is **unmet**, not proved
+by those literal targets. Existing Fs cannot scope two sibling files without
+their directory. Preserve the comparison layout for part A; a separately scoped
+journal/ directory is required at part-B cutover. This is the lead's recorded
+exception after Oracle review, not a change to the frozen historical report. Do
+not add a JournalStore proxy merely to relocate broad authority.
+
 ## Orientation
 
 Step 4 of [[mo-harness-in-mo]]: the six-tool service written in Mo. Today a tool

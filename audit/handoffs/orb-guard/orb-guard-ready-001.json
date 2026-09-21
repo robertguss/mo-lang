@@ -1,0 +1,32 @@
+{
+  "id": "orb-guard-ready-001",
+  "subject": "orb-guard",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "ready",
+  "in_reply_to": null,
+  "evidence_commit": "5625f4fada96935e428f04305e164b03be06e2dd",
+  "paths": [
+    "toolchain/bench/step36/guard.py",
+    "toolchain/bench/step42/guard-orb/guard_regression.py",
+    "audit/evidence/2026-09-20/orb-guard/lead-core-main.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-core-main.exit",
+    "audit/evidence/2026-09-20/orb-guard/lead-core-wip.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-core-wip.exit",
+    "audit/evidence/2026-09-20/orb-guard/lead-core-candidate.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-core-candidate.exit",
+    "audit/evidence/2026-09-20/orb-guard/lead-startup-main.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-startup-main.exit",
+    "audit/evidence/2026-09-20/orb-guard/lead-startup-wip.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-startup-wip.exit",
+    "audit/evidence/2026-09-20/orb-guard/lead-startup-candidate.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-startup-candidate.exit",
+    "audit/evidence/2026-09-20/orb-guard/lead-harness-failure-candidate.log",
+    "audit/evidence/2026-09-20/orb-guard/lead-harness-failure-candidate.exit",
+    "audit/evidence/2026-09-20/orb-baseline/build.log",
+    "audit/evidence/2026-09-20/orb-baseline/build.exit",
+    "audit/evidence/2026-09-20/orb-baseline/test-corpus.log",
+    "audit/evidence/2026-09-20/orb-baseline/test-corpus.exit"
+  ],
+  "request": "Examine process-group cleanup and startup signal handling in the Linux guard, discrimination and cleanup of its controls, preservation of direct-child exit status, and limits of direct-child RSS accounting. Raw baseline compiler/native-suite logs are attached as environment context, not memory or server candidate evidence."
+}
