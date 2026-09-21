@@ -1,0 +1,12 @@
+tool resolution under exact later PATH:
+clang=/usr/bin/clang -> /usr/lib/llvm-14/bin/clang
+zig=/usr/local/bin/zig -> /opt/zig-x86_64-linux-0.16.0/zig
+python3=/usr/local/bin/python3 -> /usr/local/bin/python3.11
+ps=/usr/bin/ps -> /usr/bin/ps
+nm=/usr/bin/nm -> /usr/bin/x86_64-linux-gnu-nm
+readelf=/usr/bin/readelf -> /usr/bin/x86_64-linux-gnu-readelf
+symbolizer=/usr/lib/llvm-14/bin/llvm-symbolizer -> /usr/lib/llvm-14/bin/llvm-symbolizer
+71b0de1b06b1ffe3a68f1b15f3bfff1f80ba3351ac679be346fb515327494157  /usr/lib/llvm-14/bin/clang
+2317bbb91798556d9d0f38aabdac23db83f0979b25f767259ae474546724087c  /opt/zig-x86_64-linux-0.16.0/zig
+68d146e8194a1987707aa69a45be2a3c4c079ffd101a4a584a59d3fed777834c  /usr/local/bin/python3.11
+dd1580ac239d53ce4f002ed5ad435c0252ff323356b186369afd3124f96f95e5  /usr/lib/llvm-14/bin/llvm-symbolizer

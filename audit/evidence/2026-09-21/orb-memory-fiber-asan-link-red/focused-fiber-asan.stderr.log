@@ -1,0 +1,35 @@
+test-corpus-asan
++- run test 1 pass, 1 fail (2 total)
+error: 'corpus.test.corpus: step 42 native fibers cover first entry park resume caller reuse and excess retirement' failed:
+       step42 case=fiber-lifecycle-build term=.{ .exited = 1 } stdout= stderr=mo build: fiber-lifecycle.mo: compiler stage=final compile/link compiler=clang cwd=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache/tmp/JLzMvoP2wG-gJpW4 argv=[5:clang,8:-std=c11,5:-Wall,7:-Werror,3:-O1,2:-g,18:-fsanitize=address,23:-fno-omit-frame-pointer,22:-DMO_ADDRESS_SANITIZER,2:-o,48:zig-out/mo-build/fiber-lifecycle/fiber-lifecycle,50:zig-out/mo-build/fiber-lifecycle/fiber-lifecycle.c,119:/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o,119:/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.bricks/387ff2aebe517146/crypto.o,116:/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.bricks/e718555b36715597/tls.o]
+       term=.{ .exited = 1 }
+       stdout-bytes=0
+       ----- stdout -----
+       
+       ----- end stdout -----
+       stderr-bytes=385
+       ----- stderr -----
+       /usr/bin/ld: /home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.bricks/387ff2aebe517146/crypto.o: relocation R_X86_64_32 against `.rodata.str1.1' can not be used when making a PIE object; recompile with -fPIE
+       /usr/bin/ld: failed to set dynamic section sizes: bad value
+       clang: error: linker command failed with exit code 1 (use -v to see invocation)
+       
+       ----- end stderr -----
+       
+       
+       /opt/zig-x86_64-linux-0.16.0/lib/std/testing.zig:615:14: 0x13ab8b9 in expect (std.zig)
+           if (!ok) return error.TestUnexpectedResult;
+                    ^
+       /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/src/corpus.zig:2112:5: 0x13ac416 in test.corpus: step 42 native fibers cover first entry park resume caller reuse and excess retirement (root.zig)
+           try std.testing.expect(built.term == .exited and built.term.exited == 0);
+           ^
+failed command: MO_EXE=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh/bin/mo MO_CORPUS=1 ./.zig-cache-asan-native-fresh/o/939bfb2496b36d81dd5d71ed5d284de4/test --cache-dir=./.zig-cache-asan-native-fresh --seed=0x71ac8cdc --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus-asan transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 1s MaxRSS:194M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 1m MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache-asan-native-fresh/o/bc0619dbfa9da73f98952af8d0005a12/build /opt/zig-x86_64-linux-0.16.0/zig /opt/zig-x86_64-linux-0.16.0/lib /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain .zig-cache-asan-native-fresh /home/user/workspace/verify-memory-69dc6df1-large-restart/.zig-global-cache-asan-native-fresh --seed 0x71ac8cdc -Zd178bd281e28ae2c test-corpus-asan -j4 --prefix /home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh -Dtest-filter=corpus: step 42 native fibers cover first entry park resume caller reuse and excess retirement --summary all

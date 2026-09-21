@@ -1,0 +1,297 @@
+object=/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o
+cc279a6bea5a59e2aed7606b1af429f1840392adad99b98f8ffdd15b3a5a05d6  /home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o
+mode=644 size=2653272 uid=1000 gid=1000 mtime=2026-09-21 11:51:01.118817282 +0000
+/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh/.runtime/a6ba892cb8ac8fd2/mo_rt.o: ELF 64-bit LSB relocatable, x86-64, version 1 (GNU/Linux), with debug_info, not stripped
+--- ELF header ---
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 03 00 00 00 00 00 00 00 00 
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - GNU
+  ABI Version:                       0
+  Type:                              REL (Relocatable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x0
+  Start of program headers:          0 (bytes into file)
+  Start of section headers:          2650520 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           0 (bytes)
+  Number of program headers:         0
+  Size of section headers:           64 (bytes)
+  Number of section headers:         43
+  Section header string table index: 1
+--- compiler comment ---
+
+String dump of section '.comment':
+  [     1]  Debian clang version 14.0.6
+
+--- undefined ASan/fiber symbols ---
+                 U __asan_handle_no_return
+                 U __asan_init
+                 U __asan_memcpy
+                 U __asan_memmove
+                 U __asan_memset
+                 U __asan_option_detect_stack_use_after_return
+                 U __asan_poison_memory_region
+                 U __asan_register_globals
+                 U __asan_report_load1
+                 U __asan_report_load16
+                 U __asan_report_load2
+                 U __asan_report_load4
+                 U __asan_report_load8
+                 U __asan_report_load_n
+                 U __asan_report_store1
+                 U __asan_report_store16
+                 U __asan_report_store2
+                 U __asan_report_store4
+                 U __asan_report_store8
+                 U __asan_report_store_n
+                 U __asan_set_shadow_00
+                 U __asan_set_shadow_f5
+                 U __asan_set_shadow_f8
+                 U __asan_stack_free_10
+                 U __asan_stack_free_5
+                 U __asan_stack_free_6
+                 U __asan_stack_free_7
+                 U __asan_stack_free_8
+                 U __asan_stack_free_9
+                 U __asan_stack_malloc_0
+                 U __asan_stack_malloc_1
+                 U __asan_stack_malloc_10
+                 U __asan_stack_malloc_2
+                 U __asan_stack_malloc_3
+                 U __asan_stack_malloc_4
+                 U __asan_stack_malloc_5
+                 U __asan_stack_malloc_6
+                 U __asan_stack_malloc_7
+                 U __asan_stack_malloc_8
+                 U __asan_stack_malloc_9
+                 U __asan_unpoison_memory_region
+                 U __asan_unregister_globals
+                 U __asan_version_mismatch_check_v8
+                 U __sanitizer_finish_switch_fiber
+                 U __sanitizer_start_switch_fiber
+--- all undefined symbols ---
+                 U __asan_handle_no_return
+                 U __asan_init
+                 U __asan_memcpy
+                 U __asan_memmove
+                 U __asan_memset
+                 U __asan_option_detect_stack_use_after_return
+                 U __asan_poison_memory_region
+                 U __asan_register_globals
+                 U __asan_report_load1
+                 U __asan_report_load16
+                 U __asan_report_load2
+                 U __asan_report_load4
+                 U __asan_report_load8
+                 U __asan_report_load_n
+                 U __asan_report_store1
+                 U __asan_report_store16
+                 U __asan_report_store2
+                 U __asan_report_store4
+                 U __asan_report_store8
+                 U __asan_report_store_n
+                 U __asan_set_shadow_00
+                 U __asan_set_shadow_f5
+                 U __asan_set_shadow_f8
+                 U __asan_stack_free_10
+                 U __asan_stack_free_5
+                 U __asan_stack_free_6
+                 U __asan_stack_free_7
+                 U __asan_stack_free_8
+                 U __asan_stack_free_9
+                 U __asan_stack_malloc_0
+                 U __asan_stack_malloc_1
+                 U __asan_stack_malloc_10
+                 U __asan_stack_malloc_2
+                 U __asan_stack_malloc_3
+                 U __asan_stack_malloc_4
+                 U __asan_stack_malloc_5
+                 U __asan_stack_malloc_6
+                 U __asan_stack_malloc_7
+                 U __asan_stack_malloc_8
+                 U __asan_stack_malloc_9
+                 U __asan_unpoison_memory_region
+                 U __asan_unregister_globals
+                 U __asan_version_mismatch_check_v8
+                 U __assert_fail
+                 U __ctype_b_loc
+                 U __divti3
+                 U __errno_location
+                 U __floattidf
+                 U __isoc99_fscanf
+                 U __modti3
+                 U __sanitizer_finish_switch_fiber
+                 U __sanitizer_start_switch_fiber
+                 U __udivti3
+                 U _exit
+                 U _setjmp
+                 U abort
+                 U accept
+                 U bcmp
+                 U bind
+                 U calloc
+                 U clock_gettime
+                 U close
+                 U closedir
+                 U connect
+                 U dirfd
+                 U dup
+                 U dup2
+                 U epoll_create1
+                 U epoll_ctl
+                 U epoll_wait
+                 U eventfd
+                 U execve
+                 U exit
+                 U fchdir
+                 U fclose
+                 U fcntl
+                 U fdopendir
+                 U fflush
+                 U fmod
+                 U fopen
+                 U fork
+                 U fprintf
+                 U free
+                 U freeaddrinfo
+                 U fstat
+                 U fstatat
+                 U fsync
+                 U ftruncate
+                 U fwrite
+                 U getaddrinfo
+                 U getcwd
+                 U getenv
+                 U getrlimit
+                 U getsockname
+                 U getsockopt
+                 U kill
+                 U listen
+                 U longjmp
+                 U malloc
+                 U memchr
+                 U memcmp
+                 U mincore
+                 U mkdirat
+                 U mkdtemp
+                 U mmap
+                 U mo_charge_decl
+                 U mo_clauses
+                 U mo_contracts_built
+                 U mo_crypto_aes256gcm_open
+                 U mo_crypto_aes256gcm_seal
+                 U mo_crypto_argon2id_hash
+                 U mo_crypto_argon2id_verify
+                 U mo_crypto_chacha20poly1305_open
+                 U mo_crypto_chacha20poly1305_seal
+                 U mo_crypto_ed25519_public
+                 U mo_crypto_ed25519_sign
+                 U mo_crypto_ed25519_verify
+                 U mo_crypto_equal
+                 U mo_crypto_fixture_bytes
+                 U mo_crypto_from_hex
+                 U mo_crypto_hex
+                 U mo_crypto_hkdf_sha256
+                 U mo_crypto_hmac_sha256
+                 U mo_crypto_random
+                 U mo_crypto_sha256
+                 U mo_crypto_sha512
+                 U mo_crypto_x25519_public
+                 U mo_crypto_x25519_shared
+                 U mo_decls
+                 U mo_done_decl
+                 U mo_entry_decl
+                 U mo_memory_info_decl
+                 U mo_names
+                 U mo_nevers
+                 U mo_nnevers
+                 U mo_nprocesses
+                 U mo_nrecorded
+                 U mo_nsupervisors
+                 U mo_ntests
+                 U mo_nvariants
+                 U mo_process_info_decl
+                 U mo_processes
+                 U mo_request_decl
+                 U mo_response_decl
+                 U mo_source_info_decl
+                 U mo_supervisors
+                 U mo_surface_built
+                 U mo_surface_process
+                 U mo_tests
+                 U mo_tls_client_new
+                 U mo_tls_client_offer
+                 U mo_tls_close
+                 U mo_tls_conn_free
+                 U mo_tls_conn_new
+                 U mo_tls_connect
+                 U mo_tls_feed
+                 U mo_tls_flush
+                 U mo_tls_protocol
+                 U mo_tls_read
+                 U mo_tls_ready
+                 U mo_tls_sent
+                 U mo_tls_server_new
+                 U mo_tls_server_offer
+                 U mo_tls_untrusted
+                 U mo_tls_write
+                 U mo_types
+                 U mo_variants
+                 U mprotect
+                 U munmap
+                 U nanosleep
+                 U openat
+                 U pipe
+                 U poll
+                 U pthread_attr_destroy
+                 U pthread_attr_init
+                 U pthread_attr_setdetachstate
+                 U pthread_attr_setstacksize
+                 U pthread_cond_init
+                 U pthread_cond_signal
+                 U pthread_cond_timedwait
+                 U pthread_cond_wait
+                 U pthread_create
+                 U pthread_join
+                 U pthread_mutex_init
+                 U pthread_mutex_lock
+                 U pthread_mutex_trylock
+                 U pthread_mutex_unlock
+                 U qsort
+                 U read
+                 U readdir
+                 U realloc
+                 U renameat
+                 U rmdir
+                 U setsid
+                 U setsockopt
+                 U shutdown
+                 U sigaction
+                 U sigemptyset
+                 U signal
+                 U sigprocmask
+                 U snprintf
+                 U socket
+                 U stderr
+                 U strchr
+                 U strcmp
+                 U strdup
+                 U strlen
+                 U strncmp
+                 U strrchr
+                 U strtod
+                 U strtol
+                 U strtoull
+                 U syscall
+                 U sysconf
+                 U trunc
+                 U unlinkat
+                 U vsnprintf
+                 U waitid
+                 U waitpid
+                 U write

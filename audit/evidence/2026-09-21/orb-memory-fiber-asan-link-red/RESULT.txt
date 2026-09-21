@@ -1,0 +1,32 @@
+RESULT: RED; sole authorized focused native-fiber ASan attempt stopped at first failure.
+
+Fixed composition:
+- integrated revision: 0a0de7f7de45d7c5b597ab01c43a5e85d8834053
+- source candidate: 69dc6df1f664c10a7e8319ec4a575ec5b46f1394
+- accepted base: d02014c03eaa67531a48c1b5e0a6de2649d97b16
+- candidate paths: 57/57 byte+mode equal; 0 mismatches
+- tracked and index diffs: empty before and after
+- accepted direct guards unchanged (see composition-proof.log/post-state.log)
+
+Actual outcome:
+- guard/build exit: 1
+- Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+- exact named test was selected and failed before its required four runtime cases could execute
+- final clang compile/link failed; child stderr reports GNU ld rejected fresh crypto.o relocation R_X86_64_32 against .rodata.str1.1 while making a PIE, requesting recompile with -fPIE
+- no retry, source edit, compiler switch, suppression, or additional gate was performed
+
+Fresh runtime artifact evidence:
+- mo_rt.o SHA256 cc279a6bea5a59e2aed7606b1af429f1840392adad99b98f8ffdd15b3a5a05d6
+- ELF64 x86-64 relocatable, debug_info, Debian clang 14.0.6
+- undefined ASan init, load/store access report hooks, fake-stack malloc 0..10, UAR option, and both sanitizer fiber-switch hooks are present
+- artifact evidence is real but does not turn the failed gate green
+
+Failure artifact evidence:
+- crypto.o SHA256 6ffa895a5d0cf5b228e35732fbb52325df2a68214cdd7f64ec5a5eb8451b7a41
+- readelf shows 423 R_X86_64_32/R_X86_64_32S relocations, including the linker-named .rodata.str1.1 relocation
+
+Cleanup:
+- owned PGID 305384 absent (ps exit 1, header only)
+- scoped checkout processes count 0
+- known guard/build/compiler PIDs absent; no zombies observed
+- prefix/bin/zig absent before and after

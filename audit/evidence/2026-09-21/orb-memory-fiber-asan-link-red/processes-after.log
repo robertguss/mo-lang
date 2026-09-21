@@ -1,0 +1,15 @@
+cleanup_utc=2026-09-21T11:51:37+00:00
+outer-owned-pgid-305384:
+    PID    PPID    PGID STAT COMMAND
+outer_pgid_ps_exit=1
+scoped-path-processes:
+scoped_path_count=0
+known-pids:
+    PID    PPID    PGID STAT COMMAND
+pid_305381=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_305384=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_306216=ABSENT
+    PID    PPID    PGID STAT COMMAND
+pid_306228=ABSENT

@@ -34,11 +34,12 @@ comparison yet.
 checks pass; watcher synthetic11/11 passes, real benchmark verification remains
 outstanding. Earlier memory source passed full301/301. Latest memory source now
 passes fresh full-normal309/309 with exact90,006,894-byte report streams, strict
-RSS bounds and all9normal+9audit lifecycle cases. Next is source-only readiness
-for a focused native-fiber ASan gate; full raw-ASan still needs complete
-inner-stream/termination evidence. Both candidates remain outside accepted main.
-ASan, exhaustive stress, mutants and equivalent measurements remain owed; no
-broader acceptance claim.
+RSS bounds and all9normal+9audit lifecycle cases. Focused fiber-ASan reached
+linking but failed on non-PIC brick relocations under defaultPIE, before
+runtime. A Linux-ASan-final-link-only correction is source-authorized; full
+raw-ASan still needs complete inner-stream/termination evidence. Both candidates
+remain outside accepted main. ASan, exhaustive stress, mutants and equivalent
+measurements remain owed; no broader acceptance claim.
 
 | board                        | current work                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

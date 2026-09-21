@@ -109,6 +109,16 @@ compiler argv/generated-C instrumentation are source-established, not retained
 artifacts. Addendum: audit/evidence/2026-09-21/orb-memory-asan-host/README.md.
 Stop-first; no retry or broader gate/acceptance.
 
+Focused fiber-ASan on0a0de7f7 is final-link RED:
+actual1/build3/5/tests1pass1fail. GNUld rejects ordinary crypto.o absolute
+relocations under defaultPIE; none of four runtime cases ran. Real runtime
+object has ASan/access/fake-stack/fiber symbols; cleanup certain. Evidence:
+audit/evidence/2026-09-21/orb-memory-fiber-asan-link-red/. Worker source-only
+correction: Linux-ASan final link adds -no-pie, NOT shared runtime flags or
+bricks/cache. Existing fake control checks per-stage exact counts0/0/0/1 versus
+all0 ordinary/nonLinux. Evidence-only nonPIE tradeoff; sanitizer checks
+unchanged. No retry before source reread.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed, accepted and

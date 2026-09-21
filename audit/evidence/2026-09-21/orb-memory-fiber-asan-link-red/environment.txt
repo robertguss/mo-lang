@@ -1,0 +1,4 @@
+date_utc=2026-09-21T11:48:10+00:00
+uname=Linux 6.1.158+ x86_64
+zig=0.16.0
+clang=Debian clang version 14.0.6

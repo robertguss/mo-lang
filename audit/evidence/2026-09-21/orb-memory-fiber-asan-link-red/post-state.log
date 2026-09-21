@@ -1,0 +1,11 @@
+--- tracked worktree diff ---
+--- staged index diff ---
+--- tracked status only ---
+--- identities ---
+head=0a0de7f7de45d7c5b597ab01c43a5e85d8834053
+100755 711862a7018e37a0925c351a2bfbc60df5bbdfd7 0	toolchain/bench/step36/guard.py
+100644 c7f911f3456a863f6420429e8268768e1afba85f 0	toolchain/harness/executor/guarded.py
+100644 77ece020773dd7fea8b7bd2eb65585c3a6966873 0	toolchain/runtime/mo_rt.c
+100644 d6628c86cbe613f4fd729ae84797b2d94eb81ac8 0	toolchain/src/corpus.zig
+--- candidate path count and byte/mode comparison ---
+candidate_path_count=57 mismatches=0

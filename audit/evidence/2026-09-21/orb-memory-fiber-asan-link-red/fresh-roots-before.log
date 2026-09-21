@@ -1,0 +1,5 @@
+/home/user/workspace/verify-memory-69dc6df1-large-restart/.mo-cache-asan-native-fresh absent_before=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/.zig-cache-asan-native-fresh absent_before=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/.zig-global-cache-asan-native-fresh absent_before=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh absent_before=yes
+/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain/zig-out-asan-native-fresh/bin/zig absent_before=yes

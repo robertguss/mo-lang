@@ -1,0 +1,13 @@
+head=0a0de7f7de45d7c5b597ab01c43a5e85d8834053
+candidate=69dc6df1f664c10a7e8319ec4a575ec5b46f1394
+accepted_base=d02014c03eaa67531a48c1b5e0a6de2649d97b16
+candidate_path_count=57
+candidate_paths_byte_mode_equal=yes
+accepted_guard_identities_equal=yes
+guard=100755 blob 711862a7018e37a0925c351a2bfbc60df5bbdfd7	toolchain/bench/step36/guard.py
+guarded=100644 blob c7f911f3456a863f6420429e8268768e1afba85f	toolchain/harness/executor/guarded.py
+corpus=100644 blob d6628c86cbe613f4fd729ae84797b2d94eb81ac8	toolchain/src/corpus.zig
+runtime_c=100644 blob 77ece020773dd7fea8b7bd2eb65585c3a6966873	toolchain/runtime/mo_rt.c
+tracked_diff_entries=0
+index_diff_entries=0
+toolchain_cwd=/home/user/workspace/verify-memory-69dc6df1-large-restart/toolchain

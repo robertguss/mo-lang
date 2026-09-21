@@ -3065,3 +3065,12 @@
   must prove compiler checks/fake-stack/fiber hooks; generated-C flags and
   successful argv remain source-established. Raw packet/addendum preserved.
 - No retries, warnings exemption, suppressions, broader gate or acceptance.
+
+## [2026-09-21] verify | fiber-ASan link precondition RED
+
+- Verified raw archive/objects: exit1/build3/5/tests1pass1fail; defaultPIE
+  rejects non-PIC crypto relocations. No four runtime cases executed. Runtime
+  ASan/access/fake-stack/UAR/fiber symbols are real; cleanup confirmed.
+- Lead/Oracle authorize only Linux-ASan final-link -no-pie plus existing fake
+  per-stage control. Ordinary/runtime-object/brick flags and caches unchanged.
+  NonPIE is evidence-only, no sanitizer disable. No retry before reread.
