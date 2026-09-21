@@ -3223,3 +3223,14 @@
 - Raw evidence and incremental source preserved under
   audit/evidence/2026-09-21/moscope-declaration-retry/. App unaccepted;
   Step42/harness unchanged and paused.
+
+## [2026-09-21] verification | moscope phrase smoke independently green
+
+- Following Robert's keep-fixing authorization, workerf961c686 fixes reserved
+  names, expression continuations and session aggregation compatibility. Oracle
+  verified reduce semantics; lead independently ran the same guarded smoke.
+- Exit0; stdout731/stderr107 bytes and status byte-exact; four matches; owned
+  group absent. Source bundle, raw lead receipts and worker failure/pass archive
+  retained under audit/evidence/2026-09-21/moscope-phrase-green/.
+- Narrow working checkpoint, not full app acceptance. App unmerged; no native,
+  private-data or broader execution; Step42/harness remain paused.

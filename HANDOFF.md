@@ -1,6 +1,18 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
-Latest moscope checkpoint: Robert authorized fixing the declaration error and
+Latest moscope checkpoint: Robert authorized continuing app-only fixes until the
+synthetic smoke works. Candidate f961c686cacf513daec22e771e73832a227298e5 now
+has worker and independent lead exact phrase-smoke passes: exit0,
+stdout731/stderr107 bytes, four matches; all three expected files byte-exact.
+Lead owned PGID668696 absent, no timeout/cleanup errors, tracked checkout clean.
+Oracle reviewed compatibility/reduce changes without finding a blocker. Full
+source bundle, lead receipts and all five worker attempts are preserved at
+audit/evidence/2026-09-21/moscope-phrase-green/. Compiler reused unchanged from
+accepted dad7b374. No native/full-corpus/private-data checks; this is narrow
+smoke success, not full app acceptance. App code remains unmerged. Next useful
+work is serial correctness coverage; Step42/harness remain paused.
+
+Earlier moscope checkpoint: Robert authorized fixing the declaration error and
 retrying. Worker02727b71 changes only declaration line wrapping; lead reviewed
 the diff and reused the unchanged accepted compiler (SHA256
 3ef07d08ed6d0c802a2597bd956579873851855961cf2e5f01cf87018d273b78). One 60-second
