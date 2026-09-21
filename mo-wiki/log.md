@@ -2839,3 +2839,7 @@
   lead/Oracle grant source-only owned-child RSS watcher under the explicit
   schedulable-driver premise, with bounded fail-closed probe/reap/join controls.
   Neither change is an execution grant.
+- Oracle reread146d24b5 confirms final Job/ack safety and complete assertions.
+  Released only build900s, named positive filters/chunks1800s each and native
+  lifecycle1800s (nine normal/nine audit). Serial direct guard, no ASan, stop
+  first surprise. Prior full RED and all acceptance obligations remain.

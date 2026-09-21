@@ -65,12 +65,12 @@ external lifecycle oracle instead.
 
 Memory413e006c failed its fresh normal full suite:288/289, one crash in seeded
 packed chunks. No ASan ran. The source trace fix now preserves seeded scheduling
-while omitting packed trace borrows. Recheck of93b56f2d confirms handshake and
-normal/audited native coverage fixes, but the independent acknowledgment still
-precedes the worker's final Job access. That ordering correction remains
-source-only; all seven obligations remain. Benchmark watcher implementation is
-also source-only, under an explicit trusted-driver scheduling premise. Neither
-candidate is accepted or merged.
+while omitting packed trace borrows. Oracle reread146d24b5 confirms handshake,
+normal/audited native coverage and final Job/ack ordering fixes. Only bounded
+build/focused positives are released, not full/mutant/ASan/stress/timing runs;
+all seven obligations remain. Benchmark watcher implementation is source-only,
+under an explicit trusted-driver scheduling premise. Neither candidate is
+accepted or merged.
 
 **Historical acceptance, 20 Sep 2026, 8:30 AM ET:** [[interpreter-step-44]] is
 accepted on Darwin, merged locally at **db515f9b** after independent

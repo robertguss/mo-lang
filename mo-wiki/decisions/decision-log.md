@@ -2036,6 +2036,15 @@ direction separately from the lead's conservative execution interpretation.
 | Author a benchmark-local watcher for each exact owned Popen; preserve sampled4GiB direct RSS and missing/failure distinction, bounded reap/join, no new groups. Trusted premise: driver and watcher remain schedulable; stopping the driver also stops monitoring. Outer cleanup is not RSS containment. Source-only grant, then review and synthetic controls before Mo execution. `semantic` | Amp lead with Oracle | decided | pending source and watchdog controls |
 | Memory93b56f2d fixes handshake and dual native execution; move independent ack after final Job write using captured lifetime before positive execution. Existing pre-release discrimination stays; no final return-attempt prohibition. `semantic`                                                                                                                                             | Amp lead with Oracle | decided | pending source recheck               |
 
+### Bounded positive release
+
+Oracle reread146d24b5 confirms final Job/ack ordering and strengthened lifecycle
+assertions. Lead grants build900s, eleven exact Zig positives plus chunks1800s
+each, native lifecycle1800s with nine normal/nine audit cases, serial accepted
+direct guard, MO_NATIVE_ASAN unset, stop first surprise. No mutants/full/ASan/
+stress/bench/timing. Status: decided by Amp lead with Oracle; first tested by
+pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
+
 ## Related
 
 - [[session-05]]

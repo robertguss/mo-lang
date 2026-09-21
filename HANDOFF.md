@@ -81,11 +81,12 @@ orb-memory-normal/. Both correction workers must return source for review. The
 test-rejects assertion-masking defect is reproduced and queued separately;
 server uses an external positive lifecycle oracle, not the false-green test.
 
-Latest source rechecks: memory93b56f2d fixes handshake and normal/audit native
-execution, but completion_ack precedes final Job access. Worker must move ack
-after final done store using captured external lifetime, retain both return
-interlocks, update mutants and complete Zig nested-payload assertions. Source
-recheck before any positives. Trace correction is sound, not full acceptance.
+Latest source recheck: memory146d24b5 fixes final Job/ack ordering and completes
+matrix semantics. Oracle cleared bounded positives only: one build900s, eleven
+exact Zig filters plus chunks1800s each, native lifecycle1800s with9 normal and9
+audited cases. Serial accepted direct guard, MO_NATIVE_ASAN unset, stop first
+surprise. Worker has this grant. No full/mutants/ASan/stress/timing. Full288/289
+RED remains unresolved until separately granted full green; no acceptance.
 Benchmark81eb48e7 reportedly removes unsafe RED/fallback and hard-blocks
 execution. Lead/Oracle authorize source-only per-owned-Popen RSS watcher: one
 owner of poll/signal/reap, same4GiB sampled threshold, bounded fail-closed
