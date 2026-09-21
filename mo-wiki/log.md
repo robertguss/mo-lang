@@ -2976,3 +2976,12 @@
 - Lead found three sites, despite two diagnostics. Oracle approves only three
   .raw insertions to reach signed nanoseconds; worker has source-only brief. No
   retry or broader execution. Seven obligations unchanged.
+
+## [2026-09-21] review | duration correction permits one exact attempt
+
+- Verified eb665371 bundle/hash and exact three .raw insertions. Oracle reread
+  approves one normal real large-restart attempt on full eb composed onto
+  accepted cc2f2f0d. Bundle transferred and bounded grant sent to validator.
+- Existing exact both-runtime output/RSS/cleanup predicates unchanged. Both
+  compile-only REDs preserved; no full309, ASan, stress, mutants or timing.
+  Documentation lint:287 pages,29 existing notices, exit0; diff check clean.

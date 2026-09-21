@@ -52,6 +52,12 @@ insertions in corpus.zig, then source reread. No retry or broader execution
 grant. Both compile-only REDs remain preserved; no acceptance. Raw receipts:
 audit/evidence/2026-09-21/orb-memory-duration-compile-red/.
 
+Follow-up: verified eb665371 changes exactly the three duration accesses.
+Lead/Oracle reread releases one normal exact large-restart attempt on full eb
+composed onto accepted cc2f2f0d, with fresh caches/output and retained captures.
+Validator has the bundle and grant. All prior both-runtime report/RSS/cleanup
+predicates remain mandatory; stop-first, no further retry or broader gate.
+
 All three launched from pushed9111bb70, medium/a1.xxlarge, reply-on-checkpoint:
 
 - Guard: T-01a0c189-eb49-728c-afaa-46da66582ac2, completed and accepted.

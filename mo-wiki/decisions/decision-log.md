@@ -2149,6 +2149,12 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ---------------------------------------------------------- |
 | Preserve49b69a65/924c24d8 compile-only RED: exit1/build2/5, no runtime/captures, groups absent. Authorize exactly three .raw insertions before .nanoseconds in capture cleanup, finalization and sampling. Zig0.16 Clock.Duration wraps the signed i96 duration; preserve clocks, thresholds, ownership and metadata. Source reread before any retry; no runtime or acceptance claim. | Amp lead with Oracle | decided | audit/evidence/2026-09-21/orb-memory-duration-compile-red/ |
 
+### Duration correction reread releases one attempt
+
+| decision                                                                                                                                                                                                                                                                                                                                                                                            | who                  | status  | first tested by                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------- | ----------------------------------------- |
+| Verified eb665371 has exactly the three approved .raw insertions. Release one normal exact large-restart attempt on full candidate composed onto accepted cc2f2f0d, fresh caches/output and retained captures. Require unchanged 2/2, both-runtime exact reports/RSS and complete cleanup; stop-first, no further retry or broader execution. Source review is not compilation or runtime evidence. | Amp lead with Oracle | decided | pending independent exact-filter receipts |
+
 ## Related
 
 - [[session-05]]
