@@ -10,7 +10,25 @@ status: in-progress
 
 # Roadmap
 
-## Current direction: agent-native, orb continuation authorized (20 Sep 2026)
+## Current board — moscope accepted, 21 Sep 2026, 10:08 PM ET
+
+Robert's purpose is learning and creating his own language, even without
+adoption; personal and wider usefulness remain goals. The small real CLI is the
+current application, rather than the more ambitious coding harness.
+
+| board             | current work                                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now               | [[moscope-serial-acceptance]] complete: independent interpreter 66/66, native 74/74, normal build 5/5 and unfiltered corpus 276/276; all 142 lead groups absent |
+| Next              | No new implementation released; let use of the accepted serial CLI inform a separate bounded request                                                            |
+| Waiting on Robert | No acceptance prerequisite remains; private-history use is not part of this evidence                                                                            |
+| Recently done     | App-local real metadata 21/21, 27 module tests in each runtime, source and generated artifacts retained                                                         |
+| Paused            | Step42, coding harness, parallel scanner and broader language/runtime work remain paused                                                                        |
+
+Phase status: the smaller useful application is accepted on Linux. This does not
+complete the historical harness phase, prove adoption or performance, or satisfy
+outstanding Darwin/Step42 obligations. See [[decision-log]].
+
+## Historical direction and board (20–21 Sep, before moscope)
 
 Robert approved the direction in [[01-premise]] and the supersession recorded in
 [[decision-log]]. Mo is another option, not a BEAM replacement. Agents are the

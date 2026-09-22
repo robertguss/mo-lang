@@ -1,5 +1,25 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
+## Moscope accepted — 21 Sep 2026, 10:08 PM ET
+
+Full serial Linux app acceptance is complete. Candidate c52db2f3 is integrated
+unchanged at 6eaacb28 after Oracle review and independent lead verification:
+66/66 interpreter, 74/74 native (eight builds plus 66 cases), 27 module tests
+per runtime, normal build 5/5 and unfiltered corpus 276/276, all exit zero at
+the verifier level. All 142 owned groups were independently confirmed absent.
+Worker real formatter/write/check metadata passed 21/21; shared sidecar stayed
+unchanged. Raw source, outputs, C files and binaries are under
+audit/evidence/2026-09-21/moscope-final/. The plan records limits and scope.
+
+Robert's purpose is learning and creating his own language, with personal and
+wider usefulness as goals even without adoption. Moscope is the small useful CLI
+chosen instead of the immediate coding harness. The requested acceptance is
+complete; no follow-on feature or private-data run is authorized by it. Step42
+and harness work remain paused. No hostile-resource, hard-cancellation, Darwin,
+performance or real-private-history claim accompanies this acceptance.
+
+## Earlier checkpoints (historical; superseded by acceptance above)
+
 Interpreter checkpoint, 21 Sep 2026, 8:21 PM ET: candidate 8ef1730c has worker
 and independent lead 66/66 exact interpreter cases, including seven modules / 27
 tests; every guard ended child_exit with no supervision error and literal group

@@ -3243,3 +3243,17 @@
 - Fresh medium/xxlarge worker owns app-only preparation and returns a verifier
   manifest before new execution. [[moscope-serial-acceptance]] records scope,
   staged gates, limits and acceptance meaning; private data remains excluded.
+
+## [2026-09-21] acceptance | serial moscope, 10:08 PM ET
+
+- Accepted c52db2f3 through integrated 6eaacb28 after mandatory Oracle review:
+  lead 66/66 interpreter, 74/74 native, 27 tests per runtime, normal build 5/5
+  and unfiltered corpus 276/276. All 142 lead groups independently absent.
+- Worker real metadata passed 21/21 after the formatter-exposed nesting error
+  was fixed by extracting the unchanged all-words predicate. Shared sidecar and
+  toolchain remain unchanged. Earlier failures and final raw artifacts are
+  preserved under audit/evidence/2026-09-21/moscope-final/.
+- [[moscope-serial-acceptance]] is complete for Linux serial synthetic
+  correctness. No private data, resource-hardening or performance claim;
+  Step42/harness remain paused. Learning and creating Mo remain Robert's purpose
+  even without adoption, with usefulness still a goal.

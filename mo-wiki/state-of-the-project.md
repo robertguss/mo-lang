@@ -24,9 +24,29 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence here,
 and the [[roadmap]] table is the authority on order.
 
-**Current, 20 Sep 2026, evening ET:** Robert moved coordination to a persistent
-Amp thread with mandatory Oracle planning/review/acceptance consultation.
-Workers implement in fresh medium xxlarge orbs; the lead independently tests and
+**Current, 21 Sep 2026, 10:08 PM ET:** moscope, the small serial CLI for
+searching Claude Code JSONL histories, is accepted on Linux. Robert's ultimate
+value is learning and creating his own language even without adoption; personal
+and wider usefulness remain goals. He chose this smaller useful application
+instead of immediate coding-harness work. Harness and Step42 remain paused.
+
+The lead independently verified 66/66 interpreter cases, 74/74 native payloads
+(eight builds and 66 cases), 27 module tests in each runtime, normal build 5/5
+and unfiltered full corpus 276/276. Worker real formatting/metadata passed
+21/21. All 142 lead-owned process groups were independently absent; Oracle found
+no final blocker. Exact source, outputs and generated C/binaries are preserved
+under audit/evidence/2026-09-21/moscope-final/.
+
+[[moscope-serial-acceptance]] records what that means: synthetic serial
+correctness, not a hostile-input memory bound, hard cancellation, private-data
+test, performance result or Darwin acceptance. The toolchain and shared metadata
+were unchanged. No new feature assignment follows automatically.
+
+## Historical state before moscope acceptance
+
+**20 Sep 2026, evening ET:** Robert moved coordination to a persistent Amp
+thread with mandatory Oracle planning/review/acceptance consultation. Workers
+implement in fresh medium xxlarge orbs; the lead independently tests and
 accepts. AFK progress and accepted code/docs pushes to main are authorized; CI
 remains disabled by instruction. The next work is Step42 memory safety and the
 Mo workspace server, then Exec/cutover and a real model-driven task when the

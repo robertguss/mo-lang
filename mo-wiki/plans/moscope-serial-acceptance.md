@@ -5,7 +5,7 @@ updated: 2026-09-21
 type: plan
 tags: [tooling, verification]
 sources: [plans/interpreter-step-42.md, decisions/decision-log.md]
-status: in-progress
+status: done
 ---
 
 # Moscope: full serial CLI acceptance
@@ -85,18 +85,33 @@ required repository gate is unresolved. Code remains off main until accepted.
 
 ## Result
 
-In progress, 21 Sep 2026, 8:21 PM ET. Corrective candidate 8ef1730c passed 66/66
-exact cases in both worker and independent lead interpreter runs, including
-seven modules / 27 tests. All lead payloads ended child_exit, zero supervision
-errors, literal group absence; independent ps confirmed all 66 PGIDs absent.
-Source inventory matched. Raw evidence and source bundle are preserved under
-audit/evidence/2026-09-21/moscope-interpreter/.
+Accepted 21 Sep 2026, 10:08 PM ET. Candidate c52db2f3 integrated unchanged at
+6eaacb28; mandatory Oracle final review found no blocker. Independent lead
+verification on that integration:
 
-Oracle cleared the unsafe-recorder continuation, file-wide UTF8 uncertainty and
-missing boundary/semantic-control findings. The same worker is released for
-bounded ordinary native preparation/execution using the pinned compiler and
-guard. Native, real formatter/metadata, final integrated replay and full corpus
-remain outstanding. App code is only in the lead verification branch, not main.
+| gate                     | result                                                        |
+| ------------------------ | ------------------------------------------------------------- |
+| Interpreter              | 66/66 exact status/stdout/stderr                              |
+| Ordinary native          | 74/74: eight cold builds, 59 CLI cases, seven module binaries |
+| Module tests             | 27 passed in each runtime                                     |
+| Real formatting/metadata | worker 21/21; final bytes independently replayed              |
+| Normal build             | 5/5, exit 0, 113.0595 s                                       |
+| Unfiltered test-corpus   | 5/5, 276/276 Zig tests, exit 0, 657.6004 s                    |
+| Cleanup                  | all 142 lead payload groups independently absent              |
+
+The corpus discovers all seven app modules and main's three cases (statuses
+0/1/2); 276 is the Zig test count, not the application-file count. Its stderr
+retains fault-test diagnostics and Zig's misleading `failed command:` context
+line; Oracle verified the runner prints this with captured stderr even on a
+successful run. It was not suppressed or treated as empty output.
+
+Raw source, both parties' receipts and generated C/binaries are under
+audit/evidence/2026-09-21/moscope-final/. Failed attempts remain preserved.
+Formatting exposed the nesting-law error; a private pure all-words predicate
+extraction fixed it without changing matching semantics. Shared metadata and the
+accepted toolchain stayed unchanged. Acceptance is Linux serial synthetic
+correctness, not private-data, Darwin, hard-resource/cancellation or performance
+evidence. Step42 and harness work remain paused; no further feature is released.
 
 ## Related
 

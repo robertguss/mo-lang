@@ -5,6 +5,19 @@ reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the
 per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the
 same history next to the text it changed.
 
+## Moscope serial CLI accepted — 21 Sep 2026, 10:08 PM ET
+
+- Local read-only Claude Code JSONL search: phrase/all-words, optional tools,
+  deterministic session ordering, escaped output and explicit incomplete status.
+- Independent Linux interpreter 66/66 and ordinary native 74/74; 27 module tests
+  per runtime. Real app-local formatter/metadata checks passed 21/21.
+- Integrated normal build 5/5 and unfiltered native-enabled corpus 276/276,
+  exits zero; all 142 lead-owned process groups confirmed absent. Oracle final
+  review found no blocker. Raw evidence and generated artifacts:
+  `audit/evidence/2026-09-21/moscope-final/`.
+- Toolchain/shared metadata unchanged. No private-data, hostile-resource,
+  hard-cancellation, Darwin or performance claim; Step42/harness remain paused.
+
 ## Linux guard acceptance and native-enabled baseline — 20 Sep 2026, evening ET
 
 - Follow-up wrapper ownership repair accepted after independent33/33 controls,
