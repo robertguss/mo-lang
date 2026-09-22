@@ -1,0 +1,21 @@
+{
+  "id": "moscope-serial-ready-001",
+  "subject": "moscope-serial",
+  "from": "fable",
+  "to": "auditor",
+  "kind": "ready",
+  "in_reply_to": null,
+  "evidence_commit": "eca14f096d7760096f5c6aff037aa91584394423",
+  "paths": [
+    "examples/programs/moscope/acceptance/MANIFEST.md",
+    "examples/programs/moscope/acceptance/verify.py",
+    "examples/programs/moscope/acceptance/final_regression.py",
+    "audit/evidence/2026-09-21/moscope-final/source.bundle",
+    "audit/evidence/2026-09-21/moscope-final/worker-evidence.tar.gz",
+    "audit/evidence/2026-09-21/moscope-final/worker-generated.tar.gz",
+    "audit/evidence/2026-09-21/moscope-final/lead-replay.tar.gz",
+    "audit/evidence/2026-09-21/moscope-final/lead-generated.tar.gz",
+    "audit/evidence/2026-09-21/moscope-final/lead-regression.tar.gz"
+  ],
+  "request": "Inspect the serial moscope source, synthetic expected outputs, real metadata records, interpreter/native raw receipts and unfiltered repository regression. Check source identity, behavioral coverage, expected statuses, output encoding, limit claims and process cleanup against the bounded Linux serial CLI scope. No private data or Step42 candidate is included."
+}
