@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "limits.mo",
+      "module": "Limits",
+      "declarations": [
+        { "id": "93f20b6a7dbf", "name": "module Limits", "hash": "4d1ca68563e45d13" },
+        { "id": "027c4893b692", "name": "expose", "hash": "a82d7bf63294dc49" },
+        { "id": "1943164396c1", "name": "intent", "hash": "c6615f967b86092e" },
+        { "id": "a715d253f6d1", "name": "fn query_bytes", "hash": "badd2d57c1b81273" },
+        { "id": "766076be8b26", "name": "fn terms", "hash": "363f6dc161deca80" },
+        { "id": "674e51e0ea9c", "name": "fn depth", "hash": "b7be91996eeeebae" },
+        { "id": "a81de7224faa", "name": "fn entries", "hash": "cf1ddb3b24bb6525" },
+        { "id": "f2ca1161b429", "name": "fn files", "hash": "3ad9e8980e2249b0" },
+        { "id": "83957cdd49f6", "name": "fn file_bytes", "hash": "70ad9fe817e271b5" },
+        { "id": "5efcbfe2c49f", "name": "fn total_bytes", "hash": "2f0722c33fa18aae" },
+        { "id": "7dcf77d2ba15", "name": "fn line_bytes", "hash": "bf51de9f7fb28b59" },
+        { "id": "9a31a60f95e8", "name": "fn file_records", "hash": "4a6bd4685ba52847" },
+        { "id": "2eef624d5b38", "name": "fn records", "hash": "77fcf66192b3255d" },
+        { "id": "6c121ee1bf24", "name": "fn messages", "hash": "a9c1aabcf1f321c8" },
+        { "id": "a2b963e457e2", "name": "fn blocks", "hash": "00da4d45304fcc97" },
+        { "id": "100de5aa6a83", "name": "fn results", "hash": "ed33f15e40a70edc" },
+        { "id": "849cab52c421", "name": "fn diagnostics", "hash": "1acf24d076d0993a" },
+        { "id": "20b5617adbc3", "name": "fn excerpt", "hash": "fe7985cb18a32481" },
+        { "id": "71610c028916", "name": "fn output_bytes", "hash": "5bc8120f341e089b" },
+        { "id": "07d7b3a7dcf3", "name": "fn call_time", "hash": "c618a7f315231e72" },
+        { "id": "4555f68c195f", "name": "fn process_time", "hash": "b5eaa3215900e634" },
+        { "id": "ef02e4b561b2", "name": "test \"the documented limits are the production constants\"", "hash": "f725cfd0b47bc203" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "11085bdb7e34189a" }
+    },
+    {
+      "path": "model.mo",
+      "module": "Model",
+      "declarations": [
+        { "id": "0eccc2443b66", "name": "module Model", "hash": "d3ac597b4ac57725" },
+        { "id": "584c7cd493a1", "name": "expose", "hash": "8dbe761c9ea2aa03" },
+        { "id": "f5b7f4c61b8a", "name": "intent", "hash": "9260aa5c5ceb8208" },
+        { "id": "ac5180c120e4", "name": "enum Mode", "hash": "a855814a21e821cd" },
+        { "id": "6524f2e93a45", "name": "struct Options", "hash": "e79021e80c4a8bab" },
+        { "id": "c88acd489480", "name": "enum BlockKind", "hash": "6eb3a1653ab5bd01" },
+        { "id": "e54a8904d861", "name": "struct Block", "hash": "436424d1fc5bbde8" },
+        { "id": "6dc097a0ebb8", "name": "struct Message", "hash": "32d456ed76fd63f6" },
+        { "id": "0b9edf9947c4", "name": "struct Seen", "hash": "892c1e5c412688a1" },
+        { "id": "6e24cfe4e7da", "name": "struct Issue", "hash": "bbbc4c4965af6003" },
+        { "id": "b3724da50877", "name": "struct Scan", "hash": "0681935998d70a7b" },
+        { "id": "c2252ab3d152", "name": "struct Discovery", "hash": "45c906ca1ef9d83c" },
+        { "id": "0bb6f2e1500e", "name": "struct Hit", "hash": "374934e80bca5fc1" },
+        { "id": "374600b802ab", "name": "struct Session", "hash": "bfd0e52d18407a93" },
+        { "id": "eefed07d2e8c", "name": "struct Report", "hash": "76fb34ca8bf887f4" },
+        { "id": "f581cecce929", "name": "fn empty_scan", "hash": "9588419e7dc223c2" },
+        { "id": "d67bf3380df5", "name": "fn empty_discovery", "hash": "4bba87b3bf312858" },
+        { "id": "d8bfd23e9016", "name": "test \"empty production state starts every counter and stop flag clear\"", "hash": "cee3c8058c2adfd6" }
+      ],
+      "verified": { "hash": "5f546a8156bbec0d", "declarations": "eaef8ef24f4d16d6" }
+    }
+  ]
+}

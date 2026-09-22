@@ -829,7 +829,7 @@ def run_native_case(
     pending = {
         "schema": "moscope-acceptance-v1",
         "state": "started",
-        "stage": "native",
+        "stage": case.get("stage", "native"),
         "case": case["name"],
         "argv": case["command"],
         "cwd": str(case.get("cwd", ROOT)),
@@ -966,6 +966,117 @@ def run_native(compiler: Path, destination: Path) -> int:
     return 0 if all(item["passed"] for item in summary) else 1
 
 
+def repository_snapshot() -> dict[str, dict[str, object]]:
+    records = {}
+    for folder, names, files in os.walk(ROOT, topdown=True, followlinks=False):
+        names[:] = sorted(name for name in names if name not in {".git", ".amp"})
+        for name in sorted(files):
+            path = Path(folder) / name
+            relative = str(path.relative_to(ROOT))
+            if path.is_symlink():
+                records[relative] = {"type": "symlink", "target": os.readlink(path)}
+            else:
+                status = path.stat()
+                records[relative] = {
+                    "type": "regular",
+                    "bytes": status.st_size,
+                    "sha256": sha256(path),
+                    "mode": status.st_mode & 0o777,
+                }
+    return records
+
+
+def snapshot_digest(snapshot: dict[str, dict[str, object]]) -> str:
+    encoded = json.dumps(snapshot, separators=(",", ":"), sort_keys=True).encode()
+    return sha256_bytes(encoded)
+
+
+def mutation_report(before: dict[str, dict[str, object]]) -> dict[str, object]:
+    after = repository_snapshot()
+    changed = []
+    for path in sorted(set(before) | set(after)):
+        if before.get(path) != after.get(path):
+            changed.append({"path": path, "before": before.get(path), "after": after.get(path)})
+    explicit = {str(path.relative_to(ROOT)) for path in APP.glob("*.mo")}
+    allowed = explicit | {str((APP / ".mo.ids").relative_to(ROOT))}
+    mo_root = str((APP / "mo.root").relative_to(ROOT))
+    return {
+        "before_tree_sha256": snapshot_digest(before),
+        "after_tree_sha256": snapshot_digest(after),
+        "changes": changed,
+        "allowed_paths": sorted(allowed),
+        "out_of_scope_changes": [item["path"] for item in changed if item["path"] not in allowed],
+        "mo_root_unchanged": before.get(mo_root) == after.get(mo_root),
+    }
+
+
+def run_metadata(compiler: Path, destination: Path) -> int:
+    if destination.exists():
+        raise SystemExit(f"refusing to overwrite artifact directory: {destination}")
+    destination.mkdir(parents=True)
+    source = source_identity()
+    before = repository_snapshot()
+    guard = load_guard()
+    module_names = {
+        "limits": ["the documented limits are the production constants"],
+        "model": ["empty production state starts every counter and stop flag clear"],
+        "main": [
+            "flags combine in either order and duplicate or unsupported arguments are rejected",
+            "blank and oversized queries and malformed positional counts are usage errors",
+            "all six ASCII separators are blank and query and term boundaries are exact",
+            "flags are allowed around positionals while every missing duplicate and option shape rejects",
+        ],
+        "parse": [
+            "decoded UUID equality ignores object order and JSON spelling",
+            "file-local UUID state resets and malformed middle input retains neighboring messages",
+            "replacement characters and conflicting payloads preserve first results but are incomplete",
+            "production per-file total-record and retained-block counters refuse the next value",
+            "production record and message admission predicates differ at each boundary",
+        ],
+        "scan": [
+            "production discovery reads nested JSONL, ignores other files, and diagnoses JSONL folders",
+            "production filesystem timeout and aggregate admission paths are incomplete",
+            "processing expiry after a successful fold preserves admitted results",
+            "production traversal admission predicates differ at every boundary",
+        ],
+        "search": [
+            "ASCII folding leaves non-ASCII exact, and punctuation remains literal",
+            "all-words uses exactly the six ASCII whitespace bytes",
+            "safe output has no raw controls or non-ASCII bytes",
+            "terminal safety covers NUL DEL and bidi while doubling backslash",
+            "excerpt boundaries and output admission differ on both sides of the limit",
+            "production result admission differs at the matching-message boundary",
+        ],
+        "tests": [
+            "a phrase stays inside one block while all words may span blocks of one logical message",
+            "tool blocks are opt-in and thinking remains excluded",
+            "an exact decoded duplicate UUID is removed and a conflicting payload is incomplete",
+            "physical fallback identity cannot collide with a provided physical-looking id",
+            "invalid top-level classification cases independently make a result incomplete",
+            "unknown bookkeeping is counted, but unknown conversation shapes are incomplete",
+        ],
+    }
+    ordered = ["limits", "model", "main", "parse", "scan", "search", "tests"]
+    cases = []
+    for name in ordered:
+        cases.append({"name": f"fmt-{name}", "stage": "metadata", "command": [str(compiler), "fmt", str(APP / f"{name}.mo")], "timeout_seconds": 60, "exit": 0, "stdout": b"", "stderr": b""})
+    for name in ordered:
+        cases.append({"name": f"write-{name}", "stage": "metadata", "command": [str(compiler), "test", "--write", str(APP / f"{name}.mo")], "timeout_seconds": 120, "exit": 0, "stdout": module_output(module_names[name]), "stderr": b""})
+    for name in ordered:
+        cases.append({"name": f"fmt-check-{name}", "stage": "metadata", "command": [str(compiler), "fmt", "--check", str(APP / f"{name}.mo")], "timeout_seconds": 60, "exit": 0, "stdout": b"", "stderr": b""})
+    summary = []
+    for number, case in enumerate(cases, 1):
+        recorded = run_native_case(case, number, destination, compiler, source, guard)
+        summary.append(recorded)
+        if not recorded["passed"]:
+            break
+    report = mutation_report(before)
+    (destination / "mutation-report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    (destination / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    safe_mutations = not report["out_of_scope_changes"] and report["mo_root_unchanged"]
+    return 0 if len(summary) == len(cases) and all(item["passed"] for item in summary) and safe_mutations else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -979,6 +1090,9 @@ def main() -> int:
     native = subparsers.add_parser("native")
     native.add_argument("--mo", required=True)
     native.add_argument("--artifacts", required=True)
+    metadata = subparsers.add_parser("metadata")
+    metadata.add_argument("--mo", required=True)
+    metadata.add_argument("--artifacts", required=True)
     args = parser.parse_args()
     if args.command == "plan":
         print(json.dumps(PLAN, indent=2, sort_keys=True))
@@ -989,7 +1103,9 @@ def main() -> int:
         return run_probe(compiler, destination)
     if args.command == "interpreter":
         return run_interpreter(compiler, destination)
-    return run_native(compiler, destination)
+    if args.command == "native":
+        return run_native(compiler, destination)
+    return run_metadata(compiler, destination)
 
 
 if __name__ == "__main__":

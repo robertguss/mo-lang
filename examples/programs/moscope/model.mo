@@ -98,13 +98,12 @@ struct Report
 end
 
 fn empty_scan() : Scan
-  Scan(messages: Map.new(), issues: [], unknown_kinds: Map.new(), skipped_links: 0,
-    files_read: 0, admitted_bytes: 0, records: 0, retained_blocks: 0, incomplete: false)
+  Scan(messages: Map.new(), issues: [], unknown_kinds: Map.new(), skipped_links: 0, files_read: 0,
+    admitted_bytes: 0, records: 0, retained_blocks: 0, incomplete: false)
 end
 
 fn empty_discovery() : Discovery
-  Discovery(files: [], issues: [], entries: 0, skipped_links: 0, incomplete: false,
-    stopped: false)
+  Discovery(files: [], issues: [], entries: 0, skipped_links: 0, incomplete: false, stopped: false)
 end
 
 test "empty production state starts every counter and stop flag clear"
@@ -116,3 +115,6 @@ test "empty production state starts every counter and stop flag clear"
   assert found.files.size == 0 and found.issues.size == 0 and found.entries == 0
   assert found.skipped_links == 0 and !found.incomplete and !found.stopped
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

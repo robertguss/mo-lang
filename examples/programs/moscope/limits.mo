@@ -84,3 +84,6 @@ test "the documented limits are the production constants"
   assert diagnostics() == 10_000 and excerpt() == 240 and output_bytes() == 8_388_608
   assert call_time() == 10.seconds and process_time() == 60.seconds
 end
+
+verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+          proven: not run

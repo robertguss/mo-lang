@@ -86,3 +86,23 @@ independent CLI expectations and runs all seven module-test binaries. The stage
 records 74 guarded payload receipts total: eight builds, 59 CLI cases, and seven
 module binaries. Release metadata and the full corpus remain separate pending
 gates.
+
+## Metadata and final regression status
+
+The first metadata attempt completed all seven formatter writes and
+`mo test --write` for `limits.mo` and `model.mo`. It stopped without retry when
+`mo test --write main.mo` exited 1 with MO0304 for the nested predicate in
+`search.mo`. Ten process groups were literally absent; `mo.root`, the shared
+`examples/programs/.mo.ids`, and every other out-of-scope path were unchanged.
+The app-local `.mo.ids` and provisional formatter/verified edits are retained.
+The remaining writes, formatter checks, and both runtime replays have not run.
+
+`final_regression.py` is the unexecuted lead-owned final gate recorder. From the
+integrated `toolchain/` directory it records guarded, unfiltered
+`zig build -j4 --summary all` and `zig build test-corpus -j4 --summary all`
+commands with configured budgets of 900 and 7200 seconds. It uses fresh absolute
+caches, a pinned absolute Zig, sanitized environment, two-second signal
+forwarding grace, a budget-plus-five outer deadline, and the same fail-closed
+capture and process-group rules. The external harness's 1800-second wrapper
+remains outside this recorder and is not modified here. Neither command has been
+executed by this worker.

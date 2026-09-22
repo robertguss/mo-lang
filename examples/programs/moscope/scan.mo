@@ -68,8 +68,8 @@ fn discover(root: Fs, path: String, level: UInt64, so_far: Discovery, clock: Clo
   found
 end
 
-fn discovered_entry(root: Fs, place: EntryPlace, so_far: Discovery, clock: Clock,
-  started: Time, kind: EntryKind) : Discovery
+fn discovered_entry(root: Fs, place: EntryPlace, so_far: Discovery, clock: Clock, started: Time,
+  kind: EntryKind) : Discovery
   var found = so_far
   case kind
     Link:
@@ -111,16 +111,14 @@ fn scan_file(root: Fs, path: String, scan: Scan, clock: Clock, started: Time) : 
   if clock.now >= started + process_time()
     return scan_problem(next, path, 0, "the 60 second processing deadline was exceeded")
   end
-  folded = root.fold_lines(path, initial, within: call_time(), fn(state, line)
-    folded_line(state, line)
-  end)
+  folded = root.fold_lines(path, initial, within: call_time(),
+    fn(state, line) folded_line(state, line) end)
   case folded
     Ok(done):
       next = done.scan
       next.files_read += 1
     Error(error):
-      next = scan_problem(next, path, 0,
-        "cannot read admitted .jsonl input: #{fs_error(error)}")
+      next = scan_problem(next, path, 0, "cannot read admitted .jsonl input: #{fs_error(error)}")
   end
   if clock.now >= started + process_time()
     next = scan_problem(next, path, 0, "the 60 second processing deadline was exceeded")

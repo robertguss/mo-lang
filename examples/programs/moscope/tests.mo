@@ -65,9 +65,7 @@ test "invalid top-level classification cases independently make a result incompl
   nonobject = folded(["[]"]).scan
   missing = folded(["{\"payload\":{}}"]).scan
   nonstring = folded(["{\"type\":42,\"payload\":{}}"]).scan
-  conversation = folded([
-    "{\"type\":\"future_conversation\",\"message\":{\"role\":\"user\",\"content\":\"needle\"}}"
-  ]).scan
+  conversation = folded(["{\"type\":\"future_conversation\",\"message\":{\"role\":\"user\",\"content\":\"needle\"}}"]).scan
   wanted = options("needle", Phrase, false)
   assert searched(nonobject, wanted, clock).incomplete
   assert searched(missing, wanted, clock).incomplete

@@ -12,7 +12,11 @@ seven modules' 27 non-writing tests. Every completed payload had literal absent
 process-group cleanup. The ordinary native stage then repeated the same 59 CLI
 expectations and all seven modules after eight cold builds; all eight generated
 C files declared zero processes. Formatter/`--write` release metadata and the
-full corpus remain unexecuted and unaccepted.
+full corpus remain unaccepted. The first metadata attempt formatted all seven
+modules and wrote verified metadata for `limits.mo` and `model.mo`, then stopped
+when `mo test --write main.mo` reported MO0304 in `search.mo`; the provisional
+tool-owned diff is retained and no later metadata command or behavioral replay
+has run.
 
 ```text
 moscope search "connection refused" ./sessions/
@@ -248,5 +252,5 @@ acceptance.
   `fold_lines` callback neither stores nor captures `Clock`.
 - `Clock.fixture()` remains limited to app-local test source. These statements
   are source-review observations. All-module interpreter and ordinary native
-  tests passed without writing metadata; the release formatter/`--write` and
-  full corpus remain pending.
+  tests passed before the incomplete metadata attempt. Metadata completion,
+  post-metadata runtime replay, and the full corpus remain pending.
