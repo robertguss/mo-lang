@@ -1,0 +1,3 @@
+{"type":"assistant","uuid":"unsupported-block","sessionId":"unsupported","timestamp":"2026-09-21T07:00:00Z","message":{"role":"assistant","id":"unsupported-block","content":[{"type":"future_content","value":"unsupported-needle"}]}}
+{"type":"assistant","uuid":"unsupported-content","sessionId":"unsupported","timestamp":"2026-09-21T07:01:00Z","message":{"role":"assistant","id":"unsupported-content","content":{"text":"unsupported-needle"}}}
+{"type":"future_bookkeeping","payload":{"text":"not a conversation shape"}}

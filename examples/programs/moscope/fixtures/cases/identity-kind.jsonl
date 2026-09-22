@@ -1,0 +1,2 @@
+{"type":"user","sessionId":"identity-kind","message":{"role":"user","content":"alpha"}}
+{"type":"user","sessionId":"identity-kind","message":{"role":"user","id":"physical:1","content":"omega"}}
