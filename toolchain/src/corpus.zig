@@ -1075,6 +1075,65 @@ test "corpus: a process whose state is megabytes restarts twenty times and its r
     try std.testing.expect(std.mem.endsWith(u8, compiled.stdout, "kept: 1\n"));
 }
 
+test "corpus: decoding the same JSON fifty times keeps memory flat, under mo run and in a binary" {
+    // mo run handed the process arena to its Server and Vm as gpa, so every temporary the interpreter
+    // freed stayed until exit: Json.decode's key table and buffers grew these fifty decodes by about
+    // 150 MiB, and moscope's scan of a 588 MB history peaked at 1.4 GB (22 Sep 2026).
+    const gpa = std.testing.allocator;
+    const io = std.testing.io;
+    var arena_state = std.heap.ArenaAllocator.init(gpa);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const mo_exe = try integrationMo(gpa, io);
+    defer gpa.free(mo_exe);
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const decodes =
+        \\module Decodes
+        \\expose document, decoded, main
+        \\
+        \\fn document() : String
+        \\  item = "{\"name\":\"n\",\"tags\":[\"a\",\"b\",\"c\"],\"nested\":{\"x\":1,\"y\":[true,null]}}"
+        \\  "[#{"#{item},".repeat(2_000)}#{item}]"
+        \\end
+        \\
+        \\fn decoded(text: String, times: UInt64) : UInt64
+        \\  var count = 0
+        \\  for _ in 0..times
+        \\    if Json.decode(text) is Ok(Array(items))
+        \\      count = count + items.size
+        \\    end
+        \\  end
+        \\  count
+        \\end
+        \\
+        \\fn main(platform: Platform)
+        \\  out = platform.stdout
+        \\  case platform.runtime
+        \\    Some(runtime):
+        \\      text = document()
+        \\      warm = decoded(text, 20)
+        \\      before = runtime.memory(within: 1.minute).resident_bytes
+        \\      count = decoded(text, 50)
+        \\      after = runtime.memory(within: 1.minute).resident_bytes
+        \\      mib = after.saturating_sub(before) / 1_048_576
+        \\      out.write("decoded: #{warm + count}; under 16 MiB more: #{after < before + 16 * 1_048_576} (#{mib} MiB)\n")
+        \\    None: out.write("no runtime: build with --surface\n")
+        \\  end
+        \\end
+        \\
+    ;
+    try tmp.dir.writeFile(io, .{ .sub_path = "decodes.mo", .data = decodes });
+    const cwd = try std.fmt.allocPrint(arena, ".zig-cache/tmp/{s}", .{tmp.sub_path});
+    const want = "decoded: 140070; under 16 MiB more: true";
+    const interp = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "run", "decodes.mo" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(std.mem.startsWith(u8, interp.stdout, want));
+    const built = try std.process.run(arena, io, .{ .argv = &.{ mo_exe, "build", "--surface", "decodes.mo", "-o", "decodes-served" }, .cwd = .{ .path = cwd } });
+    try std.testing.expect(built.term == .exited and built.term.exited == 0);
+    const compiled = try std.process.run(arena, io, .{ .argv = &.{"./zig-out/mo-build/decodes-served/decodes-served"}, .cwd = .{ .path = cwd } });
+    try std.testing.expect(std.mem.startsWith(u8, compiled.stdout, want));
+}
+
 test "corpus: an answer of megabytes an arm made to an ask it kept arrives whole, under mo run, in a binary, and in one compacting at every safe point" {
     // An `answer` waited for its update's commit as the value itself, in the update's region, and a
     // returning frame's compaction past frame_budget freed it first: a report of about 0.35 MB

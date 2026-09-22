@@ -294,7 +294,10 @@ fn run(init: std.process.Init) !void {
             else => return e,
         };
         const cwd = try std.process.currentPathAlloc(io, arena);
-        var server: mo.server.Server = try .init(arena, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
+        // The run's own allocator frees: the process arena would keep every temporary the
+        // interpreter frees (a decoder's key table, a line's partial buffer) until exit, so
+        // decoding a large file grew memory by about a third of what it allocated.
+        var server: mo.server.Server = try .init(std.heap.smp_allocator, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
         server.files = program.files;
         if (events_cap) |n| server.events_cap = n;
         if (crashes_cap) |n| server.crashes_cap = n;

@@ -151,10 +151,13 @@ reviewed by the lead or auditor.
 | JSON regression, native old / fixed runtime       | SIGSEGV / pass                                           |
 | unfiltered `zig build test-corpus` (Darwin)       | exit 0, 189 s (first run caught an unformatted test; fixed) |
 
-The interpreter still peaks at 1.4 GB on the full history. A bare
-fold-and-decode Mo program shows the same floor (482 MB for the 180 MB mo-lang
-folder, against moscope's 521 MB), so reclaiming decode garbage inside
-`fold_lines` is a runtime follow-up. It is not a moscope change. The detailed
+The interpreter first still peaked at 1.4 GB on the full history. A bare
+decode-only Mo program showed the same 1.28 GB, so the cause was the runtime:
+`mo run` gave its Server and Vm the process arena as `gpa`, so no temporary the
+interpreter freed was ever released. A follow-up commit gives `mo run`
+`std.heap.smp_allocator`. The full history then peaks at 28 MB in the
+interpreter (native 14 MB). It adds a red/green corpus test and was checked by
+a full corpus run under Zig's DebugAllocator. The detailed
 receipts are in `examples/programs/moscope/ACCEPTANCE.md`.
 
 ## Related

@@ -2303,6 +2303,7 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | Output: excerpt window around the first match; readable Unicode with only control and format characters escaped; paths joined to the typed directory; a POSIX-quoted `resume:` line; `--`, `--help`; one note line for bookkeeping. | Claude Code | done on branch | v1: 46 of 94 excerpts lacked the match |
 | Fix the native JSON decoder's use-after-free (`json_read` scratch pointers) at its root, with a deep-and-wide native regression test in `examples/stdlib/json.mo`. This changes the accepted toolchain and needs lead/auditor acceptance before `main`. | Claude Code | done on branch, awaiting acceptance | old runtime SIGSEGV / fixed pass; test-corpus run |
 | Replace moscope's 1,112-line verifier with `acceptance/check.py`: 34 golden triples, `--bless` with reviewed diffs, and interpreter or native runs. Call goldens goldens. Commit no binaries. | Claude Code | done on branch | 34/34 interpreter and native |
+| Give `mo run`'s Server and Vm `std.heap.smp_allocator` instead of the process arena, which never freed the interpreter's temporaries (1.28 GB to decode a 588 MB history; 28 MB after). Corpus test added; the full corpus also passed under DebugAllocator. This changes the accepted toolchain and needs lead/auditor acceptance. | Claude Code | done on branch, awaiting acceptance | new corpus test: old 588 MiB growth / fixed 2 MiB |
 
 ## Related
 

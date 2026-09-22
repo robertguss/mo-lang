@@ -30,7 +30,7 @@ files.
 
 | run                                  | v1                                                     | v2                                                        |
 | ------------------------------------ | ------------------------------------------------------ | --------------------------------------------------------- |
-| interpreter, full history            | exit 2, "No matches.", deadline hit at 60.2 s, 1.44 GB | exit 0, 138 matches, 7.4 s, 1.42 GB                       |
+| interpreter, full history            | exit 2, "No matches.", deadline hit at 60.2 s, 1.44 GB | exit 0, 138 matches, 7.4 s, 1.42 GB; 28 MB after the allocator fix                       |
 | native, full history                 | SIGSEGV in 76 of 77 project folders                    | exit 0, 138 matches, 3.0 s, 15 MB                         |
 | native, absent query                 | SIGSEGV                                                | exit 1, 3.0 s                                             |
 | diagnostics                          | 295 "incomplete" lines, 18 ignored-kind lines          | one warning category (7 records with U+FFFD) and one note |
@@ -58,10 +58,20 @@ What caused each v1 failure and what v2 changed:
 - **Deadline discarding results:** the 60-second deadline expired during the
   scan, and the search phase then stopped before its first message. v2 has no
   overall deadline, streams, and keeps only matching blocks.
-- **Memory:** the remaining 1.4 GB interpreter peak is the interpreter's. A bare
-  Mo program that only folds and decodes the mo-lang folder's lines peaks at 482
-  MB, against moscope's 521 MB. The native build peaks at 15 MB. Reclaiming
-  decode garbage inside `fold_lines` is a runtime follow-up.
+- **Interpreter memory:** the remaining 1.4 GB peak was the interpreter's, not
+  moscope's. A bare Mo program that only decoded the history's lines peaked at
+  1.28 GB, and memory grew about 13.6 MB each time the same 16 MB file was
+  decoded. Region compaction was working. The cause was that `mo run` handed
+  the process arena to its Server and Vm as `gpa`, so every temporary the
+  interpreter freed (the JSON decoder's key tables and string buffers, and
+  about 90 similar sites) stayed until exit. `mo run` now uses
+  `std.heap.smp_allocator` (`toolchain/src/main.zig`). The full history now
+  peaks at 28 MB in the interpreter and 14 MB native, with identical stdout.
+  A corpus test decodes the same JSON 50 times under `mo run` and in a binary:
+  memory grows 588 MiB on the old toolchain and 2 MiB on the fixed one, per
+  200 decodes. The full corpus also passed with Zig's DebugAllocator
+  (double-free detection, poisoned frees) standing in, to catch any use after
+  free that the arena had been hiding.
 
 What v2 does not claim: Linux re-verification, hostile-input hardening, or
 auditor review. The v2 checks are the 34 cases in `acceptance/check.py`
