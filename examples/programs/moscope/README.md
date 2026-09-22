@@ -9,8 +9,14 @@ app-local candidate passed the first serial interpreter checkpoint (46 exact
 payloads), then a corrective interpreter suite expanded it to 66 payloads: all
 eight original triples, 51 additional CLI/filesystem/boundary cases, and all
 seven modules' 27 non-writing tests. Every completed payload had literal absent
-process-group cleanup. Native behavior, formatter/`--write` release metadata,
-and the full corpus remain unexecuted and unaccepted.
+process-group cleanup. The ordinary native stage then repeated the same 59 CLI
+expectations and all seven modules after eight cold builds; all eight generated
+C files declared zero processes. Formatter/`--write` release metadata and the
+full corpus remain unaccepted. The first metadata attempt stopped when
+`mo test --write main.mo` reported MO0304 in `search.mo`; after the reviewed
+pure-helper extraction, all seven formatter writes, seven individual metadata
+writes, and seven formatter checks passed. Post-metadata interpreter and native
+replays are recorded separately from the still-unexecuted full corpus.
 
 ```text
 moscope search "connection refused" ./sessions/
@@ -245,6 +251,6 @@ acceptance.
 - Statement case arms use indented bodies. `FileFold` stores data only, and its
   `fold_lines` callback neither stores nor captures `Clock`.
 - `Clock.fixture()` remains limited to app-local test source. These statements
-  are source-review observations. All-module interpreter tests passed without
-  writing metadata; the release formatter/`--write`, native build/tests, and
-  full corpus remain pending.
+  are source-review observations. All-module interpreter and ordinary native
+  tests passed before metadata, and release formatter/metadata commands then
+  passed after the reviewed shape fix. The full corpus remains pending.

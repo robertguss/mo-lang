@@ -24,7 +24,8 @@ fn report(scan: Scan, options: Options, clock: Clock, started: Time) : Report
   var deadline_hit = false
   for session in sessions
     if clock.now >= started + process_time()
-      final_scan = problem(final_scan, "<search>", 0, "the 60 second processing deadline was exceeded")
+      final_scan = problem(final_scan, "<search>", 0,
+        "the 60 second processing deadline was exceeded")
       deadline_hit = true
       break
     end
@@ -57,8 +58,8 @@ fn report(scan: Scan, options: Options, clock: Clock, started: Time) : Report
   end
   remaining = output_bytes().saturating_sub(rendered.text.byte_size)
   diagnosed = diagnostics_text(final_scan, remaining)
-  Report(text: rendered.text, diagnostics: diagnosed.text,
-    matches: found.hits.size, incomplete: final_scan.incomplete or diagnosed.truncated)
+  Report(text: rendered.text, diagnostics: diagnosed.text, matches: found.hits.size,
+    incomplete: final_scan.incomplete or diagnosed.truncated)
 end
 
 fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searched
@@ -77,9 +78,7 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
     shown = case options.mode
       Phrase: eligible.filter(fn(block) ascii_lower(searchable(block)).contains?(lowered) end)
       AllWords:
-        if words.all?(fn(word)
-          eligible.any?(fn(block) ascii_lower(searchable(block)).contains?(word) end)
-        end)
+        if all_words_present?(words, eligible)
           eligible
         else
           []
@@ -97,31 +96,36 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
   result
 end
 
+fn all_words_present?(words: List(String), eligible: List(Block)) : Bool
+  words.all?(fn(word)
+    eligible.any?(fn(block)
+      ascii_lower(searchable(block)).contains?(word)
+    end)
+  end)
+end
+
 fn searchable(block: Block) : String
   if block.kind == Tool: "#{block.label}\n#{block.text}" else: block.text
 end
 
 fn sessions_of(messages: List(Message), hits: List(Hit)) : List(Session)
-  labels = messages.reduce(Map.new(), fn(known, entry)
-    known.set(entry.session_key, entry.session_label)
-  end)
+  labels = messages.reduce(Map.new(),
+    fn(known, entry) known.set(entry.session_key, entry.session_label) end)
   latest = messages.reduce(Map.new(), fn(known, entry)
-    known.set(entry.session_key,
-      later(known.get(entry.session_key) or None, entry.conversation_at))
+    known.set(entry.session_key, later(known.get(entry.session_key) or None, entry.conversation_at))
   end)
-  grouped = hits.reduce(Map.new(), fn(known, hit)
-    known.update(hit.entry.session_key, [], fn(before) before.push(hit) end)
-  end)
+  grouped = hits.reduce(Map.new(),
+    fn(known, hit) known.update(hit.entry.session_key, [], fn(before) before.push(hit) end) end)
   built = grouped.entries.map(fn(pair)
-    Session(key: pair.0, label: labels.get(pair.0) or pair.0,
-      latest: latest.get(pair.0) or None, hits: pair.1)
+    Session(key: pair.0, label: labels.get(pair.0) or pair.0, latest: latest.get(pair.0) or None,
+      hits: pair.1)
   end)
-  timed = built.filter(fn(one) one.latest is Some(_) end).sort_by(fn(one)
+  timed = built.filter(fn(one)
+    one.latest is Some(_)
+  end).sort_by(fn(one)
     (one.label, one.key)
   end).sort_by_desc(fn(one) one.latest or Time.from_parts(1970, 1, 1, 0, 0, 0) end)
-  missing = built.filter(fn(one) one.latest is None end).sort_by(fn(one)
-    (one.label, one.key)
-  end)
+  missing = built.filter(fn(one) one.latest is None end).sort_by(fn(one) (one.label, one.key) end)
   timed.concat(missing)
 end
 
@@ -184,8 +188,7 @@ fn notices_text(rendered: Render, scan: Scan, limit: UInt64) : Render
   return next if next.truncated
   for pair in scan.unknown_kinds.entries.sort_by(fn(entry) entry.0 end)
     next = append_limit(next,
-      "moscope: diagnostic: ignored #{pair.1} records of kind #{safe_prefix(pair.0, 256)}\n",
-      limit)
+      "moscope: diagnostic: ignored #{pair.1} records of kind #{safe_prefix(pair.0, 256)}\n", limit)
     if next.truncated
       break
     end
@@ -211,8 +214,7 @@ fn incomplete_text(rendered: Render, scan: Scan, limit: UInt64) : Render
     end
   end
   if !next.truncated and scan.issues.size >= diagnostics()
-    next = append_limit(next,
-      "moscope: incomplete: diagnostic retention limit reached\n", limit)
+    next = append_limit(next, "moscope: incomplete: diagnostic retention limit reached\n", limit)
   end
   next
 end
@@ -301,7 +303,11 @@ test "ASCII folding leaves non-ASCII exact, and punctuation remains literal"
 end
 
 test "all-words uses exactly the six ASCII whitespace bytes"
-  assert query_terms("  one\ttwo\nTHREE\u{000B}four\u{000C}five\r ") == ["one", "two", "three", "four", "five"]
+  assert query_terms("  one\ttwo\nTHREE\u{000B}four\u{000C}five\r ") == ["one",
+    "two",
+    "three",
+    "four",
+    "five"]
 end
 
 test "safe output has no raw controls or non-ASCII bytes"
@@ -326,3 +332,6 @@ end
 test "production result admission differs at the matching-message boundary"
   assert result_admitted?(9_999) and !result_admitted?(10_000)
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

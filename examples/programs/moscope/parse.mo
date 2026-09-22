@@ -148,8 +148,7 @@ fn decoded_record(scan: Scan, path: String, line: UInt64, payload: Json) : Scan
   end
   if kind != "user" and kind != "assistant"
     if fields.get("message") is Some(Object(_))
-      return problem(scan, path, line,
-        "unknown type #{kind} has a conversation-shaped message")
+      return problem(scan, path, line, "unknown type #{kind} has a conversation-shaped message")
     end
     return unknown(scan, kind)
   end
@@ -159,7 +158,8 @@ end
 fn conversation(scan: Scan, path: String, line: UInt64, kind: String,
   fields: Map(String, Json)) : Scan
   var next = scan
-  if marked?(fields, "isMeta") or marked?(fields, "isCompactSummary") or marked?(fields, "isApiErrorMessage")
+  if marked?(fields, "isMeta") or marked?(fields, "isCompactSummary") or marked?(fields,
+    "isApiErrorMessage")
     return next
   end
   if fields.get("uuid") is Some(value)
@@ -175,8 +175,7 @@ fn conversation(scan: Scan, path: String, line: UInt64, kind: String,
   message_record(next, input, fields)
 end
 
-fn session_of(scan: Scan, path: String, line: UInt64,
-  fields: Map(String, Json)) : (Scan, String)
+fn session_of(scan: Scan, path: String, line: UInt64, fields: Map(String, Json)) : (Scan, String)
   case fields.get("sessionId")
     Some(String(id)): (scan, id)
     None: (scan, "")
@@ -185,15 +184,13 @@ fn session_of(scan: Scan, path: String, line: UInt64,
   end
 end
 
-
-fn timestamp_of(scan: Scan, path: String, line: UInt64,
-  fields: Map(String, Json)) : (Scan, Option(Time))
+fn timestamp_of(scan: Scan, path: String, line: UInt64, fields: Map(String, Json)) : (Scan,
+  Option(Time))
   case fields.get("timestamp")
     Some(String(text)):
       case Time.parse(text)
         Some(parsed): (scan, Some(parsed))
-        None: (problem(scan, path, line,
-          "conversation timestamp is not supported RFC 3339"), None)
+        None: (problem(scan, path, line, "conversation timestamp is not supported RFC 3339"), None)
       end
     None: (scan, None)
     Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
@@ -201,8 +198,7 @@ fn timestamp_of(scan: Scan, path: String, line: UInt64,
   end
 end
 
-fn message_record(scan: Scan, input: ConversationInput,
-  fields: Map(String, Json)) : Scan
+fn message_record(scan: Scan, input: ConversationInput, fields: Map(String, Json)) : Scan
   message_fields = case fields.get("message")
     Some(Object(given)): given
     None | Some(String(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
@@ -229,8 +225,7 @@ fn message_record(scan: Scan, input: ConversationInput,
   retain_message(parsed.scan, input, identified.1, parsed.blocks)
 end
 
-fn identity_of(scan: Scan, path: String, line: UInt64,
-  fields: Map(String, Json)) : (Scan, Identity)
+fn identity_of(scan: Scan, path: String, line: UInt64, fields: Map(String, Json)) : (Scan, Identity)
   case fields.get("id")
     Some(String(value)): (scan, Identity(kind: "provided", value: value, label: value))
     None:
@@ -248,11 +243,16 @@ fn retain_message(scan: Scan, input: ConversationInput, identity: Identity,
   var next = scan
   return next if parsed.size == 0
   session_key = if input.session == "": "file:#{input.path}" else: "session:#{input.session}"
-  session_label = if input.session == "": "(missing session id in #{input.path})" else: input.session
+  session_label = if input.session == ""
+    "(missing session id in #{input.path})"
+  else
+    input.session
+  end
   key = Json.encode((input.path, session_key, input.kind, identity.kind, identity.value))
   existing = next.messages.get(key)
   if existing is None and !message_admitted?(next.messages.size)
-    return problem(next, input.path, input.line, "more than 100000 logical messages would be retained")
+    return problem(next, input.path, input.line,
+      "more than 100000 logical messages would be retained")
   end
   room = blocks().saturating_sub(next.retained_blocks)
   kept = parsed.take(room)
@@ -278,8 +278,7 @@ fn retain_message(scan: Scan, input: ConversationInput, identity: Identity,
   next
 end
 
-fn blocks_of(scan: Scan, role: String, path: String, line: UInt64,
-  items: List(Json)) : ParsedBlocks
+fn blocks_of(scan: Scan, role: String, path: String, line: UInt64, items: List(Json)) : ParsedBlocks
   var parsed = ParsedBlocks(scan: scan, blocks: [])
   for pair in items.enumerate
     one = block_of(parsed.scan, role, path, line, pair.0, pair.1)
@@ -295,13 +294,15 @@ fn block_of(scan: Scan, role: String, path: String, line: UInt64, local: UInt64,
     Object(given): given
     String(_) | Array(_) | Number(_) | Bool(_) | Null:
       return ParsedBlocks(scan: problem(scan, path, line,
-        "content block #{local} is not an object"), blocks: [])
+        "content block #{local} is not an object"),
+        blocks: [])
   end
   kind = case fields.get("type")
     Some(String(name)): name
     None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       return ParsedBlocks(scan: problem(scan, path, line,
-        "content block #{local} has no string type"), blocks: [])
+        "content block #{local} has no string type"),
+        blocks: [])
   end
   api = api_index(scan, path, line, local, fields)
   next = api.0
@@ -312,63 +313,66 @@ fn block_of(scan: Scan, role: String, path: String, line: UInt64, local: UInt64,
           ParsedBlocks(scan: next,
             blocks: [conversation_block(role, text, path, line, local, api.1)])
         None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
-          ParsedBlocks(scan: problem(next, path, line,
-            "text block #{local} has no string text"), blocks: [])
+          ParsedBlocks(scan: problem(next, path, line, "text block #{local} has no string text"),
+            blocks: [])
       end
     "thinking" | "redacted_thinking" | "image": ParsedBlocks(scan: next, blocks: [])
     "tool_use": tool_use(next, path, line, local, api.1, fields)
     "tool_result": tool_result(next, path, line, local, api.1, fields)
     _:
-      ParsedBlocks(scan: problem(next, path, line,
-        "unsupported conversation block type #{kind}"), blocks: [])
+      ParsedBlocks(scan: problem(next, path, line, "unsupported conversation block type #{kind}"),
+        blocks: [])
   end
 end
 
-fn conversation_block(role: String, text: String, path: String, line: UInt64,
-  local: UInt64, api: Option(UInt64)) : Block
+fn conversation_block(role: String, text: String, path: String, line: UInt64, local: UInt64,
+  api: Option(UInt64)) : Block
   Block(kind: Conversation, label: "#{role} text", text: text, path: path, line: line,
     local_index: local, api_index: api)
 end
 
-fn tool_use(scan: Scan, path: String, line: UInt64, local: UInt64,
-  api: Option(UInt64), fields: Map(String, Json)) : ParsedBlocks
+fn tool_use(scan: Scan, path: String, line: UInt64, local: UInt64, api: Option(UInt64),
+  fields: Map(String, Json)) : ParsedBlocks
   name = case fields.get("name")
     Some(String(value)): value
     None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       return ParsedBlocks(scan: problem(scan, path, line,
-        "tool_use block #{local} has no string name"), blocks: [])
+        "tool_use block #{local} has no string name"),
+        blocks: [])
   end
   input = case fields.get("input")
     Some(value): value
     None:
-      return ParsedBlocks(scan: problem(scan, path, line,
-        "tool_use block #{local} has no input"), blocks: [])
+      return ParsedBlocks(scan: problem(scan, path, line, "tool_use block #{local} has no input"),
+        blocks: [])
   end
-  block = Block(kind: Tool, label: "tool #{name} arguments", text: Json.encode(input),
-    path: path, line: line, local_index: local, api_index: api)
+  block = Block(kind: Tool, label: "tool #{name} arguments", text: Json.encode(input), path: path,
+    line: line, local_index: local, api_index: api)
   ParsedBlocks(scan: scan, blocks: [block])
 end
 
-fn tool_result(scan: Scan, path: String, line: UInt64, local: UInt64,
-  api: Option(UInt64), fields: Map(String, Json)) : ParsedBlocks
+fn tool_result(scan: Scan, path: String, line: UInt64, local: UInt64, api: Option(UInt64),
+  fields: Map(String, Json)) : ParsedBlocks
   id = case fields.get("tool_use_id")
     Some(String(value)): value
     None: "unknown"
     Some(_):
       return ParsedBlocks(scan: problem(scan, path, line,
-        "tool_result block #{local} has a non-string tool_use_id"), blocks: [])
+        "tool_result block #{local} has a non-string tool_use_id"),
+        blocks: [])
   end
   case fields.get("content")
     Some(String(text)):
-      block = Block(kind: Tool, label: "tool result #{id}", text: text, path: path,
-        line: line, local_index: local, api_index: api)
+      block = Block(kind: Tool, label: "tool result #{id}", text: text, path: path, line: line,
+        local_index: local, api_index: api)
       ParsedBlocks(scan: scan, blocks: [block])
     Some(Array(items)):
       place = ResultPlace(path: path, line: line, local: local, api: api, id: id)
       result_parts(scan, place, items)
     None | Some(Object(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       ParsedBlocks(scan: problem(scan, path, line,
-        "tool_result block #{local} has unsupported content"), blocks: [])
+        "tool_result block #{local} has unsupported content"),
+        blocks: [])
   end
 end
 
@@ -382,33 +386,35 @@ fn result_parts(scan: Scan, place: ResultPlace, items: List(Json)) : ParsedBlock
   parsed
 end
 
-fn result_part(scan: Scan, place: ResultPlace, part: UInt64,
-  value: Json) : ParsedBlocks
+fn result_part(scan: Scan, place: ResultPlace, part: UInt64, value: Json) : ParsedBlocks
   fields = case value
     Object(given): given
     String(_) | Array(_) | Number(_) | Bool(_) | Null:
       return ParsedBlocks(scan: problem(scan, place.path, place.line,
-        "tool result part #{part} is not an object"), blocks: [])
+        "tool result part #{part} is not an object"),
+        blocks: [])
   end
   case fields.get("type")
     Some(String("text")):
       case fields.get("text")
         Some(String(text)):
           block = Block(kind: Tool, label: "tool result #{place.id} part #{part}", text: text,
-            path: place.path, line: place.line, local_index: place.local,
-            api_index: place.api)
+            path: place.path, line: place.line, local_index: place.local, api_index: place.api)
           ParsedBlocks(scan: scan, blocks: [block])
         None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
           ParsedBlocks(scan: problem(scan, place.path, place.line,
-            "tool result text part #{part} has no string text"), blocks: [])
+            "tool result text part #{part} has no string text"),
+            blocks: [])
       end
     Some(String("image")): ParsedBlocks(scan: scan, blocks: [])
     Some(String(kind)):
       ParsedBlocks(scan: problem(scan, place.path, place.line,
-        "unsupported tool result part type #{kind}"), blocks: [])
+        "unsupported tool result part type #{kind}"),
+        blocks: [])
     None | Some(Object(_)) | Some(Array(_)) | Some(Number(_)) | Some(Bool(_)) | Some(Null):
       ParsedBlocks(scan: problem(scan, place.path, place.line,
-        "tool result part #{part} has no string type"), blocks: [])
+        "tool result part #{part} has no string type"),
+        blocks: [])
   end
 end
 
@@ -426,8 +432,9 @@ fn api_index(scan: Scan, path: String, line: UInt64, local: UInt64,
           else
             (problem(scan, path, line, "apiBlockIndex on block #{local} is negative"), None)
           end
-        None: (problem(scan, path, line,
-          "apiBlockIndex on block #{local} is not a whole integer"), None)
+        None:
+          (problem(scan, path, line, "apiBlockIndex on block #{local} is not a whole integer"),
+            None)
       end
   end
 end
@@ -550,3 +557,6 @@ test "production record and message admission predicates differ at each boundary
   assert record_admitted?(999_999) and !record_admitted?(1_000_000)
   assert message_admitted?(99_999) and !message_admitted?(100_000)
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run
