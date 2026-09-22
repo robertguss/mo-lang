@@ -218,3 +218,6 @@ test "production traversal admission predicates differ at every boundary"
   assert entry_admitted?(49_999) and !entry_admitted?(50_000)
   assert file_admitted?(4_999) and !file_admitted?(5_000)
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

@@ -92,10 +92,12 @@ gates.
 The first metadata attempt completed all seven formatter writes and
 `mo test --write` for `limits.mo` and `model.mo`. It stopped without retry when
 `mo test --write main.mo` exited 1 with MO0304 for the nested predicate in
-`search.mo`. Ten process groups were literally absent; `mo.root`, the shared
-`examples/programs/.mo.ids`, and every other out-of-scope path were unchanged.
-The app-local `.mo.ids` and provisional formatter/verified edits are retained.
-The remaining writes, formatter checks, and both runtime replays have not run.
+`search.mo`. Ten process groups were literally absent. After the reviewed pure
+`all_words_present?` extraction, the full sequence reran from command one: seven
+formatter writes, seven individual `test --write` commands, and seven formatter
+checks all passed exactly with 21 absent groups. `mo.root`, the shared
+`examples/programs/.mo.ids`, and every other out-of-scope path were unchanged;
+the complete app-local `.mo.ids` and verified blocks are tool-generated.
 
 `final_regression.py` is the unexecuted lead-owned final gate recorder. From the
 integrated `toolchain/` directory it records guarded, unfiltered

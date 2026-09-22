@@ -83,3 +83,6 @@ test "unknown bookkeeping is counted, but unknown conversation shapes are incomp
   assert folded([unknown_conversation]).scan.incomplete
   assert folded([future]).scan.incomplete
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

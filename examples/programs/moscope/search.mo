@@ -78,11 +78,7 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
     shown = case options.mode
       Phrase: eligible.filter(fn(block) ascii_lower(searchable(block)).contains?(lowered) end)
       AllWords:
-        if words.all?(fn(word)
-          eligible.any?(fn(block)
-            ascii_lower(searchable(block)).contains?(word)
-          end)
-        end)
+        if all_words_present?(words, eligible)
           eligible
         else
           []
@@ -98,6 +94,14 @@ fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searche
     end
   end
   result
+end
+
+fn all_words_present?(words: List(String), eligible: List(Block)) : Bool
+  words.all?(fn(word)
+    eligible.any?(fn(block)
+      ascii_lower(searchable(block)).contains?(word)
+    end)
+  end)
 end
 
 fn searchable(block: Block) : String
@@ -328,3 +332,6 @@ end
 test "production result admission differs at the matching-message boundary"
   assert result_admitted?(9_999) and !result_admitted?(10_000)
 end
+
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

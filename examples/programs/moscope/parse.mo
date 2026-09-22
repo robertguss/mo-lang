@@ -557,3 +557,6 @@ test "production record and message admission predicates differ at each boundary
   assert record_admitted?(999_999) and !record_admitted?(1_000_000)
   assert message_admitted?(99_999) and !message_admitted?(100_000)
 end
+
+verified: types, contracts, tests (5), property (0 seeds), sim (not run)
+          proven: not run

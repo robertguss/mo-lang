@@ -128,3 +128,6 @@ test "flags are allowed around positionals while every missing duplicate and opt
   assert options(["search", "needle", "sessions", "--bad\u{0007}"]) is Error(Usage(_))
   assert options(["search", "needle", ""]) is Error(Usage(_))
 end
+
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run
