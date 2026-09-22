@@ -1,0 +1,6 @@
+Session eligibility — latest 2026-09-21T10:05:00Z
+  resume: claude --resume eligibility
+  user message result
+    root/eligibility.jsonl:5 tool result tool-1 part 0 content[0]
+      only-result-needle
+1 matching message.

@@ -1,0 +1,6 @@
+Session malformed-tail — latest 2026-09-21T08:00:00Z
+  resume: claude --resume malformed-tail
+  user message before
+    root/malformed-tail.jsonl:1 user text content[0]
+      tail-needle before
+1 matching message.

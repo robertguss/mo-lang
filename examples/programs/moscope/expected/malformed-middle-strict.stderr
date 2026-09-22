@@ -1,0 +1,2 @@
+moscope: warning: a malformed JSON record was skipped (1; first at root/malformed-middle.jsonl:2)
+moscope: error: --strict treats the warnings above as errors

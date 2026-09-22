@@ -1,0 +1,6 @@
+Session open — latest timestamp missing
+  resume: claude --resume open
+  user message physical:1
+    root/open.jsonl:1 user text content[0]
+      shut-needle
+1 matching message.

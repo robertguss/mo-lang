@@ -1,0 +1,9 @@
+Session malformed — latest 2026-09-21T08:01:00Z
+  resume: claude --resume malformed
+  user message before
+    root/malformed-middle.jsonl:1 user text content[0]
+      malformed-needle before
+  assistant message after
+    root/malformed-middle.jsonl:3 assistant text content[0]
+      malformed-needle after
+2 matching messages.

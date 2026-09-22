@@ -1,0 +1,19 @@
+Session (missing session id in anchor/.hidden/b.jsonl) — latest 2026-09-21T14:00:00Z
+  assistant message m-no-session-b
+    anchor/.hidden/b.jsonl:3 assistant text content[0]
+      connection refused without a session id
+Session alpha — latest 2026-09-21T13:00:00Z
+  resume: cd '/work/alpha app' && claude --resume alpha
+  user message m-user
+    anchor/a.jsonl:1 user text content[0]
+      Please check Connection Refused now.
+Session beta — latest 2026-09-21T10:00:00Z
+  resume: cd /work/beta && claude --resume beta
+  user message m-beta
+    anchor/.hidden/b.jsonl:1 user text content[0] apiBlockIndex=7
+      connection refused behind the hidden directory
+Session (missing session id in anchor/z.jsonl) — latest timestamp missing
+  user message m-no-session-z
+    anchor/z.jsonl:1 user text content[0]
+      connection refused and no timestamp
+4 matching messages.

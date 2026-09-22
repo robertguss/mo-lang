@@ -3257,3 +3257,16 @@
   correctness. No private data, resource-hardening or performance claim;
   Step42/harness remain paused. Learning and creating Mo remain Robert's purpose
   even without adoption, with usefulness still a goal.
+
+## [2026-09-22] plan | moscope v2 on real history
+
+- Robert asked for a review of accepted moscope and then for its
+  recommendations to be carried out. On his real history, v1 crashed natively
+  (a runtime JSON use-after-free), exited 2 on every query, and in the
+  interpreter hit its deadline and printed "No matches." for a query present
+  in 97 files.
+- [[moscope-v2]] is done on branch `moscope/real-data-v2`: streaming search,
+  warnings versus errors, match-centred readable excerpts, resume hints, a
+  34-case golden checker, and the root-cause runtime fix with a regression
+  test. It is awaiting lead review and auditor acceptance for the toolchain
+  change.

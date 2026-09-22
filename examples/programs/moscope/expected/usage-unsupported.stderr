@@ -1,0 +1,2 @@
+moscope: unsupported option --regex
+usage: moscope search [--all-words] [--include-tools] [--strict] [--] <query> <directory>

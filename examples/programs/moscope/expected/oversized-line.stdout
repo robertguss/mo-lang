@@ -1,0 +1,9 @@
+Session big — latest timestamp missing
+  resume: claude --resume big
+  user message physical:1
+    root/big.jsonl:1 user text content[0]
+      big-needle kept
+  user message physical:3
+    root/big.jsonl:3 user text content[0]
+      big-needle after
+2 matching messages.

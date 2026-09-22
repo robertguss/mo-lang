@@ -1,0 +1,26 @@
+Session tie-a — latest 2026-09-21T11:00:00.123Z
+  resume: claude --resume tie-a
+  user message tie-a
+    root/ordering.jsonl:5 user text content[0]
+      order-needle
+Session tie-b — latest 2026-09-21T11:00:00.123Z
+  resume: claude --resume tie-b
+  user message tie-b
+    root/ordering.jsonl:6 user text content[0]
+      order-needle
+Session order-a — latest 2026-09-21T10:30:00Z
+  resume: claude --resume order-a
+  user message a-hit
+    root/ordering.jsonl:1 user text content[0]
+      order-needle
+Session order-b — latest 2026-09-21T10:30:00Z
+  resume: claude --resume order-b
+  user message b-hit
+    root/ordering.jsonl:4 user text content[0]
+      order-needle
+Session order-missing — latest timestamp missing
+  resume: claude --resume order-missing
+  user message missing
+    root/ordering.jsonl:7 user text content[0]
+      order-needle
+5 matching messages.

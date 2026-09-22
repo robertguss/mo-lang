@@ -1,0 +1,9 @@
+Session identity — latest 2026-09-21T09:00:06Z
+  resume: claude --resume identity
+  user message physical:7
+    root/identity.jsonl:7 user text content[0]
+      physical fallback one
+  user message physical:8
+    root/identity.jsonl:8 user text content[0]
+      physical fallback two
+2 matching messages.

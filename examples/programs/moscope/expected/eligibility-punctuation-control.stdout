@@ -1,0 +1,6 @@
+Session eligibility — latest 2026-09-21T10:05:00Z
+  resume: claude --resume eligibility
+  assistant message visible
+    root/eligibility.jsonl:6 assistant text content[0]
+      visible punctuation [a.b] and nonASCII É exact; terminal \x1B[31m control
+1 matching message.

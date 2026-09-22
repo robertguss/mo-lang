@@ -1,0 +1,2 @@
+moscope: warning: a record holding U+FFFD (possibly replaced invalid UTF-8) was searched as read (1; first at root/tool-parts.jsonl:3)
+moscope: warning: a tool result part of unsupported type future_part was skipped (1; first at root/tool-parts.jsonl:2)

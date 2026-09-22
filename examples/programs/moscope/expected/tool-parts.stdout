@@ -1,0 +1,14 @@
+Session tool-parts — latest 2026-09-21T09:00:02Z
+  resume: cd /work/tools && claude --resume tool-parts
+  assistant message tp-call
+    root/tool-parts.jsonl:1 tool ToolSearch arguments content[0]
+      {"query": "select:Read"}
+  user message physical:2
+    root/tool-parts.jsonl:2 tool result toolu-1 part 0 content[0]
+      Read
+    root/tool-parts.jsonl:2 tool result toolu-1 part 3 content[0]
+      Loaded Read for reading files.
+  user message physical:3
+    root/tool-parts.jsonl:3 user text content[0]
+      read this � replaced byte
+3 matching messages.

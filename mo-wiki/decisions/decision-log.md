@@ -2294,6 +2294,16 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | Accept [[moscope-serial-acceptance]] candidate c52db2f3 integrated at 6eaacb28, with unchanged accepted toolchain. Ratify the medium/xxlarge worker's app-local defaults after independent replay and Oracle review. Evidence: audit/evidence/2026-09-21/moscope-final/. Linux synthetic serial correctness only; no private-data, hostile-resource, cancellation, Darwin or performance claim. Step42 and harness remain paused. | Amp lead with Oracle, under Robert's full-app-acceptance request | accepted | Independent 66/66 interpreter, 74/74 native, 27 module tests per runtime, normal build 5/5, unfiltered corpus 276/276, all 142 groups absent; worker real metadata 21/21 |
 | Robert's ultimate value is learning and creating his own language even without adoption; personal and wider usefulness remain goals. The smaller session-search CLI replaces immediate harness work, without abandoning that future ambition. No new feature is released by this acceptance.                                                                                                                                      | Robert; recorded by lead                                         | recorded | Useful serial CLI accepted above; subsequent use is a separate activity                                                                                                  |
 
+## 2026-09-22 — moscope v2 on real history (semantic)
+
+| decision | who | status | first tested by |
+| --- | --- | --- | --- |
+| Make moscope useful on real history ([[moscope-v2]]). Record-level surprises become counted warnings; errors are reserved for filesystem, traversal, retention and output failures. `--strict` restores v1's fail-closed exit. Real history, with aggregate-only receipts, becomes the first gate. | Robert asked; decisions by Claude Code (review session) | done on branch, awaiting lead review | v1 on real history: 295 incomplete lines, exit 2 on every query |
+| Stream the search: match each block as it is read and keep only matching blocks with bounded excerpts. Drop the 60 s processing deadline, the byte-admission limits and the whole-record UUID store. Raise the line limit to 32 MiB. | Claude Code | done on branch | v1 deadline discarded all results; v2 real history 3.0 s native, 15 MB |
+| Output: excerpt window around the first match; readable Unicode with only control and format characters escaped; paths joined to the typed directory; a POSIX-quoted `resume:` line; `--`, `--help`; one note line for bookkeeping. | Claude Code | done on branch | v1: 46 of 94 excerpts lacked the match |
+| Fix the native JSON decoder's use-after-free (`json_read` scratch pointers) at its root, with a deep-and-wide native regression test in `examples/stdlib/json.mo`. This changes the accepted toolchain and needs lead/auditor acceptance before `main`. | Claude Code | done on branch, awaiting acceptance | old runtime SIGSEGV / fixed pass; test-corpus run |
+| Replace moscope's 1,112-line verifier with `acceptance/check.py`: 34 golden triples, `--bless` with reviewed diffs, and interpreter or native runs. Call goldens goldens. Commit no binaries. | Claude Code | done on branch | 34/34 interpreter and native |
+
 ## Related
 
 - [[session-05]]

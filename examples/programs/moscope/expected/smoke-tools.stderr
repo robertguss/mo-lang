@@ -1,2 +1,2 @@
-moscope: diagnostic: skipped 2 discovered symlinks
-moscope: diagnostic: ignored 1 records of kind progress
+moscope: note: skipped 2 discovered symlinks
+moscope: note: ignored 1 non-conversation record of 1 kind

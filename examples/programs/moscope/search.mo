@@ -1,145 +1,118 @@
 module Search
-expose report, ascii_lower, query_terms, safe
+expose report, display
 
-use Limits{results, diagnostics, excerpt, output_bytes, process_time}
-use Model{Mode, Options, BlockKind, Block, Message, Issue, Scan, Hit, Session, Report}
+use Find{matcher_of, matches?}
+use Limits{results, diagnostics, output_bytes}
+use Model{Options, Matcher, Message, SessionInfo, Issue, Scan, Session, Report, failed}
+use Term{safe_prefix, shell_word}
 
-intent "Match eligible blocks with ASCII-only folding, order sessions by all eligible conversation activity, and render bounded terminal-safe plain text."
+intent "Choose the candidates that match, order sessions by their latest eligible conversation, and render bounded terminal-safe plain text with resume hints and summarized diagnostics."
 
-struct Searched
+struct Chosen
   scan: Scan
-  hits: List(Hit)
+  hits: List(Message)
 end
 
+# Output is gathered as parts and joined once, so rendering stays linear in its size.
 struct Render
-  text: String
+  parts: List(String)
+  bytes: UInt64
   truncated: Bool
 end
 
-fn report(scan: Scan, options: Options, clock: Clock, started: Time) : Report
-  found = searched(scan, options, clock, started)
-  sessions = sessions_of(found.scan.messages.values, found.hits)
-  var final_scan = found.scan
-  var rendered = Render(text: "", truncated: false)
-  var deadline_hit = false
-  for session in sessions
-    if clock.now >= started + process_time()
-      final_scan = problem(final_scan, "<search>", 0,
-        "the 60 second processing deadline was exceeded")
-      deadline_hit = true
-      break
-    end
-    rendered = append(rendered, session_heading(session))
+fn report(scan: Scan, options: Options) : Report
+  chosen = matched(scan, matcher_of(options))
+  var final_scan = chosen.scan
+  var rendered = Render(parts: [], bytes: 0, truncated: false)
+  for session in sessions_of(chosen.scan.sessions, chosen.hits, options.dir)
+    rendered = render_session(rendered, session, options.dir)
     if rendered.truncated
       break
     end
-    for hit in session.hits.sort_by(fn(one)
-      (one.entry.path, one.entry.first_line, one.entry.role, one.entry.id)
-    end)
-      if clock.now >= started + process_time()
-        final_scan = problem(final_scan, "<search>", 0,
-          "the 60 second processing deadline was exceeded")
-        deadline_hit = true
-        break
-      end
-      rendered = render_hit(rendered, hit)
-      if rendered.truncated
-        break
-      end
-    end
-    if deadline_hit or rendered.truncated
-      break
-    end
   end
-  summary = if found.hits.size == 0: "No matches.\n" else: "#{found.hits.size} matching messages.\n"
+  count = chosen.hits.size
+  summary = if count == 0: "No matches.\n" else: "#{counted(count, "matching message")}.\n"
   rendered = append(rendered, summary)
   if rendered.truncated
-    final_scan = problem(final_scan, "<output>", 0, "rendered output exceeds 8 MiB")
+    final_scan.errors = failed(final_scan.errors, "", 0,
+      "rendered output exceeds #{output_bytes()} bytes")
   end
-  remaining = output_bytes().saturating_sub(rendered.text.byte_size)
-  diagnosed = diagnostics_text(final_scan, remaining)
-  Report(text: rendered.text, diagnostics: diagnosed.text, matches: found.hits.size,
-    incomplete: final_scan.incomplete or diagnosed.truncated)
+  remaining = output_bytes().saturating_sub(rendered.bytes)
+  diagnosed = diagnostics_text(final_scan, options, remaining)
+  strict_failure = options.strict and final_scan.warnings.size > 0
+  Report(text: String.join(rendered.parts, ""), diagnostics: String.join(diagnosed.parts, ""),
+    matches: count, incomplete: final_scan.errors.size > 0 or diagnosed.truncated or strict_failure)
 end
 
-fn searched(scan: Scan, options: Options, clock: Clock, started: Time) : Searched
-  var result = Searched(scan: scan, hits: [])
-  lowered = ascii_lower(options.query)
-  words = query_terms(options.query)
-  for entry in scan.messages.values.sort_by(fn(one) one.key end)
-    if clock.now >= started + process_time()
-      result.scan = problem(result.scan, "<search>", 0,
-        "the 60 second processing deadline was exceeded")
-      break
-    end
-    eligible = entry.blocks.filter(fn(block)
-      block.kind == Conversation or (options.include_tools and block.kind == Tool)
-    end)
-    shown = case options.mode
-      Phrase: eligible.filter(fn(block) ascii_lower(searchable(block)).contains?(lowered) end)
-      AllWords:
-        if all_words_present?(words, eligible)
-          eligible
-        else
-          []
-        end
-    end
-    if shown.size > 0
-      if !result_admitted?(result.hits.size)
-        result.scan = problem(result.scan, entry.path, entry.first_line,
-          "search exceeds 10000 matching logical messages")
+fn matched(scan: Scan, matcher: Matcher) : Chosen
+  var chosen = Chosen(scan: scan, hits: [])
+  for entry in scan.candidates.values.sort_by(fn(one) one.key end)
+    if matches?(matcher, entry.found)
+      if chosen.hits.size >= results()
+        chosen.scan.errors = failed(chosen.scan.errors, entry.path, entry.first_line,
+          "search exceeds #{results()} matching messages")
         break
       end
-      result.hits = result.hits.push(Hit(entry: entry, blocks: shown))
+      chosen.hits = chosen.hits.push(entry)
     end
   end
-  result
+  chosen
 end
 
-fn all_words_present?(words: List(String), eligible: List(Block)) : Bool
-  words.all?(fn(word)
-    eligible.any?(fn(block)
-      ascii_lower(searchable(block)).contains?(word)
-    end)
-  end)
-end
-
-fn searchable(block: Block) : String
-  if block.kind == Tool: "#{block.label}\n#{block.text}" else: block.text
-end
-
-fn sessions_of(messages: List(Message), hits: List(Hit)) : List(Session)
-  labels = messages.reduce(Map.new(),
-    fn(known, entry) known.set(entry.session_key, entry.session_label) end)
-  latest = messages.reduce(Map.new(), fn(known, entry)
-    known.set(entry.session_key, later(known.get(entry.session_key) or None, entry.conversation_at))
-  end)
+# Sessions with a latest time come first, newest first; ties and untimed sessions sort by label.
+fn sessions_of(infos: Map(String, SessionInfo), hits: List(Message), dir: String) : List(Session)
   grouped = hits.reduce(Map.new(),
-    fn(known, hit) known.update(hit.entry.session_key, [], fn(before) before.push(hit) end) end)
+    fn(known, hit) known.update(hit.session_key, [], fn(before) before.push(hit) end) end)
   built = grouped.entries.map(fn(pair)
-    Session(key: pair.0, label: labels.get(pair.0) or pair.0, latest: latest.get(pair.0) or None,
-      hits: pair.1)
+    fallback = SessionInfo(key: pair.0, path: pair.0, id: "", cwd: "", latest: None)
+    Session(info: infos.get(pair.0) or fallback, hits: pair.1)
   end)
   timed = built.filter(fn(one)
-    one.latest is Some(_)
+    one.info.latest is Some(_)
   end).sort_by(fn(one)
-    (one.label, one.key)
-  end).sort_by_desc(fn(one) one.latest or Time.from_parts(1970, 1, 1, 0, 0, 0) end)
-  missing = built.filter(fn(one) one.latest is None end).sort_by(fn(one) (one.label, one.key) end)
+    (label_of(one.info, dir), one.info.key)
+  end).sort_by_desc(fn(one) one.info.latest or Time.from_parts(1970, 1, 1, 0, 0, 0) end)
+  missing = built.filter(fn(one)
+    one.info.latest is None
+  end).sort_by(fn(one) (label_of(one.info, dir), one.info.key) end)
   timed.concat(missing)
 end
 
-fn session_heading(session: Session) : String
-  latest = case session.latest
+fn render_session(rendered: Render, session: Session, dir: String) : Render
+  var next = append(rendered, heading(session.info, dir))
+  next = append(next, resume_line(session.info))
+  for hit in session.hits.sort_by(fn(one) (one.path, one.first_line, one.role, one.id) end)
+    if next.truncated
+      break
+    end
+    next = render_hit(next, hit, dir)
+  end
+  next
+end
+
+fn label_of(info: SessionInfo, dir: String) : String
+  if info.id == "": "(missing session id in #{display(dir, info.path)})" else: info.id
+end
+
+fn heading(info: SessionInfo, dir: String) : String
+  latest = case info.latest
     Some(at): at.to_iso8601
     None: "timestamp missing"
   end
-  "Session #{safe_prefix(session.label, 256)} — latest #{latest}\n"
+  "Session #{safe_prefix(label_of(info, dir), 1_024)} — latest #{latest}\n"
 end
 
-fn render_hit(rendered: Render, hit: Hit) : Render
+# Claude Code resumes a session from the directory it ran in.
+fn resume_line(info: SessionInfo) : String
+  return "" if info.id == "" or info.id.size > 256
+  command = "claude --resume #{shell_word(info.id)}"
+  return "  resume: #{command}\n" if info.cwd == "" or info.cwd.size > 1_024
+  "  resume: cd #{shell_word(info.cwd)} && #{command}\n"
+end
+
+fn render_hit(rendered: Render, hit: Message, dir: String) : Render
   var next = append(rendered,
-    "  #{safe_prefix(hit.entry.role, 256)} message #{safe_prefix(hit.entry.id, 256)}\n")
+    "  #{safe_prefix(hit.role, 256)} message #{safe_prefix(hit.id, 256)}\n")
   for block in hit.blocks
     if next.truncated
       break
@@ -148,190 +121,124 @@ fn render_hit(rendered: Render, hit: Hit) : Render
       Some(index): " apiBlockIndex=#{index}"
       None: ""
     end
+    place = safe_prefix(display(dir, block.path), 1_024)
     next = append(next,
-      "    #{safe_prefix(block.path, 512)}:#{block.line} #{safe_prefix(block.label, 256)} content[#{block.local_index}]#{api}\n")
-    if next.truncated
-      break
-    end
-    next = append(next, "      #{bounded_excerpt(block.text)}\n")
+      "    #{place}:#{block.line} #{safe_prefix(block.label, 256)} content[#{block.local_index}]#{api}\n")
+    next = append(next, "      #{block.excerpt}\n")
   end
   next
 end
 
-fn bounded_excerpt(text: String) : String
-  safe_prefix(text, excerpt())
+# A path as the operator can open it: joined to the directory exactly as it was typed.
+fn display(dir: String, path: String) : String
+  root = trimmed(dir)
+  return path if root == "." or path == ""
+  return root if path == "."
+  return "/#{path}" if root == "/"
+  "#{root}/#{path}"
 end
 
-fn diagnostics_text(scan: Scan, limit: UInt64) : Render
-  var rendered = Render(text: "", truncated: false)
-  if scan.incomplete
-    rendered = incomplete_text(rendered, scan, limit)
-  end
-  if !rendered.truncated
-    rendered = notices_text(rendered, scan, limit)
-  end
-  if rendered.truncated
-    sentinel = "moscope: incomplete: diagnostics exceed the 8 MiB rendered-output limit\n"
-    if rendered.text.byte_size.saturating_add(sentinel.byte_size) <= limit
-      rendered.text = "#{rendered.text}#{sentinel}"
-    end
-  end
-  rendered
+fn trimmed(dir: String) : String
+  return dir if dir == "/" or !dir.ends_with?("/")
+  trimmed(dir.slice(0, dir.size - 1))
 end
 
-fn notices_text(rendered: Render, scan: Scan, limit: UInt64) : Render
+fn diagnostics_text(scan: Scan, options: Options, limit: UInt64) : Render
+  var next = Render(parts: [], bytes: 0, truncated: false)
+  for issue in scan.errors
+    next = append_limit(next, "moscope: error: #{located(options.dir, issue)}\n", limit)
+  end
+  if scan.errors.size >= diagnostics()
+    next = append_limit(next, "moscope: error: diagnostic retention limit reached\n", limit)
+  end
+  for pair in scan.warnings.entries.sort_by(fn(entry) entry.0 end)
+    place = safe_prefix(display(options.dir, pair.1.path), 1_024)
+    next = append_limit(next,
+      "moscope: warning: #{safe_prefix(pair.0, 256)} (#{pair.1.count}; first at #{place}:#{pair.1.line})\n",
+      limit)
+  end
+  if options.strict and scan.warnings.size > 0
+    next = append_limit(next, "moscope: error: --strict treats the warnings above as errors\n",
+      limit)
+  end
+  notes_text(next, scan, limit)
+end
+
+fn notes_text(rendered: Render, scan: Scan, limit: UInt64) : Render
   var next = rendered
   if scan.skipped_links > 0
     next = append_limit(next,
-      "moscope: diagnostic: skipped #{scan.skipped_links} discovered symlinks\n", limit)
+      "moscope: note: skipped #{counted(scan.skipped_links, "discovered symlink")}\n", limit)
   end
-  return next if next.truncated
-  for pair in scan.unknown_kinds.entries.sort_by(fn(entry) entry.0 end)
+  ignored = scan.ignored.values.reduce(0, fn(sum, n) sum.saturating_add(n) end)
+  if ignored > 0
     next = append_limit(next,
-      "moscope: diagnostic: ignored #{pair.1} records of kind #{safe_prefix(pair.0, 256)}\n", limit)
-    if next.truncated
-      break
-    end
+      "moscope: note: ignored #{counted(ignored, "non-conversation record")} of #{counted(scan.ignored.size, "kind")}\n",
+      limit)
   end
   next
 end
 
-fn incomplete_text(rendered: Render, scan: Scan, limit: UInt64) : Render
-  var next = rendered
-  output = scan.issues.filter(fn(issue)
-    issue.path == "<output>" and issue.detail == "rendered output exceeds 8 MiB"
-  end)
-  other = scan.issues.filter(fn(issue)
-    issue.path != "<output>" or issue.detail != "rendered output exceeds 8 MiB"
-  end)
-  for issue in output.concat(other)
-    path = safe_prefix(issue.path, 512)
-    location = if issue.line == 0: path else: "#{path}:#{issue.line}"
-    next = append_limit(next,
-      "moscope: incomplete: #{location}: #{safe_prefix(issue.detail, 512)}\n", limit)
-    if next.truncated
-      break
-    end
-  end
-  if !next.truncated and scan.issues.size >= diagnostics()
-    next = append_limit(next, "moscope: incomplete: diagnostic retention limit reached\n", limit)
-  end
-  next
+fn counted(count: UInt64, noun: String) : String
+  if count == 1: "1 #{noun}" else: "#{count} #{noun}s"
+end
+
+fn located(dir: String, issue: Issue) : String
+  detail = safe_prefix(issue.detail, 512)
+  return detail if issue.path == ""
+  path = safe_prefix(display(dir, issue.path), 1_024)
+  place = if issue.line == 0: path else: "#{path}:#{issue.line}"
+  "#{place}: #{detail}"
 end
 
 fn append(rendered: Render, addition: String) : Render
-  # Keep room for at least a short incomplete explanation after result truncation.
+  # Keep room for a short error explanation after result truncation.
   append_limit(rendered, addition, output_bytes().saturating_sub(512))
 end
 
 fn append_limit(rendered: Render, addition: String, limit: UInt64) : Render
-  return rendered if rendered.truncated
-  if rendered.text.byte_size.saturating_add(addition.byte_size) > limit
-    return Render(text: rendered.text, truncated: true)
+  return rendered if rendered.truncated or addition == ""
+  bytes = rendered.bytes.saturating_add(addition.byte_size)
+  if bytes > limit
+    return Render(parts: rendered.parts, bytes: rendered.bytes, truncated: true)
   end
-  Render(text: "#{rendered.text}#{addition}", truncated: false)
+  Render(parts: rendered.parts.push(addition), bytes: bytes, truncated: false)
 end
 
-fn result_admitted?(count: UInt64) : Bool
-  count < results()
+fn info(id: String, cwd: String) : SessionInfo
+  SessionInfo(key: "session:#{id}", path: "a.jsonl", id: id, cwd: cwd, latest: None)
 end
 
-# ASCII bytes A-Z fold; every non-ASCII byte is unchanged, so non-ASCII matching is exact.
-fn ascii_lower(text: String) : String
-  lowered = text.bytes.map(fn(byte)
-    if byte >= 65 and byte <= 90: byte + 32 else: byte
-  end)
-  String.from_bytes(lowered) or ""
+test "paths join the directory as typed, without doubled slashes"
+  assert display(".", "a.jsonl") == "a.jsonl"
+  assert display("sessions/", "a.jsonl") == "sessions/a.jsonl"
+  assert display("/", "a.jsonl") == "/a.jsonl"
+  assert display("~/x", ".") == "~/x"
+  assert display("~/x", "") == ""
 end
 
-# ASCII space, tab, LF, vertical tab, form feed, and CR delimit terms.
-fn query_terms(query: String) : List(String)
-  spaced = query.bytes.map(fn(byte)
-    if byte == 9 or byte == 10 or byte == 11 or byte == 12 or byte == 13: 32 else: byte
-  end)
-  normalized = String.from_bytes(spaced) or ""
-  normalized.split(" ").filter(fn(word) word != "" end).map(fn(word) ascii_lower(word) end)
+test "the resume hint changes to the session directory and quotes what needs it"
+  assert resume_line(info("abc-1",
+    "/work/app")) == "  resume: cd /work/app && claude --resume abc-1\n"
+  assert resume_line(info("abc-1",
+    "/my work")) == "  resume: cd '/my work' && claude --resume abc-1\n"
+  assert resume_line(info("abc-1", "")) == "  resume: claude --resume abc-1\n"
+  assert resume_line(info("", "/work")) == ""
 end
 
-# Conservative terminal safety: printable ASCII passes (backslash is doubled); every control byte
-# and every byte of non-ASCII UTF-8 is rendered as \xNN. Unicode controls therefore cannot pass.
-fn safe(text: String) : String
-  String.join(text.bytes.map(fn(byte)
-    if byte >= 32 and byte <= 126 and byte != 92
-      String.from_bytes([byte]) or ""
-    else
-      if byte == 92: "\\\\" else: "\\x#{hex(byte)}"
-    end
-  end), "")
+test "a session without an id is named by its file as the operator can open it"
+  assert label_of(info("", ""), "sessions/") == "(missing session id in sessions/a.jsonl)"
+  assert label_of(info("abc", ""), "sessions") == "abc"
+  assert counted(1, "kind") == "1 kind" and counted(2, "kind") == "2 kinds"
 end
 
-fn safe_prefix(text: String, limit: UInt64) : String
-  clipped = text.slice(0, min_of(text.size, limit))
-  escaped = safe(clipped)
-  if text.size > limit: "#{escaped}..." else: escaped
+test "output admission differs on both sides of the limit"
+  base = Render(parts: ["1234"], bytes: 4, truncated: false)
+  full = append_limit(base, "5", 4)
+  assert full.truncated and full.bytes == 4
+  room = append_limit(base, "5", 5)
+  assert !room.truncated and String.join(room.parts, "") == "12345"
 end
 
-fn hex(byte: UInt8) : String
-  digits = "0123456789ABCDEF"
-  high = (byte / 16).to_u64
-  low = (byte % 16).to_u64
-  "#{digits.slice(high, high + 1)}#{digits.slice(low, low + 1)}"
-end
-
-fn later(a: Option(Time), b: Option(Time)) : Option(Time)
-  case (a, b)
-    (Some(left), Some(right)): Some(max_of(left, right))
-    (Some(left), None): Some(left)
-    (None, Some(right)): Some(right)
-    (None, None): None
-  end
-end
-
-fn problem(scan: Scan, path: String, line: UInt64, detail: String) : Scan
-  var next = scan
-  next.incomplete = true
-  if next.issues.size < diagnostics()
-    next.issues = next.issues.push(Issue(path: path, line: line, detail: detail))
-  end
-  next
-end
-
-test "ASCII folding leaves non-ASCII exact, and punctuation remains literal"
-  assert ascii_lower("Connection REFUSED É") == "connection refused É"
-  assert ascii_lower("É") != ascii_lower("é")
-  assert ascii_lower("a.b[") == "a.b["
-end
-
-test "all-words uses exactly the six ASCII whitespace bytes"
-  assert query_terms("  one\ttwo\nTHREE\u{000B}four\u{000C}five\r ") == ["one",
-    "two",
-    "three",
-    "four",
-    "five"]
-end
-
-test "safe output has no raw controls or non-ASCII bytes"
-  assert safe("a\u{001B}[31m café\\z") == "a\\x1B[31m caf\\xC3\\xA9\\\\z"
-end
-
-test "terminal safety covers NUL DEL and bidi while doubling backslash"
-  assert safe("A\\\u{0000}\u{007F}é") == "A\\\\\\x00\\x7F\\xC3\\xA9"
-  assert safe("\u{202E}") == "\\xE2\\x80\\xAE"
-end
-
-test "excerpt boundaries and output admission differ on both sides of the limit"
-  assert bounded_excerpt("x".repeat(239)).size == 239
-  assert bounded_excerpt("x".repeat(240)).size == 240
-  assert bounded_excerpt("x".repeat(241)).size == 243
-  full = append_limit(Render(text: "1234", truncated: false), "5", 4)
-  assert full.text == "1234" and full.truncated
-  room = append_limit(Render(text: "1234", truncated: false), "5", 5)
-  assert room.text == "12345" and !room.truncated
-end
-
-test "production result admission differs at the matching-message boundary"
-  assert result_admitted?(9_999) and !result_admitted?(10_000)
-end
-
-verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
           proven: not run

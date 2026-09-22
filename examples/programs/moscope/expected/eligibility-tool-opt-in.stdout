@@ -1,0 +1,6 @@
+Session eligibility — latest 2026-09-21T10:05:00Z
+  resume: claude --resume eligibility
+  assistant message tool
+    root/eligibility.jsonl:4 tool Synthetic\x1BTool arguments content[0]
+      {"query": "only-tool-needle"}
+1 matching message.

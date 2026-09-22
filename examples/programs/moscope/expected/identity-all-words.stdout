@@ -1,0 +1,8 @@
+Session identity — latest 2026-09-21T09:00:06Z
+  resume: claude --resume identity
+  assistant message same-message
+    root/identity.jsonl:1 assistant text content[0] apiBlockIndex=4
+      alpha first
+    root/identity.jsonl:3 assistant text content[0] apiBlockIndex=9
+      omega second
+1 matching message.

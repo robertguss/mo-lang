@@ -1,0 +1,12 @@
+usage: moscope search [--all-words] [--include-tools] [--strict] [--] <query> <directory>
+
+Search Claude Code session histories (JSONL) under <directory>, for example ~/.claude/projects.
+Matching is a literal substring, ASCII-case-insensitive, inside one text block.
+
+  --all-words      match messages holding every whitespace-separated term, in any of their blocks
+  --include-tools  also search tool calls and tool results
+  --strict         treat skipped or unrecognized records as errors (exit 2)
+  --               end options; use it before a query that starts with -
+  -h, --help       show this help
+
+Exit status: 0 matches found, 1 no matches, 2 usage error or incomplete search.

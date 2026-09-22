@@ -1,7 +1,9 @@
 module Model
-expose Mode, Options, BlockKind, Block, Message, Seen, Issue, Scan, Discovery, Hit, Session, Report, empty_scan, empty_discovery
+expose Mode, Options, Matcher, BlockKind, Block, Message, SessionInfo, Issue, Warning, Scan, Discovery, Session, Report, empty_scan, empty_discovery, failed, warned, later
 
-intent "The bounded values shared by moscope's argument parser, serial scanner, search, and renderer."
+use Limits{diagnostics, warning_kinds}
+
+intent "The bounded values shared by moscope's argument parser, streaming scanner, matcher, and renderer."
 
 enum Mode
   Phrase
@@ -13,6 +15,14 @@ struct Options
   dir: String
   mode: Mode
   include_tools: Bool
+  strict: Bool
+end
+
+# The query, lowered once. A phrase matcher has one term, the whole lowered query.
+struct Matcher
+  mode: Mode
+  terms: List(String)
+  include_tools: Bool
 end
 
 enum BlockKind
@@ -20,35 +30,38 @@ enum BlockKind
   Tool
 end
 
+# One matching block. Only its terminal-safe excerpt is kept, never the whole text.
 struct Block
   kind: BlockKind
   label: String
-  text: String
+  excerpt: String
   path: String
   line: UInt64
   local_index: UInt64
   api_index: Option(UInt64)
 end
 
-# One logical message. Its key is file-local even when its session heading is shared with
-# another file. Blocks keep their own physical line and content-array provenance.
+# One logical message with at least one matching block. Its key is file-local even when its
+# session heading is shared with another file. `found` holds one flag per matcher term.
 struct Message
   key: String
   session_key: String
-  session_label: String
   role: String
   id: String
   path: String
   first_line: UInt64
-  conversation_at: Option(Time)
+  found: List(Bool)
   blocks: List(Block)
 end
 
-# A UUID is deduplicated only inside one file. Equality is structural equality of the complete
-# decoded JSON record, not equality of selected message fields.
-struct Seen
-  payload: Json
-  line: UInt64
+# What a heading needs, kept for every session seen whether or not it matches. A session without
+# an id is file-local and is named by `path`.
+struct SessionInfo
+  key: String
+  path: String
+  id: String
+  cwd: String
+  latest: Option(Time)
 end
 
 struct Issue
@@ -57,37 +70,36 @@ struct Issue
   detail: String
 end
 
+# A skipped record or block, counted by category with its first location.
+struct Warning
+  count: UInt64
+  path: String
+  line: UInt64
+end
+
 struct Scan
-  messages: Map(String, Message)
-  issues: List(Issue)
-  unknown_kinds: Map(String, UInt64)
+  candidates: Map(String, Message)
+  sessions: Map(String, SessionInfo)
+  errors: List(Issue)
+  warnings: Map(String, Warning)
+  ignored: Map(String, UInt64)
   skipped_links: UInt64
   files_read: UInt64
-  admitted_bytes: UInt64
   records: UInt64
   retained_blocks: UInt64
-  incomplete: Bool
 end
 
 struct Discovery
   files: List(String)
-  issues: List(Issue)
+  errors: List(Issue)
   entries: UInt64
   skipped_links: UInt64
-  incomplete: Bool
   stopped: Bool
 end
 
-struct Hit
-  entry: Message
-  blocks: List(Block)
-end
-
 struct Session
-  key: String
-  label: String
-  latest: Option(Time)
-  hits: List(Hit)
+  info: SessionInfo
+  hits: List(Message)
 end
 
 struct Report
@@ -98,23 +110,63 @@ struct Report
 end
 
 fn empty_scan() : Scan
-  Scan(messages: Map.new(), issues: [], unknown_kinds: Map.new(), skipped_links: 0, files_read: 0,
-    admitted_bytes: 0, records: 0, retained_blocks: 0, incomplete: false)
+  Scan(candidates: Map.new(), sessions: Map.new(), errors: [], warnings: Map.new(),
+    ignored: Map.new(), skipped_links: 0, files_read: 0, records: 0, retained_blocks: 0)
 end
 
 fn empty_discovery() : Discovery
-  Discovery(files: [], issues: [], entries: 0, skipped_links: 0, incomplete: false, stopped: false)
+  Discovery(files: [], errors: [], entries: 0, skipped_links: 0, stopped: false)
 end
 
-test "empty production state starts every counter and stop flag clear"
+# An error makes the search incomplete. The list is bounded; the renderer says when it filled.
+fn failed(errors: List(Issue), path: String, line: UInt64, detail: String) : List(Issue)
+  return errors if errors.size >= diagnostics()
+  errors.push(Issue(path: path, line: line, detail: detail))
+end
+
+# A warning counts one skipped record or block under its category.
+fn warned(scan: Scan, path: String, line: UInt64, category: String) : Scan
+  var next = scan
+  known = next.warnings.has?(category)
+  key = if known or next.warnings.size < warning_kinds(): category else: "other warnings"
+  # update applies the function to the default when the key is new.
+  first = Warning(count: 0, path: path, line: line)
+  next.warnings = next.warnings.update(key, first, fn(before)
+    Warning(count: before.count.saturating_add(1), path: before.path, line: before.line)
+  end)
+  next
+end
+
+fn later(a: Option(Time), b: Option(Time)) : Option(Time)
+  case (a, b)
+    (Some(left), Some(right)): Some(max_of(left, right))
+    (Some(left), None): Some(left)
+    (None, Some(right)): Some(right)
+    (None, None): None
+  end
+end
+
+test "empty production state starts every counter clear"
   scan = empty_scan()
-  assert scan.messages.size == 0 and scan.issues.size == 0 and scan.unknown_kinds.size == 0
-  assert scan.skipped_links == 0 and scan.files_read == 0 and scan.admitted_bytes == 0
-  assert scan.records == 0 and scan.retained_blocks == 0 and !scan.incomplete
+  assert scan.candidates.size == 0 and scan.sessions.size == 0 and scan.errors.size == 0
+  assert scan.warnings.size == 0 and scan.ignored.size == 0 and scan.skipped_links == 0
+  assert scan.files_read == 0 and scan.records == 0 and scan.retained_blocks == 0
   found = empty_discovery()
-  assert found.files.size == 0 and found.issues.size == 0 and found.entries == 0
-  assert found.skipped_links == 0 and !found.incomplete and !found.stopped
+  assert found.files.size == 0 and found.errors.size == 0 and found.entries == 0
+  assert found.skipped_links == 0 and !found.stopped
 end
 
-verified: types, contracts, tests (1), property (0 seeds), sim (not run)
+test "warnings count by category and keep their first location"
+  once = warned(empty_scan(), "a.jsonl", 3, "malformed JSON record")
+  twice = warned(once, "b.jsonl", 9, "malformed JSON record")
+  assert twice.warnings.get("malformed JSON record") == Some(Warning(count: 2, path: "a.jsonl",
+    line: 3))
+end
+
+test "errors are retained up to the diagnostic limit"
+  one = failed([], "a", 0, "x")
+  assert one.size == 1 and one.first == Some(Issue(path: "a", line: 0, detail: "x"))
+end
+
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
           proven: not run

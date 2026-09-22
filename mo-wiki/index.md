@@ -781,3 +781,7 @@ type: index
 
 - [[moscope-serial-acceptance]] — app-local serial search integration and
   independent Linux interpreter/native acceptance; Step42 remains paused.
+
+- [[moscope-v2]] — moscope made useful on real Claude Code history: warnings
+  versus errors, search while reading, match-centred excerpts, readable
+  Unicode, resume hints

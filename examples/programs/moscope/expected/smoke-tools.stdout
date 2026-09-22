@@ -1,20 +1,22 @@
-Session (missing session id in .hidden/b.jsonl) — latest 2026-09-21T14:00:00Z
+Session (missing session id in fixtures/smoke/.hidden/b.jsonl) — latest 2026-09-21T14:00:00Z
   assistant message m-no-session-b
-    .hidden/b.jsonl:3 assistant text content[0]
+    fixtures/smoke/.hidden/b.jsonl:3 assistant text content[0]
       connection refused without a session id
 Session alpha — latest 2026-09-21T13:00:00Z
+  resume: cd '/work/alpha app' && claude --resume alpha
   user message m-user
-    a.jsonl:1 user text content[0]
+    fixtures/smoke/a.jsonl:1 user text content[0]
       Please check Connection Refused now.
   assistant message m-tool
-    a.jsonl:6 tool shell_demo arguments content[0]
+    fixtures/smoke/a.jsonl:6 tool shell_demo arguments content[0]
       {"command": "connection refused"}
 Session beta — latest 2026-09-21T10:00:00Z
+  resume: cd /work/beta && claude --resume beta
   user message m-beta
-    .hidden/b.jsonl:1 user text content[0] apiBlockIndex=7
+    fixtures/smoke/.hidden/b.jsonl:1 user text content[0] apiBlockIndex=7
       connection refused behind the hidden directory
-Session (missing session id in z.jsonl) — latest timestamp missing
+Session (missing session id in fixtures/smoke/z.jsonl) — latest timestamp missing
   user message m-no-session-z
-    z.jsonl:1 user text content[0]
+    fixtures/smoke/z.jsonl:1 user text content[0]
       connection refused and no timestamp
 5 matching messages.

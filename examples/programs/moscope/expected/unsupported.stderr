@@ -1,0 +1,3 @@
+moscope: warning: a content block of unsupported type future_content was skipped (1; first at root/unsupported.jsonl:1)
+moscope: warning: a conversation whose content is neither text nor a block array was skipped (1; first at root/unsupported.jsonl:2)
+moscope: note: ignored 1 non-conversation record of 1 kind
