@@ -1,11 +1,23 @@
 # Mo Lang — Amp lead, Oracle review, fresh medium xxlarge workers
 
+Interpreter checkpoint, 21 Sep 2026, 8:21 PM ET: candidate 8ef1730c has worker
+and independent lead 66/66 exact interpreter cases, including seven modules / 27
+tests; every guard ended child_exit with no supervision error and literal group
+absence. Lead independently checked all 66 PGIDs absent. Source inventory
+matches. Oracle cleared prior unsafe-recorder, UTF8 retention and coverage
+findings. Native preparation/execution is released to the same worker under
+pinned compiler/guard, contracts on/no surface and stop-on-unsafe policy.
+Metadata/formatter and final unfiltered regression remain pending; not app
+acceptance. App source remains off main; integrated verification worktree is
+/tmp/mo-lead-moscope-full on lead/verify-moscope-full. Raw source and both
+parties' evidence: audit/evidence/2026-09-21/moscope-interpreter/.
+
 Robert now requests full serial moscope acceptance. Oracle-reviewed plan:
 mo-wiki/plans/moscope-serial-acceptance.md. Fresh medium/xxlarge worker
 T-01a0c62c-9b9d-7559-a87e-68af9704e18f owns app-local integration, verifier and
-synthetic coverage from frozen f961c686; first new execution manifest awaits
-lead review. Lead owns independent native/interpreter replay and final normal
-build/full-corpus. No private-data, parallel, Step42 or harness work resumed.
+synthetic coverage, now at corrective 8ef1730c. Lead owns independent
+native/interpreter replay and final normal build/full-corpus. No private-data,
+parallel, Step42 or harness work resumed.
 
 Latest moscope checkpoint: Robert authorized continuing app-only fixes until the
 synthetic smoke works. Candidate f961c686cacf513daec22e771e73832a227298e5 now
