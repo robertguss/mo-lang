@@ -171,6 +171,61 @@ def result_fields(result) -> dict[str, object]:
     }
 
 
+def unsafe_result(result, fixture_cleanup: list[dict[str, object]]) -> list[str]:
+    failures = []
+    if result.reason != "child_exit":
+        failures.append(f"guard reason is {result.reason!r}, not 'child_exit'")
+    if result.child_returncode is None:
+        failures.append("raw child return code is missing")
+    elif result.child_returncode < 0:
+        failures.append(f"raw child return code is signal termination {result.child_returncode}")
+    if result.supervision_error is not None:
+        failures.append(f"supervision error: {result.supervision_error}")
+    if result.group.state != "absent":
+        failures.append(f"process group state is {result.group.state!r}, not 'absent'")
+    for restored in fixture_cleanup:
+        if restored["error"] is not None:
+            failures.append(f"fixture restoration failed for {restored['path']}: {restored['error']}")
+    return failures
+
+
+def permission_evidence(case: dict[str, object]) -> list[dict[str, object]]:
+    evidence = []
+    for raw_path, access, expected in case.get("permission_checks", []):
+        path = Path(raw_path)
+        try:
+            status = path.stat()
+            accessible = os.access(path, os.R_OK if access == "read" else os.X_OK)
+            evidence.append(
+                {
+                    "path": str(path),
+                    "access": access,
+                    "accessible": accessible,
+                    "expected_accessible": expected,
+                    "matches": accessible == expected,
+                    "mode": status.st_mode & 0o777,
+                    "uid": status.st_uid,
+                    "gid": status.st_gid,
+                    "error": None,
+                }
+            )
+        except OSError as error:
+            evidence.append(
+                {
+                    "path": str(path),
+                    "access": access,
+                    "accessible": None,
+                    "expected_accessible": expected,
+                    "matches": False,
+                    "mode": None,
+                    "uid": None,
+                    "gid": None,
+                    "error": f"{type(error).__name__}: {error}",
+                }
+            )
+    return evidence
+
+
 def run_probe(compiler: Path, destination: Path) -> int:
     if destination.exists():
         raise SystemExit(f"refusing to overwrite artifact directory: {destination}")
@@ -188,6 +243,7 @@ def run_probe(compiler: Path, destination: Path) -> int:
         "case": PROBE["name"],
         "argv": command,
         "cwd": str(ROOT),
+        "executor": {"effective_uid": os.geteuid(), "effective_gid": os.getegid()},
         "environment": env,
         "compiler": {"path": str(compiler), "bytes": COMPILER_BYTES, "sha256": COMPILER_SHA256},
         "guard": {"path": str(GUARD_PATH), "sha256": GUARD_SHA256},
@@ -353,9 +409,80 @@ def interpreter_cases(stage: Path, compiler: Path) -> list[dict[str, object]]:
     invalid_utf8.mkdir()
     genuine_replacement.mkdir()
     invalid_record = record.replace(b'needle"', b'needle \xff"')
+    after_invalid_record = record.replace(b'"id":"m"', b'"id":"z"').replace(
+        b'needle"', b'needle after"'
+    )
     replacement_record = record.replace(b'needle"', "needle �\"".encode())
-    (invalid_utf8 / "case.jsonl").write_bytes(invalid_record + b"\n")
+    (invalid_utf8 / "case.jsonl").write_bytes(
+        invalid_record + b"\n" + after_invalid_record + b"\n"
+    )
     (genuine_replacement / "case.jsonl").write_bytes(replacement_record + b"\n")
+    depth_24 = stage / "inputs/depth-24"
+    depth_24.mkdir()
+    depth_24_cursor = depth_24
+    depth_parts = []
+    for number in range(1, 25):
+        name = f"d{number:02d}"
+        depth_parts.append(name)
+        depth_24_cursor /= name
+        depth_24_cursor.mkdir()
+    (depth_24_cursor / "case.jsonl").write_bytes(record + b"\n")
+    depth_24_path = "/".join([*depth_parts, "case.jsonl"])
+    depth_25 = stage / "inputs/depth-25"
+    depth_25.mkdir()
+    depth_25_cursor = depth_25
+    for name in depth_parts:
+        depth_25_cursor /= name
+        depth_25_cursor.mkdir()
+    (depth_25_cursor / "a.jsonl").write_bytes(record + b"\n")
+    (depth_25_cursor / "z").mkdir()
+    depth_25_match_path = "/".join([*depth_parts, "a.jsonl"])
+    depth_25_refused_path = "/".join([*depth_parts, "z"])
+    semantic = stage / "inputs/semantic"
+    semantic.mkdir()
+    semantic_records = [
+        {"type": "assistant", "sessionId": "semantic", "message": {"role": "assistant", "id": "thinking", "content": [{"type": "thinking", "thinking": "thinking-only-needle"}]}},
+        {"type": "assistant", "sessionId": "semantic", "message": {"role": "assistant", "id": "redacted", "content": [{"type": "redacted_thinking", "data": "redacted-only-needle"}]}},
+        {"type": "assistant", "sessionId": "semantic", "message": {"role": "assistant", "id": "image", "content": [{"type": "image", "source": {"data": "image-only-needle"}}]}},
+        {"type": "user", "sessionId": "semantic", "isMeta": True, "message": {"role": "user", "id": "meta", "content": "meta-only-needle"}},
+        {"type": "user", "sessionId": "semantic", "isCompactSummary": True, "message": {"role": "user", "id": "compact", "content": "compact-only-needle"}},
+        {"type": "assistant", "sessionId": "semantic", "isApiErrorMessage": True, "message": {"role": "assistant", "id": "api-error", "content": "api-error-only-needle"}},
+        {"type": "user", "sessionId": "semantic", "message": {"role": "user", "id": "visible", "content": "visible-only-needle"}},
+        {"type": "assistant", "sessionId": "semantic", "message": {"role": "assistant", "id": "tool", "content": [{"type": "tool_use", "name": "ToolNameNeedle", "input": {"query": "ArgNeedle"}}]}},
+        {"type": "user", "sessionId": "semantic", "message": {"role": "user", "id": "result", "content": [{"type": "tool_result", "tool_use_id": "tool-1", "content": "ResultNeedle"}]}},
+    ]
+    (semantic / "semantic.jsonl").write_text(
+        "".join(json.dumps(item, separators=(",", ":")) + "\n" for item in semantic_records),
+        encoding="utf-8",
+    )
+    malformed_middle = stage / "inputs/malformed-middle"
+    malformed_tail = stage / "inputs/malformed-tail"
+    conflict = stage / "inputs/conflict"
+    malformed_middle.mkdir()
+    malformed_tail.mkdir()
+    conflict.mkdir()
+    shutil.copyfile(APP / "fixtures/cases/malformed-middle.jsonl", malformed_middle / "case.jsonl")
+    shutil.copyfile(APP / "fixtures/cases/malformed-tail.jsonl", malformed_tail / "case.jsonl")
+    conflict_records = [
+        {"type": "user", "uuid": "same", "sessionId": "conflict", "message": {"role": "user", "id": "m", "content": "kept-payload-needle"}},
+        {"type": "user", "uuid": "same", "sessionId": "conflict", "message": {"role": "user", "id": "m", "content": "changed-payload-needle"}},
+    ]
+    (conflict / "case.jsonl").write_text(
+        "".join(json.dumps(item, separators=(",", ":")) + "\n" for item in conflict_records),
+        encoding="utf-8",
+    )
+    terminal = stage / "inputs/terminal"
+    terminal.mkdir()
+    terminal_name = "terminal\x1b.jsonl"
+    terminal_records = [
+        {"type": "user", "sessionId": "session\x1b", "message": {"role": "user", "id": "id\x7f", "content": "terminal-needle \x00 \u202e \\"}},
+        {"type": "assistant", "sessionId": "session\x1b", "message": {"role": "assistant", "id": "tool", "content": [{"type": "tool_use", "name": "label\u202e", "input": {"query": "terminal-needle"}}]}},
+        {"type": "future\x07"},
+    ]
+    (terminal / terminal_name).write_text(
+        "".join(json.dumps(item, ensure_ascii=False, separators=(",", ":")) + "\n" for item in terminal_records),
+        encoding="utf-8",
+    )
     one = (
         "Session s — latest timestamp missing\n"
         "  user message m\n"
@@ -372,6 +499,16 @@ def interpreter_cases(stage: Path, compiler: Path) -> list[dict[str, object]]:
         "1 matching messages.\n"
     ).encode()
     replacement_output = one.replace(b"      needle\n", b"      needle \\xEF\\xBF\\xBD\n")
+    invalid_then_valid_output = (
+        "Session s — latest timestamp missing\n"
+        "  user message m\n"
+        "    case.jsonl:1 user text content[0]\n"
+        "      needle \\xEF\\xBF\\xBD\n"
+        "  user message z\n"
+        "    case.jsonl:2 user text content[0]\n"
+        "      needle after\n"
+        "2 matching messages.\n"
+    ).encode()
     ordering_output = (
         "Session tie-a — latest 2026-09-21T11:00:00.123Z\n"
         "  user message tie-a\n    ordering.jsonl:5 user text content[0]\n      order-needle\n"
@@ -385,6 +522,65 @@ def interpreter_cases(stage: Path, compiler: Path) -> list[dict[str, object]]:
         "  user message missing\n    ordering.jsonl:7 user text content[0]\n      order-needle\n"
         "5 matching messages.\n"
     ).encode()
+    semantic_visible_output = (
+        "Session semantic — latest timestamp missing\n"
+        "  user message visible\n"
+        "    semantic.jsonl:7 user text content[0]\n"
+        "      visible-only-needle\n"
+        "1 matching messages.\n"
+    ).encode()
+    semantic_tool_output = (
+        "Session semantic — latest timestamp missing\n"
+        "  assistant message tool\n"
+        "    semantic.jsonl:8 tool ToolNameNeedle arguments content[0]\n"
+        '      {"query": "ArgNeedle"}\n'
+        "1 matching messages.\n"
+    ).encode()
+    semantic_result_output = (
+        "Session semantic — latest timestamp missing\n"
+        "  user message result\n"
+        "    semantic.jsonl:9 tool result tool-1 content[0]\n"
+        "      ResultNeedle\n"
+        "1 matching messages.\n"
+    ).encode()
+    depth_24_output = one.replace(b"case.jsonl", depth_24_path.encode())
+    depth_25_output = one.replace(b"case.jsonl", depth_25_match_path.encode())
+    malformed_middle_output = (
+        "Session malformed — latest 2026-09-21T08:01:00Z\n"
+        "  user message before\n"
+        "    case.jsonl:1 user text content[0]\n"
+        "      malformed-needle before\n"
+        "  assistant message after\n"
+        "    case.jsonl:3 assistant text content[0]\n"
+        "      malformed-needle after\n"
+        "2 matching messages.\n"
+    ).encode()
+    malformed_tail_output = (
+        "Session malformed-tail — latest 2026-09-21T08:00:00Z\n"
+        "  user message before\n"
+        "    case.jsonl:1 user text content[0]\n"
+        "      tail-needle before\n"
+        "1 matching messages.\n"
+    ).encode()
+    conflict_output = (
+        "Session conflict — latest timestamp missing\n"
+        "  user message m\n"
+        "    case.jsonl:1 user text content[0]\n"
+        "      kept-payload-needle\n"
+        "1 matching messages.\n"
+    ).encode()
+    terminal_output = (
+        "Session session\\x1B — latest timestamp missing\n"
+        "  user message id\\x7F\n"
+        "    terminal\\x1B.jsonl:1 user text content[0]\n"
+        "      terminal-needle \\x00 \\xE2\\x80\\xAE "
+        "\\\\\n"
+        "  assistant message tool\n"
+        "    terminal\\x1B.jsonl:2 tool label\\xE2\\x80\\xAE arguments content[0]\n"
+        '      {"query": "terminal-needle"}\n'
+        "2 matching messages.\n"
+    ).encode()
+    terminal_stderr = b"moscope: diagnostic: ignored 1 records of kind future\\x07\n"
     smoke = "examples/programs/moscope/fixtures/smoke"
     status2 = "examples/programs/moscope/fixtures/status2"
     cases = [
@@ -437,18 +633,38 @@ def interpreter_cases(stage: Path, compiler: Path) -> list[dict[str, object]]:
             {"name": "valid-no-lf", "args": ["search", "needle", str(no_lf)], "exit": 0, "stdout": one, "stderr": b""},
             {"name": "valid-crlf", "args": ["search", "needle", str(crlf)], "exit": 0, "stdout": one, "stderr": b""},
             existing_case("flags-before-positionals", "smoke-all-words", ["search", "--all-words", "connection refused", smoke]),
-            existing_case("flags-combined-reversed", "smoke-tools", ["search", "--include-tools", "connection refused", smoke]),
+            {"name": "flags-combined-before", "args": ["search", "--all-words", "--include-tools", "ToolNameNeedle ArgNeedle", str(semantic)], "exit": 0, "stdout": semantic_tool_output, "stderr": b""},
+            {"name": "flags-combined-after-reversed", "args": ["search", "ToolNameNeedle ArgNeedle", str(semantic), "--include-tools", "--all-words"], "exit": 0, "stdout": semantic_tool_output, "stderr": b""},
             {"name": "missing-root", "args": ["search", "needle", str(stage / "inputs/missing")], "exit": 2, "stdout": b"No matches.\n", "stderr": b"moscope: incomplete: .: cannot list directory: missing or unsupported entry .\n"},
             {"name": "file-as-root", "args": ["search", "needle", str(root_target / "case.jsonl")], "exit": 2, "stdout": b"No matches.\n", "stderr": b"moscope: incomplete: .: cannot list directory: missing or unsupported entry .\n"},
             {"name": "directory-jsonl", "args": ["search", "needle", str(directory_case)], "exit": 2, "stdout": b"No matches.\n", "stderr": b"moscope: incomplete: candidate.jsonl: a .jsonl candidate is a directory, not a regular file\n"},
             {"name": "fifo-jsonl", "args": ["search", "needle", str(fifo)], "exit": 2, "stdout": b"No matches.\n", "stderr": b"moscope: incomplete: special.jsonl: cannot admit regular .jsonl input by size: missing or unsupported entry special.jsonl\n"},
             {"name": "sparse-64mib-plus-one", "args": ["search", "needle", str(sparse)], "exit": 2, "stdout": b"No matches.\n", "stderr": b"moscope: incomplete: big.jsonl: file exceeds 64 MiB\n"},
             {"name": "root-symlink", "args": ["search", "needle", str(root_link)], "exit": 0, "stdout": one, "stderr": b""},
-            {"name": "unreadable-file-and-subtree-with-control", "args": ["search", "needle", str(unreadable)], "exit": 2, "stdout": one.replace(b"case.jsonl", b"readable.jsonl"), "stderr": b"moscope: incomplete: shut: cannot list directory: missing or unsupported entry .\nmoscope: incomplete: secret.jsonl: cannot read admitted .jsonl input: missing or unsupported entry secret.jsonl\n", "restore": [[str(unreadable / "secret.jsonl"), 0o600], [str(unreadable / "shut"), 0o700]]},
+            {"name": "unreadable-file-and-subtree-with-control", "args": ["search", "needle", str(unreadable)], "exit": 2, "stdout": one.replace(b"case.jsonl", b"readable.jsonl"), "stderr": b"moscope: incomplete: shut: cannot list directory: missing or unsupported entry .\nmoscope: incomplete: secret.jsonl: cannot read admitted .jsonl input: missing or unsupported entry secret.jsonl\n", "restore": [[str(unreadable / "secret.jsonl"), 0o600], [str(unreadable / "shut"), 0o700]], "permission_checks": [[str(unreadable / "readable.jsonl"), "read", True], [str(unreadable / "secret.jsonl"), "read", False], [str(unreadable / "shut"), "execute", False]]},
             {"name": "line-exact-1mib", "args": ["search", "needle", str(exact_line)], "exit": 0, "stdout": exact_line_output, "stderr": b"", "timeout_seconds": 90},
             {"name": "line-1mib-plus-one-retains-earlier", "args": ["search", "needle", str(long_line)], "exit": 2, "stdout": one.replace(b"case.jsonl", b"line.jsonl"), "stderr": b"moscope: incomplete: line.jsonl:2: a JSONL line exceeds 1 MiB\n", "timeout_seconds": 90},
-            {"name": "invalid-utf8-conservative", "args": ["search", "needle", str(invalid_utf8)], "exit": 2, "stdout": replacement_output, "stderr": b"moscope: incomplete: case.jsonl:1: U+FFFD is present; fold_lines cannot distinguish it from replaced invalid UTF-8\n"},
+            {"name": "invalid-utf8-file-wide-uncertainty", "args": ["search", "needle", str(invalid_utf8)], "exit": 2, "stdout": invalid_then_valid_output, "stderr": b"moscope: incomplete: case.jsonl:1: U+FFFD is present; fold_lines cannot distinguish it from replaced invalid UTF-8\n"},
             {"name": "genuine-replacement-conservative", "args": ["search", "needle", str(genuine_replacement)], "exit": 2, "stdout": replacement_output, "stderr": b"moscope: incomplete: case.jsonl:1: U+FFFD is present; fold_lines cannot distinguish it from replaced invalid UTF-8\n"},
+            {"name": "depth-24-admitted", "args": ["search", "needle", str(depth_24)], "exit": 0, "stdout": depth_24_output, "stderr": b""},
+            {"name": "depth-25-refused-retains-earlier", "args": ["search", "needle", str(depth_25)], "exit": 2, "stdout": depth_25_output, "stderr": f"moscope: incomplete: {depth_25_refused_path}: traversal exceeds depth 24\n".encode()},
+            {"name": "semantic-visible", "args": ["search", "visible-only-needle", str(semantic)], "exit": 0, "stdout": semantic_visible_output, "stderr": b""},
+            {"name": "semantic-thinking-excluded", "args": ["search", "thinking-only-needle", str(semantic), "--include-tools"], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-redacted-excluded", "args": ["search", "redacted-only-needle", str(semantic), "--include-tools"], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-image-excluded", "args": ["search", "image-only-needle", str(semantic), "--include-tools"], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-meta-excluded", "args": ["search", "meta-only-needle", str(semantic), "--include-tools"], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-compact-excluded", "args": ["search", "compact-only-needle", str(semantic), "--include-tools"], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-api-error-excluded", "args": ["search", "api-error-only-needle", str(semantic), "--include-tools"], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-tool-name-default-off", "args": ["search", "ToolNameNeedle", str(semantic)], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-tool-name-opt-in", "args": ["search", "ToolNameNeedle", str(semantic), "--include-tools"], "exit": 0, "stdout": semantic_tool_output, "stderr": b""},
+            {"name": "semantic-tool-args-default-off", "args": ["search", "ArgNeedle", str(semantic)], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-tool-args-opt-in", "args": ["search", "ArgNeedle", str(semantic), "--include-tools"], "exit": 0, "stdout": semantic_tool_output, "stderr": b""},
+            {"name": "semantic-tool-result-default-off", "args": ["search", "ResultNeedle", str(semantic)], "exit": 1, "stdout": b"No matches.\n", "stderr": b""},
+            {"name": "semantic-tool-result-opt-in", "args": ["search", "ResultNeedle", str(semantic), "--include-tools"], "exit": 0, "stdout": semantic_result_output, "stderr": b""},
+            {"name": "malformed-middle-retains-before-after", "args": ["search", "malformed-needle", str(malformed_middle)], "exit": 2, "stdout": malformed_middle_output, "stderr": b"moscope: incomplete: case.jsonl:2: malformed JSON record\n"},
+            {"name": "malformed-tail-retains-earlier", "args": ["search", "tail-needle", str(malformed_tail)], "exit": 2, "stdout": malformed_tail_output, "stderr": b"moscope: incomplete: case.jsonl:2: malformed JSON record\n"},
+            {"name": "uuid-conflict-keeps-first", "args": ["search", "payload-needle", str(conflict)], "exit": 2, "stdout": conflict_output, "stderr": b"moscope: incomplete: case.jsonl:2: UUID same conflicts with line 1\n"},
+            {"name": "terminal-control-bearing-fields", "args": ["search", "terminal-needle", str(terminal), "--include-tools"], "exit": 0, "stdout": terminal_output, "stderr": terminal_stderr},
             {"name": "ordering", "args": ["search", "order-needle", "examples/programs/moscope/fixtures/cases"], "exit": 2, "stdout": ordering_output, "stderr": b"moscope: incomplete: identity.jsonl:6: UUID id-conflict conflicts with line 5\nmoscope: incomplete: malformed-middle.jsonl:2: malformed JSON record\nmoscope: incomplete: malformed-tail.jsonl:2: malformed JSON record\nmoscope: incomplete: unsupported.jsonl:1: unsupported conversation block type future_content\nmoscope: incomplete: unsupported.jsonl:2: conversation content is neither text nor a block array\nmoscope: diagnostic: ignored 1 records of kind future_bookkeeping\nmoscope: diagnostic: ignored 1 records of kind progress\n"},
         ]
     )
@@ -528,14 +744,28 @@ def run_interpreter(compiler: Path, destination: Path) -> int:
             "case": case["name"],
             "argv": command,
             "cwd": str(ROOT),
+            "executor": {"effective_uid": os.geteuid(), "effective_gid": os.getegid()},
             "environment": minimal_env(home),
             "compiler": {"path": str(compiler), "bytes": COMPILER_BYTES, "sha256": COMPILER_SHA256},
             "guard": {"path": str(GUARD_PATH), "sha256": GUARD_SHA256},
             "source": source,
             "captures": {"stdout": {"path": str(stdout_path)}, "stderr": {"path": str(stderr_path)}},
             "caps": {"sampled_stop_threshold_bytes_each": STREAM_CAP, "final_acceptance_limit_bytes_each": STREAM_CAP},
+            "permission_evidence": permission_evidence(case),
         }
         receipt_path.write_text(json.dumps(pending, indent=2, sort_keys=True) + "\n")
+        permission_failures = [
+            item for item in pending["permission_evidence"] if not item["matches"]
+        ]
+        if permission_failures:
+            failed = {
+                **pending,
+                "state": "failed",
+                "failure": "permission fixture precondition failed before launch",
+                "passed": False,
+            }
+            receipt_path.write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
+            raise SystemExit(f"permission fixture precondition failed in {case['name']}")
         with stdout_path.open("wb", buffering=0) as stdout, stderr_path.open("wb", buffering=0) as stderr:
             result = guard.supervise(
                 case.get("timeout_seconds", 60), command, cwd=ROOT, env=pending["environment"],
@@ -548,10 +778,11 @@ def run_interpreter(compiler: Path, destination: Path) -> int:
                 fixture_cleanup.append({"path": path, "restored_mode": mode, "error": None})
             except OSError as error:
                 fixture_cleanup.append({"path": path, "restored_mode": None, "error": f"{type(error).__name__}: {error}"})
-        if result.group.state != "absent":
-            failed = {**pending, "state": "INCOMPLETE", **result_fields(result), "fixture_cleanup": fixture_cleanup, "captures": {"stdout": observed_capture(stdout_path), "stderr": observed_capture(stderr_path)}, "passed": False}
+        unsafe = unsafe_result(result, fixture_cleanup)
+        if unsafe:
+            failed = {**pending, "state": "INCOMPLETE", **result_fields(result), "fixture_cleanup": fixture_cleanup, "captures": {"stdout": observed_capture(stdout_path), "stderr": observed_capture(stderr_path)}, "unsafe_outcome": unsafe, "passed": False}
             receipt_path.write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
-            raise SystemExit(f"unsafe cleanup in {case['name']}")
+            raise SystemExit(f"unsafe execution outcome in {case['name']}: {'; '.join(unsafe)}")
         stdout_size = stdout_path.stat().st_size
         stderr_size = stderr_path.stat().st_size
         if stdout_size > STREAM_CAP or stderr_size > STREAM_CAP:
@@ -561,7 +792,7 @@ def run_interpreter(compiler: Path, destination: Path) -> int:
         actual_stdout = stdout_path.read_bytes()
         actual_stderr = stderr_path.read_bytes()
         comparisons = {"status_exact": result.child_exit == case["exit"], "stdout_exact": actual_stdout == case["stdout"], "stderr_exact": actual_stderr == case["stderr"]}
-        passed = all(comparisons.values()) and result.reason == "child_exit" and result.supervision_error is None
+        passed = all(comparisons.values())
         receipt = {**pending, "state": "finished", **result_fields(result), "fixture_cleanup": fixture_cleanup, "captures": {"stdout": {"path": str(stdout_path), "bytes": len(actual_stdout), "sha256": sha256_bytes(actual_stdout), "final": True}, "stderr": {"path": str(stderr_path), "bytes": len(actual_stderr), "sha256": sha256_bytes(actual_stderr), "final": True}}, "expected": {"exit": case["exit"], "stdout_sha256": sha256_bytes(case["stdout"]), "stderr_sha256": sha256_bytes(case["stderr"])}, "comparisons": comparisons, "passed": passed}
         receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
         summary.append({"case": case["name"], "passed": passed, "receipt": str(receipt_path)})

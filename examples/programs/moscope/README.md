@@ -5,12 +5,12 @@ histories. Candidate `f961c686` passed one guarded interpreter phrase smoke with
 the accepted compiler: exit 0, 731 stdout bytes, 107 stderr bytes, and four
 matches, with both streams byte-exact to the hand-authored expectations. That
 was a narrow pre-integration check, not full app acceptance. The frozen
-app-local candidate has since passed the serial interpreter stage: 46 exact
-cases, including all eight original triples, 31 additional
-CLI/filesystem/boundary cases, and all seven modules' 27 non-writing tests.
-Every payload had literal absent process-group cleanup. Native behavior,
-formatter/`--write` release metadata, and the full corpus remain unexecuted and
-unaccepted.
+app-local candidate passed the first serial interpreter checkpoint (46 exact
+payloads), then a corrective interpreter suite expanded it to 66 payloads: all
+eight original triples, 51 additional CLI/filesystem/boundary cases, and all
+seven modules' 27 non-writing tests. Every completed payload had literal absent
+process-group cleanup. Native behavior, formatter/`--write` release metadata,
+and the full corpus remain unexecuted and unaccepted.
 
 ```text
 moscope search "connection refused" ./sessions/
@@ -191,9 +191,11 @@ ln -s "$PWD" root-link
 
 Restore permission before deleting the temporary tree. `unreadable` tests a list
 failure, `special.jsonl` tests nonregular admission, and `root-link`
-demonstrates the documented operator-supplied anchor behavior. Depth, count,
-byte, record, retained-value, result, output, and deadline boundaries can be
-generated in a disposable tree; they are not committed as giant files.
+demonstrates the documented operator-supplied anchor behavior. Actual depth
+24/25 trees, byte and line boundaries, and modest filesystem cases are generated
+in a disposable tree. Large count, record, retained-value, result, output, and
+aggregate-admission boundaries use tiny predicates called by production paths
+plus focused state fixtures; they are not materialized as giant trees or files.
 
 ## Synthetic exact triples and narrow execution
 

@@ -14,6 +14,7 @@ struct FileFold
   file_records: UInt64
   bytes: UInt64
   admitted: UInt64
+  replacement_seen: Bool
   stopped: Bool
 end
 
@@ -46,7 +47,7 @@ end
 
 fn start_file(scan: Scan, path: String, admitted: UInt64) : FileFold
   FileFold(scan: scan, seen: Map.new(), path: path, lines: 0, file_records: 0, bytes: 0,
-    admitted: admitted, stopped: false)
+    admitted: admitted, replacement_seen: false, stopped: false)
 end
 
 # fold_lines cannot stop the underlying synchronous read. Once stopped, this callback only counts
@@ -56,6 +57,7 @@ fn folded_line(state: FileFold, line: String) : FileFold
   next.lines += 1
   next.bytes = next.bytes.saturating_add(line.byte_size + 1)
   replacement = line.contains?("\u{FFFD}")
+  next.replacement_seen = next.replacement_seen or replacement
   if next.stopped
     return next
   end
@@ -64,10 +66,11 @@ fn folded_line(state: FileFold, line: String) : FileFold
     next.stopped = true
     return next
   end
-  # fold_lines replaces each malformed byte with the three-byte UTF-8 U+FFFD spelling. When that
-  # happened, transformed byte size cannot prove file growth; the U+FFFD diagnostic below already
-  # refuses complete success for both malformed input and a genuine replacement character.
-  if !replacement and next.bytes > next.admitted.saturating_add(1)
+  # fold_lines replaces each malformed byte with the three-byte UTF-8 U+FFFD spelling. Once that
+  # happened anywhere in this file, cumulative transformed byte size cannot prove later growth;
+  # the U+FFFD diagnostic below already refuses complete success for malformed input and a genuine
+  # replacement character.
+  if !next.replacement_seen and next.bytes > next.admitted.saturating_add(1)
     next.scan = problem(next.scan, next.path, next.lines,
       "the file grew after size admission; results use only the admitted prefix")
     next.stopped = true
@@ -509,15 +512,35 @@ test "replacement characters and conflicting payloads preserve first results but
 end
 
 test "production per-file total-record and retained-block counters refuse the next value"
+  record = "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"kept\"}}"
   var per_file = start_file(empty_scan(), "one.jsonl", 10_000)
   per_file.file_records = 200_000
-  assert folded_line(per_file, "{}").scan.incomplete
+  per_file_refused = folded_line(per_file, record)
+  assert per_file_refused.stopped and per_file_refused.file_records == 200_000
+  assert per_file_refused.scan.records == 0 and per_file_refused.scan.messages.size == 0
+  assert per_file_refused.scan.issues.any?(fn(issue)
+    issue.detail == "the file exceeds 200000 records" and issue.line == 1
+  end)
+  var below = start_file(empty_scan(), "below.jsonl", 10_000)
+  below.file_records = 199_999
+  admitted = folded_line(below, record)
+  assert !admitted.stopped and admitted.file_records == 200_000
+  assert admitted.scan.records == 1 and admitted.scan.messages.size == 1
   var total_scan = empty_scan()
   total_scan.records = 1_000_000
-  assert folded_line(start_file(total_scan, "two.jsonl", 10_000), "{}").scan.incomplete
+  total_refused = folded_line(start_file(total_scan, "two.jsonl", 10_000), record)
+  assert total_refused.stopped and total_refused.file_records == 0
+  assert total_refused.scan.records == 1_000_000 and total_refused.scan.messages.size == 0
+  assert total_refused.scan.issues.any?(fn(issue)
+    issue.detail == "the search exceeds 1000000 records" and issue.line == 1
+  end)
+  var total_below = empty_scan()
+  total_below.records = 999_999
+  total_admitted = folded_line(start_file(total_below, "total-below.jsonl", 10_000), record)
+  assert !total_admitted.stopped and total_admitted.file_records == 1
+  assert total_admitted.scan.records == 1_000_000 and total_admitted.scan.messages.size == 1
   var block_scan = empty_scan()
   block_scan.retained_blocks = 500_000
-  record = "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"id\":\"m\",\"content\":\"kept\"}}"
   capped = folded_line(start_file(block_scan, "three.jsonl", 10_000), record).scan
   assert capped.incomplete and capped.retained_blocks == 500_000
 end
