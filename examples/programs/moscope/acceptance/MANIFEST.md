@@ -74,3 +74,15 @@ giant materialized corpora. Every expectation is exact for status and both
 streams. Earlier attempts and ordinary failures remain in the external evidence
 archive. This checkpoint does not include native execution, release metadata, or
 the full corpus.
+
+## Native checkpoint
+
+The ordinary native stage performs eight sequential cold builds: `main.mo` and
+all seven modules with `--tests`. Contracts remain on (no `--no-contracts`) and
+the runtime surface remains off (no `--surface`). Before any generated binary
+runs, the recorder hashes each generated C file and requires exactly one
+`const uint32_t mo_nprocesses = 0;` declaration. It then applies the same 59
+independent CLI expectations and runs all seven module-test binaries. The stage
+records 74 guarded payload receipts total: eight builds, 59 CLI cases, and seven
+module binaries. Release metadata and the full corpus remain separate pending
+gates.

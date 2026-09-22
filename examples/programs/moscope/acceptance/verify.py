@@ -800,6 +800,172 @@ def run_interpreter(compiler: Path, destination: Path) -> int:
     return 0 if all(item["passed"] for item in summary) else 1
 
 
+def run_native_case(
+    case: dict[str, object],
+    number: int,
+    destination: Path,
+    compiler: Path,
+    source: dict[str, object],
+    guard,
+) -> dict[str, object]:
+    case_dir = destination / f"{number:03d}-{case['name']}"
+    case_dir.mkdir()
+    home = case_dir / "home"
+    (home / "tmp").mkdir(parents=True)
+    stdout_path = case_dir / "stdout.raw"
+    stderr_path = case_dir / "stderr.raw"
+    receipt_path = case_dir / "receipt.json"
+    env = minimal_env(home)
+    env.update(case.get("environment", {}))
+    native_path = case.get("native_binary")
+    native_identity = None
+    if native_path is not None:
+        binary = Path(native_path)
+        native_identity = {
+            "path": str(binary),
+            "bytes": binary.stat().st_size,
+            "sha256": sha256(binary),
+        }
+    pending = {
+        "schema": "moscope-acceptance-v1",
+        "state": "started",
+        "stage": "native",
+        "case": case["name"],
+        "argv": case["command"],
+        "cwd": str(case.get("cwd", ROOT)),
+        "executor": {"effective_uid": os.geteuid(), "effective_gid": os.getegid()},
+        "environment": env,
+        "compiler": {"path": str(compiler), "bytes": COMPILER_BYTES, "sha256": COMPILER_SHA256},
+        "guard": {"path": str(GUARD_PATH), "sha256": GUARD_SHA256},
+        "native_binary": native_identity,
+        "source": source,
+        "captures": {"stdout": {"path": str(stdout_path)}, "stderr": {"path": str(stderr_path)}},
+        "caps": {"sampled_stop_threshold_bytes_each": STREAM_CAP, "final_acceptance_limit_bytes_each": STREAM_CAP},
+        "permission_evidence": permission_evidence(case),
+    }
+    receipt_path.write_text(json.dumps(pending, indent=2, sort_keys=True) + "\n")
+    permission_failures = [item for item in pending["permission_evidence"] if not item["matches"]]
+    if permission_failures:
+        failed = {**pending, "state": "failed", "failure": "permission fixture precondition failed before launch", "passed": False}
+        receipt_path.write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
+        raise SystemExit(f"permission fixture precondition failed in {case['name']}")
+    with stdout_path.open("wb", buffering=0) as stdout, stderr_path.open("wb", buffering=0) as stderr:
+        result = guard.supervise(
+            case.get("timeout_seconds", 60), case["command"], cwd=case.get("cwd", ROOT), env=env,
+            stdout=stdout, stderr=stderr, policy=output_policy(stdout, stderr),
+        )
+    fixture_cleanup = []
+    for path, mode in case.get("restore", []):
+        try:
+            os.chmod(path, mode)
+            fixture_cleanup.append({"path": path, "restored_mode": mode, "error": None})
+        except OSError as error:
+            fixture_cleanup.append({"path": path, "restored_mode": None, "error": f"{type(error).__name__}: {error}"})
+    unsafe = unsafe_result(result, fixture_cleanup)
+    if unsafe:
+        failed = {**pending, "state": "INCOMPLETE", **result_fields(result), "fixture_cleanup": fixture_cleanup, "captures": {"stdout": observed_capture(stdout_path), "stderr": observed_capture(stderr_path)}, "unsafe_outcome": unsafe, "passed": False}
+        receipt_path.write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
+        raise SystemExit(f"unsafe native outcome in {case['name']}: {'; '.join(unsafe)}")
+    stdout_size = stdout_path.stat().st_size
+    stderr_size = stderr_path.stat().st_size
+    if stdout_size > STREAM_CAP or stderr_size > STREAM_CAP:
+        failed = {**pending, "state": "failed", **result_fields(result), "fixture_cleanup": fixture_cleanup, "captures": {"stdout": {"path": str(stdout_path), "bytes": stdout_size}, "stderr": {"path": str(stderr_path), "bytes": stderr_size}}, "failure": "final capture overflow", "passed": False}
+        receipt_path.write_text(json.dumps(failed, indent=2, sort_keys=True) + "\n")
+        raise SystemExit(f"native capture overflow in {case['name']}")
+    actual_stdout = stdout_path.read_bytes()
+    actual_stderr = stderr_path.read_bytes()
+    comparisons = {"status_exact": result.child_exit == case["exit"], "stdout_exact": actual_stdout == case["stdout"], "stderr_exact": actual_stderr == case["stderr"]}
+    receipt = {**pending, "state": "finished", **result_fields(result), "fixture_cleanup": fixture_cleanup, "captures": {"stdout": {"path": str(stdout_path), "bytes": len(actual_stdout), "sha256": sha256_bytes(actual_stdout), "final": True}, "stderr": {"path": str(stderr_path), "bytes": len(actual_stderr), "sha256": sha256_bytes(actual_stderr), "final": True}}, "expected": {"exit": case["exit"], "stdout_sha256": sha256_bytes(case["stdout"]), "stderr_sha256": sha256_bytes(case["stderr"])}, "comparisons": comparisons, "passed": all(comparisons.values())}
+    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+    return {"case": case["name"], "passed": receipt["passed"], "receipt": str(receipt_path)}
+
+
+def run_native(compiler: Path, destination: Path) -> int:
+    if destination.exists():
+        raise SystemExit(f"refusing to overwrite artifact directory: {destination}")
+    destination.mkdir(parents=True)
+    generated = destination / "generated"
+    generated.mkdir()
+    cases = interpreter_cases(destination, compiler)
+    guard = load_guard()
+    source = source_identity()
+    modules = [case for case in cases if str(case["name"]).startswith("module-")]
+    cli = [case for case in cases if not str(case["name"]).startswith("module-")]
+    builds = []
+    main_name = "moscope"
+    builds.append(
+        {
+            "name": "build-main",
+            "command": [str(compiler), "build", str(MAIN), "-o", main_name],
+            "cwd": generated,
+            "timeout_seconds": 900,
+            "exit": 0,
+            "stdout": f"zig-out/mo-build/{main_name}/{main_name}\n".encode(),
+            "stderr": b"",
+            "binary_name": main_name,
+        }
+    )
+    for module in modules:
+        short = str(module["name"])[len("module-"):]
+        name = f"moscope-tests-{short}"
+        builds.append(
+            {
+                "name": f"build-tests-{short}",
+                "command": [str(compiler), "build", "--tests", str(APP / f"{short}.mo"), "-o", name],
+                "cwd": generated,
+                "timeout_seconds": 900,
+                "exit": 0,
+                "stdout": f"zig-out/mo-build/{name}/{name}\n".encode(),
+                "stderr": b"",
+                "binary_name": name,
+            }
+        )
+    summary = []
+    for number, build in enumerate(builds, 1):
+        recorded = run_native_case(build, number, destination, compiler, source, guard)
+        summary.append(recorded)
+        if not recorded["passed"]:
+            (destination / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+            return 1
+    inspections = []
+    for build in builds:
+        name = build["binary_name"]
+        c_path = generated / f"zig-out/mo-build/{name}/{name}.c"
+        binary_path = generated / f"zig-out/mo-build/{name}/{name}"
+        c_bytes = c_path.read_bytes()
+        marker = b"const uint32_t mo_nprocesses = 0;"
+        inspections.append(
+            {
+                "name": name,
+                "path": str(c_path),
+                "bytes": len(c_bytes),
+                "sha256": sha256_bytes(c_bytes),
+                "binary_path": str(binary_path),
+                "binary_bytes": binary_path.stat().st_size,
+                "binary_sha256": sha256(binary_path),
+                "zero_marker_count": c_bytes.count(marker),
+                "passed": c_bytes.count(marker) == 1 and b"const uint32_t mo_nprocesses = " in c_bytes,
+            }
+        )
+    (destination / "process-inspection.json").write_text(json.dumps(inspections, indent=2, sort_keys=True) + "\n")
+    if not all(item["passed"] for item in inspections):
+        raise SystemExit("generated C does not prove mo_nprocesses == 0 for every native binary")
+    main_binary = generated / f"zig-out/mo-build/{main_name}/{main_name}"
+    run_cases = []
+    for case in cli:
+        run_cases.append({**case, "command": [str(main_binary), *case["args"]], "native_binary": main_binary})
+    module_by_name = {str(case["name"])[len("module-"):]: case for case in modules}
+    for short, case in module_by_name.items():
+        name = f"moscope-tests-{short}"
+        binary = generated / f"zig-out/mo-build/{name}/{name}"
+        run_cases.append({**case, "command": [str(binary)], "native_binary": binary})
+    offset = len(builds)
+    for index, case in enumerate(run_cases, offset + 1):
+        summary.append(run_native_case(case, index, destination, compiler, source, guard))
+    (destination / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    return 0 if all(item["passed"] for item in summary) else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -810,6 +976,9 @@ def main() -> int:
     interpreter = subparsers.add_parser("interpreter")
     interpreter.add_argument("--mo", required=True)
     interpreter.add_argument("--artifacts", required=True)
+    native = subparsers.add_parser("native")
+    native.add_argument("--mo", required=True)
+    native.add_argument("--artifacts", required=True)
     args = parser.parse_args()
     if args.command == "plan":
         print(json.dumps(PLAN, indent=2, sort_keys=True))
@@ -818,7 +987,9 @@ def main() -> int:
     destination = Path(args.artifacts).resolve()
     if args.command == "probe":
         return run_probe(compiler, destination)
-    return run_interpreter(compiler, destination)
+    if args.command == "interpreter":
+        return run_interpreter(compiler, destination)
+    return run_native(compiler, destination)
 
 
 if __name__ == "__main__":
