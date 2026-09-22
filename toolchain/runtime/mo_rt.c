@@ -4774,22 +4774,23 @@ static _Thread_local KeyIndex *json_indexes;
 static _Thread_local size_t njson_indexes, capjson_indexes;
 static _Thread_local Buf json_texts;
 
-static Values *json_values(void) {
+/* Both return an index, not a pointer: a nested value's call can grow (and move) the array. */
+static size_t json_values(void) {
     if (njson_scratch == capjson_scratch) {
         capjson_scratch = capjson_scratch ? 2 * capjson_scratch : 16;
         json_scratch = xrealloc(json_scratch, capjson_scratch * sizeof(Values));
     }
     json_scratch[njson_scratch] = (Values){NULL, 0, 0};
-    return &json_scratch[njson_scratch++];
+    return njson_scratch++;
 }
 
-static KeyIndex *json_key_index(void) {
+static size_t json_key_index(void) {
     if (njson_indexes == capjson_indexes) {
         capjson_indexes = capjson_indexes ? 2 * capjson_indexes : 16;
         json_indexes = xrealloc(json_indexes, capjson_indexes * sizeof(KeyIndex));
     }
     json_indexes[njson_indexes] = (KeyIndex){NULL, 0};
-    return &json_indexes[njson_indexes++];
+    return njson_indexes++;
 }
 
 static MoValue json_read(Decoder *d, uint32_t depth) {
@@ -4797,8 +4798,7 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
     if (d->i >= d->n || depth > JSON_MAX_DEPTH) json_bad(d, d->i);
     char c = d->s[d->i];
     if (c == '{') {
-        Values *entries = json_values();
-        KeyIndex *ix = json_key_index();
+        size_t e = json_values(), x = json_key_index();
         d->i++;
         json_space(d);
         if (d->i < d->n && d->s[d->i] == '}') {
@@ -4812,7 +4812,8 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
                 if (d->i >= d->n || d->s[d->i] != ':') json_bad(d, d->i);
                 d->i++;
                 MoValue v = json_read(d, depth + 1);
-                size_t k = key_index_slot(ix, entries, key);
+                Values *entries = &json_scratch[e];
+                size_t k = key_index_slot(&json_indexes[x], entries, key);
                 if (k != SIZE_MAX) {
                     entries->xs[k + 1] = v;
                 } else {
@@ -4822,20 +4823,24 @@ static MoValue json_read(Decoder *d, uint32_t depth) {
                 if (!json_more(d, '}')) break;
             }
         }
+        Values *entries = &json_scratch[e];
         MoValue m = {MO_MAP, 0, {0}};
         m.as.m = map_of(dupe_values(entries->xs, entries->n), entries->n, 2);
         return mo_variant(MO_N_OBJECT, 1, &m);
     }
     if (c == '[') {
-        Values *items = json_values();
+        size_t it = json_values();
         d->i++;
         json_space(d);
         if (d->i < d->n && d->s[d->i] == ']') {
             d->i++;
         } else {
-            do values_push(items, json_read(d, depth + 1));
-            while (json_more(d, ']'));
+            do {
+                MoValue v = json_read(d, depth + 1);
+                values_push(&json_scratch[it], v);
+            } while (json_more(d, ']'));
         }
+        Values *items = &json_scratch[it];
         MoValue list = mo_list(dupe_values(items->xs, items->n), (uint32_t)items->n);
         return mo_variant(MO_N_ARRAY, 1, &list);
     }

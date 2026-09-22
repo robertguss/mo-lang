@@ -95,9 +95,10 @@
         { "id": "23e76177cfd9", "name": "test \"decoded text is a Json value to take apart, and encodes back as it was\"", "hash": "c2f55cfee31f292d" },
         { "id": "e81ca810138f", "name": "test \"a decoded number is a whole Int64 below 2^53 either side of 0, and nothing else is\"", "hash": "2ef93e3cf2748c65" },
         { "id": "6dcc07fca89d", "name": "test \"text that is not JSON names the byte where it stops being JSON\"", "hash": "5f5018f31cde0a05" },
+        { "id": "ebdc33c41d03", "name": "test \"deep and wide documents decode whole, past the decoder's first scratch growth\"", "hash": "70162b9ee0ec9cc0" },
         { "id": "1ebf14e79431", "name": "property \"any Json value survives encode then decode\"", "hash": "a8683a8fa2c9632e" }
       ],
-      "verified": { "hash": "18fceb276ed6537c", "declarations": "f9f03021d906dac7" }
+      "verified": { "hash": "bd9f734dadccc02e", "declarations": "373af12e8e8c29b3" }
     },
     {
       "path": "lists.mo",

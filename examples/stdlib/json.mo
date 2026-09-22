@@ -73,11 +73,22 @@ test "text that is not JSON names the byte where it stops being JSON"
   assert Json.decode("") is Error(Syntax(0))
 end
 
+test "deep and wide documents decode whole, past the decoder's first scratch growth"
+  keys = "a".repeat(40).chars
+  deep = keys.reduce(Number(value: 1.0),
+    fn(inner, key) Object(fields: Map.new().set(key, inner)) end)
+  assert Json.decode("#{"{\"a\":".repeat(40)}1#{"}".repeat(40)}") == Ok(deep)
+  wide = "[#{"{\"a\":[]},".repeat(39)}{\"a\":[]}]"
+  assert Json.decode(wide) is Ok(Array(items))
+  assert items.size == 40
+  assert items.all?(fn(item) item == Object(fields: Map.new().set("a", Array(items: []))) end)
+end
+
 property "any Json value survives encode then decode"
   for json in any(Json)
     assert Json.decode(Json.encode(json)) == Ok(json)
   end
 end
 
-verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
           proven: not run
