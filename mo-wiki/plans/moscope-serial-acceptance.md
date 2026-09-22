@@ -85,9 +85,18 @@ required repository gate is unresolved. Code remains off main until accepted.
 
 ## Result
 
-In progress. Fresh worker owns preparation; its new execution manifest remains
-held for lead readiness review. The previous smoke remains the only independent
-app execution evidence at this checkpoint.
+In progress, 21 Sep 2026, 8:21 PM ET. Corrective candidate 8ef1730c passed 66/66
+exact cases in both worker and independent lead interpreter runs, including
+seven modules / 27 tests. All lead payloads ended child_exit, zero supervision
+errors, literal group absence; independent ps confirmed all 66 PGIDs absent.
+Source inventory matched. Raw evidence and source bundle are preserved under
+audit/evidence/2026-09-21/moscope-interpreter/.
+
+Oracle cleared the unsafe-recorder continuation, file-wide UTF8 uncertainty and
+missing boundary/semantic-control findings. The same worker is released for
+bounded ordinary native preparation/execution using the pinned compiler and
+guard. Native, real formatter/metadata, final integrated replay and full corpus
+remain outstanding. App code is only in the lead verification branch, not main.
 
 ## Related
 
