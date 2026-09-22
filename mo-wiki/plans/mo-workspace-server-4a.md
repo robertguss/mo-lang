@@ -3,7 +3,7 @@ title:
   "The Mo workspace server, part A: the wire, admission, the journal and the
   five file tools"
 created: 2026-09-19
-updated: 2026-09-20
+updated: 2026-09-22
 type: plan
 tags: [agents, tooling, security, processes]
 sources:
@@ -12,10 +12,12 @@ sources:
     plans/mo-harness-end-to-end-v1.md,
     research/comparisons/bend2.md,
   ]
-status: in-progress
+status: paused
 ---
 
 # The Mo workspace server, part A
+
+**Paused 22 Sep 2026** (parked, not closed; not on main). Linux correctness passed 278/278 on 21 Sep; measurements were blocked; nothing is merged. How to resume: [[HANDOFF]].
 
 ## Orb continuation — 20 Sep 2026, evening ET
 

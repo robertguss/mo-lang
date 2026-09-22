@@ -1,7 +1,7 @@
 ---
 title: "Roadmap: now, next, later"
 created: 2026-09-12
-updated: 2026-09-21
+updated: 2026-09-22
 type: plan
 tags: [roadmap]
 sources: [plans/program-menu.md, spec/design-v0/08-milestone.md]
@@ -10,23 +10,30 @@ status: in-progress
 
 # Roadmap
 
-## Current board — moscope accepted, 21 Sep 2026, 10:08 PM ET
+## Current board — 22 Sep 2026, 4:15 PM ET
 
-Robert's purpose is learning and creating his own language, even without
-adoption; personal and wider usefulness remain goals. The small real CLI is the
-current application, rather than the more ambitious coding harness.
+Robert's purpose is to learn by creating his own language, useful to him and
+ideally to others, with or without adoption. The work now is small real tools
+in Mo, used on real data, with every language or runtime problem they expose
+fixed at its root. The present-tense summary is [[HANDOFF]].
 
-| board             | current work                                                                                                                                                    |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Now               | [[moscope-serial-acceptance]] complete: independent interpreter 66/66, native 74/74, normal build 5/5 and unfiltered corpus 276/276; all 142 lead groups absent |
-| Next              | No new implementation released; let use of the accepted serial CLI inform a separate bounded request                                                            |
-| Waiting on Robert | No acceptance prerequisite remains; private-history use is not part of this evidence                                                                            |
-| Recently done     | App-local real metadata 21/21, 27 module tests in each runtime, source and generated artifacts retained                                                         |
-| Paused            | Step42, coding harness, parallel scanner and broader language/runtime work remain paused                                                                        |
+| board             | current work                                                                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Now               | Nothing in flight. Process cleanup on 22 Sep: [[HANDOFF]] cut to one screen; paused plans marked paused                                                       |
+| Next              | 1. Use moscope on real history and log friction. 2. Fix language papercuts at the root (multi-line `expose`, `message` as a name, `10.minutes`). 3. Guard exit-125 flake |
+| Waiting on Robert | Operating model (Claude Code sessions, or the Amp lead with orbs that `CLAUDE.md` describes); auditor scope                                                   |
+| Recently done     | [[moscope-v2]] with the native JSON and `mo run` memory fixes, merged 22 Sep at eff64c56 (Darwin 277/277); [[moscope-serial-acceptance]] 21 Sep (Linux)       |
+| Parked            | [[interpreter-step-42]], [[mo-workspace-server-4a]], [[mo-first-coding-harness]], program 7, [[interpreter-step-39]]: none on main                            |
 
-Phase status: the smaller useful application is accepted on Linux. This does not
-complete the historical harness phase, prove adoption or performance, or satisfy
-outstanding Darwin/Step42 obligations. See [[decision-log]].
+Phase status: moscope v2 and the two runtime fixes it exposed are on main,
+verified on Darwin; they have no Linux replay or auditor reading yet. The harness phase,
+program 7 and Step42 are parked, not done. See [[decision-log]].
+
+## Previous board — moscope accepted, 21 Sep 2026, 10:08 PM ET
+
+Superseded by the board above. Moscope v1 was accepted on Linux (interpreter
+66/66, native 74/74, corpus 276/276); Step42, the harness, the parallel scanner
+and broader language/runtime work were paused.
 
 ## Historical direction and board (20–21 Sep, before moscope)
 

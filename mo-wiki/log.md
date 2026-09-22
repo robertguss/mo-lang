@@ -3284,3 +3284,13 @@
   Oracle or auditor reading. Evidence:
   audit/evidence/2026-09-22/moscope-v2-verify/. Roadmap and state pages not
   rewritten in this pass.
+
+## [2026-09-22] checkpoint | process cleanup, 4:15 PM ET
+
+- `HANDOFF.md` cut from 2,160 lines to one screen; the old one is
+  `git show 0c51691c:HANDOFF.md`. [[roadmap]] board and
+  [[state-of-the-project]] current section rewritten for 22 Sep.
+- [[interpreter-step-42]], [[mo-workspace-server-4a]] and
+  [[mo-first-coding-harness]] marked paused (parked, not closed).
+- For Robert: the operating model (Claude Code sessions or the Amp lead that
+  `CLAUDE.md` describes) and the auditor's scope. `CLAUDE.md` is unchanged.

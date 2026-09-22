@@ -2307,6 +2307,15 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | Accept [[moscope-v2]] and its two toolchain fixes at eff64c56 (native `Json.decode` indices, 455ba3eb; `mo run` on `smp_allocator`, eff64c56), fast-forwarded onto main unchanged. Darwin only: no Linux replay, Oracle review or auditor reading. The allocator change costs about 8% interpreter time here for 56× less memory. Evidence: audit/evidence/2026-09-22/moscope-v2-verify/. | Claude Code (Opus 5.5) independent verification; merge approved by Robert, 22 Sep, about 4:00 PM ET | accepted | Alone, full corpus 277/277 exit 0; JSON test old SIGSEGV / fixed 7/7; allocator test old fails / fixed 2/2; DebugAllocator corpus 277/277; check.py 34/34 both runtimes; real history native 3.27 s 14 MiB, interpreter 8.18 s 24.5 MiB (old 1,381 MiB), identical stdout |
 | Guard exit 125 on fs_scope step 40's native test binary in two of four full Darwin corpus runs, payload output correct each time; not reproduced in 150 trivial guarded runs or an instrumented rerun. Cause unknown; not yet checked on main. Recorded for follow-up, not a blocker for the acceptance above. | Claude Code | open | audit/evidence/2026-09-22/moscope-v2-verify/ logs verify-test-corpus-run1-concurrent and debugalloc-test-corpus-run1 |
 
+## 2026-09-22 — process cleanup
+
+| decision | who | status | first tested by |
+| --- | --- | --- | --- |
+| Cut `HANDOFF.md` to one screen of present state (next steps, parked lines, decisions waiting on Robert); the 2,160-line history stays in git at 0c51691c. Rewrite the roadmap board and the state page's current section for 22 Sep. | Claude Code, at Robert's request | decided | the next session's onboarding reads the handoff in one screen |
+| Mark [[interpreter-step-42]], [[mo-workspace-server-4a]] and [[mo-first-coding-harness]] paused (parked, not closed), beside program 7 (suspended) and [[interpreter-step-39]] (paused). None is on main; each resumes from its plan and latest evidence. | Claude Code | decided | the three plans' status lines and notes |
+| Recommended next: use moscope on real history, fix the language papercuts it meets at the root with a test that fails first (multi-line `expose`, `message` as a name, `10.minutes`), then the guard flake, then the next small tool. | Claude Code | recommended | the next session's first change |
+| Operating model: the 22 Sep work ran in Claude Code sessions (one wrote, another verified), while `CLAUDE.md` and `mo-lead` still name an Amp lead with Oracle review and orb workers. Which one governs, and the auditor's scope (every change, or toolchain changes and public claims), are Robert's calls. | Claude Code, for Robert | for Robert | `CLAUDE.md` updated to match his answer |
+
 ## Related
 
 - [[session-05]]

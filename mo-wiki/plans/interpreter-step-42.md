@@ -1,14 +1,16 @@
 ---
 title: "Step 42: runtime memory safety, a stale region value fails loudly"
 created: 2026-09-19
-updated: 2026-09-20
+updated: 2026-09-22
 type: plan
 tags: [runtime, verification, tooling, processes]
 sources: [plans/toolchain-raw-memory-report.md, plans/interpreter-step-41.md]
-status: in-progress
+status: paused
 ---
 
 # Step 42: runtime memory safety
+
+**Paused 22 Sep 2026** (parked, not closed; not on main). Last candidate 77163596 is unreviewed and uncompiled, seven obligations open; source bundle at `audit/evidence/2026-09-21/step42-pause-77163596/`. How to resume: [[HANDOFF]].
 
 ## Orb continuation — 20 Sep 2026, evening ET
 

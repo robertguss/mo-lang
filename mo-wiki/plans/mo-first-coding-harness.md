@@ -1,7 +1,7 @@
 ---
 title: "Mo-first coding harness: bounded first deliverable"
 created: 2026-09-18
-updated: 2026-09-19
+updated: 2026-09-22
 type: plan
 tags: [agents, tooling, verification, roadmap]
 sources:
@@ -9,10 +9,12 @@ sources:
     spec/programs/05-agent-harness.md,
     research/concepts/agent-native-research-synthesis.md,
   ]
-status: in-progress
+status: paused
 ---
 
 # Mo-first coding harness: bounded first deliverable
+
+**Paused 22 Sep 2026** (parked, not closed; not on main). Robert chose the smaller moscope CLI first (21 Sep); the harness is the later ambition, not abandoned. How to resume: [[HANDOFF]].
 
 ## Orientation
 

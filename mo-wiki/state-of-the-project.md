@@ -1,7 +1,7 @@
 ---
 title: "The state of the project"
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-09-22
 type: synthesis
 tags: [roadmap, research, thesis]
 sources:
@@ -24,7 +24,37 @@ the date at the top is the last one. The trees are one link away: the maps under
 [[the-thesis-and-its-evidence|maps]] gather the pages behind each sentence here,
 and the [[roadmap]] table is the authority on order.
 
-**Current, 21 Sep 2026, 10:08 PM ET:** moscope, the small serial CLI for
+**Current, 22 Sep 2026, 4:15 PM ET.** Robert's purpose is to learn by
+creating his own language, useful to him and ideally to others, with or without
+adoption. The work that serves it now is small real tools written in Mo, used on
+real data, with every language or runtime problem they expose fixed at its root.
+
+What the last two days showed. Moscope v1 was accepted on 21 Sep on synthetic
+Linux evidence (66/66, 74/74, corpus 276/276). Run the next day on Robert's own
+history (588 MB), the native build crashed in 76 of 77 project folders, every
+query exited 2, and the interpreter hit its deadline and printed "No matches."
+for a query present in 97 files. That afternoon of real use found two runtime
+defects the full corpus had passed over: native `Json.decode` wrote through
+stale pointers past 16 containers in one document (every native program that
+decodes JSON was exposed), and `mo run` kept every temporary the interpreter
+freed until exit (1.4 GB for one scan). Both are fixed, each with a test that
+fails on the old code, and [[moscope-v2]] is merged at eff64c56. A separate
+session verified the result on Darwin: corpus 277/277, real history native
+3.3 s at 14 MiB, interpreter 8.2 s at 24.5 MiB, identical output. Real data is
+now the first gate; synthetic suites stay as regression tests.
+
+The records had outgrown the work. `HANDOFF.md` had reached 2,160 lines; of the
+186 commits on main since 19 Sep, 29 touched the compiler or runtime. On 22 Sep
+the handoff was cut to one screen (the old one is in git), and Step42, the
+workspace server, the coding harness, program 7 and step 39 are marked parked,
+not closed. Two decisions wait on Robert: the operating model (the 22 Sep work
+ran in Claude Code sessions; `CLAUDE.md` still describes an Amp lead with orb
+workers) and the auditor's scope. Next: use moscope, fix the language papercuts
+it meets, then the next small tool ([[roadmap]]).
+
+## Moscope v1 accepted, 21 Sep 2026, 10:08 PM ET (superseded above)
+
+Moscope, the small serial CLI for
 searching Claude Code JSONL histories, is accepted on Linux. Robert's ultimate
 value is learning and creating his own language even without adoption; personal
 and wider usefulness remain goals. He chose this smaller useful application
