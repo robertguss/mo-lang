@@ -5,6 +5,24 @@ reasoning behind each change is in `mo-wiki/decisions/decision-log.md`; the
 per-chapter "Session N changes" sections in `mo-wiki/spec/design-v0/` hold the
 same history next to the text it changed.
 
+## Moscope v2 and two toolchain fixes accepted — 22 Sep 2026, 4:00 PM ET
+
+- moscope works on real Claude Code history: streaming search, warnings versus
+  errors (`--strict` keeps fail-closed), match-centred readable excerpts,
+  `resume:` hints, `--`/`--help`, and a 34-case golden checker (`mo-wiki/plans/moscope-v2.md`).
+- Native `Json.decode` no longer writes through stale scratch pointers: past 16
+  containers in one document, every native program that decoded JSON could
+  crash or silently drop values. Regression test in `examples/stdlib/json.mo`.
+- `mo run` frees the interpreter's temporaries (`smp_allocator` instead of the
+  process arena): moscope's full-history scan peaks at 24.5 MiB, down from
+  1,381 MiB, for about 8% more interpreter time. New corpus test.
+- Independent Darwin verification: full corpus 277/277 alone and under
+  DebugAllocator; old/fixed red/green for both fixes; check.py 34/34 in both
+  runtimes; real history (601 MB) native 3.27 s at 14 MiB with stdout
+  identical to the interpreter's. No Linux replay, Oracle review or auditor
+  reading. A guard exit-125 flake on fs_scope step 40 is open. Evidence:
+  `audit/evidence/2026-09-22/moscope-v2-verify/`.
+
 ## Moscope serial CLI accepted — 21 Sep 2026, 10:08 PM ET
 
 - Local read-only Claude Code JSONL search: phrase/all-words, optional tools,

@@ -1,0 +1,7 @@
+pass  test "discovery reads nested JSONL, ignores other files, and reports JSONL folders as errors"
+pass  test "a filesystem timeout is an error, not a silent empty result"
+pass  test "files are read in sorted path order and every file is read"
+pass  test "traversal admission predicates differ at every boundary"
+4 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

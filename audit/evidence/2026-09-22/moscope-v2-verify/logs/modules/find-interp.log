@@ -1,0 +1,9 @@
+pass  test "all-words uses exactly the six ASCII whitespace bytes and lowers terms"
+pass  test "matching folds ASCII only, so non-ASCII stays exact"
+pass  test "the excerpt is a window around the first match, marked where clipped"
+pass  test "all-words flags each term and a tool label can match"
+pass  test "tools are eligible only when requested"
+pass  property "query terms are never empty and never hold an ASCII separator": 200 seeds
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+          proven: not run

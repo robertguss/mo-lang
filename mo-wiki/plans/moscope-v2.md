@@ -137,8 +137,11 @@ re-verification, and auditor review.
 
 ## Result
 
-Done on branch `moscope/real-data-v2`, 22 Sep 2026, on Darwin. It is not yet
-reviewed by the lead or auditor.
+Done on branch `moscope/real-data-v2`, 22 Sep 2026, on Darwin. Independently
+verified on Darwin and merged to main at eff64c56 the same afternoon (4:00 PM
+ET); see the [[decision-log]] and
+`audit/evidence/2026-09-22/moscope-v2-verify/`. No Linux replay or auditor
+reading yet.
 
 | check                                             | result                                                   |
 | ------------------------------------------------- | -------------------------------------------------------- |

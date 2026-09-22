@@ -1,0 +1,10 @@
+pass  test "a struct is an object in field order, and an enum value names its variant"
+pass  test "lists, maps, options, floats, and times each have one spelling"
+pass  test "decoded text is a Json value to take apart, and encodes back as it was"
+pass  test "a decoded number is a whole Int64 below 2^53 either side of 0, and nothing else is"
+pass  test "text that is not JSON names the byte where it stops being JSON"
+pass  test "deep and wide documents decode whole, past the decoder's first scratch growth"
+pass  property "any Json value survives encode then decode": 200 seeds
+7 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (7), property (200 seeds), sim (not run)
+          proven: not run

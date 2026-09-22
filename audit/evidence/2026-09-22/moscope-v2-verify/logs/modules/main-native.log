@@ -1,0 +1,7 @@
+pass  test "flags combine in either order and duplicate or unsupported arguments are rejected"
+pass  test "-- ends options so a query may start with a dash"
+pass  test "help is asked for, not an error"
+pass  test "blank, oversized, and wrongly counted arguments are usage errors at exact boundaries"
+4 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

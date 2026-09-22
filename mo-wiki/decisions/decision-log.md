@@ -1,7 +1,7 @@
 ---
 title: "Decision log"
 created: 2026-09-12
-updated: 2026-09-20
+updated: 2026-09-22
 type: decision
 tags: [meta, laws]
 sources: [spec/grammar.md, plans/model-bakeoff.md]
@@ -2304,6 +2304,8 @@ pending worker raw focused outputs. Prior full288/289 RED remains unresolved.
 | Fix the native JSON decoder's use-after-free (`json_read` scratch pointers) at its root, with a deep-and-wide native regression test in `examples/stdlib/json.mo`. This changes the accepted toolchain and needs lead/auditor acceptance before `main`. | Claude Code | done on branch, awaiting acceptance | old runtime SIGSEGV / fixed pass; test-corpus run |
 | Replace moscope's 1,112-line verifier with `acceptance/check.py`: 34 golden triples, `--bless` with reviewed diffs, and interpreter or native runs. Call goldens goldens. Commit no binaries. | Claude Code | done on branch | 34/34 interpreter and native |
 | Give `mo run`'s Server and Vm `std.heap.smp_allocator` instead of the process arena, which never freed the interpreter's temporaries (1.28 GB to decode a 588 MB history; 28 MB after). Corpus test added; the full corpus also passed under DebugAllocator. This changes the accepted toolchain and needs lead/auditor acceptance. | Claude Code | done on branch, awaiting acceptance | new corpus test: old 588 MiB growth / fixed 2 MiB |
+| Accept [[moscope-v2]] and its two toolchain fixes at eff64c56 (native `Json.decode` indices, 455ba3eb; `mo run` on `smp_allocator`, eff64c56), fast-forwarded onto main unchanged. Darwin only: no Linux replay, Oracle review or auditor reading. The allocator change costs about 8% interpreter time here for 56× less memory. Evidence: audit/evidence/2026-09-22/moscope-v2-verify/. | Claude Code (Opus 5.5) independent verification; merge approved by Robert, 22 Sep, about 4:00 PM ET | accepted | Alone, full corpus 277/277 exit 0; JSON test old SIGSEGV / fixed 7/7; allocator test old fails / fixed 2/2; DebugAllocator corpus 277/277; check.py 34/34 both runtimes; real history native 3.27 s 14 MiB, interpreter 8.18 s 24.5 MiB (old 1,381 MiB), identical stdout |
+| Guard exit 125 on fs_scope step 40's native test binary in two of four full Darwin corpus runs, payload output correct each time; not reproduced in 150 trivial guarded runs or an instrumented rerun. Cause unknown; not yet checked on main. Recorded for follow-up, not a blocker for the acceptance above. | Claude Code | open | audit/evidence/2026-09-22/moscope-v2-verify/ logs verify-test-corpus-run1-concurrent and debugalloc-test-corpus-run1 |
 
 ## Related
 

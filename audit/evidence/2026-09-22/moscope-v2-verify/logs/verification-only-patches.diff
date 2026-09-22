@@ -1,0 +1,27 @@
+diff --git a/toolchain/bench/step36/guard.py b/toolchain/bench/step36/guard.py
+index 711862a7..4ea08042 100755
+--- a/toolchain/bench/step36/guard.py
++++ b/toolchain/bench/step36/guard.py
+@@ -265,6 +265,7 @@ def main(argv=None):
+     command = argv[argv.index("--") + 1 :]
+     result = supervise(limit, command)
+     if result.child_exit is None or result.supervision_error or not result.cleanup_confirmed:
++        sys.stderr.write(f"guard125-diagnostic: reason={result.reason} child_exit={result.child_exit} supervision_error={result.supervision_error!r} group={result.group.state} group_error={result.group.error!r} rows={result.group.rows[:3]!r}\n")  # VERIFICATION ONLY
+         return 125
+     return result.child_exit
+ 
+diff --git a/toolchain/src/main.zig b/toolchain/src/main.zig
+index 377d598b..04df940f 100644
+--- a/toolchain/src/main.zig
++++ b/toolchain/src/main.zig
+@@ -297,7 +297,9 @@ fn run(init: std.process.Init) !void {
+         // The run's own allocator frees: the process arena would keep every temporary the
+         // interpreter frees (a decoder's key table, a line's partial buffer) until exit, so
+         // decoding a large file grew memory by about a third of what it allocated.
+-        var server: mo.server.Server = try .init(std.heap.smp_allocator, io, cwd, program_args orelse &.{}, init.environ_map, out, err);
++        // VERIFICATION ONLY (not for commit): DebugAllocator in place of smp_allocator.
++        var dbg_state: std.heap.DebugAllocator(.{}) = .init;
++        var server: mo.server.Server = try .init(dbg_state.allocator(), io, cwd, program_args orelse &.{}, init.environ_map, out, err);
+         server.files = program.files;
+         if (events_cap) |n| server.events_cap = n;
+         if (crashes_cap) |n| server.crashes_cap = n;

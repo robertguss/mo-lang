@@ -1,0 +1,9 @@
+pass  test "printable ASCII and ordinary Unicode prose pass unchanged"
+pass  test "controls, DEL, and backslash are escaped"
+pass  test "C1, bidi, zero-width, separator, BOM, and tag characters are escaped"
+pass  test "prefixes clip by grapheme before escaping"
+pass  test "shell words are bare when plain and single-quoted otherwise"
+pass  property "safe output never holds a raw C0 control or DEL": 200 seeds
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (200 seeds), sim (not run)
+          proven: not run

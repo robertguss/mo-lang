@@ -1,0 +1,7 @@
+pass  test "paths join the directory as typed, without doubled slashes"
+pass  test "the resume hint changes to the session directory and quotes what needs it"
+pass  test "a session without an id is named by its file as the operator can open it"
+pass  test "output admission differs on both sides of the limit"
+4 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (4), property (0 seeds), sim (not run)
+          proven: not run

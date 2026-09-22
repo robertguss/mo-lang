@@ -1,0 +1,7 @@
+Build Summary: 5/5 steps succeeded; 2/2 tests passed
+test-corpus success
++- run test 2 pass (2 total) 1s MaxRSS:93M
+   +- compile test Debug native success 1s MaxRSS:368M
+   +- install mo cached
+      +- compile exe mo ReleaseSafe native cached 72ms MaxRSS:35M
+

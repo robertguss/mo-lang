@@ -1,0 +1,9 @@
+pass  test "a phrase stays inside one block while all words may span blocks of one logical message"
+pass  test "tool blocks are opt-in and thinking remains excluded"
+pass  test "physical fallback identity cannot collide with a provided physical-looking id"
+pass  test "warnings leave a search complete unless strict, and still report what matched"
+pass  test "the session heading carries a resume hint and bookkeeping is one summary note"
+pass  test "excerpts centre on the match and keep ordinary Unicode readable"
+6 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (6), property (0 seeds), sim (not run)
+          proven: not run

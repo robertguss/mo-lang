@@ -1,0 +1,10 @@
+pass  test "only matching blocks are retained, while every session keeps its heading facts"
+pass  test "unreadable records are counted warnings and neighbouring records survive"
+pass  test "a repeated UUID in one file keeps the first record and warns"
+pass  test "tool references are searchable by name and images and documents are excluded"
+pass  test "an unsupported block is skipped with a warning and its siblings still match"
+pass  test "unknown bookkeeping is counted and unknown conversation-shaped types warn"
+pass  test "candidate and block retention limits are errors"
+7 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (7), property (0 seeds), sim (not run)
+          proven: not run

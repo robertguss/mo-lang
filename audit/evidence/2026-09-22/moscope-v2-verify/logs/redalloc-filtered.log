@@ -1,0 +1,20 @@
+test-corpus
++- run test 1 pass, 1 fail (2 total)
+error: 'corpus.test.corpus: decoding the same JSON fifty times keeps memory flat, under mo run and in a binary' failed:
+       /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig/std/testing.zig:615:14: 0x104e9e083 in expect (test)
+           if (!ok) return error.TestUnexpectedResult;
+                    ^
+       /private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang/5a907f18-c3e4-4371-b942-82e8aecd4eb1/scratchpad/redalloc/toolchain/src/corpus.zig:1130:5: 0x104e9e7b3 in test.corpus: decoding the same JSON fifty times keeps memory flat, under mo run and in a binary (test)
+           try std.testing.expect(std.mem.startsWith(u8, interp.stdout, want));
+           ^
+failed command: MO_EXE=/private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang/5a907f18-c3e4-4371-b942-82e8aecd4eb1/scratchpad/redalloc/toolchain/zig-out/bin/mo MO_CORPUS=1 ./.zig-cache/o/3eb7d8b2300dc841bc6098775b85bfd4/test --cache-dir=./.zig-cache --seed=0x594e7407 --listen=-
+
+Build Summary: 3/5 steps succeeded (1 failed); 1/2 tests passed (1 failed)
+test-corpus transitive failure
++- run test 1 pass, 1 fail (2 total)
+   +- compile test Debug native success 1s MaxRSS:377M
+   +- install mo success
+      +- compile exe mo ReleaseSafe native success 33s MaxRSS:1G
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/6ee9579bdf226ea80989e3648e63f13d/build /opt/homebrew/Cellar/zig/0.16.0_1/bin/zig /opt/homebrew/Cellar/zig/0.16.0_1/lib/zig /private/tmp/claude-501/-Users-robertguss-Projects-startups-mo-lang/5a907f18-c3e4-4371-b942-82e8aecd4eb1/scratchpad/redalloc/toolchain .zig-cache /Users/robertguss/.cache/zig --seed 0x594e7407 -Z7861cb168e6edbd0 test-corpus -Dtest-filter=decoding the same JSON fifty times --summary all

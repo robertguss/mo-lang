@@ -1,0 +1,6 @@
+pass  test "empty production state starts every counter clear"
+pass  test "warnings count by category and keep their first location"
+pass  test "errors are retained up to the diagnostic limit"
+3 passed, 0 failed, 0 skipped
+verified: types, contracts, tests (3), property (0 seeds), sim (not run)
+          proven: not run

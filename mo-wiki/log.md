@@ -3270,3 +3270,17 @@
   34-case golden checker, and the root-cause runtime fix with a regression
   test. It is awaiting lead review and auditor acceptance for the toolchain
   change.
+
+## [2026-09-22] acceptance | moscope v2 and two toolchain fixes, 4:00 PM ET
+
+- Robert asked for grounding and then for the moscope v2 branch to be pushed,
+  verified and merged. Claude Code verified it independently on Darwin and
+  fast-forwarded main to eff64c56: full corpus 277/277 alone and 277/277 under
+  DebugAllocator; the JSON and allocator fixes each red on the old code and
+  green on the new; check.py 34/34 in both runtimes; real history native 3.27 s
+  at 14 MiB, interpreter 8.18 s at 24.5 MiB (was 1,381 MiB), identical stdout.
+- Open: a guard exit-125 flake on fs_scope step 40's native test binary (two of
+  four full runs); the allocator change's 8% interpreter time cost. No Linux,
+  Oracle or auditor reading. Evidence:
+  audit/evidence/2026-09-22/moscope-v2-verify/. Roadmap and state pages not
+  rewritten in this pass.
