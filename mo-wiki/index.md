@@ -15,7 +15,7 @@ type: index
 > reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-23 | Total pages: 292
+> any question. Last updated: 2026-09-24 | Total pages: 293
 
 - [[orb-guard-wrapper]] — Repair wrapper cancellation and overflow cleanup after
   the guard gained its own payload group; direct guard acceptance is not wrapper
@@ -753,6 +753,9 @@ type: index
   mutation testing
 
 ## Research monitoring
+
+- [[hermes-daily-2026-09-24]] — Versioned stream semantics, path-resolution
+  authority and metamorphic checks as a complement to goldens.
 
 - [[hermes-daily-2026-09-23]] — BEAM backing-binary retention, golden-output
   provenance and a historical missing-result checker defect.
