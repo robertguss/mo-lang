@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-09-24
+updated: 2026-09-25
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -86,6 +86,11 @@ Hermes, 2026-09-24: [[hermes-daily-2026-09-24]] adds a version-pinned streaming
 comparison checklist and separates file API semantics from path authority and
 metamorphic verification. These are research recommendations, not measured Mo
 advantages or changes to the historical comparison above.
+
+Hermes, 2026-09-25: [[hermes-daily-2026-09-25]] separates buffered acceptance,
+persistence and cleanup, then relates explicit JSON policy to differential
+verification. No runtime superiority, new defect or implementation change is
+claimed.
 
 ## Related
 - [[language-landscape]]
