@@ -1,7 +1,7 @@
 ---
 title: "Reliability and testing philosophies"
 created: 2026-09-13
-updated: 2026-09-21
+updated: 2026-09-23
 type: concept
 tags: [research, verification, tooling]
 sources: [raw/research-runs/2026-09-13-manifestos-safety-reliability.pplx.md]
@@ -123,6 +123,8 @@ Judgment: combined with Ravenscar's ban on relative delays, the evidence favours
 17 Sep 2026: the only other change today was adding the Hermes link below.
 
 ## Related
+
+- [[hermes-daily-2026-09-23]] — Hermes follow-up on backing-binary retention, golden origins and missing-result rejection.
 
 - [[hermes-weekly-2026-09-21]] — Hermes partial-week synthesis: ranked lifecycle, verifier and authority/recovery evidence; six daily notes, no new experiments.
 

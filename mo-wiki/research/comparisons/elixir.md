@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-09-17
+updated: 2026-09-26
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -81,6 +81,21 @@ Elixir is a gradually typed functional language on the Erlang VM (v1.20; correct
 ## Dated research follow-up
 
 Hermes, 2026-09-16: [[hermes-daily-2026-09-16]] distinguishes the versioned Elixir and Erlang supervisor defaults, inspects the round-10 supervisor, and records recovery/error-path coverage questions. The comparison above is retained as the 12 September reading; its “Mo today” statements and open questions are historical, not the current implementation status. Consult the current chapter 3 and [[roadmap]] before using them.
+
+Hermes, 2026-09-24: [[hermes-daily-2026-09-24]] adds a version-pinned streaming
+comparison checklist and separates file API semantics from path authority and
+metamorphic verification. These are research recommendations, not measured Mo
+advantages or changes to the historical comparison above.
+
+Hermes, 2026-09-25: [[hermes-daily-2026-09-25]] separates buffered acceptance,
+persistence and cleanup, then relates explicit JSON policy to differential
+verification. No runtime superiority, new defect or implementation change is
+claimed.
+
+Hermes, 2026-09-26: [[hermes-daily-2026-09-26]] distinguishes incomplete UTF
+input from invalid input, replacement policy from conformance, and decoded text
+from evidence of original corruption. Research only; no exercised runtime or
+new Mo defect claim.
 
 ## Related
 - [[language-landscape]]
