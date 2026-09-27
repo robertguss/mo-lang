@@ -15,7 +15,7 @@ type: index
 > reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-26 | Total pages: 295
+> any question. Last updated: 2026-09-27 | Total pages: 296
 
 - [[orb-guard-wrapper]] — Repair wrapper cancellation and overflow cleanup after
   the guard gained its own payload group; direct guard acceptance is not wrapper
@@ -753,6 +753,9 @@ type: index
   mutation testing
 
 ## Research monitoring
+
+- [[hermes-daily-2026-09-27]] — Regex work budgets versus conclusive misses,
+  RE2-style tradeoffs and evidence for resource-safe recipe behavior.
 
 - [[hermes-daily-2026-09-26]] — Incomplete versus invalid Unicode, replacement
   policy and preserving evidence across text-processing boundaries.
