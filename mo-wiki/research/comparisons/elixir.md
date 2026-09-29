@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-09-26
+updated: 2026-09-29
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -96,6 +96,11 @@ Hermes, 2026-09-26: [[hermes-daily-2026-09-26]] distinguishes incomplete UTF
 input from invalid input, replacement policy from conformance, and decoded text
 from evidence of original corruption. Research only; no exercised runtime or
 new Mo defect claim.
+
+Hermes, 2026-09-29: [[hermes-daily-2026-09-29]] separates path resolution,
+opened-object identity, metadata observation and content consistency. Live-scan
+policy and controlled race checks are proposed, not an implementation defect or
+an executed comparison.
 
 ## Related
 - [[language-landscape]]
