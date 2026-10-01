@@ -15,7 +15,7 @@ type: index
 > reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-09-21 | Total pages: 289
+> any question. Last updated: 2026-10-01 | Total pages: 301
 
 - [[orb-guard-wrapper]] — Repair wrapper cancellation and overflow cleanup after
   the guard gained its own payload group; direct guard acceptance is not wrapper
@@ -753,6 +753,36 @@ type: index
   mutation testing
 
 ## Research monitoring
+
+- [[hermes-daily-2026-10-01]] — Versioned diagnostic configuration, release-path
+  coverage and disclosure boundaries beyond read-only authority.
+
+- [[hermes-daily-2026-09-30]] — Diagnostic loss under overload, fail-slow fault
+  models and separating read authority from evidence completeness.
+
+- [[hermes-daily-2026-09-29]] — File identity versus stable content, versioned
+  metadata API boundaries and the limits of observed race schedules.
+
+- [[hermes-weekly-2026-09-28]] — Six-day synthesis: trustworthy goldens,
+  matched streaming semantics and input/provenance boundaries; September 22 missing.
+
+- [[hermes-daily-2026-09-28]] — Safe-decoding boundaries, explicit wrapper
+  options and the assumptions behind security diagnostics.
+
+- [[hermes-daily-2026-09-27]] — Regex work budgets versus conclusive misses,
+  RE2-style tradeoffs and evidence for resource-safe recipe behavior.
+
+- [[hermes-daily-2026-09-26]] — Incomplete versus invalid Unicode, replacement
+  policy and preserving evidence across text-processing boundaries.
+
+- [[hermes-daily-2026-09-25]] — Delayed I/O failure and cleanup, explicit JSON
+  policy, and the limits of consensus-based differential checking.
+
+- [[hermes-daily-2026-09-24]] — Versioned stream semantics, path-resolution
+  authority and metamorphic checks as a complement to goldens.
+
+- [[hermes-daily-2026-09-23]] — BEAM backing-binary retention, golden-output
+  provenance and a historical missing-result checker defect.
 
 - [[hermes-weekly-2026-09-21]] — Partial-week synthesis: runtime boundaries,
   verifier discrimination and capability/recovery contracts; six daily notes.

@@ -1,7 +1,7 @@
 ---
 title: "Ecosystem strategy: the stdlib, kits, and the registry"
 created: 2026-09-13
-updated: 2026-09-17
+updated: 2026-09-28
 type: concept
 tags: [research, stdlib, security, roadmap]
 sources: [raw/research-runs/ecosystem-stdlib-platform-depth.pplx.md, raw/research-runs/mo-parallel-tracks-brief-2-ecosystem.pplx.md, spec/design-v0/09-stdlib.md, plans/program-4.md]
@@ -60,6 +60,16 @@ Checksums and trusted publishing from day one and not optional, as Go did; a rec
 - Q11's answer: the stdlib is the run's day-one list minus what processes and capabilities make unnecessary, with TLS and crypto as the two bricks that gate any real deployment, first-party and audited.
 - Two steps join the queue after program 1: TLS and the small crypto surface; the `sql` interface as a recipe with a first-party driver.
 - The recipe registry's design is the conformance check plus advisories and diffs; it waits.
+
+## Dated research follow-up
+
+Hermes, 28 Sep 2026: [[hermes-daily-2026-09-28]] separates decoder options,
+permitted data shapes and downstream resource costs, with explicit diagnostic
+trust assumptions. Research only; no new brick or recipe policy ratified.
+
+Hermes, 27 Sep 2026: [[hermes-daily-2026-09-27]] examines the deferred regex
+brick's resource-result contract and verification evidence. Background only;
+no implementation queue, dependency choice or historical row changed.
 
 ## Related
 - [[q11-platform-and-stdlib]]
