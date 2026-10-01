@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-09-30
+updated: 2026-10-01
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -107,7 +107,13 @@ logging loss from service recovery, adds fail-slow fault models, and separates
 read-only diagnostic authority from complete evidence. No wrapper-default,
 runtime-execution or comparative reliability claim is made.
 
+Hermes, 2026-10-01: [[hermes-daily-2026-10-01]] follows up with versioned
+Logger configuration, configuration-sensitive message evaluation and historical
+logging/privacy research. Read-only authority and bounded output are not
+confidentiality claims; no implementation defect or experiment is asserted.
+
 ## Related
+
 - [[language-landscape]]
 - [[d07-elixir-flavored-functional]]
 - [[d11-statically-typed]]
