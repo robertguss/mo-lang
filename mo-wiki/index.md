@@ -15,7 +15,7 @@ type: index
 > reads.
 
 > Every wiki page, one line each. Read this after SCHEMA.md to find pages for
-> any question. Last updated: 2026-10-01 | Total pages: 301
+> any question. Last updated: 2026-10-03 | Total pages: 303
 
 - [[orb-guard-wrapper]] — Repair wrapper cancellation and overflow cleanup after
   the guard gained its own payload group; direct guard acceptance is not wrapper
@@ -753,6 +753,12 @@ type: index
   mutation testing
 
 ## Research monitoring
+
+- [[hermes-daily-2026-10-03]] — Startup acknowledgment versus recovery readiness,
+  latent configuration errors and the limits of safe preflight verification.
+
+- [[hermes-daily-2026-10-02]] — Result limits versus work admission, task
+  cancellation versus confirmed cleanup, and recipe verification boundaries.
 
 - [[hermes-daily-2026-10-01]] — Versioned diagnostic configuration, release-path
   coverage and disclosure boundaries beyond read-only authority.
