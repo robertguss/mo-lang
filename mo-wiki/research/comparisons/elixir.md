@@ -1,7 +1,7 @@
 ---
 title: "Mo vs Elixir"
 created: 2026-09-12
-updated: 2026-10-02
+updated: 2026-10-03
 type: comparison
 tags: [research, types, processes]
 sources: [raw/articles/elixir-v1-20-released.md, raw/articles/elixir-type-inference-next-15-months.md, raw/papers/elixir-type-system-design-principles.md, raw/papers/elixir-guard-analysis-safe-erasure.md, raw/articles/elixir-supervisor-docs.md, raw/articles/valim-elixir-best-language-for-ai.md, raw/articles/breitig-llms-write-elixir.md, raw/articles/gleam-otp-readme.md]
@@ -116,6 +116,11 @@ Hermes, 2026-10-02: [[hermes-daily-2026-10-02]] separates output limits from
 work admission, wait deadlines from confirmed task termination, and cancellation
 signatures from cleanup obligations. Historical cooperative-cancellation research
 is not a BEAM comparison or an executed Mo check.
+
+Hermes, 2026-10-03: [[hermes-daily-2026-10-03]] separates acknowledged startup,
+required-child presence and recovery readiness, using versioned GenServer docs
+and historical configuration-checking research. Safe preflight has coverage
+limits; proposed controls are unexecuted, not new Mo requirements or defects.
 
 ## Related
 
